@@ -25,13 +25,15 @@ const BOARD_MENU_ACTIONS = new Set([
 const BOARD_MENU_TRIGGER = 'atlas-export'
 
 // Every action still reachable directly in the row: the view switcher's
-// five segments, Share, and the companion toggle.
+// four core segments, its one contributed segment (Roadmap, the
+// bundled mill-roadmap plugin -- goal 0357), Share, and the companion
+// toggle.
 const ROW_ACTIONS = new Set([
   'atlas-open-board',
   'atlas-open-contents',
   'atlas-open-matrix',
   'atlas-open-coverage',
-  'atlas-open-roadmap',
+  'atlas-open-plugin-mill-roadmap-roadmap',
   'atlas-space-share',
   'atlas-open-companion',
 ])

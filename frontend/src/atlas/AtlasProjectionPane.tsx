@@ -3,11 +3,12 @@ import type { KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Card, Kind, Link, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import PageContainer from '../shared/PageContainer'
-import type { AtlasBoardView } from '../shared/viewKinds'
+import { parsePluginBoardView, type AtlasBoardView } from '../shared/viewKinds'
+import { getPluginView } from '../plugins/pluginViews'
+import { PluginBoardPane } from '../plugins/pluginBoardPane'
 import { AtlasContentsView } from './AtlasContentsView'
 import { AtlasMatrixView } from './AtlasMatrixView'
 import { AtlasCoverageView } from './AtlasCoverageView'
-import { AtlasRoadmapView } from './AtlasRoadmapView'
 import pageStyles from './AtlasView.module.css'
 
 export type AtlasProjectionKind = Exclude<AtlasBoardView, 'board'>
@@ -16,34 +17,38 @@ export type AtlasProjectionKind = Exclude<AtlasBoardView, 'board'>
 // the switcher's active view replaces the canvas in place -- same
 // content region the board owns, toolbar row above it untouched.
 // Each projection keeps its own content and interactions; this host
-// owns only what the pane-shape of the region demands of all four:
+// owns only what the pane-shape of the region demands of them all:
 //
-// - PageContainer owns the inset: 'wide' for the list/table views,
-//   'full' for the roadmap's canvas-shaped swimlane grid (whose own
-//   module CSS then supplies the pad), never a new wrapper.
+// - PageContainer owns the inset: 'wide' for the built-in list/table
+//   views; a plugin-contributed pane (goal 0357) is 'full' -- the
+//   plugin's own page carries its pad, as the roadmap's swimlane grid
+//   always did through the projectionPad inset this host no longer
+//   needs to hand it.
 // - Focus moves INTO the pane on view activation, so Escape -- the
 //   dialog-Escape gesture these views carried as dialogs, kept --
 //   reaches the pane's keydown handler from any focused child, and
 //   portaled overlays (menus, the jump dialog) never bubble into it.
 // - Escape swaps back to the Board; the switcher is the other way out.
-const PANE_VARIANT: Record<AtlasProjectionKind, 'wide' | 'full'> = {
+const PANE_VARIANT: Record<string, 'wide'> = {
   list: 'wide',
   matrix: 'wide',
   coverage: 'wide',
-  roadmap: 'full',
 }
 
-// The label a screen reader gets for the region -- each projection's
-// own longstanding name (its dialog title while it was one).
-const PANE_LABEL_KEY: Record<AtlasProjectionKind, string> = {
+// The label a screen reader gets for the region -- each built-in
+// projection's own longstanding name (its dialog title while it was
+// one). A plugin pane's label is its manifest's own title instead.
+const PANE_LABEL_KEY: Record<string, string> = {
   list: 'contents.title',
   matrix: 'matrix.title',
   coverage: 'coverage.title',
-  roadmap: 'roadmap.title',
 }
 
-export function AtlasProjectionPane({ view, cards, kinds, links, linkKinds, onOpenCard, onFocusItem, onBackToBoard }: {
+export function AtlasProjectionPane({ view, spaceID, cards, kinds, links, linkKinds, onOpenCard, onFocusItem, onBackToBoard }: {
   view: AtlasProjectionKind
+  // spaceID is the space being viewed (AtlasView's viewedID) -- a
+  // plugin pane receives it as its frame context's spaceCardId.
+  spaceID: string
   // cards is the viewed space's own children -- the subset every
   // projection has always projected (AtlasView's childrenAll), never
   // the lens- or perspective-filtered set.
@@ -68,23 +73,26 @@ export function AtlasProjectionPane({ view, cards, kinds, links, linkKinds, onOp
     onBackToBoard()
   }
 
-  const variant = PANE_VARIANT[view]
+  const pluginView = parsePluginBoardView(view)
+  const contribution = pluginView ? getPluginView(pluginView.pluginId, pluginView.viewId) : undefined
+  const variant = PANE_VARIANT[view] ?? 'full'
+  const label = PANE_LABEL_KEY[view] !== undefined ? t(PANE_LABEL_KEY[view]) : (contribution?.title ?? view)
   return (
     <div
       ref={hostRef}
       className={pageStyles.projectionPane}
       tabIndex={-1}
       role="region"
-      aria-label={t(PANE_LABEL_KEY[view])}
+      aria-label={label}
       onKeyDown={onKeyDown}
       data-testid="atlas-projection-pane"
       data-view={view}
     >
-      <PageContainer variant={variant} className={variant === 'full' ? pageStyles.projectionPad : undefined}>
+      <PageContainer variant={variant} className={pluginView ? pageStyles.projectionPluginHost : undefined}>
         {view === 'list' && <AtlasContentsView kinds={kinds} onOpenCard={onOpenCard} onFocusItem={onFocusItem} />}
         {view === 'matrix' && <AtlasMatrixView cards={cards} kinds={kinds} links={links} linkKinds={linkKinds} onOpenCard={onOpenCard} />}
         {view === 'coverage' && <AtlasCoverageView cards={cards} links={links} linkKinds={linkKinds} onOpenCard={onOpenCard} />}
-        {view === 'roadmap' && <AtlasRoadmapView cards={cards} kinds={kinds} onOpenCard={onOpenCard} />}
+        {pluginView && <PluginBoardPane pluginId={pluginView.pluginId} viewId={pluginView.viewId} spaceCardId={spaceID} />}
       </PageContainer>
     </div>
   )

@@ -6,7 +6,9 @@ import type { PluginTheme } from './theme';
  * only a page that paints pixels itself needs to listen.
  * `settings:changed` says a stored setting moved; read the new value
  * with `call('settings.get', key)`. `contents:changed` says the board
- * changed. `ctx` carries the surface's context, on mount and on every
+ * changed, carrying `{ id, kind }` — `kind` names WHICH family changed
+ * ('card', 'note', ...) so a page re-drawing on only some ignores the
+ * rest. `ctx` carries the surface's context, on mount and on every
  * change: a capture's destination arrives here, and a canvas object's
  * face receives `{ object: { ID, Kind, Payload, Size }, mirror? }` --
  * `mirror` only for a file-backed kind, as `{ dataUrl, failed }`.
@@ -30,9 +32,11 @@ export type MillFrameEvent = 'theme:changed' | 'settings:changed' | 'contents:ch
 export interface MillFrameApi {
     /** Calls one plugin door and resolves with its answer. The doors a
      * page may call are `settings.get`, `notify`, `storage.get`,
-     * `storage.set`, `storage.delete`, `query`, `fetch`,
+     * `storage.set`, `storage.delete`, `query`, `kinds`, `open`,
+     * `fetch`,
      * `content.createNote`, `content.createCard`, `content.updateCard`,
-     * `content.appendListRow`, `content.createList`, `files.list`,
+     * `content.appendListRow`, `content.createList`,
+     * `content.setCardFields`, `files.list`,
      * `convert.htmlToMarkdown`, `requestGuardedAction`, `runCommand`,
      * in a capture, `capture.done` and `capture.cancel`, and in a canvas
      * object's face, `object.updatePayload` (merge a patch into this

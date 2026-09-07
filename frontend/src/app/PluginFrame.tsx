@@ -114,8 +114,8 @@ export function PluginFrame(props: PluginFrameProps) {
   useEffect(() => {
     if (srcdoc === null) return
     return Events.On('mill-data-changed', (evt) => {
-      const data = evt.data as { entity?: string; id?: string } | undefined
-      if (data?.entity === 'atlas') sendFrameEvent(frameRef.current, 'contents:changed', { id: data.id ?? '' })
+      const data = evt.data as { entity?: string; id?: string; kind?: string } | undefined
+      if (data?.entity === 'atlas') sendFrameEvent(frameRef.current, 'contents:changed', { id: data.id ?? '', kind: data.kind })
       if (data?.entity === 'settings') sendFrameEvent(frameRef.current, 'settings:changed', {})
     })
   }, [srcdoc])

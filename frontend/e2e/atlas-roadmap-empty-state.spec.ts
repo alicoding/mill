@@ -1,5 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
-import type { Locator, Page } from '@playwright/test'
+import type { FrameLocator, Locator, Page } from '@playwright/test'
 import { openToolbarAction } from './fixtures/toolbarActions'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -9,6 +9,9 @@ import {
 } from './fixtures/server'
 import { ATLAS_KIND_TOPIC } from './fixtures/kindPicker'
 import { createCardViaTray, noteCard } from './fixtures/atlasBoard'
+import { callBindingViaRPC } from './fixtures/wailsRpc'
+
+const GUARDRAIL = 'github.com/alicoding/mill/internal/services/guardrailsvc.GuardrailService.'
 
 // The Roadmap view's empty state (docs/goals/0225, defect class
 // dead-end-instruction): a sentence naming an action needs the
@@ -18,6 +21,12 @@ import { createCardViaTray, noteCard } from './fixtures/atlasBoard'
 // every OTHER test's board render and kind picker also reads
 // (testing.md's shared-vs-dedicated rule, same reasoning
 // atlas-kind-authoring.spec.ts's own header already states).
+//
+// Roadmap is the bundled mill-roadmap plugin (goal 0357): its pane is
+// a sandboxed iframe (PluginFrame), so every assertion into its content
+// goes through a FrameLocator, never a plain page/pane Locator.
+
+const ROADMAP_HOST_TESTID = 'plugin-view-mill-roadmap-roadmap'
 
 async function withServer(testInfo: { parallelIndex: number }, run: (page: Page) => Promise<void>): Promise<void> {
   const idx = testInfo.parallelIndex
@@ -46,30 +55,30 @@ async function withServer(testInfo: { parallelIndex: number }, run: (page: Page)
 
 // Locates a specific lane's own cell for one bucket -- the grid is a
 // flat CSS grid, so a lane's own 4 cells are simply the next 4
-// "atlas-roadmap-cell" siblings after its own lane label
-// (AtlasRoadmapView.tsx's data-lane-key/data-bucket-key attributes).
-function roadmapCell(pane: Locator, laneLabelText: string, bucketKey: string): Locator {
-  const lane = pane.getByTestId('atlas-roadmap-lane-label').filter({ hasText: laneLabelText })
+// "atlas-roadmap-cell" siblings after its own lane label (view.js's
+// data-lane-key/data-bucket-key attributes).
+function roadmapCell(frame: FrameLocator, laneLabelText: string, bucketKey: string): Locator {
+  const lane = frame.getByTestId('atlas-roadmap-lane-label').filter({ hasText: laneLabelText })
   return lane.locator(`xpath=following-sibling::div[@data-bucket-key="${bucketKey}"][1]`)
 }
 
-// Native HTML5 drag-and-drop (RoadmapChip/RoadmapLaneRow, the same
-// plain-dnd idiom DecisionRuleRow.tsx's own rule-reorder handle uses):
-// Playwright's Locator.dragTo() never fires real dragstart/dragover/
-// drop for a native-draggable element, so the two DragEvents are
-// dispatched directly -- the identical, already-established pattern
-// decision-rules-panel.spec.ts's dragRuleRow uses. Split into two
-// page.evaluate calls (not one atomic script) so the browser gets a
-// real event-loop turn between them, matching an actual gesture.
-async function dragRoadmapChip(page: Page, cardTitle: string, toCell: Locator): Promise<void> {
-  await page.evaluate((title) => {
-    const chip = Array.from(document.querySelectorAll('[data-testid="atlas-roadmap-chip"]'))
-      .find((el) => el.textContent?.includes(title))
-    if (!chip) throw new Error(`dragRoadmapChip: no chip for ${title}`)
+// Native HTML5 drag-and-drop (the chip/cell handlers in the plugin's
+// view.js, the same plain-dnd idiom DecisionRuleRow.tsx's own
+// rule-reorder handle uses): Playwright's Locator.dragTo() never fires
+// real dragstart/dragover/drop for a native-draggable element, so the
+// two DragEvents are dispatched directly -- the identical, already-
+// established pattern decision-rules-panel.spec.ts's dragRuleRow uses.
+// Both locators resolve inside the SAME iframe document, so the
+// DataTransfer stashed on that frame's own window survives the two
+// evaluate() calls. Split into two calls (not one atomic script) so
+// the browser gets a real event-loop turn between them, matching an
+// actual gesture.
+async function dragRoadmapChip(frame: FrameLocator, cardTitle: string, toCell: Locator): Promise<void> {
+  await frame.getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle }).evaluate((chip) => {
     const dataTransfer = new DataTransfer()
     ;(window as unknown as { __e2eDragDataTransfer: DataTransfer }).__e2eDragDataTransfer = dataTransfer
     chip.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer }))
-  }, cardTitle)
+  })
 
   await toCell.evaluate((el) => {
     const dataTransfer = (window as unknown as { __e2eDragDataTransfer: DataTransfer }).__e2eDragDataTransfer
@@ -78,68 +87,86 @@ async function dragRoadmapChip(page: Page, cardTitle: string, toCell: Locator): 
   })
 }
 
+// Every plugin write is guarded (docs/goals/0357's edit-card-fields
+// door rides the same guardrail plane content writes do): with no
+// allow rule seeded, the class default parks it for a decision. The
+// established e2e pattern (runtime-plugin-view-frame.spec.ts) polls
+// the pending list and answers it, standing in for the approval a
+// person would give from the Review queue.
+async function approvePendingFieldWrite(page: Page): Promise<void> {
+  await expect.poll(async () => (await callBindingViaRPC<{ ID: string }[]>(page, GUARDRAIL + 'PendingGuardedActions', [])).length).toBeGreaterThan(0)
+  const pending = await callBindingViaRPC<{ ID: string }[]>(page, GUARDRAIL + 'PendingGuardedActions', [])
+  await callBindingViaRPC(page, GUARDRAIL + 'ResolveGuardedAction', [pending[0].ID, true])
+}
+
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
 test('empty roadmap shows the skeleton + Place cards door; the picker auto-declares Horizon and drags move a chip between columns (goal 0225)', async ({}, testInfo) => {
   await withServer(testInfo, async (page) => {
     const cardTitle = 'ZzE2eRoadmapCard'
-    const pane = page.locator('[data-component="atlas-roadmap-pane"]')
+    const host = page.getByTestId(ROADMAP_HOST_TESTID)
+    const frame = page.frameLocator(`[data-testid="${ROADMAP_HOST_TESTID}"]`)
 
     // "The engagement" root's own seeded children (Client records,
     // Discovery workstream, Scratchpad) are all Topic cards, and Topic
     // declares no horizon field yet -- the root roadmap starts
     // genuinely untagged, the real empty state a first-time user hits.
-    await openToolbarAction(page, 'atlas-open-roadmap')
-    await expect(pane).toBeVisible()
-    await expect(pane.getByTestId('atlas-roadmap-empty')).toHaveText('Place a card in Now, Next, or Then to start your roadmap.')
-    await expect(pane.getByTestId('atlas-roadmap-grid')).toBeVisible()
-    await expect(pane.getByTestId('atlas-roadmap-column-header')).toHaveText(['Now', 'Next', 'Then', 'Unscheduled'])
-    await expect(pane.getByTestId('atlas-roadmap-place-cards-now')).toBeVisible()
-    await expect(pane.getByTestId('atlas-roadmap-place-cards-next')).toBeVisible()
-    await expect(pane.getByTestId('atlas-roadmap-place-cards-then')).toBeVisible()
-    await expect(pane.getByTestId('atlas-roadmap-place-cards-unscheduled')).toHaveCount(0)
+    await openToolbarAction(page, 'atlas-open-plugin-mill-roadmap-roadmap')
+    await expect(host).toBeVisible()
+    await expect(frame.getByTestId('atlas-roadmap-empty')).toHaveText('Place a card in Now, Next, or Then to start your roadmap.')
+    await expect(frame.getByTestId('atlas-roadmap-grid')).toBeVisible()
+    await expect(frame.getByTestId('atlas-roadmap-column-header')).toHaveText(['Now', 'Next', 'Then', 'Unscheduled'])
+    await expect(frame.getByTestId('atlas-roadmap-place-cards-now')).toBeVisible()
+    await expect(frame.getByTestId('atlas-roadmap-place-cards-next')).toBeVisible()
+    await expect(frame.getByTestId('atlas-roadmap-place-cards-then')).toBeVisible()
+    await expect(frame.getByTestId('atlas-roadmap-place-cards-unscheduled')).toHaveCount(0)
     await page.keyboard.press('Escape')
-    await expect(pane).not.toBeVisible()
+    await expect(host).not.toBeVisible()
 
     // A Topic card, whose Kind carries no horizon field -- the
     // picker's own "declare it first" path (contract item 2).
     await createCardViaTray(page, cardTitle, { kindID: ATLAS_KIND_TOPIC })
     await expect(noteCard(page, cardTitle)).toBeVisible()
 
-    await openToolbarAction(page, 'atlas-open-roadmap')
-    await expect(pane).toBeVisible()
+    await openToolbarAction(page, 'atlas-open-plugin-mill-roadmap-roadmap')
+    await expect(host).toBeVisible()
 
     // Two clicks, zero Kind-editor visits (Acceptance): open the Now
     // column's picker, pick the card.
-    await pane.getByTestId('atlas-roadmap-place-cards-now').click()
-    await page.getByTestId('atlas-roadmap-picker-item').filter({ hasText: cardTitle }).click()
+    await frame.getByTestId('atlas-roadmap-place-cards-now').click()
+    await frame.getByTestId('atlas-roadmap-picker-item').filter({ hasText: cardTitle }).click()
+    await approvePendingFieldWrite(page)
 
-    await expect(page.getByTestId('atlas-quiet-toast')).toContainText('Added a Horizon field to Topic')
-    const nowCell = roadmapCell(pane, 'Topic', 'now')
+    // The quiet toast is the plugin's own pane-local rendering (its
+    // page, inside the frame), the same surface the board itself uses.
+    await expect(frame.getByTestId('atlas-quiet-toast')).toContainText('Added a Horizon field to Topic')
+    const nowCell = roadmapCell(frame, 'Topic', 'now')
     await expect(nowCell.getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toBeVisible()
 
     // The auto-declared field is visible in the Kind editor, never hidden.
     await page.keyboard.press('Escape')
-    await expect(pane).not.toBeVisible()
+    await expect(host).not.toBeVisible()
     await openToolbarAction(page, 'atlas-open-kinds')
     await page.getByTestId('atlas-kind-row').filter({ hasText: 'Topic' }).click()
     await expect(page.locator('input[data-testid="atlas-kind-field-key"][value="horizon"]')).toBeVisible()
     await page.keyboard.press('Escape')
 
     // Drag Now -> Then, persisted across a switch away from the view and back.
-    await openToolbarAction(page, 'atlas-open-roadmap')
-    await expect(pane).toBeVisible()
-    await dragRoadmapChip(page, cardTitle, roadmapCell(pane, 'Topic', 'then'))
+    await openToolbarAction(page, 'atlas-open-plugin-mill-roadmap-roadmap')
+    await expect(host).toBeVisible()
+    await dragRoadmapChip(frame, cardTitle, roadmapCell(frame, 'Topic', 'then'))
+    await approvePendingFieldWrite(page)
     await page.keyboard.press('Escape')
-    await openToolbarAction(page, 'atlas-open-roadmap')
-    await expect(roadmapCell(pane, 'Topic', 'then').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toBeVisible()
-    await expect(roadmapCell(pane, 'Topic', 'now').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toHaveCount(0)
+    await openToolbarAction(page, 'atlas-open-plugin-mill-roadmap-roadmap')
+    await expect(roadmapCell(frame, 'Topic', 'then').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toBeVisible()
+    await expect(roadmapCell(frame, 'Topic', 'now').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toHaveCount(0)
 
     // Drag to Unscheduled clears the tag, also persisted.
-    await dragRoadmapChip(page, cardTitle, roadmapCell(pane, 'Topic', 'unscheduled'))
+    await dragRoadmapChip(frame, cardTitle, roadmapCell(frame, 'Topic', 'unscheduled'))
+    await approvePendingFieldWrite(page)
     await page.keyboard.press('Escape')
-    await openToolbarAction(page, 'atlas-open-roadmap')
-    await expect(roadmapCell(pane, 'Topic', 'unscheduled').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toBeVisible()
-    await expect(roadmapCell(pane, 'Topic', 'then').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toHaveCount(0)
+    await openToolbarAction(page, 'atlas-open-plugin-mill-roadmap-roadmap')
+    await expect(roadmapCell(frame, 'Topic', 'unscheduled').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toBeVisible()
+    await expect(roadmapCell(frame, 'Topic', 'then').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toHaveCount(0)
     await page.keyboard.press('Escape')
   })
 })

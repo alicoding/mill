@@ -107,11 +107,16 @@ type ManifestContributes struct {
 // declares one is mounted in its own sandboxed frame and needs no
 // plugin code at all; a view that leaves it empty is the legacy
 // same-DOM form, rendered by the render callback registered at
-// activate().
+// activate(). Placement (docs/goals/0357) names WHERE the view is
+// reachable: "" or "tab" is an ordinary work tab (today's shape);
+// "board-switcher" lists it in the Atlas board's own view switcher,
+// after Mill's four core entries. An unknown placement is a load
+// refusal (validateViews).
 type ViewContribution struct {
-	ID    string `json:"id"`
-	Title string `json:"title"`
-	Entry string `json:"entry"`
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Entry     string `json:"entry"`
+	Placement string `json:"placement"`
 }
 
 // NetworkContribution names one host (lowercase, optional :port) and
@@ -194,6 +199,14 @@ var knownCapabilities = map[string]bool{
 	// through the guarded content plane (docs/goals/0289) -- the same
 	// guard an agent's write takes, kind content.write.
 	"write-content": true,
+	// edit-card-fields (docs/goals/0357): merge-write named typed-field
+	// values onto an existing card -- journaled under the plugin's own
+	// undo actor and evaluated as the guarded action kind
+	// card.set-fields, so a rule may allow, park, or deny it like any
+	// other guarded write. Enforced host-side like erase-board-items:
+	// the frame's setCardFields door is armed only while the manifest
+	// declares this.
+	"edit-card-fields": true,
 }
 
 // pluginIDPattern pins ids to a filesystem- and URL-safe slug: the id

@@ -761,10 +761,15 @@ export interface UpdateCheck {
  * declares one is mounted in its own sandboxed frame and needs no
  * plugin code at all; a view that leaves it empty is the legacy
  * same-DOM form, rendered by the render callback registered at
- * activate().
+ * activate(). Placement (docs/goals/0357) names WHERE the view is
+ * reachable: "" or "tab" is an ordinary work tab (today's shape);
+ * "board-switcher" lists it in the Atlas board's own view switcher,
+ * after Mill's four core entries. An unknown placement is a load
+ * refusal (validateViews).
  */
 export interface ViewContribution {
     "id": string;
     "title": string;
     "entry": string;
+    "placement": string;
 }

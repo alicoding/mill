@@ -111,11 +111,15 @@
     outline: none;
 }
 
-/* The roadmap's swimlane grid is canvas-shaped (PageContainer 'full',
-   no inset of its own), so its pad comes from here -- the same inset
-   the 'wide' variant gives the table/list projections. */
-.projectionPad {
-    padding: var(--s-3) 0 var(--s-5);
+/* A plugin-contributed pane (goal 0357) is a framed page that must
+   fill the region's definite box: PageContainer 'full' supplies the
+   height, this turns it into a flex column the iframe's own
+   stretch-and-shrink sizing rides (its pad belongs to the plugin's
+   own page, never here). */
+.projectionPluginHost {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     box-sizing: border-box;
 }
 .emptyState {

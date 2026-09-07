@@ -15,8 +15,16 @@
  * change to any of them means the whole surface should refresh.
  * "extension" carries the canvas-extension id whose enabled/disabled
  * state just changed (Settings > Extensions).
+ * Kind narrows the change to the entity's own family inside Entity
+ * ("atlas" events carry "card", "kind", "note", "link", "linkKind", a
+ * perspective, or a board object's own kind string -- the same
+ * vocabulary the content index's ContentEntry.Kind uses), resolved
+ * once at this ONE fan-out point through a resolver the owning
+ * service registers (RegisterKindResolver below), never re-derived
+ * per listener. Empty when no resolver knows the entity, or the id.
  */
 export interface Changed {
     "entity": string;
     "id": string;
+    "kind"?: string;
 }

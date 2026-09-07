@@ -2,7 +2,12 @@
  * 'card', subkind names its own kind of card), a note (kind 'note',
  * payload.text holds its text), or a board object (its own kind, its
  * own payload). title is the name a person sees: a card's title, a
- * note's first line, an object's payload title or kind. */
+ * note's first line, an object's payload title or kind.
+ *
+ * `fields` — a card's own typed field values (kind 'card' only);
+ * the schema they read against stays with the kind, from api.kinds.
+ * `kindId` — a card's own kind id (kind 'card' only), repeating
+ * subkind. */
 export interface ContentEntry {
     id: string;
     kind: string;
@@ -17,6 +22,8 @@ export interface ContentEntry {
         w: number;
         h: number;
     };
+    fields?: Record<string, string>;
+    kindId?: string;
     payload: Record<string, string>;
 }
 export interface ContentQuery {
@@ -32,9 +39,29 @@ export interface ContentQuery {
  * map: a new event arrives here as a type addition, never a loose
  * convention. */
 export interface PluginEventMap {
+    /** kind names WHICH family changed — 'card', 'note', a board
+     * object's own kind, etc. — so a filtered subscriber does not
+     * re-query on changes it ignores. Undefined when Mill could not
+     * say. */
     'contents:changed': {
         id: string;
+        kind?: string;
     };
+}
+/** One field of a card kind's own schema, as api.kinds lists it. */
+export interface KindFieldInfo {
+    key: string;
+    label: string;
+    type: string;
+    options?: string[];
+}
+/** One kind of card, as api.kinds lists it: the schema a card's
+ * own `fields` values read against. */
+export interface KindInfo {
+    id: string;
+    label: string;
+    icon?: string;
+    fields: KindFieldInfo[];
 }
 /** The request api.fetch sends. A plugin never opens a connection
  * itself — api.fetch asks Mill, whose rules allow, park for approval,
@@ -119,6 +146,14 @@ export interface PluginContentAPI {
         }[];
         rows?: Record<string, string>[];
     }) => Promise<PluginWriteResult>;
+    /** Merge-writes named field values onto one card: keys already on
+     * the card survive, keys you name take the new value, and a value
+     * of '' clears its key. When the card's kind has not declared a
+     * written key yet, Mill declares it on the kind first (additive
+     * only). Needs the "edit-card-fields" capability; evaluated as the
+     * guarded action kind card.set-fields and recorded under the
+     * plugin's own place in undo history. */
+    setCardFields: (cardId: string, fields: Record<string, string>) => Promise<PluginWriteResult>;
 }
 /** One entry api.files.list returns. */
 export interface PluginFileEntry {
