@@ -32,7 +32,7 @@ describe('index.html Content-Security-Policy', () => {
     // comments may sit between <head> and the policy tag itself: any
     // other tag there would load ungoverned by it.
     const between = html.slice((headOpen?.index ?? 0) + (headOpen?.[0].length ?? 0), metaTagStart)
-    expect(between).not.toMatch(/<(script|link|meta|title)[ >]/)
+    expect(between).not.toMatch(/<(script|link|meta|title)[ >]/i)
   })
 
   it('never grants unsafe-eval', () => {
