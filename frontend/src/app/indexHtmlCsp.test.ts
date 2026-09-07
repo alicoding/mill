@@ -30,9 +30,15 @@ describe('index.html Content-Security-Policy', () => {
     expect(metaTagStart).toBeGreaterThan(-1)
     // Nothing but the head's own opening tag and this file's leading
     // comments may sit between <head> and the policy tag itself: any
-    // other tag there would load ungoverned by it.
+    // other element there would load ungoverned by it. Strip HTML
+    // comments first, then require no "<" survives at all -- an
+    // element-name allowlist reads as an HTML tag filter to static
+    // analysis, which correctly flags a filter regex as unsound for
+    // untrusted input; this file is Mill's own, so the sound check is
+    // "no element of any kind", not "none of these particular names".
     const between = html.slice((headOpen?.index ?? 0) + (headOpen?.[0].length ?? 0), metaTagStart)
-    expect(between).not.toMatch(/<(script|link|meta|title)[ >]/i)
+    const withoutComments = between.replace(/<!--[\s\S]*?-->/g, '')
+    expect(withoutComments).not.toContain('<')
   })
 
   it('never grants unsafe-eval', () => {
