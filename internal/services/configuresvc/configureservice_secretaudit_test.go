@@ -1,6 +1,8 @@
 package configuresvc
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
 
@@ -8,6 +10,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/adapters/secretauditstore"
 	"github.com/alicoding/mill/internal/adapters/secretvault"
+	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/execenv"
 	"github.com/alicoding/mill/internal/domain/httprequest"
@@ -78,7 +81,7 @@ func TestResolveMCPServer_RealRun_RecordsOneMCPServerSpawnAuditLine(t *testing.T
 		t.Fatalf("CreateMCPServer: %v", err)
 	}
 
-	if _, err := cfg.resolveMCPServer(s.ID, composition.SecretAccessRun{RunID: "run-1", WorkflowID: "wf-1"}); err != nil {
+	if _, err := cfg.resolveMCPServer(s.ID, composition.SecretAccessRun{RunID: "run-1", WorkflowID: "wf-1", StepID: "step-1"}); err != nil {
 		t.Fatalf("resolveMCPServer: %v", err)
 	}
 
@@ -89,8 +92,10 @@ func TestResolveMCPServer_RealRun_RecordsOneMCPServerSpawnAuditLine(t *testing.T
 	if rec.EntryID != created.ID || rec.Label != "GitHub PAT" {
 		t.Errorf("EntryID/Label = %q/%q, want %q/GitHub PAT", rec.EntryID, rec.Label, created.ID)
 	}
-	if rec.RunID != "run-1" || rec.WorkflowID != "wf-1" {
-		t.Errorf("RunID/WorkflowID = %q/%q, want run-1/wf-1", rec.RunID, rec.WorkflowID)
+	// StepID round-trips through the store the same as RunID/WorkflowID
+	// (goal 0371): written by recordAccess, read back unchanged by List.
+	if rec.RunID != "run-1" || rec.WorkflowID != "wf-1" || rec.StepID != "step-1" {
+		t.Errorf("RunID/WorkflowID/StepID = %q/%q/%q, want run-1/wf-1/step-1", rec.RunID, rec.WorkflowID, rec.StepID)
 	}
 	if rec.Outcome != secretaudit.OutcomeRead {
 		t.Errorf("Outcome = %q, want read", rec.Outcome)
@@ -205,3 +210,72 @@ func TestResolveVaultRefEnv_PlainValue_NeverAudited(t *testing.T) {
 		t.Fatalf("audit rows = %d, want 0 for a server with no vault: reference", total)
 	}
 }
+
+// TestResolveAIProvider_RealRun_RecordsOneAIProviderAuditLine closes
+// goal 0371's own gap: resolveAIProvider previously carried no run/step
+// id even on this run-reachable path (an ai-* node's own exec).
+func TestResolveAIProvider_RealRun_RecordsOneAIProviderAuditLine(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	secretService, auditStore := newAuditedSecretService(t, cfg)
+	created, err := secretService.CreateSecret("OpenAI API key", "", "sk-test-fake", "", "", nil, "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateSecret: %v", err)
+	}
+	p, err := cfg.CreateAIProvider("OpenAI", aiprovider.KindOpenAICompat, "https://api.openai.com", "gpt-4o-mini", "vault:"+created.ID)
+	if err != nil {
+		t.Fatalf("CreateAIProvider: %v", err)
+	}
+
+	if _, err := cfg.resolveAIProvider(p.ID, composition.SecretAccessRun{RunID: "run-5", WorkflowID: "wf-5", StepID: "step-5"}); err != nil {
+		t.Fatalf("resolveAIProvider: %v", err)
+	}
+
+	rec := onlyRecord(t, auditStore)
+	if rec.Context != secretaudit.ContextAIProvider {
+		t.Errorf("Context = %q, want %q", rec.Context, secretaudit.ContextAIProvider)
+	}
+	if rec.RunID != "run-5" || rec.WorkflowID != "wf-5" || rec.StepID != "step-5" {
+		t.Errorf("RunID/WorkflowID/StepID = %q/%q/%q, want run-5/wf-5/step-5", rec.RunID, rec.WorkflowID, rec.StepID)
+	}
+}
+
+// TestTestHTTPRequestOperation_RecordsRequestTestContext_NeverARun
+// proves goal 0371's request-test/integration-auth split: a manual
+// "Test" click carries ContextRequestTest with no run, distinct from
+// the SAME reference resolved by a real run (ContextIntegrationAuth).
+func TestTestHTTPRequestOperation_RecordsRequestTestContext_NeverARun(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }))
+	defer srv.Close()
+
+	cfg, _ := newTestConfigureService(t)
+	secretService, auditStore := newAuditedSecretService(t, cfg)
+	created, err := secretService.CreateSecret("API token", "", "tok-fake", "", "", nil, "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateSecret: %v", err)
+	}
+	req, err := cfg.CreateHTTPRequest("My API", srv.URL, "", "", httprequest.AuthBearer, "", nil, testOpenAPISpecForAudit, nil, nil, "vault:"+created.ID)
+	if err != nil {
+		t.Fatalf("CreateHTTPRequest: %v", err)
+	}
+
+	if _, err := cfg.TestHTTPRequestOperation(TestHTTPRequestInput{
+		RequestID: req.ID, BaseURL: srv.URL, AuthType: httprequest.AuthBearer,
+		SecretRef: "vault:" + created.ID, OpenAPISpec: testOpenAPISpecForAudit, Path: "/widgets", Method: "GET",
+	}); err != nil {
+		t.Fatalf("TestHTTPRequestOperation: %v", err)
+	}
+
+	rec := onlyRecord(t, auditStore)
+	if rec.Context != secretaudit.ContextRequestTest {
+		t.Errorf("Context = %q, want %q", rec.Context, secretaudit.ContextRequestTest)
+	}
+	if rec.RunID != "" || rec.WorkflowID != "" || rec.StepID != "" {
+		t.Errorf("RunID/WorkflowID/StepID = %q/%q/%q, want empty (a manual Test click, not a run)", rec.RunID, rec.WorkflowID, rec.StepID)
+	}
+}
+
+const testOpenAPISpecForAudit = `{
+  "openapi": "3.0.3",
+  "info": {"title": "Test", "version": "1.0.0"},
+  "paths": {"/widgets": {"get": {"responses": {"200": {"description": "OK"}}}}}
+}`

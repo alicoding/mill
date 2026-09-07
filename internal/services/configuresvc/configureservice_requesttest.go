@@ -86,7 +86,10 @@ func (c *ConfigureService) TestHTTPRequestOperation(req TestHTTPRequestInput) (T
 	if draft.Label == "" {
 		draft.Label = req.BaseURL
 	}
-	actx := secretaudit.AccessContext{Context: secretaudit.ContextIntegrationAuth}
+	// ContextRequestTest (goal 0371), never ContextIntegrationAuth: this
+	// is a human's manual "Test" click on a draft, not a workflow run,
+	// so it carries no run/workflow/step id.
+	actx := secretaudit.AccessContext{Context: secretaudit.ContextRequestTest}
 	secret, err := c.resolveHTTPRequestSecret(draft, actx)
 	if err != nil {
 		return TestHTTPRequestResult{}, err

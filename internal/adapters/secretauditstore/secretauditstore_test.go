@@ -223,6 +223,49 @@ func TestStore_ActorRoundTripsAndOldSchemaIsWidened(t *testing.T) {
 	}
 }
 
+// TestStore_StepIDRoundTripsAndOldSchemaIsWidened mirrors the Actor
+// test above for step_id (goal 0371): a store created before the
+// column existed is widened in place on open, and a legacy row (no
+// step_id) reads back empty rather than failing.
+func TestStore_StepIDRoundTripsAndOldSchemaIsWidened(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "execution.db")
+	legacy, err := sqlOpen(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := legacy.ExecContext(context.Background(), `CREATE TABLE secret_access (
+	id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, entry_id TEXT NOT NULL,
+	label TEXT NOT NULL DEFAULT '', context TEXT NOT NULL, run_id TEXT NOT NULL DEFAULT '',
+	workflow_id TEXT NOT NULL DEFAULT '', actor TEXT NOT NULL DEFAULT '', outcome TEXT NOT NULL, error_text TEXT NOT NULL DEFAULT '')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := legacy.ExecContext(context.Background(), `INSERT INTO secret_access (timestamp, entry_id, context, outcome) VALUES ('2026-01-01T00:00:00.000Z', 'old', 'ui-reveal', 'read')`); err != nil {
+		t.Fatal(err)
+	}
+	_ = legacy.Close()
+
+	store, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open on a pre-step_id schema: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	if _, err := store.Insert(context.Background(), secretaudit.Record{
+		EntryID: "e1", Context: secretaudit.ContextMCPServerSpawn, RunID: "run-1", WorkflowID: "wf-1", StepID: "step-1", Outcome: secretaudit.OutcomeRead,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rows, total, err := store.List(Filter{}, 10, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 2 || len(rows) != 2 {
+		t.Fatalf("List = %d rows / total %d, want 2 / 2", len(rows), total)
+	}
+	if rows[0].StepID != "step-1" || rows[1].StepID != "" {
+		t.Errorf("step ids = %q, %q; want step-1 then empty (legacy row)", rows[0].StepID, rows[1].StepID)
+	}
+}
+
 func TestStore_List_FiltersByActorPrefix(t *testing.T) {
 	store := openTestStore(t)
 	for _, r := range []secretaudit.Record{

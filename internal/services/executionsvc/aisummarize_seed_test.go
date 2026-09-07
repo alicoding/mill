@@ -49,7 +49,7 @@ func TestSeededAISummarizeExample_RunsEndToEndAgainstFixtureEndpoint(t *testing.
 	}))
 	defer srv.Close()
 
-	orig := swapAIProviderLookup(t, func(id string) (composition.ResolvedAIProvider, error) {
+	orig := swapAIProviderLookup(t, func(id string, _ composition.SecretAccessRun) (composition.ResolvedAIProvider, error) {
 		if id != "example-local-ollama" {
 			t.Errorf("lookupAIProviderFn called with id %q, want the seed's real aiproviderId %q", id, "example-local-ollama")
 		}
@@ -84,11 +84,11 @@ func TestSeededAISummarizeExample_RunsEndToEndAgainstFixtureEndpoint(t *testing.
 // swapAIProviderLookup installs fn as composition's AI-provider lookup
 // seam and returns a restore function -- mirrors
 // guardedhttp_seed_test.go's swapHTTPRequestLookup exactly.
-func swapAIProviderLookup(t *testing.T, fn func(id string) (composition.ResolvedAIProvider, error)) func() {
+func swapAIProviderLookup(t *testing.T, fn func(id string, _ composition.SecretAccessRun) (composition.ResolvedAIProvider, error)) func() {
 	t.Helper()
 	composition.SetAIProviderLookup(fn)
 	return func() {
-		composition.SetAIProviderLookup(func(id string) (composition.ResolvedAIProvider, error) {
+		composition.SetAIProviderLookup(func(id string, _ composition.SecretAccessRun) (composition.ResolvedAIProvider, error) {
 			return composition.ResolvedAIProvider{}, fmt.Errorf("no AI provider lookup registered (yet) for id %q", id)
 		})
 	}

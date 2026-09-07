@@ -144,3 +144,41 @@ func TestMCPToolCall_ErrorTextRedacted(t *testing.T) {
 		t.Fatalf("ExecuteWorkflow error = %q, want it to contain the redaction placeholder", err.Error())
 	}
 }
+
+// TestExecuteWorkflow_ThreadsCurrentStepIDToSecretAccessRun proves goal
+// 0371's ExecContext.CurrentStepID plumbing: the node id executeWorkflow
+// sets immediately before calling a step's exec function reaches
+// secretAccessRunFromCtx's StepID, the same way WorkflowID/RunID
+// already did.
+func TestExecuteWorkflow_ThreadsCurrentStepIDToSecretAccessRun(t *testing.T) {
+	origLookup := lookupMCPServerFn
+	t.Cleanup(func() { lookupMCPServerFn = origLookup })
+
+	var gotRun SecretAccessRun
+	SetMCPServerLookup(func(_ string, run SecretAccessRun) (ResolvedMCPServer, error) {
+		gotRun = run
+		return ResolvedMCPServer{}, errors.New("stop before the real call")
+	})
+
+	nodes, edges := chain("trigger-manual", "mcp-tool-call")
+	resolved, err := ResolveNodeDefaults(nodes)
+	if err != nil {
+		t.Fatalf("ResolveNodeDefaults: %v", err)
+	}
+	for i := range resolved {
+		if resolved[i].NodeTypeID == "mcp-tool-call" {
+			resolved[i].Config["mcpServerId"] = "any"
+			resolved[i].Config["toolName"] = "any"
+		}
+	}
+
+	if _, err := ExecuteWorkflow(resolved, edges, nil, ExecuteOptions{WorkflowID: "wf-9"}); err == nil {
+		t.Fatal("ExecuteWorkflow returned nil error, want the stub lookup's failure")
+	}
+	if gotRun.StepID != "mcp-tool-call" {
+		t.Errorf("SecretAccessRun.StepID = %q, want the running node's own id %q", gotRun.StepID, "mcp-tool-call")
+	}
+	if gotRun.WorkflowID != "wf-9" {
+		t.Errorf("SecretAccessRun.WorkflowID = %q, want wf-9", gotRun.WorkflowID)
+	}
+}
