@@ -130,19 +130,22 @@ export interface ClipbridgeReplyPreview {
  * atlas.NoteDisplayName; an object's payload title, else its kind).
  * Subkind carries a card's Atlas Kind id (a note or object has none).
  * Payload is a board object's own payload, and {"text": …} for a
- * note; a card's fields are deliberately NOT here (agents read them
- * through atlas_read_card; the plugin-side question is recorded on
- * goal 0261's remaining list).
+ * note. For cards, KindID repeats Subkind and Fields carries the
+ * card's own typed field values (docs/goals/0357): the schema those
+ * values read against stays with the Kind itself (ListKinds/
+ * api.kinds), never folded into the entry.
  */
 export interface ContentEntry {
     "ID": string;
     "Kind": string;
     "Subkind": string;
+    "KindID": string;
     "Title": string;
     "ParentID": string;
     "Position": atlas$0.Position;
     "Size": atlas$0.Dimensions | null;
     "Payload": { [_ in string]?: string } | null;
+    "Fields": { [_ in string]?: string } | null;
 }
 
 /**

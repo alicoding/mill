@@ -184,6 +184,11 @@ func (w pluginContentWriter) UpdateCard(id, title, note string, fields map[strin
 	return w.atlas.UpdateCardForPlugin(id, title, note, fields)
 }
 
+func (w pluginContentWriter) SetCardFields(cardID string, fields map[string]string) error {
+	_, err := w.atlas.SetCardFieldsForPlugin(cardID, fields)
+	return err
+}
+
 func (w pluginContentWriter) AppendListRow(listID string, values map[string]string) error {
 	_, err := w.cfg.AddListRow(listID, values)
 	return err

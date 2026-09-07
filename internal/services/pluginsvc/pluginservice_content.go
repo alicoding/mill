@@ -28,6 +28,10 @@ type ContentWriter interface {
 	CreateNote(text, parentID string, pos *atlas.Position) (atlas.Note, error)
 	CreateCard(kindID, title, note string, fields map[string]string, parentID string) (atlas.Card, error)
 	UpdateCard(id, title, note string, fields map[string]string) (atlas.Card, error)
+	// SetCardFields (docs/goals/0357) merge-writes named field values
+	// onto one card, with the horizon grammar's auto-declare -- the
+	// single write door edit-card-fields arms.
+	SetCardFields(cardID string, fields map[string]string) error
 	AppendListRow(listID string, values map[string]string) error
 	// CreateList creates a Configure List with its first rows (rows
 	// keyed by column key) and returns the new list's id.

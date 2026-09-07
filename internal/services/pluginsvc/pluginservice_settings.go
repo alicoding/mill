@@ -139,6 +139,12 @@ func validateEnumSetting(st SettingContribution) string {
 	return ""
 }
 
+// viewPlacements is the enumerated placement vocabulary
+// (docs/goals/0357): "" and "tab" both mean an ordinary work tab
+// (omitted = today's behavior); "board-switcher" lists the view in the
+// Atlas board's own view switcher, after Mill's four core entries.
+var viewPlacements = map[string]bool{"": true, "tab": true, "board-switcher": true}
+
 // validateViews fail-closes contributes.views (docs/goals/0290): a
 // view needs a slug id, unique within the plugin, and a title.
 func validateViews(views []ViewContribution) string {
@@ -152,6 +158,9 @@ func validateViews(views []ViewContribution) string {
 		}
 		if seen[v.ID] {
 			return fmt.Sprintf("contributed view %q is declared twice", v.ID)
+		}
+		if !viewPlacements[v.Placement] {
+			return fmt.Sprintf("contributed view %q has an unknown placement %q (tab or board-switcher)", v.ID, v.Placement)
 		}
 		if problem := entryPathProblem("view", v.ID, v.Entry); problem != "" {
 			return problem

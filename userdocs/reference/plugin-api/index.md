@@ -18,6 +18,8 @@
 - [ContentEntry](interfaces/ContentEntry.md)
 - [ContentQuery](interfaces/ContentQuery.md)
 - [GuardedActionResult](interfaces/GuardedActionResult.md)
+- [KindFieldInfo](interfaces/KindFieldInfo.md)
+- [KindInfo](interfaces/KindInfo.md)
 - [MCPServerContribution](interfaces/MCPServerContribution.md)
 - [MillFrameApi](interfaces/MillFrameApi.md)
 - [MillPluginAPI](interfaces/MillPluginAPI.md)

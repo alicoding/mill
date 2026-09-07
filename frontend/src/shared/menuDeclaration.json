@@ -403,12 +403,6 @@
   },
   {
     "menu": "Atlas",
-    "item": "Open roadmap",
-    "shortcut": "",
-    "command": "atlas.roadmap"
-  },
-  {
-    "menu": "Atlas",
     "item": "Auto-arrange",
     "shortcut": "",
     "command": "atlas.arrange"

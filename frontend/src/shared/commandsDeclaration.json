@@ -50,6 +50,16 @@
     "needs": "selection"
   },
   {
+    "id": "atlas.board.home",
+    "label": "Back to the board",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": false,
+    "needs": null
+  },
+  {
     "id": "atlas.card.addLinkedCard",
     "label": "Add linked card…",
     "binding": null,
@@ -502,16 +512,6 @@
   {
     "id": "atlas.redo",
     "label": "Redo",
-    "binding": null,
-    "surface": [
-      "atlas"
-    ],
-    "enabled": false,
-    "needs": null
-  },
-  {
-    "id": "atlas.roadmap",
-    "label": "Open roadmap",
     "binding": null,
     "surface": [
       "atlas"

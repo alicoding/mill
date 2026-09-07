@@ -6,16 +6,24 @@ import { useUISignalStore } from '../shared/uiSignalStore'
 // AtlasView's own one-shot navigation/dialog-opening signals (goal
 // 0071 G17, goal 0072 slice B) -- split out of AtlasView.tsx
 // (architecture.md's 500-line convention): atlas.up/atlas.jump/
-// atlas.matrix/atlas.coverage/atlas.roadmap each bump a shared store
-// counter a palette/keyboard invocation fires, consumed here with the
-// same ref-compared-counter shape every other Atlas signal in this
-// codebase uses. The three view commands SWITCH the active projection
-// pane (goal 0355 S2) rather than opening dialogs.
-export function useAtlasNavSignals({ viewedID, allCards, setViewedID, onOpenProjection }: {
+// atlas.matrix/atlas.coverage each bump a shared store counter a
+// palette/keyboard invocation fires, consumed here with the same
+// ref-compared-counter shape every other Atlas signal in this codebase
+// uses. The view commands SWITCH the active projection pane (goal 0355
+// S2) rather than opening dialogs -- a plugin-contributed pane's own
+// command rides the registry directly, never this hook (goal 0357).
+export function useAtlasNavSignals({ viewedID, allCards, setViewedID, onOpenProjection, onOpenCard, onBackToBoard }: {
   viewedID: string
   allCards: Card[]
   setViewedID: (id: string) => void
-  onOpenProjection: (view: 'matrix' | 'coverage' | 'roadmap') => void
+  onOpenProjection: (view: 'matrix' | 'coverage') => void
+  // api.open(cardId) consumption (goal 0357): the plugin asked and the
+  // store signal fired; the same back-to-board-then-overlay walk a
+  // projection's own chip click takes.
+  onOpenCard: (id: string) => void
+  // atlas.board.home consumption (goal 0357): a contributed pane's own
+  // Escape, forwarded through the registry.
+  onBackToBoard: () => void
 }) {
   // atlas.up (⌘↑): one step up the depth ladder. Reaching the meta
   // "All spaces" level (parent === '') is always permitted, even with
@@ -44,7 +52,7 @@ export function useAtlasNavSignals({ viewedID, allCards, setViewedID, onOpenProj
     setJumpOpen(true)
   }, [atlasJumpRequest])
 
-  // atlas.matrix / atlas.coverage / atlas.roadmap: same signal shape,
+  // atlas.matrix / atlas.coverage: same signal shape,
   // switching into the named projection pane.
   const atlasMatrixRequest = useUISignalStore((s) => s.atlasMatrixRequest)
   const lastMatrixRequest = useRef(atlasMatrixRequest)
@@ -62,13 +70,29 @@ export function useAtlasNavSignals({ viewedID, allCards, setViewedID, onOpenProj
     onOpenProjection('coverage')
   }, [atlasCoverageRequest, onOpenProjection])
 
-  const atlasRoadmapRequest = useUISignalStore((s) => s.atlasRoadmapRequest)
-  const lastRoadmapRequest = useRef(atlasRoadmapRequest)
+  // api.open(cardId) (goal 0357): a plugin's own "show me this card"
+  // door, consumed here the way a projection chip's click already is --
+  // back to the Board, the card page on top. The seq comparison lets a
+  // repeat request for the same card fire again.
+  const atlasOpenCardRequest = useUISignalStore((s) => s.atlasOpenCardRequest)
+  const lastOpenCardSeq = useRef(atlasOpenCardRequest?.seq ?? 0)
   useEffect(() => {
-    if (atlasRoadmapRequest === lastRoadmapRequest.current) return
-    lastRoadmapRequest.current = atlasRoadmapRequest
-    onOpenProjection('roadmap')
-  }, [atlasRoadmapRequest, onOpenProjection])
+    if (!atlasOpenCardRequest || atlasOpenCardRequest.seq === lastOpenCardSeq.current) return
+    lastOpenCardSeq.current = atlasOpenCardRequest.seq
+    onOpenCard(atlasOpenCardRequest.id)
+  }, [atlasOpenCardRequest, onOpenCard])
+
+  // atlas.board.home (goal 0357): a contributed pane's page catches
+  // its own Escape (the sandbox keeps a frame's keydowns inside it)
+  // and asks, through the registry command, to swap back to the board
+  // -- the same store write the switcher's Board segment runs.
+  const atlasBoardRequest = useUISignalStore((s) => s.atlasBoardRequest)
+  const lastBoardRequest = useRef(atlasBoardRequest)
+  useEffect(() => {
+    if (atlasBoardRequest === lastBoardRequest.current) return
+    lastBoardRequest.current = atlasBoardRequest
+    onBackToBoard()
+  }, [atlasBoardRequest, onBackToBoard])
 
   return { jumpOpen, setJumpOpen }
 }

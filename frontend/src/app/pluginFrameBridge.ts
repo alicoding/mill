@@ -64,12 +64,15 @@ export const FRAME_METHODS = [
   'storage.set',
   'storage.delete',
   'query',
+  'kinds',
+  'open',
   'fetch',
   'content.createNote',
   'content.createCard',
   'content.updateCard',
   'content.appendListRow',
   'content.createList',
+  'content.setCardFields',
   'files.list',
   'convert.htmlToMarkdown',
   'requestGuardedAction',
@@ -99,12 +102,15 @@ export async function callFrameMethod(api: MillPluginAPI, method: string, args: 
     case 'storage.set': { await api.storage.set(String(first), second); return true }
     case 'storage.delete': { await api.storage.delete(String(first)); return true }
     case 'query': return api.query(first as Parameters<MillPluginAPI['query']>[0])
+    case 'kinds': return api.kinds()
+    case 'open': { api.open(String(first)); return true }
     case 'fetch': return api.fetch(String(first), second as Parameters<MillPluginAPI['fetch']>[1])
     case 'content.createNote': return api.content.createNote(first as Parameters<MillPluginAPI['content']['createNote']>[0])
     case 'content.createCard': return api.content.createCard(first as Parameters<MillPluginAPI['content']['createCard']>[0])
     case 'content.updateCard': return api.content.updateCard(String(first), second as Parameters<MillPluginAPI['content']['updateCard']>[1])
     case 'content.appendListRow': return api.content.appendListRow(String(first), second as Record<string, string>)
     case 'content.createList': return api.content.createList(first as Parameters<MillPluginAPI['content']['createList']>[0])
+    case 'content.setCardFields': return api.content.setCardFields(String(first), second as Record<string, string>)
     case 'files.list': return api.files.list(String(first))
     case 'convert.htmlToMarkdown': return api.convert.htmlToMarkdown(String(first))
     case 'requestGuardedAction': return api.requestGuardedAction(String(first), second as Record<string, string>, String(third))

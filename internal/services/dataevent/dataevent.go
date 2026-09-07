@@ -14,7 +14,11 @@
 // helper convention, same shape as internal/services/seeding).
 package dataevent
 
-import "github.com/alicoding/mill/internal/adapters/windowing"
+import (
+	"sync"
+
+	"github.com/alicoding/mill/internal/adapters/windowing"
+)
 
 // Changed is the live-sync event payload: which kind of entity changed
 // (e.g. "workflow", "request", "list", "mcpserver", "decision",
@@ -29,9 +33,41 @@ import "github.com/alicoding/mill/internal/adapters/windowing"
 // change to any of them means the whole surface should refresh.
 // "extension" carries the canvas-extension id whose enabled/disabled
 // state just changed (Settings > Extensions).
+// Kind narrows the change to the entity's own family inside Entity
+// ("atlas" events carry "card", "kind", "note", "link", "linkKind", a
+// perspective, or a board object's own kind string -- the same
+// vocabulary the content index's ContentEntry.Kind uses), resolved
+// once at this ONE fan-out point through a resolver the owning
+// service registers (RegisterKindResolver below), never re-derived
+// per listener. Empty when no resolver knows the entity, or the id.
 type Changed struct {
 	Entity string `json:"entity"`
 	ID     string `json:"id"`
+	Kind   string `json:"kind,omitempty"`
+}
+
+// kindResolvers maps an entity string to the owning service's own
+// id -> family resolver. A resolver MUST be lock-free against the
+// emitting service's own mutation lock: Emit sites fire while that
+// lock can still be held (a deferred unlock), so a resolver that took
+// it would deadlock. The service keeps its own append-only index
+// instead (removals stay resolvable -- a delete's own event still
+// names its family).
+var kindResolvers sync.Map // entity string -> func(id string) string
+
+// RegisterKindResolver installs one entity's family resolver, called
+// once at the service's construction. "" from the resolver means
+// "unknown", and the payload carries no Kind at all.
+func RegisterKindResolver(entity string, resolve func(id string) string) {
+	kindResolvers.Store(entity, resolve)
+}
+
+func resolvedKind(entity, id string) string {
+	r, ok := kindResolvers.Load(entity)
+	if !ok {
+		return ""
+	}
+	return r.(func(string) string)(id)
 }
 
 // EventName is registered by main.go (application.RegisterEvent) and
@@ -48,7 +84,7 @@ const EventName = "mill-data-changed"
 // alongside it, so a mutating method's test can prove "this emits"
 // without spinning up a real Wails application.
 func Emit(entity, id string) {
-	windowing.Emit(EventName, Changed{Entity: entity, ID: id})
+	windowing.Emit(EventName, Changed{Entity: entity, ID: id, Kind: resolvedKind(entity, id)})
 	if TestHook != nil {
 		TestHook(entity, id)
 	}

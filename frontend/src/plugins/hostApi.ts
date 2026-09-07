@@ -120,6 +120,28 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		// on('contents:changed') is the existing 'atlas' dataevent every
 		// card/note/object mutation already emits.
 		query: async (q: ContentQuery = {}) => ((await AtlasService.ListContents(q.kind ?? '', q.parentId ?? '')) ?? []).map(contentEntryFromWire),
+		// The kinds door (goal 0357): the same Kinds() index the board's
+		// own surfaces read, restated in the SDK's camelCase shape like
+		// query above -- a read needs no capability, exactly as query does.
+		kinds: async () => ((await AtlasService.Kinds()) ?? []).map((k) => ({
+			id: k.ID,
+			label: k.Label,
+			icon: k.Icon || undefined,
+			fields: (k.Fields ?? []).map((f) => ({ key: f.Key, label: f.Label, type: String(f.Type), options: f.Options ?? undefined })),
+		})),
+		// The open door (goal 0357): the store write a projection's own
+		// chip click performs (goal 0064's openCardFromProjection) --
+		// board view, then the card's page. The store is imported lazily
+		// for the loader's import discipline, as collectOpenViewCommand's
+		// own run() does.
+		open: (cardId: string) => {
+			void import('../shared/store').then(({ useAppStore }) => {
+				const state = useAppStore.getState()
+				if (state.view.kind !== 'atlas') state.setView({ kind: 'atlas' })
+				useAppStore.getState().setAtlasBoardView('board')
+				useUISignalStore.getState().requestAtlasOpenCard(cardId)
+			})
+		},
 		// The network door (goal 0288): the bound call does every check --
 		// capability, declared host + method, guardrail -- and executes
 		// host-side; this is only the shape adapter.
@@ -141,6 +163,18 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			updateCard: (id, patch) => writeContent(pluginId, { op: 'card-update', cardId: id, title: patch.title ?? '', note: patch.note ?? '', fields: patch.fields ?? {} }),
 			appendListRow: (listId, values) => writeContent(pluginId, { op: 'list-row', listId, values }),
 			createList: (input) => writeContent(pluginId, { op: 'list', title: input.title, description: input.description ?? '', columns: input.columns.map((c) => ({ name: c.name, type: c.type ?? '' })), rows: input.rows ?? [] }),
+			// The field-edit door (goal 0357), armed only while the
+			// manifest declares "edit-card-fields" -- the same host-side
+			// declare-first enforcement erase-board-items takes, with the
+			// error naming the missing capability rather than acting on
+			// a plugin that never asked for it.
+			setCardFields: async (cardId, fields) => {
+				if (!(manifest.capabilities ?? []).includes('edit-card-fields')) {
+					throw new Error(`plugin ${pluginId}: content.setCardFields needs the "edit-card-fields" capability declared in the manifest`)
+				}
+				const r = await PluginService.SetCardFieldsForPlugin(pluginId, cardId, fields)
+				return { approved: r.approved, effect: r.effect, ruleLabel: r.ruleLabel, id: r.id }
+			},
 		}),
 		// The files door (goal 0310): a folder listing through Mill's
 		// read-class evaluation, never the plugin's own filesystem.
@@ -155,11 +189,13 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		convert: Object.freeze({
 			htmlToMarkdown: (html: string) => PluginService.ConvertHTMLToMarkdown(html),
 		}),
-		on: (event, handler) => {
+		on: (event, handler, filter) => {
 			if (event !== 'contents:changed') throw new Error(`plugin ${pluginId}: unknown event "${String(event)}"`)
 			return Events.On('mill-data-changed', (evt) => {
-				const data = evt.data as { entity?: string; id?: string } | undefined
-				if (data?.entity === 'atlas') handler({ id: data.id ?? '' })
+				const data = evt.data as { entity?: string; id?: string; kind?: string } | undefined
+				if (data?.entity !== 'atlas') return
+				if (filter?.kinds && !filter.kinds.includes(data.kind ?? '')) return
+				handler({ id: data.id ?? '', kind: data.kind })
 			})
 		},
 		registerCanvasObject: (decl: CanvasObjectDecl) => {
@@ -204,8 +240,15 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 				attachPluginViewMessages(pluginId, decl.id, decl.onMessage)
 			} else {
 				if (typeof decl.render !== 'function') throw new Error(`plugin ${pluginId}: view "${decl.id}" needs a render function, or an entry page in the manifest`)
-				collectPluginView({ pluginId, pluginName: manifest.name || pluginId, viewId: decl.id, title: declared.title, version: manifest.version, render: decl.render, onMessage: decl.onMessage })
-				collectOpenViewCommand(pluginId, decl.id, declared.title)
+				collectPluginView({ pluginId, pluginName: manifest.name || pluginId, viewId: decl.id, title: declared.title, version: manifest.version, render: decl.render, onMessage: decl.onMessage, placement: declared.placement || 'tab', icon: manifest.icon || undefined })
+				// A board-switcher-placed render view opens through the
+				// switcher's own command, exactly as an entry page with
+				// that placement does (goal 0357).
+				if (declared.placement === 'board-switcher') {
+					collectBoardSwitcherViewCommand(pluginId, decl.id, declared.title)
+				} else {
+					collectOpenViewCommand(pluginId, decl.id, declared.title)
+				}
 			}
 			return { postMessage: (message: unknown) => getPluginView(pluginId, decl.id)?.post?.(message) }
 		},
@@ -299,12 +342,35 @@ export function collectFrameSurfaces(manifest: Manifest): void {
 	const pluginName = manifest.name || pluginId
 	for (const view of manifest.contributes?.views ?? []) {
 		if (!view.entry) continue
-		collectPluginView({ pluginId, pluginName, viewId: view.id, title: view.title, version: manifest.version, entry: view.entry })
-		collectOpenViewCommand(pluginId, view.id, view.title)
+		collectPluginView({ pluginId, pluginName, viewId: view.id, title: view.title, version: manifest.version, entry: view.entry, placement: view.placement || 'tab', icon: manifest.icon || undefined })
+		if (view.placement === 'board-switcher') {
+			collectBoardSwitcherViewCommand(pluginId, view.id, view.title)
+		} else {
+			collectOpenViewCommand(pluginId, view.id, view.title)
+		}
 	}
 	for (const capture of manifest.contributes?.captures ?? []) {
 		if (!capture.entry) continue
 		collectPluginCapture({ pluginId, pluginName, captureId: capture.id, label: capture.label, version: manifest.version, entry: capture.entry })
 		collectShowCaptureCommand(pluginId, capture.id, capture.label)
 	}
+}
+
+// A board-switcher-placed view opens from the board's own view
+// switcher, which runs this command (goal 0357): the same store write
+// the built-in projections' own commands ride, naming the persisted
+// 'plugin:<pluginId>.<viewId>' value instead of a literal projection
+// kind. Enablement is structural, like collectOpenViewCommand's -- a
+// disabled plugin never activates, so its segment and command never
+// exist.
+function collectBoardSwitcherViewCommand(pluginId: string, viewId: string, title: string): void {
+	collectPluginCommand({
+		id: `atlas.pluginView.${pluginId}.${viewId}.open`,
+		label: title,
+		pluginId,
+		surface: ['atlas'],
+		run: () => {
+			void import('../shared/store').then((m) => m.useAppStore.getState().setAtlasBoardView(`plugin:${pluginId}.${viewId}`))
+		},
+	})
 }

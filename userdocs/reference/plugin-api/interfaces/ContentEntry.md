@@ -12,7 +12,20 @@ payload.text holds its text), or a board object (its own kind, its
 own payload). title is the name a person sees: a card's title, a
 note's first line, an object's payload title or kind.
 
+`fields` — a card's own typed field values (kind 'card' only);
+the schema they read against stays with the kind, from api.kinds.
+`kindId` — a card's own kind id (kind 'card' only), repeating
+subkind.
+
 ## Properties
+
+### fields?
+
+```ts
+optional fields?: Record<string, string>;
+```
+
+***
 
 ### id
 
@@ -26,6 +39,14 @@ id: string;
 
 ```ts
 kind: string;
+```
+
+***
+
+### kindId?
+
+```ts
+optional kindId?: string;
 ```
 
 ***

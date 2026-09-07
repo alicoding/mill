@@ -126,6 +126,42 @@ func TestConformStandard_Rule17_CommandIDNamespace(t *testing.T) {
 	}
 }
 
+// A board-switcher-placed view whose scripts reach the field-write
+// door needs the capability declared -- both the plugin's own
+// api.content.setCardFields( spelling and an entry page's
+// call('content.setCardFields') over the frame bridge (docs/goals/0357).
+func TestConformStandard_Rule31_BoardSwitcherFieldsNeedCapability(t *testing.T) {
+	manifest := validIconManifest("fieldy", "Fieldy", `"contributes":{"views":[{"id":"panel","title":"Panel","entry":"view.html","placement":"board-switcher"}]}`)
+	dir := newFixture(t, "fieldy", manifest, map[string]string{
+		"main.js":   "export function activate() {}",
+		"view.html": entryPage,
+		"view.js":   "const mill = window.acquireMillApi(); void mill.call('content.setCardFields', 'c1', { horizon: 'Now' })",
+	})
+	wantRule(t, dir, "standard rule 31")
+
+	okManifest := validIconManifest("fieldy-ok", "Fieldy ok", `"capabilities":["edit-card-fields"],"contributes":{"views":[{"id":"panel","title":"Panel","entry":"view.html","placement":"board-switcher"}]}`)
+	clean := newFixture(t, "fieldy-ok", okManifest, map[string]string{
+		"main.js":   "export function activate() {}",
+		"view.html": entryPage,
+		"view.js":   "const mill = window.acquireMillApi(); void mill.call('content.setCardFields', 'c1', { horizon: 'Now' })",
+	})
+	if problems := ConformDir(clean, ""); len(problems) != 0 {
+		t.Fatalf("a declared capability should conform, got %v", problems)
+	}
+
+	// A view placed as an ordinary tab (no board-switcher placement)
+	// never triggers the rule, even unguarded.
+	tabManifest := validIconManifest("fieldy-tab", "Fieldy tab", `"contributes":{"views":[{"id":"panel","title":"Panel","entry":"view.html"}]}`)
+	tab := newFixture(t, "fieldy-tab", tabManifest, map[string]string{
+		"main.js":   "export function activate() {}",
+		"view.html": entryPage,
+		"view.js":   "const mill = window.acquireMillApi(); void mill.call('content.setCardFields', 'c1', { horizon: 'Now' })",
+	})
+	if problems := ConformDir(tab, ""); len(problems) != 0 {
+		t.Fatalf("an ordinary tab placement should never trigger rule 31, got %v", problems)
+	}
+}
+
 func TestConformStandardWarnings_Rule3_UnusedCapability(t *testing.T) {
 	dir := newFixture(t, "capey", validIconManifest("capey", "Capey", `"capabilities":["open-url"]`), map[string]string{"main.js": "export function activate() {}"})
 	warnings := strings.Join(ConformStandardWarnings(dir), "\n")

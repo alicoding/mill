@@ -37,6 +37,7 @@ func conformStandard(dir string, m Manifest) []string {
 	problems = append(problems, conformThemes(dir, m)...)
 	problems = append(problems, conformEntryPages(dir, m)...)
 	problems = append(problems, conformMCPServers(m)...)
+	problems = append(problems, conformBoardSwitcherFields(m, scripts)...)
 	sort.Strings(problems)
 	return problems
 }
@@ -377,6 +378,10 @@ var capabilityUsageMarkers = map[string][]string{
 	"fetch":             {"api.fetch("},
 	"write-content":     {"api.content."},
 	"read-file":         {"ctx.readFile(", "ctx.listFiles("},
+	// The two spellings of one door: a plugin's own code holds the
+	// api object (api.content.setCardFields), an entry page calls it by
+	// name over the frame's bridge (call('content.setCardFields', ...)).
+	"edit-card-fields": {"content.setCardFields(", "call('content.setCardFields'", `call("content.setCardFields"`},
 }
 
 // conformUnusedCapabilities is standard rule 3: a capability the
