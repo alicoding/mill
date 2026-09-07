@@ -16,13 +16,6 @@ export interface DocsHeading {
   level: 2 | 3
 }
 
-// escapeAttr guards a caller-supplied string against breaking the HTML
-// attribute it's placed into (docsCodeCopy's copy-button label, built
-// as a string rather than through the DOM).
-export function escapeAttr(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
 // parseHeadings lists every h2/h3 in document order -- the TOC rail's
 // own row order and the scroll-spy's observed sequence.
 export function parseHeadings(html: string): DocsHeading[] {
