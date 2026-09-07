@@ -470,7 +470,10 @@ func BuiltInWorkflows() []Workflow {
 	workflows = append(workflows, builtInBrunoWorkflows()...)
 	// goal 0350 S2: the browser-replay step's own seeded proof, same
 	// split-file reasoning.
-	return append(workflows, builtInBrowserReplayWorkflows()...)
+	workflows = append(workflows, builtInBrowserReplayWorkflows()...)
+	// goal 0368: the hook door's own seeded proof, same split-file
+	// reasoning.
+	return append(workflows, builtInWebhookWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any

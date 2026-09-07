@@ -407,6 +407,9 @@
       "test": "Test the browser connection",
       "revealExtension": "Reveal the extension folder"
     },
+    "webhook": {
+      "mint": "Add webhook token"
+    },
     "capture": {
       "note": "Capture a note"
     },

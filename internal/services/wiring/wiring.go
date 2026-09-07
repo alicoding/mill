@@ -8,7 +8,6 @@ package wiring
 
 import (
 	"context"
-	"errors"
 	atlasdomain "github.com/alicoding/mill/internal/domain/atlas"
 	"io/fs"
 	"log"
@@ -19,12 +18,10 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/buildinfo"
 	"github.com/alicoding/mill/internal/adapters/mcpclient"
-	"github.com/alicoding/mill/internal/adapters/notify"
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/browserbridge"
 	"github.com/alicoding/mill/internal/domain/composition"
-	"github.com/alicoding/mill/internal/domain/notification"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/backupsvc"
@@ -37,7 +34,6 @@ import (
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/mcpauditsvc"
 	"github.com/alicoding/mill/internal/services/mcpsvc"
-	"github.com/alicoding/mill/internal/services/notificationsvc"
 	"github.com/alicoding/mill/internal/services/pluginsvc"
 	"github.com/alicoding/mill/internal/services/remoteauthsvc"
 	"github.com/alicoding/mill/internal/services/secretsvc"
@@ -222,22 +218,6 @@ func WireUpdateEvents(settings *settingssvc.SettingsService, triggers *triggersv
 	})
 }
 
-// WireNotify connects composition's apply-notify seam to the OS
-// notification adapter (goal 0114). Server mode's adapter refuses by
-// design (ErrUnsupportedInServerMode) -- that maps to success here: the
-// notification is best-effort delivery, and "unsupported on this
-// build" must not fail a workflow whose real work already succeeded.
-// Every other error propagates.
-func WireNotify() {
-	composition.SetNotifier(func(title, body string) error {
-		err := notify.SendPlain("mill-workflow-notify", title, body)
-		if errors.Is(err, notify.ErrUnsupportedInServerMode) {
-			return nil
-		}
-		return err
-	})
-}
-
 // WireAuditTrails constructs the MCP call audit trail (goal 0159 slice
 // 1) against dbPath, wires mcpclient's package-level sending
 // middleware, and opens secretService's own secret-read audit store
@@ -350,76 +330,6 @@ func WireClipboardHistory(clipboardHistoryService *clipboardhistorysvc.Clipboard
 	clipboardhistorysvc.SetAuditRecorder(func(entryID, label string) {
 		secretService.RecordAccess(entryID, label, secretaudit.AccessContext{Context: secretaudit.ContextClipboardHistoryCopy}, secretaudit.OutcomeRead, "")
 	})
-}
-
-// WireNotificationChannels registers settingsService's three delivery
-// channels (desktop banner, dock bounce, browser tab -- docs/goals/
-// 0171-notification-spine.md) into notif, and late-binds notif back
-// into settingsService so NotifyPendingApproval can publish through
-// it. Pulled out of main.go for the same 500-line reason WireMCPAudit
-// above is.
-func WireNotificationChannels(settingsService *settingssvc.SettingsService, notif *notificationsvc.NotificationService) {
-	for _, ch := range settingsService.NotificationChannels() {
-		notif.RegisterChannel(ch)
-	}
-	settingsService.SetNotificationService(notif)
-}
-
-// WirePhoneChannel registers remoteAuth's phone channel (docs/goals/
-// 0132-remote-access.md SLICE B) into notif -- the ntfy protocol's
-// Deliver reaches every currently-paired device's topic in one call,
-// so this is a single RegisterChannel, the same shape as
-// WireNotificationChannels above.
-func WirePhoneChannel(remoteAuth *remoteauthsvc.RemoteAuthService, notif *notificationsvc.NotificationService) {
-	notif.RegisterChannel(remoteAuth.NotificationChannel())
-}
-
-// WireSystemEventNotifications adds the notification spine (docs/goals/
-// 0171) as a SECOND consumer of the existing system-event sink,
-// alongside triggers.DispatchSystemEvent -- ExecutionService's producer
-// side (executionservice_systemevent.go) is untouched; this only
-// changes what main.go passes to SetSystemEventSink, from the trigger
-// dispatch alone to the trigger dispatch plus a durable-notification
-// publish. The two run-completed/run-failed/run-cancelled/
-// update-available kinds this closes the silent-loss gap for can fire
-// with no window open at all (a scheduled workflow finishing
-// unattended); decision-parked is deliberately excluded, since it
-// already publishes through NotifyPendingApproval
-// (settingsservice_attention.go) -- routing it through here too would
-// just be a second producer racing for the same DedupeKey.
-func WireSystemEventNotifications(exec *executionsvc.ExecutionService, triggers *triggersvc.TriggerService, notif *notificationsvc.NotificationService) {
-	exec.SetSystemEventSink(func(ev executionsvc.SystemEvent) {
-		triggers.DispatchSystemEvent(ev)
-		publishSystemEventNotification(notif, ev)
-	})
-}
-
-// publishSystemEventNotification maps one SystemEvent to the
-// notification spine's Event shape -- copy states what happened, never
-// the run's own payload (ux-writing.md: says what waits, not the data
-// being acted on).
-func publishSystemEventNotification(notif *notificationsvc.NotificationService, ev executionsvc.SystemEvent) {
-	var title, body string
-	switch ev.Event {
-	case executionsvc.SystemEventRunCompleted:
-		title, body = "Workflow finished", ev.WorkflowLabel+" finished running."
-	case executionsvc.SystemEventRunFailed:
-		title, body = "Workflow failed", ev.WorkflowLabel+" hit an error and stopped."
-	case executionsvc.SystemEventRunCancelled:
-		title, body = "Workflow cancelled", ev.WorkflowLabel+" was cancelled."
-	case executionsvc.SystemEventUpdateAvailable:
-		title, body = "Update available", "Version "+ev.Version+" is ready to install."
-	default:
-		return
-	}
-	evt := notification.Event{
-		Type: string(ev.Event), Title: title, Body: body,
-		DedupeKey: string(ev.Event) + ":" + ev.RunID + ev.Version,
-		SourceRef: ev.RunID,
-	}
-	if _, err := notif.Publish(evt); err != nil {
-		slog.Warn("publish system-event notification", "event", ev.Event, "error", err)
-	}
 }
 
 // WireMillMCPService late-binds every cross-service seam MillMCPService

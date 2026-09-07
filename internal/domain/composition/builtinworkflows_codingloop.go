@@ -49,7 +49,10 @@ func codingLoopBuiltInWorkflow() []Workflow {
 			// workingDirectory ConfigField, whose default-filled "" now
 			// lands in this seed's own persisted Config too
 			// (ResolveNodeDefaults fills every declared field).
-			Seed: seedorigin.Stamp(5),
+			// Revision 6 (goal 0368): apply-notify gained a titleAttribute
+			// ConfigField, whose default-filled "" now lands in this seed's own
+			// persisted Config (ResolveNodeDefaults fills every declared field).
+			Seed: seedorigin.Stamp(6),
 		},
 	}
 }

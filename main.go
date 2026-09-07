@@ -248,7 +248,7 @@ func main() {
 	wiring.WireAtlasProjections(atlasService, configureService, compositionService)
 	wiring.WireValidationSeams(configureService)
 	wiring.WireConfigureSeams(atlasService, configureService, pluginService) // paste conversion + plugin content writes (docs/goals/0289) + the List row doors' undo journal
-	wiring.WireNotify()
+	wiring.WireNotify(notificationService) // goal 0368: apply-notify publishes through the notification spine
 
 	backupService := backupsvc.Wire(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion, compositionService, configureService, atlasService)
 
@@ -258,6 +258,7 @@ func main() {
 
 	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger)                                                    // docs/goals/0132-remote-access.md SLICE 1
 	bridgeService := wiring.WireBrowserBridge(remoteAuthService, logger, browserExtensionFS, filepath.Dir(settingsPath)) // the browser bridge's own loopback listener (docs/goals/0350)
+	bridgeService.SetWebhookEventSink(triggerService.DispatchWebhookEvent)                                           // goal 0368: the hook door fires a trigger, never a pipe
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	wiring.WireSettingsEraSeams(settingsService, notificationService, remoteAuthService, triggerService, atlasService, pluginService, secretService)
