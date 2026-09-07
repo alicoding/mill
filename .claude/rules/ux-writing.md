@@ -4,7 +4,7 @@ No `paths` frontmatter — loads unconditionally.
 
 UI copy tells the user what they can do and what happens next, in their
 vocabulary — never the system's internals. The bar is converged industry
-convention (Material Design, Apple HIG, Nielsen Norman Group microcopy):
+convention:
 
 - **Front-load the action or outcome** — verb or benefit first,
   qualifiers after, if at all.
@@ -19,8 +19,7 @@ convention (Material Design, Apple HIG, Nielsen Norman Group microcopy):
   files, § symbols mean nothing inside the app. State only the behavior.
 - **Never name another product to explain a feature.** Review-checked.
 - **No spec-asides.** A dash clause justifying the design is
-  documentation — state the rule the user experiences (gated:
-  `check-ui-copy.sh`).
+  documentation — state the rule the user experiences.
 - **Present tense, sentence case, second person implied.** "Runs every
   minute", not "This workflow will be run every minute".
 - **An empty state offers the action it names** — ship the button or
