@@ -182,7 +182,8 @@
       "mcpTitle": "MCP access",
       "remoteTitle": "Remote access",
       "contractTitle": "Contract",
-      "browsersTitle": "Browsers"
+      "browsersTitle": "Browsers",
+      "hooksTitle": "Webhooks"
     },
     "mcp": {
       "addressLabel": "Address",
@@ -346,6 +347,25 @@
       "revealBackupFolder": "Reveal backup folder",
       "exportEverything": "Export everything",
       "importEverything": "Import everything"
+    },
+    "hooks": {
+      "description": "A tool on this Mac fires a workflow by posting to Mill's hook endpoint with one of these tokens.",
+      "docsLink": "How to wire up a tool's hook",
+      "mintAToken": "Add webhook token",
+      "mintLabelAriaLabel": "Hook token label",
+      "mintLabelPlaceholder": "Label, like My build agent",
+      "mintLabelCaption": "Name the tool that will send it",
+      "mint": "Mint token",
+      "mintCancelAriaLabel": "Cancel minting a token",
+      "tokenShownOnce": "Copy this token now. Mill never shows it again.",
+      "tokenCopyAriaLabel": "Copy the new hook token",
+      "tokenCopiedAriaLabel": "Hook token copied",
+      "emptyHeading": "No hook tokens yet",
+      "emptyDescription": "Mint a token so a tool's hook config can fire your workflows.",
+      "tokenMeta": "Minted {{created}}",
+      "revoke": "Revoke",
+      "revokeConfirmTitle": "Revoke {{label}}?",
+      "revokeConfirmBody": "{{label}} won't be able to post hook events until you mint a new token and update the tool's config."
     }
   },
   "keyboardShortcutsSection": {

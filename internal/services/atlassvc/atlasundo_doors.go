@@ -47,6 +47,7 @@ var journaledDoors = map[string]string{
 	"SetLinkKind":            "scalar family",
 	"SetNotePosition":        "scalar family",
 	"SetNoteSize":            "scalar family",
+	"SetCardFieldsForPlugin": "content family, actor=plugin, merge-write + horizon grammar auto-declare",
 	"SetPosition":            "scalar family",
 	"UpdateCard":             "content family",
 	"UpdateCardForMCP":       "content family, actor=mcp",

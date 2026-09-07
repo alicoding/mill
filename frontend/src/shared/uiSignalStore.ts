@@ -30,15 +30,26 @@ interface UISignalState {
   extensionUpdateRequest: string | null
   requestExtensionUpdate: (id: string) => void
   consumeExtensionUpdate: () => void
-  // atlas.matrix / atlas.coverage / atlas.roadmap: same counter shape,
+  // atlas.matrix / atlas.coverage: same counter shape,
   // switching the stored projection pane useAtlasProjectionViews
   // derives from the persisted atlas View (goal 0355 S2).
   atlasMatrixRequest: number
   requestAtlasMatrixOpen: () => void
   atlasCoverageRequest: number
   requestAtlasCoverageOpen: () => void
-  atlasRoadmapRequest: number
-  requestAtlasRoadmapOpen: () => void
+  // atlas.board.home (goal 0357): back OUT of a projection pane to the
+  // canvas. A plugin pane is a sandboxed frame a keydown can never
+  // leave, so its page's own Escape handling reaches the pane contract
+  // ("Escape swaps back to the Board") through this signal. Same
+  // counter shape as the two pane-opening signals above.
+  atlasBoardRequest: number
+  requestAtlasBoardOpen: () => void
+  // api.open(cardId) (goal 0357): a plugin's door to open one card on
+  // the board. Token-carrying ({id, seq}) like atlasTableRenameRequest
+  // -- AtlasView's watcher must know WHICH card, and a repeat request
+  // for the same card must still fire.
+  atlasOpenCardRequest: { id: string; seq: number } | null
+  requestAtlasOpenCard: (cardID: string) => void
   // The bare-?/⌘? shortcuts-help overlay: shared by App.tsx's own `?`
   // window listener, the help.shortcuts command, and the dialog's own
   // "Rebind in Settings" footer link (which closes it on navigation).
@@ -307,8 +318,10 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasMatrixOpen: () => set((s) => ({ atlasMatrixRequest: s.atlasMatrixRequest + 1 })),
   atlasCoverageRequest: 0,
   requestAtlasCoverageOpen: () => set((s) => ({ atlasCoverageRequest: s.atlasCoverageRequest + 1 })),
-  atlasRoadmapRequest: 0,
-  requestAtlasRoadmapOpen: () => set((s) => ({ atlasRoadmapRequest: s.atlasRoadmapRequest + 1 })),
+  atlasBoardRequest: 0,
+  requestAtlasBoardOpen: () => set((s) => ({ atlasBoardRequest: s.atlasBoardRequest + 1 })),
+  atlasOpenCardRequest: null,
+  requestAtlasOpenCard: (cardID) => set((s) => ({ atlasOpenCardRequest: { id: cardID, seq: (s.atlasOpenCardRequest?.seq ?? 0) + 1 } })),
   helpOpen: false,
   openHelp: () => set({ helpOpen: true }),
   closeHelp: () => set({ helpOpen: false }),

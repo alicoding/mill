@@ -2,9 +2,11 @@ package atlassvc
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/atlas"
+	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/seeding"
 )
@@ -35,6 +37,60 @@ func (a *AtlasService) UpdateCardForPlugin(id, title, note string, fields map[st
 		return c, err
 	}
 	recordCardContentUndo(a, actorPlugin, id, title, previous, c)
+	return c, nil
+}
+
+// horizonKindField is the field a Kind gets auto-declared with the
+// first time a plugin writes "horizon" onto one of its cards (docs/
+// goals/0357) -- the ADR-0040 additive-grammar field, IDENTICAL in
+// shape to the seeded example Kinds that already declare it
+// (internal/domain/atlas/builtin.go), so auto-declared and seeded
+// schema can never drift apart.
+func horizonKindField() typedfield.Field {
+	return typedfield.Field{Key: "horizon", Label: "Horizon", Type: typedfield.TypeOptions, Options: []string{"Now", "Next", "Then"}}
+}
+
+// SetCardFieldsForPlugin merge-writes named field values onto a card,
+// leaving title/note/source/containment untouched -- the plugin
+// counterpart of MergeCardFields, journaled under actor=plugin through
+// the same updateCardCore path as UpdateCardForPlugin. A written
+// "horizon" key the card's Kind has never declared is auto-declared
+// FIRST through UpdateKind's own evolution grammar
+// (horizonKindField above); any other key the Kind has not declared is
+// rejected by updateCardCore's own atlas.ValidateCard, exactly as a UI
+// field edit is.
+//
+//wails:ignore
+func (a *AtlasService) SetCardFieldsForPlugin(id string, fields map[string]string) (atlas.Card, error) {
+	a.mu.RLock()
+	idx := a.findCardLocked(id)
+	if idx == -1 {
+		a.mu.RUnlock()
+		return atlas.Card{}, fmt.Errorf("no card with id %q", id)
+	}
+	card := a.cards[idx]
+	kind, err := a.resolveKindLocked(card.KindID)
+	a.mu.RUnlock()
+	if err != nil {
+		return atlas.Card{}, err
+	}
+	if _, written := fields["horizon"]; written && !slices.ContainsFunc(kind.Fields, func(f typedfield.Field) bool { return f.Key == "horizon" }) {
+		if _, err := a.UpdateKind(kind.ID, kind.Label, kind.Description, kind.Icon, append(slices.Clone(kind.Fields), horizonKindField()), nil); err != nil {
+			return atlas.Card{}, fmt.Errorf("declare the horizon field on kind %q first: %w", kind.ID, err)
+		}
+	}
+	merged := make(map[string]string, len(card.Fields)+len(fields))
+	for k, v := range card.Fields {
+		merged[k] = v
+	}
+	for k, v := range fields {
+		merged[k] = v
+	}
+	c, previous, err := a.updateCardCore(id, card.Title, card.Note, merged, card.Source, card.MirrorPath, card.RefreshWorkflowID)
+	if err != nil {
+		return c, err
+	}
+	recordCardContentUndo(a, actorPlugin, id, card.Title, previous, c)
 	return c, nil
 }
 

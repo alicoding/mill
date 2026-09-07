@@ -12,7 +12,7 @@ import runbookStyles from '../shared/ListCard.module.css'
 import styles from './DrawioEditorDialog.module.css'
 
 // The embedded editor engine's own large modal surface (goal 0237 S1,
-// the What's-new/AtlasRoadmapView Dialog precedent scaled up to near-
+// the What's-new Dialog precedent scaled up to near-
 // full-window): title is the mirrored file's own basename, Primer's
 // own Dialog close control is the one close affordance, and the
 // editor's OWN Exit/Save-and-Exit buttons (part of the real engine's

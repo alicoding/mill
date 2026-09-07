@@ -64,7 +64,10 @@ func builtInSystemEventWorkflows() []Workflow {
 				{ID: "update-available-notify-e0", Source: updateTriggerID, Target: updateNotifyID},
 			},
 			BuiltIn: true,
-			Seed:    seedorigin.Stamp(2),
+			// Revision 3 (goal 0368): apply-notify gained a titleAttribute
+			// ConfigField, whose default-filled "" now lands in this seed's own
+			// persisted Config (ResolveNodeDefaults fills every declared field).
+			Seed: seedorigin.Stamp(3),
 		},
 		{
 			ID:          "example-forward-approvals-workflow",

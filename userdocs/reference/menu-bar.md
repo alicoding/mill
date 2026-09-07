@@ -132,7 +132,6 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Redo | — | `atlas.redo` |
 | Open traceability matrix | — | `atlas.matrix` |
 | Open coverage | — | `atlas.coverage` |
-| Open roadmap | — | `atlas.roadmap` |
 | Auto-arrange | — | `atlas.arrange` |
 | Contents | — | `atlas.contents.open` |
 | Import atlas | — | `atlas.import` |

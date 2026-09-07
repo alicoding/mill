@@ -8,5 +8,6 @@ export {
 
 export type {
     DeviceInfo,
+    HookToken,
     PairingCodeInfo
 } from "./models.js";

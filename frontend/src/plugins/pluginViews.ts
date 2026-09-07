@@ -13,6 +13,14 @@ export interface PluginView {
 	title: string
 	/** The plugin's version, so the host busts a stale entry page. */
 	version: string
+	// placement (goal 0357): where the view mounts -- 'tab' (or empty) is
+	// a work tab of its own; 'board-switcher' lists it in the board's own
+	// view switcher, after Mill's four built-in projections.
+	placement?: string
+	// icon (goal 0357): the manifest's icon filename, so a surface that
+	// lists the contribution (the board's view switcher) can draw the
+	// plugin's own glyph from /plugins/<id>/<icon>.
+	icon?: string
 	// entry (docs/goals/0349): the manifest declared an .html page, so
 	// this view mounts in its own sandboxed frame and needs no render.
 	// A view with neither has no way to draw and never reaches the host.
@@ -55,6 +63,16 @@ export function setPluginViewSink(pluginId: string, viewId: string, post: ((msg:
 
 export function getPluginView(pluginId: string, viewId: string): PluginView | undefined {
 	return views.get(pluginViewKey(pluginId, viewId))
+}
+
+// boardSwitcherPluginViews lists the views whose manifest placement is
+// the board's own switcher, in collection order (the plugin scan's own
+// order) -- the switcher appends them after Mill's four built-in
+// projections (goal 0357).
+export function boardSwitcherPluginViews(): PluginView[] {
+	const out: PluginView[] = []
+	for (const view of views.values()) if (view.placement === 'board-switcher') out.push(view)
+	return out
 }
 
 // unregisterPluginViews drops one plugin's registered views ahead of

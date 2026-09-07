@@ -57,6 +57,27 @@ export function ListDevices(): $CancellablePromise<$models.DeviceInfo[] | null> 
 }
 
 /**
+ * ListHooks returns every live hook token's read model, same order and
+ * shape as ListBrowsers -- hook tokens appear in their own Settings
+ * section, never mixed into the device or browser lists.
+ */
+export function ListHooks(): $CancellablePromise<$models.DeviceInfo[] | null> {
+    return $Call.ByID(2622304556);
+}
+
+/**
+ * MintHookToken pairs a new hook credential, returning its raw token
+ * exactly once for the user to copy into a tool's hook config. There
+ * is no pairing code or exchange: the consumer is a shell command in a
+ * config file, so the credential itself is the whole ceremony. Minting
+ * more than one is legitimate (one per tool, or a rotation) -- each is
+ * its own Settings row with its own revoke, like a paired browser.
+ */
+export function MintHookToken(label: string): $CancellablePromise<$models.HookToken> {
+    return $Call.ByID(3786229052, label);
+}
+
+/**
  * RenameDevice updates a paired device's label -- a device is
  * pre-filled with a self-announced label at pairing time
  * (deviceLabelFor) and renameable afterwards. Empty (after trimming)

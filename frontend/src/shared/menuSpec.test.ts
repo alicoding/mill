@@ -92,9 +92,9 @@ describe('menuSpecFor (the native menu bar as a projection of the command regist
 
   it('opens Atlas with the navigation band before the board and create bands', () => {
     const shape = shapeOf(menu(spec, 'Atlas'))
-    expect(shape.slice(0, 7)).toEqual([
+    expect(shape.slice(0, 6)).toEqual([
       'Go up one level', 'Jump to a card or object', 'Undo', 'Redo',
-      'Open traceability matrix', 'Open coverage', 'Open roadmap',
+      'Open traceability matrix', 'Open coverage',
     ])
     expect(shape).toContain('Auto-arrange')
   })

@@ -288,6 +288,16 @@ export function SecretSourceKinds(): $CancellablePromise<$models.SecretSourceKin
 }
 
 /**
+ * SetCardFieldsForPlugin performs one guarded card-field merge-write.
+ * The write itself lives in atlassvc's own plugin-actor door
+ * (journaled, undoable), reaching here through the wired
+ * ContentWriter.
+ */
+export function SetCardFieldsForPlugin(pluginID: string, cardID: string, fields: { [_ in string]?: string } | null): $CancellablePromise<$models.PluginContentWriteResult> {
+    return $Call.ByID(4083019585, pluginID, cardID, fields);
+}
+
+/**
  * SignedOK is the run policy's question: with no policy every plugin
  * passes; with one, only a verified signature does.
  */

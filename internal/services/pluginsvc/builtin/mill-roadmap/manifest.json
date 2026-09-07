@@ -1,0 +1,15 @@
+{
+  "id": "mill-roadmap",
+  "name": "Roadmap",
+  "version": "1.0.0",
+  "description": "Swimlane the board's cards by kind across Now, Next, and Then.",
+  "author": "Mill",
+  "minMillVersion": "0.14.1",
+  "icon": "icon.png",
+  "capabilities": ["edit-card-fields"],
+  "contributes": {
+    "views": [
+      { "id": "roadmap", "title": "Roadmap", "entry": "view.html", "placement": "board-switcher" }
+    ]
+  }
+}

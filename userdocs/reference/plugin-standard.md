@@ -150,6 +150,13 @@ your plugin feels like part of Mill.
 30. `go run ./internal/pluginconform <folder>` passes; `npm run
     plugin:typecheck` and `npm run plugin:lint` pass. (checked)
 
+## Board views
+
+31. A view placed in the Atlas board's own switcher
+    (`"placement": "board-switcher"`) that writes card fields through
+    `api.content.setCardFields` declares the `edit-card-fields`
+    capability. (checked)
+
 ## Checking your own plugin
 
 ```sh

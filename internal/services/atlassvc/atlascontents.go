@@ -26,18 +26,21 @@ const (
 // atlas.NoteDisplayName; an object's payload title, else its kind).
 // Subkind carries a card's Atlas Kind id (a note or object has none).
 // Payload is a board object's own payload, and {"text": …} for a
-// note; a card's fields are deliberately NOT here (agents read them
-// through atlas_read_card; the plugin-side question is recorded on
-// goal 0261's remaining list).
+// note. For cards, KindID repeats Subkind and Fields carries the
+// card's own typed field values (docs/goals/0357): the schema those
+// values read against stays with the Kind itself (ListKinds/
+// api.kinds), never folded into the entry.
 type ContentEntry struct {
 	ID       string
 	Kind     string
 	Subkind  string
+	KindID   string
 	Title    string
 	ParentID string
 	Position atlas.Position
 	Size     *atlas.Dimensions
 	Payload  map[string]string
+	Fields   map[string]string
 }
 
 // ContentsFilter narrows the index: Kind to one kind ("card", "note",
@@ -98,7 +101,11 @@ func cardEntry(c atlas.Card) ContentEntry {
 	if c.Position != nil {
 		pos = *c.Position
 	}
-	return ContentEntry{ID: c.ID, Kind: ContentKindCard, Subkind: c.KindID, Title: c.Title, ParentID: c.ParentID, Position: pos, Size: c.Size}
+	fields := make(map[string]string, len(c.Fields))
+	for k, v := range c.Fields {
+		fields[k] = v
+	}
+	return ContentEntry{ID: c.ID, Kind: ContentKindCard, Subkind: c.KindID, KindID: c.KindID, Title: c.Title, ParentID: c.ParentID, Position: pos, Size: c.Size, Fields: fields}
 }
 
 func noteEntry(n atlas.Note) ContentEntry {

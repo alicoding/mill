@@ -99,15 +99,19 @@ test('the traceability matrix pivots a space\'s cards by kind against link kinds
   await expect(dialog).not.toBeVisible()
 })
 
+// Roadmap is the bundled mill-roadmap plugin (goal 0357): its pane is a
+// sandboxed iframe (PluginFrame), reached through a FrameLocator rather
+// than a plain page/pane Locator.
 test('the roadmap swimlanes a space\'s cards by kind against horizon tags, with an untagged card falling to Unscheduled', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
-  await openToolbarAction(page, 'atlas-open-roadmap')
-  const dialog = page.locator('[data-component="atlas-roadmap-pane"]')
-  await expect(dialog).toBeVisible()
+  await openToolbarAction(page, 'atlas-open-plugin-mill-roadmap-roadmap')
+  const host = page.getByTestId('plugin-view-mill-roadmap-roadmap')
+  await expect(host).toBeVisible()
+  const dialog = page.frameLocator('[data-testid="plugin-view-mill-roadmap-roadmap"]')
 
   await expect(dialog.getByTestId('atlas-roadmap-column-header')).toHaveText(['Now', 'Next', 'Then', 'Unscheduled'])
   await expect(dialog.getByTestId('atlas-roadmap-lane-label').filter({ hasText: 'Contact' })).toBeVisible()
@@ -122,7 +126,7 @@ test('the roadmap swimlanes a space\'s cards by kind against horizon tags, with 
   await expect(dialog.getByTestId('atlas-roadmap-empty-cell')).toHaveCount(6)
 
   await dialog.getByTestId('atlas-roadmap-chip').filter({ hasText: 'Jordan Reyes' }).click()
-  await expect(dialog).not.toBeVisible()
+  await expect(host).not.toBeVisible()
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
   await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Jordan Reyes')

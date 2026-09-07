@@ -31,6 +31,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.arrange` | Auto-arrange | — | atlas | Conditional — available only in a matching state |
 | `atlas.board.addCard` | Add card here | — | atlas | Acts on the board's current selection |
 | `atlas.board.addNote` | Add note here | — | atlas | Acts on the board's current selection |
+| `atlas.board.home` | Back to the board | — | atlas | Always available |
 | `atlas.card.addLinkedCard` | Add linked card… | — | atlas | Acts on the board's current selection |
 | `atlas.card.copyContext` | Copy card as context | — | atlas | Acts on the board's current selection |
 | `atlas.card.copyLink` | Copy card link | — | atlas | Acts on the board's current selection |
@@ -77,7 +78,6 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.openFocused` | Open or zoom the focused card | `↩` | atlas | Always available |
 | `atlas.perspective` | Open perspective switcher | — | atlas | Always available |
 | `atlas.redo` | Redo | — | atlas | Always available |
-| `atlas.roadmap` | Open roadmap | — | atlas | Always available |
 | `atlas.selectAll` | Select all | `⌘A` | atlas | Always available |
 | `atlas.selection.addToPerspective` | Add to perspective | — | atlas | Acts on the board's current selection |
 | `atlas.selection.copyAsImage` | Copy as image | — | atlas | Conditional — available only in a matching state |
@@ -251,6 +251,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `view.home` | Go to Home | `⌘0` | Global | Always available |
 | `view.review` | Go to Review | `⌘5` | Global | Always available |
 | `view.secrets` | Go to Secrets | `⌘6` | Global | Always available |
+| `webhook.mint` | Add webhook token | — | Global | Always available |
 | `workflow.edit` | Edit workflow | — | Global | Conditional — available only in a matching state |
 | `workflow.new` | New workflow | `⌘N` | Global | Conditional — available only in a matching state |
 | `workflow.open` | Open workflow | — | Global | Acts on the selected workflow |

@@ -211,13 +211,16 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     setViewedID(id)
   }
   const drill = navigate
-  // List / Matrix / Coverage / Roadmap (docs/goals/0064, 0279, 0212):
-  // the four projections are PANES of the board's region (goal 0355 S2),
-  // the active one read from the persisted atlas View by one shared hook.
+  // List / Matrix / Coverage (docs/goals/0064, 0279) and every
+  // plugin-contributed pane (goal 0357): the projections are PANES of
+  // the board's region (goal 0355 S2), the active one read from the
+  // persisted atlas View by one shared hook.
   const projectionViews = useAtlasProjectionViews({ onOpenOverlay: setOverlayCardID })
   const { jumpOpen, setJumpOpen } = useAtlasNavSignals({
     viewedID, allCards, setViewedID: navigate,
     onOpenProjection: projectionViews.setView,
+    onOpenCard: projectionViews.openCardFromProjection,
+    onBackToBoard: projectionViews.backToBoard,
   })
 
   const openOverlay = (id: string) => setOverlayCardID(id)
@@ -398,7 +401,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
             projection replaces the canvas in place; the board's transient
             state (zoom, selection) is per-look, the persisted View what comes back. */}
         {projectionViews.activeView !== 'board' ? (
-          <AtlasProjectionPane view={projectionViews.activeView} cards={childrenAll} kinds={allKinds} links={allLinks} linkKinds={allLinkKinds} onOpenCard={projectionViews.openCardFromProjection} onFocusItem={(id) => { projectionViews.backToBoard(); setFocusRequest({ cardID: id, openImmediately: false }) }} onBackToBoard={projectionViews.backToBoard} />
+          <AtlasProjectionPane view={projectionViews.activeView} spaceID={viewedID} cards={childrenAll} kinds={allKinds} links={allLinks} linkKinds={allLinkKinds} onOpenCard={projectionViews.openCardFromProjection} onFocusItem={(id) => { projectionViews.backToBoard(); setFocusRequest({ cardID: id, openImmediately: false }) }} onBackToBoard={projectionViews.backToBoard} />
         ) : (
           <>
         {childrenAll.length === 0 && (filteredByPerspective || nothingElseHere) && (

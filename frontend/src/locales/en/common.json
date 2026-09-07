@@ -178,7 +178,7 @@
       "redo": "Redo",
       "matrix": "Open traceability matrix",
       "coverage": "Open coverage",
-      "roadmap": "Open roadmap",
+      "boardHome": "Back to the board",
       "arrange": "Auto-arrange",
       "contents": {
         "open": "Contents"
@@ -406,6 +406,9 @@
       "pair": "Pair a browser",
       "test": "Test the browser connection",
       "revealExtension": "Reveal the extension folder"
+    },
+    "webhook": {
+      "mint": "Add webhook token"
     },
     "capture": {
       "note": "Capture a note"
