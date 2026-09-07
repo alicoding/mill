@@ -31,6 +31,19 @@ export interface DeviceInfo {
 }
 
 /**
+ * HookToken is what Settings receives when a hook credential is
+ * minted: the bearer token to paste into the tool's hook config, and
+ * the id/label Settings shows for it. The token is returned exactly
+ * once and never retrievable again -- only its salted hash is kept,
+ * same storage posture as every other paired credential.
+ */
+export interface HookToken {
+    "token": string;
+    "deviceId": string;
+    "label": string;
+}
+
+/**
  * PairingCodeInfo is what Settings > Remote access renders after
  * "Pair a device" is pressed.
  */

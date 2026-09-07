@@ -13,9 +13,10 @@ import (
 	"github.com/alicoding/mill/internal/domain/usererror"
 )
 
-// The bridge's four routes. Everything lives under one prefix so a
-// future mount alongside other handlers can never collide with an app
-// route.
+// The bridge's four browser routes. Everything lives under one prefix
+// so a future mount alongside other handlers can never collide with an
+// app route. The hook door's own route constant lives with its handler
+// in bridgeservice_hooks.go.
 const (
 	EventsPath   = "/__mill/bridge/events"
 	ResultPath   = "/__mill/bridge/result"
@@ -31,12 +32,13 @@ const maxResultBytes = 64 * 1024
 //
 // Two rules hold across all four, and neither is the usual one:
 //
-//   - The stream and the result intake require a paired browser token
-//     EVEN OVER LOOPBACK. Every other Mill surface trusts a loopback
-//     connection, because a loopback connection is the desktop webview.
-//     Here it is not: any page or process on this machine can reach a
-//     loopback listener, and this one drives the user's logged-in tabs.
-//     Pairing, not origin, is the credential.
+//   - The stream, the result intake and the hook door require a paired
+//     credential EVEN OVER LOOPBACK. Every other Mill surface trusts a
+//     loopback connection, because a loopback connection is the desktop
+//     webview. Here it is not: any page or process on this machine can
+//     reach a loopback listener, and these routes drive the user's
+//     logged-in tabs and workflows. Pairing, not origin, is the
+//     credential.
 //   - Pairing and the test page require LOOPBACK, and carry no token.
 //     A code exchange has no token yet, and a page a browser is about
 //     to load cannot send an Authorization header at all.
@@ -48,6 +50,7 @@ func (s *BridgeService) Handler() http.Handler {
 	mux.HandleFunc(ResultPath, s.handleResult)
 	mux.HandleFunc(PairPath, s.handlePair)
 	mux.HandleFunc(TestPagePath, s.handleTestPage)
+	mux.HandleFunc(HookEventPath, s.handleHookEvent)
 	return mux
 }
 

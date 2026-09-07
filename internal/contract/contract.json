@@ -1721,6 +1721,39 @@
       "Complexity": "basic"
     },
     {
+      "ID": "trigger-webhook",
+      "Kind": "trigger",
+      "Label": "Webhook fired",
+      "Description": "Fires when a tool on this machine posts to Mill's hook endpoint, so a workflow can react to what an agent or script just did, like showing a notification on every channel including a paired phone. Any fields the tool posts become attributes the workflow declares by name. Point the tool at the hook endpoint with a token from Settings.",
+      "ConfigFields": [
+        {
+          "Key": "source",
+          "Label": "Source (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Fire only for events whose source field matches this exactly, in lowercase. Leave empty to fire on any source, or on an event with no source at all.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "JSON payload: the raw body the external tool posted. Every top-level scalar field it carries (a string, number, or true/false) also seeds an Attribute of the same name when this workflow declares one",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "json"
+      },
+      "Effect": "",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
       "ID": "capture-attribute",
       "Kind": "capture",
       "Label": "Read attribute",
@@ -3951,7 +3984,7 @@
       "ID": "apply-notify",
       "Kind": "apply",
       "Label": "Notify me",
-      "Description": "Shows a notification when the workflow reaches this step. \"Body attribute\" swaps the fixed message for an Attributes value.",
+      "Description": "Shows a notification when the workflow reaches this step. \"Title attribute\" and \"Body attribute\" swap a fixed line for an Attributes value.",
       "ConfigFields": [
         {
           "Key": "title",
@@ -3960,6 +3993,20 @@
           "Required": false,
           "Default": "",
           "Description": "The notification's first line.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "titleAttribute",
+          "Label": "Title attribute (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field replaces the fixed title, when set.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -3996,7 +4043,7 @@
           "SystemManaged": false
         }
       ],
-      "Output": "payload unchanged; a notification appears on this machine",
+      "Output": "payload unchanged; a notification appears on every channel, including a paired phone",
       "Consumes": [
         "none"
       ],
@@ -4332,6 +4379,39 @@
       "Complexity": "basic"
     },
     {
+      "ID": "trigger-webhook",
+      "Kind": "trigger",
+      "Label": "Webhook fired",
+      "Description": "Fires when a tool on this machine posts to Mill's hook endpoint, so a workflow can react to what an agent or script just did, like showing a notification on every channel including a paired phone. Any fields the tool posts become attributes the workflow declares by name. Point the tool at the hook endpoint with a token from Settings.",
+      "ConfigFields": [
+        {
+          "Key": "source",
+          "Label": "Source (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Fire only for events whose source field matches this exactly, in lowercase. Leave empty to fire on any source, or on an event with no source at all.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "JSON payload: the raw body the external tool posted. Every top-level scalar field it carries (a string, number, or true/false) also seeds an Attribute of the same name when this workflow declares one",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "kind": "json"
+      },
+      "Effect": "",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
       "ID": "capture-attribute",
       "Kind": "capture",
       "Label": "Read attribute",
@@ -6562,7 +6642,7 @@
       "ID": "apply-notify",
       "Kind": "apply",
       "Label": "Notify me",
-      "Description": "Shows a notification when the workflow reaches this step. \"Body attribute\" swaps the fixed message for an Attributes value.",
+      "Description": "Shows a notification when the workflow reaches this step. \"Title attribute\" and \"Body attribute\" swap a fixed line for an Attributes value.",
       "ConfigFields": [
         {
           "Key": "title",
@@ -6571,6 +6651,20 @@
           "Required": false,
           "Default": "",
           "Description": "The notification's first line.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "titleAttribute",
+          "Label": "Title attribute (optional)",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Which Attributes field replaces the fixed title, when set.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -6607,7 +6701,7 @@
           "SystemManaged": false
         }
       ],
-      "Output": "payload unchanged; a notification appears on this machine",
+      "Output": "payload unchanged; a notification appears on every channel, including a paired phone",
       "Consumes": [
         "none"
       ],

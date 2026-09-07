@@ -52,12 +52,14 @@ const DefaultReplayTimeout = 2 * time.Minute
 // browser before Mill refuses rather than blocking a caller.
 const commandBuffer = 8
 
-// TokenAuthority is the paired-browser credential seam: the bridge
-// mints and checks nothing itself, it asks remoteauthsvc, which owns
-// every paired thing Mill knows about.
+// TokenAuthority is the paired-credential seam: the bridge mints and
+// checks nothing itself, it asks remoteauthsvc, which owns every
+// paired thing Mill knows about -- browser extensions and headless
+// hook tokens alike.
 type TokenAuthority interface {
 	PairBrowser(code, label, source string) (remoteauthsvc.BrowserPairing, error)
 	ValidateBrowserToken(token string) (remoteauthsvc.DeviceInfo, bool)
+	ValidateHookToken(token string) (remoteauthsvc.DeviceInfo, bool)
 }
 
 // client is one browser holding a stream open.
@@ -101,6 +103,12 @@ type BridgeService struct {
 	// browser to load -- see bridgeservice_extension.go.
 	extensionFiles fs.FS
 	extensionDir   string
+
+	// hookSink dispatches a validated hook post into the trigger
+	// layer; its own mutex because SetWebhookEventSink runs at startup
+	// while requests arrive concurrently. See bridgeservice_hooks.go.
+	hookMu   sync.Mutex
+	hookSink webhookEventSink
 }
 
 // ResolveAddr picks the effective bind address: the env override always

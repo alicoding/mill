@@ -1954,6 +1954,14 @@
     "needs": null
   },
   {
+    "id": "webhook.mint",
+    "label": "Add webhook token",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
     "id": "workflow.edit",
     "label": "Edit workflow",
     "binding": null,

@@ -94,6 +94,7 @@ func PageIndex() []DocPage {
 		{"agents/connect-mcp.md", "Automate with agents", "connecting over MCP and what agents can do", KindHowTo},
 		{"agents/diagrams.md", "Edit a diagram with an agent", "reading a diagram's shapes by id and adding, changing, deleting and importing them in place", KindHowTo},
 		{"agents/plugins.md", "What plugins expose to agents", "listing installed plugins, calling a plugin's declared tools, and how a plugin write parks", KindHowTo},
+		{"agents/agent-hooks.md", "Fire a workflow from an agent's hook", "minting a hook token and posting to the hook endpoint so a tool's hook fires a workflow", KindHowTo},
 	}
 }
 

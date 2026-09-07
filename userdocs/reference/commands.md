@@ -251,6 +251,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `view.home` | Go to Home | `⌘0` | Global | Always available |
 | `view.review` | Go to Review | `⌘5` | Global | Always available |
 | `view.secrets` | Go to Secrets | `⌘6` | Global | Always available |
+| `webhook.mint` | Add webhook token | — | Global | Always available |
 | `workflow.edit` | Edit workflow | — | Global | Conditional — available only in a matching state |
 | `workflow.new` | New workflow | `⌘N` | Global | Conditional — available only in a matching state |
 | `workflow.open` | Open workflow | — | Global | Acts on the selected workflow |

@@ -24,6 +24,7 @@ import { HELP_COMMANDS } from './helpCommands'
 import { ROW_COMMANDS } from './rowCommands'
 import { LIST_GRID_COMMANDS } from './listGridCommands'
 import { BROWSER_BRIDGE_COMMANDS } from './browserBridgeCommands'
+import { WEBHOOK_COMMANDS } from './webhookCommands'
 import { CONFIGURE_ROW_COMMANDS } from './configureRowCommands'
 import { INVENTORY_ROW_COMMANDS } from './inventoryRowCommands'
 import { TAB_COMMANDS } from './tabCommands'
@@ -416,8 +417,9 @@ export const COMMANDS: Command[] = lazyArray(() => [
   // only when ambientContext() resolves that kind.
   ...ROW_COMMANDS,
   ...LIST_GRID_COMMANDS,
-  // Pair a browser / test the bridge -- shared/browserBridgeCommands.ts.
+  // Pair a browser / test the bridge / add a webhook token -- shared/browserBridgeCommands.ts, shared/webhookCommands.ts.
   ...BROWSER_BRIDGE_COMMANDS,
+  ...WEBHOOK_COMMANDS,
   // Every Configure entity family's row actions, minted one family at a
   // time by shared/entityRowCommands.ts (goal 0346), plus the same
   // contract over the two inventories outside Configure. Each declares

@@ -248,8 +248,8 @@
     "fingerprint": "e3fe2388aab10bfe18af6c1c6a943abbd7db65274c129ceb0e0d2533ad250b03"
   },
   "workflow:clipboard-html-to-markdown-workflow": {
-    "seedRevision": 3,
-    "fingerprint": "72555ccbfe757c5cb8b31489bd31d9469179694784094954bc297c9a0c4d6594"
+    "seedRevision": 4,
+    "fingerprint": "e4b3cb3f0842accb0f70454bc453a327c35a4f57c9b8fc4cc0cb75017a71d92a"
   },
   "workflow:clipbridge-reply-cards-workflow": {
     "seedRevision": 3,
@@ -260,8 +260,8 @@
     "fingerprint": "cbd789a974956ceea36271f5240de1d118b6966e4a7c9637fb00467f07f03d00"
   },
   "workflow:coding-loop-run-copied-command-workflow": {
-    "seedRevision": 5,
-    "fingerprint": "3db033434e995a94204c567c88f81a756871d664ce00774f8847683a0d933902"
+    "seedRevision": 6,
+    "fingerprint": "025e0d7686b746faf0eb056de12909739c5f3d6f137c327e93f1738afd7da48a"
   },
   "workflow:example-ai-classify-branch-workflow": {
     "seedRevision": 4,
@@ -376,8 +376,8 @@
     "fingerprint": "cae6a27182d454f59ed25e8037f33079d0da97e7c52ce85a363da1169eef4541"
   },
   "workflow:example-run-in-captured-folder-workflow": {
-    "seedRevision": 1,
-    "fingerprint": "c040db53a1f5ff9c1b41b22c68679a2a613090d1ea2ff6bf0f88d7a7a0797d91"
+    "seedRevision": 2,
+    "fingerprint": "58fc31ccfecbb7cb866af5b553dde42084b4547784f81b51bf73a5ad4ac9e74e"
   },
   "workflow:example-run-receipt-workflow": {
     "seedRevision": 2,
@@ -416,7 +416,11 @@
     "fingerprint": "add39815b73d840c233f266f01043b9cbec60ed37d04cba12a8306e85ce23214"
   },
   "workflow:update-available-notify-workflow": {
-    "seedRevision": 2,
-    "fingerprint": "3d06946fda35e1ad86a2b4728dc24d9356fa597b943d10d4d5e3e97d12da40fa"
+    "seedRevision": 3,
+    "fingerprint": "a8397caa6c380937ca695c5d0fa935eac59f44c86a1ed1b83e5864700358011d"
+  },
+  "workflow:webhook-notify-workflow": {
+    "seedRevision": 6,
+    "fingerprint": "1e2f8a59d4ba9f06793a42cb4aa74eda94a15d40aebeeba2a628f9d17644ee42"
   }
 }
