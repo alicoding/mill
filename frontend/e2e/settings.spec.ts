@@ -288,12 +288,18 @@ test('The group list shows exactly one pane, marks it, and routes to it', async 
   await expect(page.getByTestId('light-scheme-select')).toHaveCount(0)
 })
 
-test('Connections gathers MCP access, Remote access, Browsers, Webhooks and Contract in reach order', async ({ page }) => {
+test('Connections gathers Devices, Browsers, Credentials and Contract in reach order', async ({ page }) => {
   await page.goto('/')
   await openSettings(page, 'connections')
 
   const headings = page.getByTestId('settings-pane-connections').getByTestId('settings-section-heading')
-  await expect(headings).toHaveText(['MCP access', 'Remote access', 'Browsers', 'Webhooks', 'Contract'])
+  await expect(headings).toHaveText(['Devices', 'Browsers', 'Credentials', 'Contract'])
+
+  // Credentials holds MCP access and Webhooks as its own subheadings,
+  // in that order.
+  const subheadings = page.getByTestId('settings-pane-connections').getByTestId('settings-subsection-heading')
+  await expect(subheadings).toHaveText(['MCP access', 'Webhooks'])
+
   await expect(page.getByTestId('mcp-access-address-input')).toBeVisible()
   await expect(page.getByTestId('export-contract')).toBeVisible()
 })

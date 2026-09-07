@@ -113,6 +113,27 @@ const (
 	OutcomeError Outcome = "error"
 )
 
+// FailureKind classifies WHY an OutcomeError read failed, for the one
+// condition the UI has been taught to label in the user's own
+// vocabulary instead of showing the resolving adapter's raw message --
+// empty for OutcomeRead, and empty for an OutcomeError row written
+// before this field existed (secretauditstore widens the column with a
+// "" default, never backfilled).
+type FailureKind string
+
+const (
+	// FailureKindUnrecognizedEntry is secretvault.ErrNotFound -- the
+	// reference names no entry the vault can produce, whether the id
+	// was never valid or the entry was since deleted. Mirrors the
+	// guardrail gate's own label for the identical condition
+	// (configuresvc.unknownVaultLabel, "unrecognized vault entry") so
+	// the same condition reads the same way in both places.
+	FailureKindUnrecognizedEntry FailureKind = "unrecognized-entry"
+	// FailureKindOther is any OutcomeError the UI has no dedicated
+	// label for; it falls back to the capped ErrorText.
+	FailureKindOther FailureKind = "other"
+)
+
 // ErrorTextCap/TruncateError mirror mcpaudit's own cap and reasoning --
 // a locked-vault or malformed-id error should never let one row's text
 // dominate the retention window.
@@ -165,6 +186,8 @@ type Record struct {
 	StepID  string
 	Actor   string
 	Outcome Outcome
+	// FailureKind is set only for OutcomeError; empty for OutcomeRead.
+	FailureKind FailureKind
 	// ErrorText is capped via TruncateError before it ever reaches
 	// storage; empty for OutcomeRead.
 	ErrorText string

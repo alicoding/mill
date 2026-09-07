@@ -83,17 +83,16 @@ func builtInSecretGuardWorkflows() []Workflow {
 		{
 			ID:          ExampleSecretGuardWorkflowID,
 			Label:       "Example: uses a stored secret",
-			Description: "Runs a command inside an execution environment configured with a stored secret (Configure > Execution Environments). A guardrail rule targets any step that uses a secret, so running this always asks for your approval first. Approve or deny it from this workflow's own Runs tab.",
+			Description: "Runs a command inside an execution environment configured with a stored secret (Configure > Execution Environments). Points at a vault entry that doesn't exist on purpose, so you can see how the guard stops a run before a secret is read. Replace the reference with one of your own entries to let it through.",
 			Nodes:       nodes,
 			Edges: []Edge{
 				{ID: "example-secret-guard-e0", Source: secretGuardTriggerID, Target: ExampleSecretGuardStepID},
 			},
 			BuiltIn: true,
-			// Revision 4 (goal 0345): code-execution gained a
-			// workingDirectory ConfigField, whose default-filled "" now
-			// lands in this seed's own persisted Config too
-			// (ResolveNodeDefaults fills every declared field).
-			Seed: seedorigin.Stamp(4),
+			// Revision 5 (goal 0378): the description now says the
+			// dangling vault reference is unresolved on purpose,
+			// replacing the old approve/deny-focused text.
+			Seed: seedorigin.Stamp(5),
 		},
 	}
 }

@@ -13,6 +13,11 @@ interface BrowserBridgeState {
   status: BridgeStatusInfo | null
   browsers: DeviceInfo[] | null
   pairing: PairingCodeInfo | null
+  // How many browsers were paired the moment this code was minted --
+  // the code card clears itself once `browsers` grows past this count,
+  // the only pairing-succeeded signal available without a server push
+  // (goal 0369, shared/pairingCountdown.ts's gainedMember).
+  pairingBaselineCount: number
   test: 'idle' | 'running' | 'passed' | 'failed'
   testSteps: number
   testDurationMS: number
@@ -23,6 +28,7 @@ interface BrowserBridgeState {
   error: string
   refresh: () => Promise<void>
   pair: () => Promise<void>
+  clearPairing: () => void
   runTest: () => Promise<void>
   revealExtension: () => Promise<void>
   revoke: (id: string) => Promise<void>
@@ -32,6 +38,7 @@ export const useBrowserBridgeStore = create<BrowserBridgeState>()((set, get) => 
   status: null,
   browsers: null,
   pairing: null,
+  pairingBaselineCount: 0,
   test: 'idle',
   testSteps: 0,
   testDurationMS: 0,
@@ -44,8 +51,9 @@ export const useBrowserBridgeStore = create<BrowserBridgeState>()((set, get) => 
   pair: async () => {
     set({ error: '' })
     const pairing = await RemoteAuthService.GeneratePairingCode()
-    set({ pairing })
+    set({ pairing, pairingBaselineCount: (get().browsers ?? []).length })
   },
+  clearPairing: () => set({ pairing: null }),
   runTest: async () => {
     set({ test: 'running', error: '' })
     try {

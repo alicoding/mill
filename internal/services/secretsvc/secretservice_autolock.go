@@ -105,10 +105,10 @@ func (s *SecretService) CopySecretToClipboard(id string) error {
 	e, err := s.vault.Get(id)
 	actx := secretaudit.AccessContext{Context: secretaudit.ContextUICopy}
 	if err != nil {
-		s.recordAccess(id, "", actx, secretaudit.OutcomeError, err.Error())
+		s.recordAccess(id, "", actx, secretaudit.OutcomeError, failureKindForVaultErr(err), err.Error())
 		return err
 	}
-	s.recordAccess(id, e.Title, actx, secretaudit.OutcomeRead, "")
+	s.recordAccess(id, e.Title, actx, secretaudit.OutcomeRead, "", "")
 	if err := clipboardWriteFn(e.Password); err != nil {
 		return err
 	}
