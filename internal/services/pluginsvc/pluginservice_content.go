@@ -98,7 +98,7 @@ func (p *PluginService) WriteContentForPlugin(pluginID string, req PluginContent
 		return PluginContentWriteResult{}, errors.New("content writes unavailable: a plugin write is always guarded and wired at the composition root")
 	}
 	decision, err := p.guardrail.RequestGuardedAction(context.Background(), guardrailsvc.GuardedAction{
-		Kind: ContentWriteKind, Attributes: attrs, Description: description, Source: "plugin:" + pluginID,
+		Kind: ContentWriteKind, Attributes: pluginActorAttributes(pluginID, plugin, attrs), Description: description, Source: "plugin:" + pluginID,
 	})
 	if err != nil {
 		return PluginContentWriteResult{}, err
