@@ -7,8 +7,11 @@ import type { PluginTheme } from './theme';
  * `settings:changed` says a stored setting moved; read the new value
  * with `call('settings.get', key)`. `contents:changed` says the board
  * changed. `ctx` carries the surface's context, on mount and on every
- * change: a capture's destination arrives here. `resize` carries the
- * `{ width, height }` of the box the page is drawn in. */
+ * change: a capture's destination arrives here, and a canvas object's
+ * face receives `{ object: { ID, Kind, Payload, Size }, mirror? }` --
+ * `mirror` only for a file-backed kind, as `{ dataUrl, failed }`.
+ * `resize` carries the `{ width, height }` of the box the page is
+ * drawn in. */
 export type MillFrameEvent = 'theme:changed' | 'settings:changed' | 'contents:changed' | 'ctx' | 'resize';
 /** What `window.acquireMillApi()` answers inside an entry page.
  *
@@ -31,7 +34,10 @@ export interface MillFrameApi {
      * `content.createNote`, `content.createCard`, `content.updateCard`,
      * `content.appendListRow`, `content.createList`, `files.list`,
      * `convert.htmlToMarkdown`, `requestGuardedAction`, `runCommand`,
-     * and, in a capture, `capture.done` and `capture.cancel`. Anything
+     * in a capture, `capture.done` and `capture.cancel`, and in a canvas
+     * object's face, `object.updatePayload` (merge a patch into this
+     * object's payload; an empty string deletes a key) and
+     * `object.setEditing` (true while your editor is open). Anything
      * else rejects, saying so by name. */
     call: (method: string, ...args: unknown[]) => Promise<unknown>;
     /** Sends a value to the plugin's own `onMessage` handler. */

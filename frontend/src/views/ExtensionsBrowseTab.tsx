@@ -8,7 +8,7 @@ import { ListToolbar } from '../shared/ListToolbar'
 import { LIST_PAGE_SIZE, clampPage, listCountLabel, pageCountFor, pageItems } from '../shared/listStandard'
 import { useListState } from '../shared/useListState'
 import { pushNotice } from '../shared/noticeStore'
-import { appTranslate, messageFor } from '../shared/userError'
+import { appTranslate, messageFor, userErrorFrom } from '../shared/userError'
 import { notifyPluginRemoved } from '../shared/pluginRemoveSignal'
 import { ExtensionsInstallDialog } from './ExtensionsInstallDialog'
 import { ExtensionsSourcesDialog } from './ExtensionsSourcesDialog'
@@ -33,6 +33,7 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
   const [sourcesOpen, setSourcesOpen] = useState(false)
   const [preview, setPreview] = useState<InstallPreview | null>(null)
   const [pending, setPending] = useState<BrowseEntry | null>(null)
+  const [refusal, setRefusal] = useState('')
   const [busy, setBusy] = useState(false)
   const { state, setPage, resetPage } = useListState('extensions-browse')
 
@@ -55,6 +56,7 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
     PluginService.PreviewInstall(entry.Marketplace, entry.ID)
       .then((pv) => {
         setPending(entry)
+        setRefusal('')
         setPreview(pv)
       })
       .catch((err) => pushNotice({ level: 'error', text: messageFor(err, appTranslate) }))
@@ -73,7 +75,13 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
         notifyPluginRemoved()
         onInstalled()
       })
-      .catch((err) => pushNotice({ level: 'error', text: messageFor(err, appTranslate) }))
+      .catch((err) => {
+        // A refusal stays in the prompt, where the reason reads next to
+        // what was about to be installed; anything else is a notice.
+        const { code } = userErrorFrom(err)
+        if (code === 'plugin-policy-refused' || code === 'plugin-install-refused') setRefusal(messageFor(err, appTranslate))
+        else pushNotice({ level: 'error', text: messageFor(err, appTranslate) })
+      })
       .finally(() => setBusy(false))
   }
 
@@ -167,7 +175,8 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
         <ExtensionsInstallDialog
           preview={preview}
           busy={busy}
-          onCancel={() => { setPreview(null); setPending(null) }}
+          refusal={refusal}
+          onCancel={() => { setPreview(null); setPending(null); setRefusal('') }}
           onInstall={confirmInstall}
         />
       )}

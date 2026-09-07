@@ -45,6 +45,14 @@ export interface CanvasObjectContribution {
     "kind": string;
     "fileExtensions": string[] | null;
     "pastesURLs": boolean;
+
+    /**
+     * Entry names an .html page inside the plugin folder that draws
+     * this kind's board face in its own sandboxed frame (goal 0349
+     * S6); empty means the legacy renderFace form drawn into Mill's
+     * own document.
+     */
+    "entry": string;
 }
 
 /**
@@ -158,6 +166,21 @@ export interface InstallPreview {
      * prompt can say "reinstall" rather than "install".
      */
     "AlreadyInstalled": boolean;
+
+    /**
+     * PolicyRefusal is the organisation policy's sentence when it
+     * refuses this install (policy_match.go), "" when it does not or
+     * no policy is set; the prompt shows it and disables Install.
+     */
+    "PolicyRefusal": string;
+
+    /**
+     * Warnings are the install checks' advisory findings
+     * (conform_install.go) for a folder that can be read before the
+     * download -- the bundled examples and folder sources -- and the
+     * recorded ones for an installed plugin.
+     */
+    "Warnings": string[] | null;
 }
 
 /**
@@ -171,6 +194,13 @@ export interface InstallRecord {
     "contentHash": string;
     "tier": string;
     "installedAt": string;
+
+    /**
+     * Warnings are the install checks' advisory findings
+     * (conform_install.go), kept so the Verification tab shows what
+     * the install prompt showed.
+     */
+    "warnings"?: string[] | null;
 }
 
 /**
@@ -477,6 +507,13 @@ export interface PluginInfo {
      * when it arrived some other way.
      */
     "Marketplace": string;
+
+    /**
+     * PolicyBlocked is the organisation policy's refusal sentence
+     * (policy_match.go), "" when no policy refuses this folder. A
+     * refused plugin stays listed and never runs.
+     */
+    "PolicyBlocked": string;
 }
 
 /**
@@ -515,6 +552,27 @@ export interface PluginSource {
     "sha": string;
     "url": string;
     "sha256": string;
+}
+
+/**
+ * PolicyView is what the Extensions banner and Settings > Security
+ * render: the read-only summary of the file on this machine.
+ */
+export interface PolicyView {
+    "Managed": boolean;
+    "ManagedBy": string;
+    "RequiredTier": string;
+    "BlockedCapabilities": string[] | null;
+    "AllowedSources": string[] | null;
+    "AllowCount": number;
+    "BlockCount": number;
+    "Path": string;
+
+    /**
+     * Error is the fail-closed sentence when the file is present but
+     * cannot be read; "" otherwise.
+     */
+    "Error": string;
 }
 
 /**

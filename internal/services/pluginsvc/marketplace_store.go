@@ -143,8 +143,19 @@ func (p *PluginService) AddMarketplaceSource(input string) (MarketplaceSource, e
 	if err != nil {
 		return MarketplaceSource{}, err
 	}
+	// The organisation's allowed sources (policy_service.go) are checked
+	// on the pasted locator BEFORE any fetch, and on the index's own
+	// name after -- a source may be allowed under either.
+	if err := policySourceRefusal("", src.Locator); err != nil {
+		if err := policySourceRefusal(src.Name, ""); err != nil {
+			return MarketplaceSource{}, err
+		}
+	}
 	idx, err := p.fetchIndex(src)
 	if err != nil {
+		return MarketplaceSource{}, err
+	}
+	if err := policySourceRefusal(idx.Name, src.Locator); err != nil {
 		return MarketplaceSource{}, err
 	}
 	src.Name = idx.Name

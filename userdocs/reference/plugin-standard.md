@@ -71,17 +71,20 @@ your plugin feels like part of Mill.
     Mill layers it over the built-in palette of the family you name,
     so declare only what you change. (checked)
 
-21. A view or capture with its own UI declares an entry page:
-    `"entry": "view.html"` beside the view or capture in your
-    manifest, pointing at an `.html` file inside your plugin folder.
+21. A view, capture or canvas object with its own UI declares an entry
+    page: `"entry": "view.html"` beside the view, capture or canvas
+    object in your manifest, pointing at an `.html` file inside your
+    plugin folder.
     Mill mounts it in a sandboxed frame where your page owns every
     element, and the page loads scripts, styles, fonts and images only
     from that folder, so ship what it needs beside it. Your script
     goes in a `.js` file the page loads with `<script src>`: an inline
     `<script>` or an `onclick` attribute never runs. `window.
     acquireMillApi()` is its door back to Mill. Styles may stay
-    inline. A surface that draws into Mill's own document instead
-    still works and warns. (checked)
+    inline. A canvas object's page receives the object as its context
+    and writes back through `object.updatePayload`; its face is
+    always interactive. A surface that draws into Mill's own document
+    instead still works; `renderFace` is the deprecated form. (checked)
 
 22. A canvas object whose face reports an open editor declares
     `content: "interactive"` on the same object. `content` says what
@@ -100,9 +103,27 @@ your plugin feels like part of Mill.
     settings, never a literal, and never a vault entry — a literal
     under a name that looks like a credential is refused. (checked)
 
+24. No code built at run time: no `eval`, no `new Function`, no
+    `import()` of a web address, no `<script src>` loading from the
+    web. This covers every `.js` and `.html` you ship, a bundled
+    library included. Checked when the plugin is installed, and a hit
+    refuses the install. (checked)
+25. Every web address written into your own code names a host you
+    declared under `contributes.network`; a `*.example.com`
+    declaration covers its subdomains. An undeclared host refuses the
+    install with *Reaches <host> without declaring it.* Addresses in
+    comments, the XML namespace host and loopback do not count; an
+    address inside a `vendor/` folder is noted to the person
+    installing rather than refused. (checked)
+26. Ship code a reader can read: a `.js` over 50 KB carries a
+    `//# sourceMappingURL`, no base64 blob over 8 KB, no long line of
+    near-random characters. A hit never refuses; the install prompt
+    and the Verification tab say *Contains code Mill can't read
+    easily.* and the person decides. (checked: warns)
+
 ## Publishing
 
-24. A marketplace is a repository or folder with `.mill/marketplace.json`
+27. A marketplace is a repository or folder with `.mill/marketplace.json`
     at its root: `{ "name", "owner": { "name", "url"? }, "plugins":
     [ { "id", "name", "description", "version", "kinds"?, "sha256"?,
     "source" } ] }`. `name` is a slug; `mill` is reserved for the
@@ -110,13 +131,13 @@ your plugin feels like part of Mill.
     (a folder beside the index), `{ "kind": "github", "repo", "ref"? }`
     or `{ "kind": "archive", "url", "sha256"? }`. Two entries may not
     share an id. (checked when the marketplace is added)
-25. A release is a git tag equal to the version (`v1.2.0` or `1.2.0`)
+28. A release is a git tag equal to the version (`v1.2.0` or `1.2.0`)
     whose assets include `<id>-<version>.zip` — the plugin folder,
     zipped, with `manifest.json` at its root or one folder down — and
     `SHA256SUMS`; sign the zip with minisign as `<zip>.minisig` when
     you can. Mill fetches the asset by that name, for an install and
     for an update.
-26. Declare the archive's `sha256` in your marketplace entry. What Mill
+29. Declare the archive's `sha256` in your marketplace entry. What Mill
     checked is the badge every installed extension wears: **Verified**
     when the hash matches and a key the user trusts signed it,
     **Hash-pinned** when only the hash matches, **Unverified** when
@@ -126,7 +147,7 @@ your plugin feels like part of Mill.
 
 ## Quality gates
 
-27. `go run ./internal/pluginconform <folder>` passes; `npm run
+30. `go run ./internal/pluginconform <folder>` passes; `npm run
     plugin:typecheck` and `npm run plugin:lint` pass. (checked)
 
 ## Checking your own plugin

@@ -3,10 +3,13 @@ package pluginsvc
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/alicoding/mill/internal/domain/usererror"
 )
 
 // The install door (docs/goals/0349, ADR-0047): one path onto disk for
@@ -63,6 +66,15 @@ type InstallPreview struct {
 	// AlreadyInstalled reports an existing folder with this id, so the
 	// prompt can say "reinstall" rather than "install".
 	AlreadyInstalled bool
+	// PolicyRefusal is the organisation policy's sentence when it
+	// refuses this install (policy_match.go), "" when it does not or
+	// no policy is set; the prompt shows it and disables Install.
+	PolicyRefusal string
+	// Warnings are the install checks' advisory findings
+	// (conform_install.go) for a folder that can be read before the
+	// download -- the bundled examples and folder sources -- and the
+	// recorded ones for an installed plugin.
+	Warnings []string
 }
 
 // PreviewInstall answers the prompt's contents for a marketplace
@@ -77,11 +89,34 @@ func (p *PluginService) PreviewInstall(marketplace, id string) (InstallPreview, 
 		Description: entry.Description, Marketplace: idx.Name, Tier: entryTier(idx.Name, entry),
 		Kinds: entry.Kinds,
 	}
-	if m, ok := p.previewManifest(idx, entry); ok {
+	m, readable := p.previewManifest(idx, entry)
+	if readable {
 		applyManifestToPreview(&pv, m)
+	} else {
+		m = Manifest{ID: entry.ID, Version: entry.Version}
+	}
+	if dir, ok := p.previewDir(idx, entry); ok {
+		_, pv.Warnings = InstallChecks(dir, m)
+	}
+	if err := policyInstallRefusal(m, pv.Tier, idx.Name, "", ""); err != nil {
+		pv.PolicyRefusal = err.Error()
 	}
 	pv.AlreadyInstalled = p.installedFolderExists(entry.ID)
 	return pv, nil
+}
+
+// previewDir answers the folder a preview's files can be read from
+// before any download: a folder source's own path. The bundled
+// examples live inside the binary and are checked as they install.
+func (p *PluginService) previewDir(idx MarketplaceIndex, entry MarketplaceEntry) (string, bool) {
+	if idx.Name == ReservedMarketplaceName || entry.Source.Kind != "path" {
+		return "", false
+	}
+	src, ok := p.sourceFor(idx.Name)
+	if !ok || src.Kind != "path" {
+		return "", false
+	}
+	return filepath.Join(expandHome(src.Locator), filepath.FromSlash(entry.Source.Path)), true
 }
 
 // previewManifest reads the manifest a preview describes, when it can
@@ -156,7 +191,9 @@ func (p *PluginService) PreviewInstalled(id string) (InstallPreview, error) {
 	applyManifestToPreview(&pv, info.Manifest)
 	if rec, ok := ReadInstallRecord(info.Dir); ok {
 		pv.Marketplace = rec.Marketplace
+		pv.Warnings = rec.Warnings
 	}
+	pv.PolicyRefusal = info.PolicyBlocked
 	return pv, nil
 }
 
@@ -218,6 +255,9 @@ func (p *PluginService) InstallFromLink(input string) (InstallRecord, error) {
 	raw := strings.TrimSpace(input)
 	if raw == "" {
 		return InstallRecord{}, fmt.Errorf("enter a repo, an address, or a folder")
+	}
+	if err := policySourceRefusal("", raw); err != nil {
+		return InstallRecord{}, err
 	}
 	stage, cleanup, err := stageDir()
 	if err != nil {
@@ -305,6 +345,14 @@ func (p *PluginService) finishInstall(stage string, rec InstallRecord) (InstallR
 	if err != nil {
 		return InstallRecord{}, err
 	}
+	// The policy and the static checks run over the STAGED folder: a
+	// refusal leaves nothing under the plugins directory, and the
+	// staging folder itself goes with the caller's deferred cleanup.
+	warnings, err := p.stagedChecks(root, rec)
+	if err != nil {
+		return InstallRecord{}, err
+	}
+	rec.Warnings = warnings
 	if err := os.MkdirAll(p.dir, 0o750); err != nil {
 		return InstallRecord{}, err
 	}
@@ -341,6 +389,53 @@ func (p *PluginService) finishInstall(stage string, rec InstallRecord) (InstallR
 		return InstallRecord{}, err
 	}
 	return rec, nil
+}
+
+// stagedChecks asks the policy and the install checks about a staged
+// folder. The policy sees the tier the staging earned and, for the
+// signed tier, which policy key signed the folder.
+func (p *PluginService) stagedChecks(root string, rec InstallRecord) ([]string, error) {
+	raw, err := os.ReadFile(filepath.Join(root, "manifest.json")) // #nosec G304 -- a staged temp folder this process just wrote
+	if err != nil {
+		return nil, fmt.Errorf("that download has no manifest.json")
+	}
+	m, parseProblem := parseManifest(raw)
+	if parseProblem != "" {
+		return nil, fmt.Errorf("%s", parseProblem)
+	}
+	hash, _ := ContentHash(root)
+	if err := policyInstallRefusal(m, rec.Tier, rec.Marketplace, root, hash); err != nil {
+		return nil, err
+	}
+	refusals, warnings := InstallChecks(root, m)
+	if len(refusals) > 0 {
+		slog.Warn("install refused by the static checks", "plugin", m.ID, "problems", refusals)
+		return nil, usererror.New(InstallRefusedCode, installRefusalSentence(refusals[0]))
+	}
+	return warnings, nil
+}
+
+// InstallRefusedCode is the error code a static-check refusal carries.
+const InstallRefusedCode = "plugin-install-refused"
+
+// installRefusalSentence turns a rule finding ("standard rule 25:
+// main.js: reaches x without declaring it") into the one sentence the
+// install prompt shows.
+func installRefusalSentence(finding string) string {
+	_, rest, found := strings.Cut(finding, ": ")
+	if !found {
+		rest = finding
+	}
+	file, detail, found := strings.Cut(rest, ": ")
+	if !found {
+		detail = rest
+		file = ""
+	}
+	sentence := strings.ToUpper(detail[:1]) + detail[1:]
+	if file != "" {
+		sentence += " (" + file + ")"
+	}
+	return sentence + "."
 }
 
 func (p *PluginService) signatureOK(dir, hash string) bool {

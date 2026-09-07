@@ -46,7 +46,9 @@ export interface ExtraPlugin {
 // ports overrides the shared runtime-plugins bases with a spec's own
 // dedicated pair (offset still applies within it), for a spec that
 // wants out of the offset arithmetic above.
-export async function launchWithPlugins(offset: number, opts: { withBroken?: boolean; withNotifier?: boolean; extraPlugins?: ExtraPlugin[]; extraExamples?: string[]; settings?: Record<string, string>; ports?: { server: number; mcp: number } } = {}) {
+// extraEnv reaches the spawned server as further environment (the
+// extension policy spec's MILL_PLUGIN_POLICY path).
+export async function launchWithPlugins(offset: number, opts: { withBroken?: boolean; withNotifier?: boolean; extraPlugins?: ExtraPlugin[]; extraExamples?: string[]; settings?: Record<string, string>; ports?: { server: number; mcp: number }; extraEnv?: Record<string, string> } = {}) {
 	const dir = mkdtempSync(path.join(tmpdir(), 'mill-plugins-e2e-'))
 	// The plugins dir is a per-test COPY of examples/plugins (the exact
 	// artifact a user copies from) -- never the repo folder itself, so
@@ -83,7 +85,7 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 		settingsPath: path.join(dir, 'settings.json'),
 		executionDbPath: path.join(dir, 'exec.db'),
 		backupDir: path.join(dir, 'backups'),
-		extraEnv: { MILL_PLUGINS_DIR: pluginsDir },
+		extraEnv: { ...(opts.extraEnv ?? {}), MILL_PLUGINS_DIR: pluginsDir },
 	})
 	const browser = await chromium.launch()
 	const context = await browser.newContext({ baseURL: `http://127.0.0.1:${serverPort}` })

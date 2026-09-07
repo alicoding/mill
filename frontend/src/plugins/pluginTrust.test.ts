@@ -26,6 +26,12 @@ describe('pluginRunState', () => {
     expect(pluginRunState('mill-a', false, { ...none, allowed: ['mill-a'] }, { contentHash: 'x', signingPolicy: true, signed: true })).toBe('run')
     expect(pluginRunState('mill-drawing', true, none, { contentHash: '', signingPolicy: true, signed: false })).toBe('run')
   })
+  it("the organisation's policy refuses ahead of every other state, and never a built-in", () => {
+    const allowed = { disabled: [], allowed: ['mill-a'], allowlist: ['mill-a'], lock: {} }
+    expect(pluginRunState('mill-a', false, allowed, { contentHash: 'x', signingPolicy: false, signed: false, policyBlocked: 'Your organisation blocks this extension.' })).toBe('policy')
+    expect(pluginRunState('mill-a', false, allowed, { contentHash: 'x', signingPolicy: false, signed: false, policyBlocked: '' })).toBe('run')
+    expect(pluginRunState('mill-drawing', true, none, { contentHash: '', signingPolicy: false, signed: false, policyBlocked: 'Your organisation blocks this extension.' })).toBe('run')
+  })
   it('turned off wins over not-yet-reviewed', () => {
     expect(pluginRunState('mill-a', false, { ...none, disabled: ['mill-a'] })).toBe('disabled')
   })

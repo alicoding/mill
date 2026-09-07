@@ -8,6 +8,8 @@ import { settingDeclsFromManifest } from '../plugins/pluginSettings'
 import { ExtensionSettingControl } from './ExtensionSettingControl'
 import { ExtensionsPermissions } from './ExtensionsPermissions'
 import { tierLabelKey, tierVariant, verificationKey } from './extensionTrust'
+import { usePluginPolicy } from '../shared/pluginPolicyStore'
+import { ExtensionsNoticed } from './ExtensionsNoticed'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './ExtensionsSection.module.css'
 
@@ -81,6 +83,7 @@ export function ExtensionsVerificationTab({ plugin, changed }: {
 }) {
   const { t } = useTranslation('views')
   const [preview, setPreview] = useState<InstallPreview | null>(null)
+  const policy = usePluginPolicy()
   const tier = plugin.Tier ?? ''
   const badgeKey = tierLabelKey(tier)
 
@@ -108,7 +111,15 @@ export function ExtensionsVerificationTab({ plugin, changed }: {
           {t(plugin.Signed ? 'extensions.verification.signaturePresent' : 'extensions.verification.signatureMissing')}
         </Text>
       )}
+      {policy?.Managed && (
+        <Text as="p" size="small" data-testid="extensions-verification-policy">
+          {plugin.PolicyBlocked
+            ? `${t('extensions.verification.policyBlocked')} ${plugin.PolicyBlocked}`
+            : t('extensions.verification.policyAllowed', { org: policy.ManagedBy })}
+        </Text>
+      )}
       <ExtensionsPermissions preview={preview} testId="extensions-verification-permissions" />
+      <ExtensionsNoticed warnings={preview?.Warnings ?? []} testId="extensions-verification-noticed" />
     </Stack>
   )
 }

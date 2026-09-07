@@ -80,6 +80,11 @@ func declaredEntries(m Manifest) []declaredEntry {
 			out = append(out, declaredEntry{kind: "capture", id: c.ID, file: c.Entry})
 		}
 	}
+	for _, o := range m.Contributes.CanvasObjects {
+		if o.Entry != "" {
+			out = append(out, declaredEntry{kind: "canvas object", id: o.Kind, file: o.Entry})
+		}
+	}
 	return out
 }
 

@@ -89,6 +89,7 @@ func PageIndex() []DocPage {
 		{"reference/register-a-command.md", "Register a command", "walks a new Command registry entry end to end, quoting a real registered command", KindReference},
 		{"reference/plugin-standard.md", "The plugin standard", "the rules a shipped plugin follows, and which ones the conformance checker enforces", KindReference},
 		{"reference/plugin-theming.md", "Plugin theming", "the theme variables a plugin renders with", KindReference},
+		{"reference/managed-extensions.md", "Managed extensions", "the organisation policy file: allow and block lists, required tier, blocked capabilities, allowed sources, and what an install checks", KindReference},
 		{"reference/plugin-api-maturity.md", "Plugin API maturity", "each contribution family's level and its proof, generated from the repository", KindReference},
 		{"agents/connect-mcp.md", "Automate with agents", "connecting over MCP and what agents can do", KindHowTo},
 		{"agents/diagrams.md", "Edit a diagram with an agent", "reading a diagram's shapes by id and adding, changing, deleting and importing them in place", KindHowTo},

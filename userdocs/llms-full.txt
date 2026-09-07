@@ -274,6 +274,10 @@ whether it writes to your boards, what it adds — and installs it only
 after you confirm. The new extension appears under **Installed**;
 reload to load it.
 
+On a Mac an organisation manages, Extensions says **Managed by
+<organisation>** and a policy file decides what may install and run;
+see [Managed extensions](managed-extensions.md).
+
 ### Installing from a link or a folder
 
 Not everything lives in a marketplace. Mill also installs from:
@@ -4191,17 +4195,20 @@ your plugin feels like part of Mill.
     Mill layers it over the built-in palette of the family you name,
     so declare only what you change. (checked)
 
-21. A view or capture with its own UI declares an entry page:
-    `"entry": "view.html"` beside the view or capture in your
-    manifest, pointing at an `.html` file inside your plugin folder.
+21. A view, capture or canvas object with its own UI declares an entry
+    page: `"entry": "view.html"` beside the view, capture or canvas
+    object in your manifest, pointing at an `.html` file inside your
+    plugin folder.
     Mill mounts it in a sandboxed frame where your page owns every
     element, and the page loads scripts, styles, fonts and images only
     from that folder, so ship what it needs beside it. Your script
     goes in a `.js` file the page loads with `<script src>`: an inline
     `<script>` or an `onclick` attribute never runs. `window.
     acquireMillApi()` is its door back to Mill. Styles may stay
-    inline. A surface that draws into Mill's own document instead
-    still works and warns. (checked)
+    inline. A canvas object's page receives the object as its context
+    and writes back through `object.updatePayload`; its face is
+    always interactive. A surface that draws into Mill's own document
+    instead still works; `renderFace` is the deprecated form. (checked)
 
 22. A canvas object whose face reports an open editor declares
     `content: "interactive"` on the same object. `content` says what
@@ -4220,9 +4227,27 @@ your plugin feels like part of Mill.
     settings, never a literal, and never a vault entry — a literal
     under a name that looks like a credential is refused. (checked)
 
+24. No code built at run time: no `eval`, no `new Function`, no
+    `import()` of a web address, no `<script src>` loading from the
+    web. This covers every `.js` and `.html` you ship, a bundled
+    library included. Checked when the plugin is installed, and a hit
+    refuses the install. (checked)
+25. Every web address written into your own code names a host you
+    declared under `contributes.network`; a `*.example.com`
+    declaration covers its subdomains. An undeclared host refuses the
+    install with *Reaches <host> without declaring it.* Addresses in
+    comments, the XML namespace host and loopback do not count; an
+    address inside a `vendor/` folder is noted to the person
+    installing rather than refused. (checked)
+26. Ship code a reader can read: a `.js` over 50 KB carries a
+    `//# sourceMappingURL`, no base64 blob over 8 KB, no long line of
+    near-random characters. A hit never refuses; the install prompt
+    and the Verification tab say *Contains code Mill can't read
+    easily.* and the person decides. (checked: warns)
+
 ## Publishing
 
-24. A marketplace is a repository or folder with `.mill/marketplace.json`
+27. A marketplace is a repository or folder with `.mill/marketplace.json`
     at its root: `{ "name", "owner": { "name", "url"? }, "plugins":
     [ { "id", "name", "description", "version", "kinds"?, "sha256"?,
     "source" } ] }`. `name` is a slug; `mill` is reserved for the
@@ -4230,13 +4255,13 @@ your plugin feels like part of Mill.
     (a folder beside the index), `{ "kind": "github", "repo", "ref"? }`
     or `{ "kind": "archive", "url", "sha256"? }`. Two entries may not
     share an id. (checked when the marketplace is added)
-25. A release is a git tag equal to the version (`v1.2.0` or `1.2.0`)
+28. A release is a git tag equal to the version (`v1.2.0` or `1.2.0`)
     whose assets include `<id>-<version>.zip` — the plugin folder,
     zipped, with `manifest.json` at its root or one folder down — and
     `SHA256SUMS`; sign the zip with minisign as `<zip>.minisig` when
     you can. Mill fetches the asset by that name, for an install and
     for an update.
-26. Declare the archive's `sha256` in your marketplace entry. What Mill
+29. Declare the archive's `sha256` in your marketplace entry. What Mill
     checked is the badge every installed extension wears: **Verified**
     when the hash matches and a key the user trusts signed it,
     **Hash-pinned** when only the hash matches, **Unverified** when
@@ -4246,7 +4271,7 @@ your plugin feels like part of Mill.
 
 ## Quality gates
 
-27. `go run ./internal/pluginconform <folder>` passes; `npm run
+30. `go run ./internal/pluginconform <folder>` passes; `npm run
     plugin:typecheck` and `npm run plugin:lint` pass. (checked)
 
 ## Checking your own plugin
@@ -4421,6 +4446,125 @@ the appearance falls back to Mill's own.
 ---
 
 
+# Managed extensions
+
+An organisation decides which extensions Mill may install and run on a
+Mac by placing one file on it. Mill reads the file every time it lists,
+loads or installs an extension, so a change takes effect on the next
+reload with nothing to restart, and nothing in Mill's own settings can
+loosen it.
+
+## The policy file
+
+```
+/Library/Application Support/Mill/plugin-policy.json
+```
+
+The file is system-wide, so device management can deploy it like any
+other managed preference. Setting `MILL_PLUGIN_POLICY=<path>` makes
+Mill read a different file instead — the way to try a policy before
+rolling it out, and what tests and server mode use.
+
+Every key:
+
+| Key | Meaning |
+| --- | --- |
+| `version` | Always `1`. |
+| `managedBy` | The organisation's name, shown in the banner above Extensions. |
+| `allow` | Rules naming the extensions that may install and run. Once the list has any entry, it is exclusive: anything it does not name is blocked. |
+| `block` | Rules naming extensions that may never install or run. A block always wins over an allow. |
+| `requiredTier` | The lowest trust tier an extension may wear: `"verified"`, `"hash-pinned"`, or `"any"` (the default). Checked when installing and every time extensions load. |
+| `blockedCapabilities` | Capabilities no extension may declare: `fetch`, `write-content`, `open-url`, `open-app`, `list-files`, `read-file`, `erase-board-items`. An extension declaring one is blocked. |
+| `allowedSources` | Marketplace names and addresses installs may come from. Once set, Add source, Browse installs and installs from a link are limited to them. |
+
+A rule in `allow` or `block` is `{ "id", "publisherKey", "versions" }`,
+with at least one of `id` (the extension's id) or `publisherKey` (the
+minisign public key that signs it). `versions` narrows the rule to a
+range — `"^1.2"`, `">=1 <2"` — and a version Mill cannot read counts as
+blocked, never as allowed.
+
+## What people see
+
+- Extensions shows **Managed by <organisation>** above every tab.
+- A blocked extension stays in the Installed list, marked **Blocked by
+  your organisation's policy**, and its details say why: the block
+  list, the required tier, a blocked capability. It never runs.
+- Installing a blocked extension stops at the prompt with the same
+  reason, before anything downloads or lands.
+- The **Verification** tab says whether the policy allows or blocks the
+  extension.
+- **Settings › Security** shows the whole policy, read-only.
+
+## When the file cannot be read
+
+A present file that is not valid blocks every extension that is not
+built into Mill, and Extensions says so: *The extension policy file
+can't be read. Ask your administrator.* The detail is in Mill's log.
+This is deliberate — a broken policy closes the door rather than
+opening it.
+
+## Examples for a bank
+
+Only two named extensions, both required to be signed and verified,
+from the bank's own marketplace:
+
+```json
+{
+  "version": 1,
+  "managedBy": "Example Bank",
+  "allow": [
+    { "id": "bank-reconcile", "publisherKey": "RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3" },
+    { "id": "bank-tickets", "versions": "^2" }
+  ],
+  "requiredTier": "verified",
+  "allowedSources": ["bank-market"]
+}
+```
+
+Anything may install, but nothing that reaches the network:
+
+```json
+{
+  "version": 1,
+  "managedBy": "Example Bank",
+  "blockedCapabilities": ["fetch"]
+}
+```
+
+One extension is blocked below a fixed version:
+
+```json
+{
+  "version": 1,
+  "managedBy": "Example Bank",
+  "block": [{ "id": "acme-notes", "versions": "<1.4.0" }],
+  "requiredTier": "hash-pinned"
+}
+```
+
+## What an install checks
+
+Every install also reads the extension's files before enabling it,
+policy or not:
+
+- Code that builds code at run time — `eval`, `new Function`, an
+  `import()` of a web address, a script tag loading from the web — is
+  refused.
+- A web address written into the extension's own code whose host it
+  never declared under `contributes.network` is refused: *Reaches
+  <host> without declaring it.* Comments, the XML namespace host and
+  loopback addresses do not count; an address inside a bundled library
+  (a `vendor/` folder) is noted rather than refused.
+- Code Mill cannot read easily — a large script with no source map, an
+  embedded base64 blob, a long line of near-random characters — is
+  noted, not refused: *Contains code Mill can't read easily.* The note
+  shows in the install prompt and again on the Verification tab.
+
+A refused install leaves nothing on disk.
+
+---
+
+
 # Plugin API maturity
 
 3 of 11 contribution families are stable; 0 ready to promote; 0 regressed.
@@ -4430,11 +4574,11 @@ the appearance falls back to Mill's own.
 | canvasObjects | experimental | no | yes | yes | yes | yes | yes | 0 | — |
 | steps | experimental | no | yes | yes | yes | no | yes | 0 | — |
 | captures | experimental | no | no | yes | yes | yes | n/a | 0 | — |
-| settings | stable | yes | yes | yes | yes | yes | n/a | 0 | — |
+| settings | stable | yes | yes | yes | yes | yes | n/a | 1 | — |
 | network | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
 | views | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
 | commands | stable | yes | yes | yes | yes | yes | yes | 0 | — |
-| themes | stable | yes | yes | yes | yes | yes | n/a | 0 | — |
+| themes | stable | yes | yes | yes | yes | yes | n/a | 1 | — |
 | secretSources | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
 | tools | experimental | no | yes | no | yes | no | yes | 0 | — |
 | mcpServers | experimental | no | yes | no | yes | no | no | 0 | — |

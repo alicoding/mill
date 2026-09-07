@@ -64,6 +64,9 @@ func validateCanvasObjectContributions(objects []CanvasObjectContribution) strin
 				return fmt.Sprintf("contributed file extension %q must look like \".ext\" in lowercase", ext)
 			}
 		}
+		if problem := entryPathProblem("canvas object", obj.Kind, obj.Entry); problem != "" {
+			return problem
+		}
 	}
 	return ""
 }
@@ -118,6 +121,11 @@ func entryFileProblem(m Manifest, exists func(rel string) bool) string {
 	for _, c := range m.Contributes.Captures {
 		if c.Entry != "" && !exists(c.Entry) {
 			return fmt.Sprintf("capture %q entry %q is missing", c.ID, c.Entry)
+		}
+	}
+	for _, o := range m.Contributes.CanvasObjects {
+		if o.Entry != "" && !exists(o.Entry) {
+			return fmt.Sprintf("canvas object %q entry %q is missing", o.Kind, o.Entry)
 		}
 	}
 	return ""

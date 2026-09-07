@@ -60,6 +60,23 @@ const CAPABILITY_LINE: Record<string, string> = {
 
 const CAPABILITY_ORDER = ['write-content', 'list-files', 'open-url', 'open-app', 'erase-board-items']
 
+// capabilityDeedKey names one capability the way Settings > Security
+// lists the blocked ones: what an extension with it could do. An
+// unknown id falls back to the raw id rather than disappearing.
+const CAPABILITY_DEED: Record<string, string> = {
+  fetch: 'extensions.capability.fetch',
+  'write-content': 'extensions.capability.write-content',
+  'open-url': 'extensions.capability.open-url',
+  'open-app': 'extensions.capability.open-app',
+  'list-files': 'extensions.capability.list-files',
+  'read-file': 'extensions.capability.read-file',
+  'erase-board-items': 'extensions.capability.erase-board-items',
+}
+
+export function capabilityDeedKey(capability: string): string {
+  return CAPABILITY_DEED[capability] ?? capability
+}
+
 // permissionLines is what the install prompt and the Verification tab
 // both render: everything the manifest declares, in one order, with
 // nothing inferred. An extension declaring nothing gets one honest
@@ -118,4 +135,11 @@ const ADDS_LINE: Record<string, string> = {
   themes: 'extensions.can.addsThemes',
   tools: 'extensions.can.addsTools',
   mcpServers: 'extensions.can.addsMcpServers',
+}
+
+// withoutRuleNumber strips the "standard rule N: " prefix an install
+// check's finding carries: the number is the author's handle into the
+// standard, not something a person installing needs to read.
+export function withoutRuleNumber(line: string): string {
+  return line.replace(/^standard rule \d+: /, '')
 }
