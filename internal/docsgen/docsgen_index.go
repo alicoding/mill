@@ -93,6 +93,8 @@ func PageIndex() []DocPage {
 		{"reference/plugin-api-maturity.md", "Plugin API maturity", "each contribution family's level and its proof, generated from the repository", KindReference},
 		{"agents/connect-mcp.md", "Automate with agents", "connecting over MCP and what agents can do", KindHowTo},
 		{"agents/diagrams.md", "Edit a diagram with an agent", "reading a diagram's shapes by id and adding, changing, deleting and importing them in place", KindHowTo},
+		{"agents/sheets.md", "Edit a sheet with an agent", "reading a sheet's cells by range and changing named cells in place", KindHowTo},
+		{"agents/lists.md", "Add a row with an agent", "reading a List's columns and rows and appending a new row to an existing one", KindHowTo},
 		{"agents/plugins.md", "What plugins expose to agents", "listing installed plugins, calling a plugin's declared tools, and how a plugin write parks", KindHowTo},
 		{"agents/agent-hooks.md", "Fire a workflow from an agent's hook", "minting a hook token and posting to the hook endpoint so a tool's hook fires a workflow", KindHowTo},
 	}

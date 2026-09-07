@@ -47,5 +47,7 @@
 
 - [Automate with agents](agents/connect-mcp.md): connecting over MCP and what agents can do
 - [Edit a diagram with an agent](agents/diagrams.md): reading a diagram's shapes by id and adding, changing, deleting and importing them in place
+- [Edit a sheet with an agent](agents/sheets.md): reading a sheet's cells by range and changing named cells in place
+- [Add a row with an agent](agents/lists.md): reading a List's columns and rows and appending a new row to an existing one
 - [What plugins expose to agents](agents/plugins.md): listing installed plugins, calling a plugin's declared tools, and how a plugin write parks
 - [Fire a workflow from an agent's hook](agents/agent-hooks.md): minting a hook token and posting to the hook endpoint so a tool's hook fires a workflow

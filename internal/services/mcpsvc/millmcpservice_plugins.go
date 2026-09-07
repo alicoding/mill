@@ -153,6 +153,7 @@ func (m *MillMCPService) registerPluginTools() {
 			"canvas object kinds, palette command ids, workflow step ids, agent-callable tool names, and how " +
 			"many views and captures it adds. A turned-off plugin is listed with enabled false and contributes " +
 			"nothing callable. Its tools appear in the tool list as plugin_<pluginId>_<toolName>. Read-only.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
 		res, err := jsonResult(m.listPluginsResult())
 		return res, nil, err
