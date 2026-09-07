@@ -1,5 +1,3 @@
-import { escapeAttr } from './docsHeadings'
-
 // Copy-icon/check-icon SVG markup, byte-identical to @primer/octicons-react's
 // CopyIcon/CheckIcon 16px path data -- the same icon vocabulary
 // CopyDiagnosisButton already uses for every other copy action in the
@@ -17,14 +15,6 @@ export const CHECK_ICON_SVG =
   '<path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>' +
   '</svg>'
 
-// Matches goldmark's own fenced/indented code-block output exactly:
-// <pre><code class="language-xxx">...</code></pre> with a fence info
-// string, or <pre><code>...</code></pre> without one. Code content is
-// goldmark's own HTML-escaped text, so a literal "</code>" can never
-// appear inside it -- same controlled-content assumption docsHeadings'
-// HEADING_RE already relies on.
-const CODE_BLOCK_RE = /<pre><code([^>]*)>([\s\S]*?)<\/code><\/pre>/g
-
 // injectCodeCopyButtons wraps every rendered code block in a
 // hover-revealed copy button (goal 0235 S3) -- wrapperClassName drives
 // position:relative + the hover-reveal rule, buttonClassName the
@@ -32,18 +22,31 @@ const CODE_BLOCK_RE = /<pre><code([^>]*)>([\s\S]*?)<\/code><\/pre>/g
 // DocsView's delegated click handler reads the RAW code text straight
 // off the sibling <pre><code> at click time (its .textContent is
 // already entity-decoded by the browser) rather than round-tripping it
-// through a data attribute.
+// through a data attribute. Parsed via DOMParser (goal 0382): moving
+// the existing <pre> node into its wrapper keeps every attribute and
+// nested tag goldmark emitted, without re-deriving them by hand.
 export function injectCodeCopyButtons(
   html: string,
   wrapperClassName: string,
   buttonClassName: string,
   copyLabel: string,
 ): string {
-  const label = escapeAttr(copyLabel)
-  return html.replace(CODE_BLOCK_RE, (_match, attrs: string, inner: string) => {
-    return (
-      `<div class="${wrapperClassName}" data-testid="docs-code-block"><pre><code${attrs}>${inner}</code></pre>` +
-      `<button type="button" class="${buttonClassName}" data-testid="docs-code-copy" aria-label="${label}">${COPY_ICON_SVG}</button></div>`
-    )
-  })
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  for (const code of Array.from(doc.querySelectorAll('pre > code'))) {
+    const pre = code.parentElement
+    if (!pre || pre.children.length !== 1) continue
+    const wrapper = doc.createElement('div')
+    wrapper.setAttribute('class', wrapperClassName)
+    wrapper.setAttribute('data-testid', 'docs-code-block')
+    pre.replaceWith(wrapper)
+    wrapper.appendChild(pre)
+    const button = doc.createElement('button')
+    button.setAttribute('type', 'button')
+    button.setAttribute('class', buttonClassName)
+    button.setAttribute('data-testid', 'docs-code-copy')
+    button.setAttribute('aria-label', copyLabel)
+    button.innerHTML = COPY_ICON_SVG
+    wrapper.appendChild(button)
+  }
+  return doc.body.innerHTML
 }
