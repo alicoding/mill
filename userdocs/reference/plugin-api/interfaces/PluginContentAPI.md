@@ -152,6 +152,36 @@ position defaults to just right of the parent's right-most item.
 
 ***
 
+### setCardFields
+
+```ts
+setCardFields: (cardId, fields) => Promise<PluginWriteResult>;
+```
+
+Merge-writes named field values onto one card: keys already on
+the card survive, keys you name take the new value, and a value
+of '' clears its key. When the card's kind has not declared a
+written key yet, Mill declares it on the kind first (additive
+only). Needs the "edit-card-fields" capability; evaluated as the
+guarded action kind card.set-fields and recorded under the
+plugin's own place in undo history.
+
+#### Parameters
+
+##### cardId
+
+`string`
+
+##### fields
+
+`Record`\<`string`, `string`\>
+
+#### Returns
+
+`Promise`\<[`PluginWriteResult`](PluginWriteResult.md)\>
+
+***
+
 ### updateCard
 
 ```ts

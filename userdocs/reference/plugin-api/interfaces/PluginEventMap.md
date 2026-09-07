@@ -20,8 +20,19 @@ convention.
 contents:changed: object;
 ```
 
+kind names WHICH family changed — 'card', 'note', a board
+object's own kind, etc. — so a filtered subscriber does not
+re-query on changes it ignores. Undefined when Mill could not
+say.
+
 #### id
 
 ```ts
 id: string;
+```
+
+#### kind?
+
+```ts
+optional kind?: string;
 ```

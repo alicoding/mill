@@ -34,7 +34,7 @@ test('the installed list wears the toolbar and collapses Built in once real plug
     // Built in starts collapsed: the row is not rendered at all, not
     // merely hidden.
     const toggle = page.getByTestId('extensions-built-in-toggle')
-    await expect(toggle).toHaveText('Built in (1)')
+    await expect(toggle).toHaveText('Built in (2)') // count: mill-drawing + mill-roadmap (goal 0357)
     await expect(toggle).toHaveAttribute('aria-expanded', 'false')
     await expect(pluginRow(page, 'mill-drawing')).toHaveCount(0)
 

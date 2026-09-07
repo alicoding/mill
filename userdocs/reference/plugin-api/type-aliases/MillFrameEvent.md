@@ -22,7 +22,9 @@ swapped the page's own theme variables by the time it fires, so
 only a page that paints pixels itself needs to listen.
 `settings:changed` says a stored setting moved; read the new value
 with `call('settings.get', key)`. `contents:changed` says the board
-changed. `ctx` carries the surface's context, on mount and on every
+changed, carrying `{ id, kind }` — `kind` names WHICH family changed
+('card', 'note', ...) so a page re-drawing on only some ignores the
+rest. `ctx` carries the surface's context, on mount and on every
 change: a capture's destination arrives here, and a canvas object's
 face receives `{ object: { ID, Kind, Payload, Size }, mirror? }` --
 `mirror` only for a file-backed kind, as `{ dataUrl, failed }`.

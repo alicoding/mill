@@ -2581,6 +2581,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.arrange` | Auto-arrange | — | atlas | Conditional — available only in a matching state |
 | `atlas.board.addCard` | Add card here | — | atlas | Acts on the board's current selection |
 | `atlas.board.addNote` | Add note here | — | atlas | Acts on the board's current selection |
+| `atlas.board.home` | Back to the board | — | atlas | Always available |
 | `atlas.card.addLinkedCard` | Add linked card… | — | atlas | Acts on the board's current selection |
 | `atlas.card.copyContext` | Copy card as context | — | atlas | Acts on the board's current selection |
 | `atlas.card.copyLink` | Copy card link | — | atlas | Acts on the board's current selection |
@@ -2627,7 +2628,6 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.openFocused` | Open or zoom the focused card | `↩` | atlas | Always available |
 | `atlas.perspective` | Open perspective switcher | — | atlas | Always available |
 | `atlas.redo` | Redo | — | atlas | Always available |
-| `atlas.roadmap` | Open roadmap | — | atlas | Always available |
 | `atlas.selectAll` | Select all | `⌘A` | atlas | Always available |
 | `atlas.selection.addToPerspective` | Add to perspective | — | atlas | Acts on the board's current selection |
 | `atlas.selection.copyAsImage` | Copy as image | — | atlas | Conditional — available only in a matching state |
@@ -2955,7 +2955,6 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Redo | — | `atlas.redo` |
 | Open traceability matrix | — | `atlas.matrix` |
 | Open coverage | — | `atlas.coverage` |
-| Open roadmap | — | `atlas.roadmap` |
 | Auto-arrange | — | `atlas.arrange` |
 | Contents | — | `atlas.contents.open` |
 | Import atlas | — | `atlas.import` |
@@ -4300,6 +4299,13 @@ your plugin feels like part of Mill.
 
 30. `go run ./internal/pluginconform <folder>` passes; `npm run
     plugin:typecheck` and `npm run plugin:lint` pass. (checked)
+
+## Board views
+
+31. A view placed in the Atlas board's own switcher
+    (`"placement": "board-switcher"`) that writes card fields through
+    `api.content.setCardFields` declares the `edit-card-fields`
+    capability. (checked)
 
 ## Checking your own plugin
 

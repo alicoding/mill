@@ -37,10 +37,10 @@ describe('atlas board-view state (goal 0355 S2)', () => {
 
   it('the write never clobbers a card deep link already stored on the view', () => {
     useAppStore.getState().setView({ kind: 'atlas', cardID: 'card-1' })
-    useAppStore.getState().setAtlasBoardView('roadmap')
+    useAppStore.getState().setAtlasBoardView('plugin:mill-roadmap.roadmap')
     const v = useAppStore.getState().view
     expect(v.kind === 'atlas' && v.cardID).toBe('card-1')
-    expect(activeView()).toBe('roadmap')
+    expect(activeView()).toBe('plugin:mill-roadmap.roadmap')
   })
 
   it('the write is a no-op while Atlas is not the current view', () => {

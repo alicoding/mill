@@ -19,7 +19,7 @@ import {
   type WorkTabSpec,
 } from './workTabs'
 import { redirectRetiredView } from './viewRedirects'
-import { viewFor, viewsEqual, type AtlasBoardView, type View } from './viewKinds'
+import { normalizeAtlasBoardView, viewFor, viewsEqual, type AtlasBoardView, type View } from './viewKinds'
 
 // Re-exported so every existing `from '../shared/store'` import of
 // WorkTab/WorkTabSpec (app/WorkTabShell.tsx, composition/
@@ -458,6 +458,11 @@ export const useAppStore = create<AppState>()(
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<AppState>
         const { workTabs, activeWorkTabKey } = restoreWorkTabSnapshot(p.workTabs, p.activeWorkTabKey)
+        // The persisted boardView reads through the one mapping
+        // (viewKinds.normalizeAtlasBoardView): a 'roadmap' stored
+        // before the Roadmap became a plugin-contributed pane, and
+        // any since-unknown value, resolves here on read.
+        if (p.view?.kind === 'atlas') p.view = { ...p.view, boardView: normalizeAtlasBoardView(p.view.boardView) }
         // A tab whose entity was deleted since the snapshot was taken
         // still degrades gracefully one step later, once
         // WorkTabShell's own pruneWorkTabs effect runs against the

@@ -25,6 +25,22 @@ func TestValidateViews_EntryMustBeHTML(t *testing.T) {
 	}
 }
 
+// The placement vocabulary (docs/goals/0357): omitted and "tab" both
+// mean an ordinary work tab, "board-switcher" lists the view in the
+// Atlas board's own switcher, and anything else is a load refusal.
+func TestValidateViews_PlacementVocabulary(t *testing.T) {
+	for _, placement := range []string{"", "tab", "board-switcher"} {
+		if problem := validateViews([]ViewContribution{{ID: "panel", Title: "Panel", Entry: "view.html", Placement: placement}}); problem != "" {
+			t.Fatalf("placement %q should validate, got %q", placement, problem)
+		}
+	}
+	problem := validateViews([]ViewContribution{{ID: "panel", Title: "Panel", Entry: "view.html", Placement: "sidebar"}})
+	want := `contributed view "panel" has an unknown placement "sidebar" (tab or board-switcher)`
+	if problem != want {
+		t.Fatalf("unknown placement: got %q, want %q", problem, want)
+	}
+}
+
 func TestValidateViews_EntryMustStayInsideTheFolder(t *testing.T) {
 	for _, entry := range []string{"../other/view.html", "/etc/view.html", "https://example.com/view.html"} {
 		problem := validateViews([]ViewContribution{{ID: "panel", Title: "Panel", Entry: entry}})

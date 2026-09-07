@@ -17,11 +17,15 @@ import { waitForAppReady } from './fixtures/appReady'
 // (fixtures/wailsRpc.ts) and deleted before the test ends.
 const COMPOSITION = 'github.com/alicoding/mill/internal/services/compositionsvc.CompositionService.'
 
+// Roadmap is the bundled mill-roadmap plugin (goal 0357): its pane
+// content is a sandboxed iframe (PluginFrame), identified by the
+// standard plugin-view host testid rather than a `data-component`
+// marker the built-in panes carry on their own root element.
 const VIEWS = [
   { segment: 'atlas-open-contents', dataView: 'list', paneComponent: 'atlas-contents-pane' },
   { segment: 'atlas-open-matrix', dataView: 'matrix', paneComponent: 'atlas-matrix-pane' },
   { segment: 'atlas-open-coverage', dataView: 'coverage', paneComponent: 'atlas-coverage-pane' },
-  { segment: 'atlas-open-roadmap', dataView: 'roadmap', paneComponent: 'atlas-roadmap-pane' },
+  { segment: 'atlas-open-plugin-mill-roadmap-roadmap', dataView: 'plugin:mill-roadmap.roadmap', paneComponent: 'plugin-view-mill-roadmap-roadmap' },
 ] as const
 
 async function assertView(page: Page, dataView: string, paneComponent: string | null): Promise<void> {
@@ -32,7 +36,8 @@ async function assertView(page: Page, dataView: string, paneComponent: string | 
   }
   const pane = page.getByTestId('atlas-projection-pane')
   await expect(pane).toHaveAttribute('data-view', dataView)
-  await expect(page.locator(`[data-component="${paneComponent}"]`)).toBeVisible()
+  const paneContent = paneComponent.startsWith('plugin-view-') ? page.getByTestId(paneComponent) : page.locator(`[data-component="${paneComponent}"]`)
+  await expect(paneContent).toBeVisible()
   // The pane replaces the canvas in place: no dialog chrome, no
   // backdrop, anywhere on the page.
   await expect(page.getByRole('dialog')).toHaveCount(0)

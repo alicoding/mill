@@ -9,12 +9,38 @@ import type { Capability } from '../../bindings/github.com/alicoding/mill/intern
 // Discriminated union, not a plain string id: 'placeholder' always
 // carries which capability it's standing in for, so PlaceholderView never
 // has to guess or fall back to a default.
-// Which of the five ways of looking at an Atlas space is active (goal
-// 0355 S2): the canvas itself, or one of the four projections -- panes
-// in the board's own content region the view switcher swaps in place.
-// Declared in shared/ (not atlas/): it is a field OF the persisted View
-// union below, and shared/ may not import from atlas/.
-export type AtlasBoardView = 'board' | 'list' | 'matrix' | 'coverage' | 'roadmap'
+// Which of the ways of looking at an Atlas space is active (goal 0355
+// S2): the canvas itself, one of the four built-in projections, or a
+// plugin-contributed view ('plugin:<pluginId>.<viewId>' -- goal 0357) --
+// panes in the board's own content region the view switcher swaps in
+// place. Declared in shared/ (not atlas/): it is a field OF the
+// persisted View union below, and shared/ may not import from atlas/.
+export type AtlasBoardView = 'board' | 'list' | 'matrix' | 'coverage' | `plugin:${string}`
+
+// normalizeAtlasBoardView is the ONE read-side mapping persisted board
+// views pass through (goal 0357): 'roadmap' was the roadmap projection's
+// own literal before it became the bundled mill-roadmap plugin's pane,
+// so a stored value from before that move maps onto the plugin's pane
+// id here -- a mapping function, never a migration script. Unknown
+// values fall back to the Board rather than stranding the window on a
+// pane nothing renders.
+export function normalizeAtlasBoardView(raw: string | undefined): AtlasBoardView {
+  if (raw === 'roadmap') return 'plugin:mill-roadmap.roadmap'
+  if (raw === 'list' || raw === 'matrix' || raw === 'coverage') return raw
+  if (raw !== undefined && raw.startsWith('plugin:')) return raw as AtlasBoardView
+  return 'board'
+}
+
+// parsePluginBoardView splits the 'plugin:<pluginId>.<viewId>' form a
+// plugin-contributed pane persists as (goal 0357); null for a core
+// view. The plugin id holds no dot, so the first dot splits the pair.
+export function parsePluginBoardView(view: AtlasBoardView): { pluginId: string; viewId: string } | null {
+  if (!view.startsWith('plugin:')) return null
+  const rest = view.slice('plugin:'.length)
+  const dot = rest.indexOf('.')
+  if (dot === -1) return null
+  return { pluginId: rest.slice(0, dot), viewId: rest.slice(dot + 1) }
+}
 
 export type View =
   | { kind: 'home' }

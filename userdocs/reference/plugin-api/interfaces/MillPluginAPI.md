@@ -57,6 +57,21 @@ files: PluginFilesAPI;
 
 ***
 
+### kinds
+
+```ts
+kinds: () => Promise<KindInfo[]>;
+```
+
+Lists the board's card kinds: the schema each card's own `fields`
+values read against.
+
+#### Returns
+
+`Promise`\<[`KindInfo`](KindInfo.md)[]\>
+
+***
+
 ### millVersion
 
 ```ts
@@ -88,10 +103,13 @@ Shows a notice and returns its dismiss function.
 ### on
 
 ```ts
-on: <K>(event, handler) => () => void;
+on: <K>(event, handler, filter?) => () => void;
 ```
 
 Subscribes to a host event and returns the unsubscribe function.
+filter narrows delivery: a 'contents:changed' filter { kinds }
+delivers only changes of those kinds ('card' changes, say), so a
+view re-querying on every change pays only for its own.
 
 #### Type Parameters
 
@@ -109,9 +127,36 @@ Subscribes to a host event and returns the unsubscribe function.
 
 (`payload`) => `void`
 
+##### filter?
+
+###### kinds?
+
+`string`[]
+
 #### Returns
 
 () => `void`
+
+***
+
+### open
+
+```ts
+open: (cardId) => void;
+```
+
+Opens one card the way a projection's own card click does: the
+board view, with that card's page on top of it.
+
+#### Parameters
+
+##### cardId
+
+`string`
+
+#### Returns
+
+`void`
 
 ***
 

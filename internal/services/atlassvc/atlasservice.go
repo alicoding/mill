@@ -22,6 +22,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/domain/atlas"
 	"github.com/alicoding/mill/internal/domain/typedfield"
+	"github.com/alicoding/mill/internal/services/dataevent"
 )
 
 // atlasStateKey is the single settings-store key holding every Atlas
@@ -96,6 +97,11 @@ type AtlasService struct {
 	// same own-family posture as notes above.
 	objects []atlas.BoardObject
 	lenses  map[string]atlas.LensSetting
+	// entityKinds is the lock-free id -> family index dataevent's atlas
+	// events resolve against (atlasentitykind.go): append-only, kept in
+	// step at restore/persistLocked, never read under a.mu by the
+	// resolver itself.
+	entityKinds sync.Map
 	// mirrorsDir is the Mill-owned root directory a space's lazily-
 	// created mirror folder lives under (goal 0063's share model,
 	// atlasservice_share.go) -- set once from main.go via
@@ -175,6 +181,7 @@ func NewAtlasService(store settings.Store) *AtlasService {
 		imageURLFetcher: fetchImageURLBytes,
 	}
 	a.restore()
+	dataevent.RegisterKindResolver("atlas", a.dataeventKindOf)
 	a.reconcileBuiltIns()
 	a.populateDenseFixture()
 	a.armExistingMirrorWatches()
@@ -216,6 +223,7 @@ func (a *AtlasService) restore() {
 	}
 	a.session = state.Session
 	a.perspectives = state.Perspectives
+	a.indexEntityKindsLocked()
 
 	// Boot-time tombstone purge (goal 0093): unlocked here is safe --
 	// restore only ever runs once, during construction, before the
@@ -244,6 +252,7 @@ func (a *AtlasService) persistLocked() error {
 	if err := a.store.Set(atlasStateKey, string(data)); err != nil {
 		return fmt.Errorf("persist atlas state: %w", err)
 	}
+	a.indexEntityKindsLocked()
 	return nil
 }
 

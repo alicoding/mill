@@ -90,10 +90,11 @@ export function AtlasViewOverlays({
       {openNote && <AtlasNoteOverlay key={openNote.ID} note={openNote} onClose={onCloseNote} />}
       {editingDiagramObject && <DrawioEditorDialog key={editingDiagramObject.ID} object={editingDiagramObject} onClose={onCloseEditDiagram} />}
 
-      {/* The four projections (List/Matrix/Coverage/Roadmap) are panes
-          of the board's region now (goal 0355 S2), rendered by
-          AtlasProjectionPane in place of the canvas -- never overlays;
-          AtlasKindManager stays a dialog (it's an editor, not a view). */}
+      {/* The projections (List/Matrix/Coverage and every contributed
+          board-switcher view, goal 0357) are panes of the board's region
+          now (goal 0355 S2), rendered by AtlasProjectionPane in place of
+          the canvas -- never overlays; AtlasKindManager stays a dialog
+          (it's an editor, not a view). */}
       <AtlasKindManager open={kindsOpen} onClose={onCloseKinds} kinds={allKinds} linkKinds={allLinkKinds} />
     </>
   )
