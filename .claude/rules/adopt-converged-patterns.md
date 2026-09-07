@@ -9,9 +9,8 @@ on it.** Typing, dragging, selecting, undo, a menu must each feel
 *borrowed* from the tool people already use, never invented. The
 novelty budget buys the surface and the guardrails; interactions are
 adopted. Inventing one requires showing the **surface
-itself demands it** — no converged pattern fits. Otherwise adopt
-(`architecture.md`'s Research → Adopt → Compose, `frontend.md`'s kit
-first).
+itself demands it** — no converged pattern fits. Otherwise adopt per
+`architecture.md` and `frontend.md`.
 
 ## The dispatch lock — adoption is decided before dispatch
 
@@ -52,9 +51,9 @@ legacy.
 
 Every "I want X" splits: **Business** — the outcome wanted.
 **Platform** — the eng decision, whose first question is *why not a
-commodity?* Specialized authoring (drawing, spreadsheets, rich
-documents) → a **commodity extension**, never rebuilt in Mill. Content
-management / always-on / agent (MCP) reach → **Mill's API**.
+commodity?* Specialized authoring → a **commodity extension**, never
+rebuilt in Mill. Content management / always-on / agent (MCP) reach →
+**Mill's API**.
 
 ## The two-plane boundary
 
