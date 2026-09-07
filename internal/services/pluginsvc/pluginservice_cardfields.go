@@ -52,10 +52,10 @@ func (p *PluginService) SetCardFieldsForPlugin(pluginID, cardID string, fields m
 	}
 	decision, err := p.guardrail.RequestGuardedAction(context.Background(), guardrailsvc.GuardedAction{
 		Kind: CardFieldsKind,
-		Attributes: map[string]string{
+		Attributes: pluginActorAttributes(pluginID, plugin, map[string]string{
 			"cardId": cardID,
 			"fields": strings.Join(keys, ","),
-		},
+		}),
 		Description: fmt.Sprintf("Set field values on card %s", cardID),
 		Source:      "plugin:" + pluginID,
 	})

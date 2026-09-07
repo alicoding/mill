@@ -9,9 +9,6 @@ import {
 } from './fixtures/server'
 import { ATLAS_KIND_TOPIC } from './fixtures/kindPicker'
 import { createCardViaTray, noteCard } from './fixtures/atlasBoard'
-import { callBindingViaRPC } from './fixtures/wailsRpc'
-
-const GUARDRAIL = 'github.com/alicoding/mill/internal/services/guardrailsvc.GuardrailService.'
 
 // The Roadmap view's empty state (docs/goals/0225, defect class
 // dead-end-instruction): a sentence naming an action needs the
@@ -88,16 +85,11 @@ async function dragRoadmapChip(frame: FrameLocator, cardTitle: string, toCell: L
 }
 
 // Every plugin write is guarded (docs/goals/0357's edit-card-fields
-// door rides the same guardrail plane content writes do): with no
-// allow rule seeded, the class default parks it for a decision. The
-// established e2e pattern (runtime-plugin-view-frame.spec.ts) polls
-// the pending list and answers it, standing in for the approval a
-// person would give from the Review queue.
-async function approvePendingFieldWrite(page: Page): Promise<void> {
-  await expect.poll(async () => (await callBindingViaRPC<{ ID: string }[]>(page, GUARDRAIL + 'PendingGuardedActions', [])).length).toBeGreaterThan(0)
-  const pending = await callBindingViaRPC<{ ID: string }[]>(page, GUARDRAIL + 'PendingGuardedActions', [])
-  await callBindingViaRPC(page, GUARDRAIL + 'ResolveGuardedAction', [pending[0].ID, true])
-}
+// door rides the same guardrail plane content writes do), but a
+// BUNDLED plugin's card-field write is decided by the seeded
+// "Allow bundled extensions to edit card fields" rule (docs/goals/0357
+// S1b): mill-roadmap's writes resolve immediately, with no pending
+// action ever parked and nothing here to answer.
 
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
 test('empty roadmap shows the skeleton + Place cards door; the picker auto-declares Horizon and drags move a chip between columns (goal 0225)', async ({}, testInfo) => {
@@ -134,7 +126,6 @@ test('empty roadmap shows the skeleton + Place cards door; the picker auto-decla
     // column's picker, pick the card.
     await frame.getByTestId('atlas-roadmap-place-cards-now').click()
     await frame.getByTestId('atlas-roadmap-picker-item').filter({ hasText: cardTitle }).click()
-    await approvePendingFieldWrite(page)
 
     // The quiet toast is the plugin's own pane-local rendering (its
     // page, inside the frame), the same surface the board itself uses.
@@ -154,7 +145,6 @@ test('empty roadmap shows the skeleton + Place cards door; the picker auto-decla
     await openToolbarAction(page, 'atlas-open-plugin-mill-roadmap-roadmap')
     await expect(host).toBeVisible()
     await dragRoadmapChip(frame, cardTitle, roadmapCell(frame, 'Topic', 'then'))
-    await approvePendingFieldWrite(page)
     await page.keyboard.press('Escape')
     await openToolbarAction(page, 'atlas-open-plugin-mill-roadmap-roadmap')
     await expect(roadmapCell(frame, 'Topic', 'then').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toBeVisible()
@@ -162,7 +152,6 @@ test('empty roadmap shows the skeleton + Place cards door; the picker auto-decla
 
     // Drag to Unscheduled clears the tag, also persisted.
     await dragRoadmapChip(frame, cardTitle, roadmapCell(frame, 'Topic', 'unscheduled'))
-    await approvePendingFieldWrite(page)
     await page.keyboard.press('Escape')
     await openToolbarAction(page, 'atlas-open-plugin-mill-roadmap-roadmap')
     await expect(roadmapCell(frame, 'Topic', 'unscheduled').getByTestId('atlas-roadmap-chip').filter({ hasText: cardTitle })).toBeVisible()

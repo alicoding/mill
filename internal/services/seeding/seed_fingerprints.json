@@ -147,6 +147,10 @@
     "seedRevision": 1,
     "fingerprint": "0fde6bdf29e4ebb04f1438adf87b09a8064ec94b1a2fcc7a99e685e2497c22ae"
   },
+  "guardrailrule:builtin-plugin-edit-card-fields": {
+    "seedRevision": 1,
+    "fingerprint": "307b4224794c0736d0fbb2615f91aae997c02b1f1d7e7a8c876567ceea8945a5"
+  },
   "guardrailrule:example-secret-guard-rule": {
     "seedRevision": 1,
     "fingerprint": "1c08007bbeeea7f8badb47a7d1d2d85fb6669fbbc917f0d81104666e5ae52c41"

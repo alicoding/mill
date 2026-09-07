@@ -81,3 +81,51 @@ func TestBuiltIn_PluginFetchWithSecretAlwaysAsks(t *testing.T) {
 		t.Errorf("without secret: %+v, want the host allow", without)
 	}
 }
+
+// docs/goals/0357 S1b: the seeded allow rule decides on the ACTOR
+// attribute, never by skipping evaluation -- a bundled plugin's
+// card-field write is allowed, a third-party one still asks (the class
+// default), and the rule stays a normal, deletable Rule record either
+// way.
+func TestBuiltIn_PluginEditCardFieldsAllowsOnlyBuiltInPlugins(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	g := NewGuardrailService(store, compositionsvc.NewCompositionService(store))
+
+	builtIn := g.EvaluateAction("card.set-fields", map[string]string{"plugin.id": "mill-roadmap", "plugin.builtin": "true", "cardId": "c1"}, guardrail.ClassExternal)
+	if builtIn.Effect != guardrail.EffectAllow || builtIn.RuleID != guardrail.BuiltInPluginEditCardFieldsRuleID {
+		t.Errorf("built-in plugin actor: %+v, want allow by %s", builtIn, guardrail.BuiltInPluginEditCardFieldsRuleID)
+	}
+	thirdParty := g.EvaluateAction("card.set-fields", map[string]string{"plugin.id": "some-vendor-plugin", "plugin.builtin": "false", "cardId": "c1"}, guardrail.ClassExternal)
+	if thirdParty.Effect != guardrail.EffectAsk {
+		t.Errorf("third-party plugin actor: %+v, want the ClassExternal ask default", thirdParty)
+	}
+	noActor := g.EvaluateAction("card.set-fields", map[string]string{"cardId": "c1"}, guardrail.ClassExternal)
+	if noActor.Effect != guardrail.EffectAsk {
+		t.Errorf("no actor attributes: %+v, want ask (a missing plugin.builtin fails the condition closed)", noActor)
+	}
+}
+
+// Mirrors TestGuardrailService_DeletingTheBuiltInRule_DoesNotReturnOnRestart
+// for the plugin card-fields allow rule specifically (docs/goals/0357
+// S1b item 5): deleting it makes the built-in write ask again, and a
+// restart's reconcile never resurrects it.
+func TestGuardrailService_DeletingTheBuiltInPluginEditCardFieldsRule_DoesNotReturnOnRestart(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	g := NewGuardrailService(store, comp)
+
+	if err := g.DeleteRule(guardrail.BuiltInPluginEditCardFieldsRuleID); err != nil {
+		t.Fatalf("DeleteRule: %v", err)
+	}
+	afterDelete := g.EvaluateAction("card.set-fields", map[string]string{"plugin.id": "mill-roadmap", "plugin.builtin": "true"}, guardrail.ClassExternal)
+	if afterDelete.Effect != guardrail.EffectAsk {
+		t.Errorf("after deleting the seeded rule: %+v, want the built-in write to ask again", afterDelete)
+	}
+
+	restarted := NewGuardrailService(store, comp)
+	for _, r := range restarted.Rules() {
+		if r.ID == guardrail.BuiltInPluginEditCardFieldsRuleID {
+			t.Fatalf("deleted built-in rule %q reappeared after restart, want it to stay deleted", guardrail.BuiltInPluginEditCardFieldsRuleID)
+		}
+	}
+}
