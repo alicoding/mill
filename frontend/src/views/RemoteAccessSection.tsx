@@ -10,6 +10,7 @@ import { formatUpdated } from '../shared/inventorySort'
 import { getNotificationPermission, requestNotificationPermission } from '../shared/browserNotify'
 import type { BrowserNotifyPermission } from '../shared/browserNotify'
 import { writeClipboardText } from '../shared/clipboardWrite'
+import { PAIRING_POLL_MS, gainedMember, usePairingCountdown, formatCountdown } from '../shared/pairingCountdown'
 import listStyles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
 import { background } from '../shared/background'
@@ -39,6 +40,12 @@ function RemoteAccessSection() {
   // fires there anyway.
   const [isServerMode, setIsServerMode] = useState(false)
   const [notifyPermission, setNotifyPermission] = useState<BrowserNotifyPermission>(() => getNotificationPermission())
+  // The count of paired devices the moment the showing code was
+  // minted -- the card clears itself once `devices` grows past this,
+  // the only pairing-succeeded signal available without a server push
+  // (goal 0369, shared/pairingCountdown.ts's gainedMember).
+  const [pairingBaselineCount, setPairingBaselineCount] = useState(0)
+  const [codeCopied, setCodeCopied] = useState(false)
 
   useEffect(() => {
     void background(SettingsService.GetBuildInfo().then((info) => setIsServerMode(info?.Server === true)), 'remoteAccess.getBuildInfo')
@@ -58,8 +65,42 @@ function RemoteAccessSection() {
   const pairADevice = () => {
     setError('')
     RemoteAuthService.GeneratePairingCode()
-      .then(setPairing)
+      .then((info) => {
+        setPairing(info)
+        setPairingBaselineCount((devices ?? []).length)
+      })
       .catch((err) => setError(String(err)))
+  }
+
+  const remainingMS = usePairingCountdown(pairing?.expiresAt)
+
+  // The card clears itself once the server's own TTL elapses -- a dead
+  // code must never keep showing as if it still worked.
+  useEffect(() => {
+    if (pairing && remainingMS <= 0) setPairing(null)
+  }, [pairing, remainingMS])
+
+  // The card also clears the instant this device's own pairing
+  // succeeds, read from the same poll below.
+  useEffect(() => {
+    if (pairing && gainedMember(pairingBaselineCount, (devices ?? []).length)) setPairing(null)
+  }, [pairing, pairingBaselineCount, devices])
+
+  // Mill has no server push for "a device just paired" -- while a code
+  // is showing, re-poll the list on the same cadence the countdown
+  // ticks so a completed pairing clears the card without a reload.
+  useEffect(() => {
+    if (!pairing) return
+    const id = setInterval(refresh, PAIRING_POLL_MS)
+    return () => clearInterval(id)
+  }, [pairing])
+
+  const copyCode = () => {
+    if (!pairing) return
+    void background(writeClipboardText(pairing.code).then(() => {
+      setCodeCopied(true)
+      setTimeout(() => setCodeCopied(false), 1500)
+    }), 'remoteAccess.copyCode')
   }
 
   const confirmRevoke = () => {
@@ -163,11 +204,24 @@ function RemoteAccessSection() {
 
       {pairing && (
         <Stack direction="vertical" gap="condensed" style={{ marginTop: 'var(--base-size-8)' }} data-testid="pairing-code-panel">
-          <Text size="large" weight="semibold" className={monoStyles.mono} data-testid="pairing-code">
-            {pairing.code}
-          </Text>
+          <Stack direction="horizontal" gap="condensed" align="center">
+            <Text size="large" weight="semibold" className={monoStyles.mono} data-testid="pairing-code">
+              {pairing.code}
+            </Text>
+            <Button
+              size="small"
+              leadingVisual={codeCopied ? CheckIcon : CopyIcon}
+              onClick={copyCode}
+              data-testid="pairing-code-copy"
+            >
+              {codeCopied ? t('settings.remoteAccess.codeCopiedButton') : t('settings.remoteAccess.codeCopyButton')}
+            </Button>
+          </Stack>
           <Text as="p" size="small" className={listStyles.muted}>
             {t('settings.remoteAccess.codeExpiry')}
+          </Text>
+          <Text as="p" size="small" className={listStyles.muted} data-testid="pairing-code-countdown">
+            {t('settings.remoteAccess.codeCountdown', { time: formatCountdown(remainingMS) })}
           </Text>
         </Stack>
       )}
