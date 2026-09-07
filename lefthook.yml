@@ -99,6 +99,13 @@ pre-commit:
     - name: hook-command-guard
       glob: "scripts/hook-command-guard.sh"
       run: ./scripts/check-hook-command-guard.sh
+    - name: review-report-selftest
+      # Fixture-tests the pre-PR review gate itself (goal 0383) --
+      # mirrors hook-command-guard's own probe-on-touch shape; the live
+      # gh-backed check (check-review-report.sh against a real PR) only
+      # makes sense in CI, where an actual PR exists.
+      glob: "scripts/check-review-report*.sh"
+      run: ./scripts/check-review-report-selftest.sh
     - name: go-mod-tidy
       # Catches a go.mod/go.sum left stale after a dependency change
       # (a direct/indirect misclassification, an unpruned require) --
