@@ -7,7 +7,7 @@ vocabulary — never the system's internals. The bar is converged industry
 convention:
 
 - **Front-load the action or outcome** — verb or benefit first,
-  qualifiers after, if at all.
+  qualifiers after.
 - **One idea per sentence; one sentence per caption.** A subtitle is one
   sentence; a field caption ≤ ~100 characters. A concept needing a
   paragraph needs progressive disclosure, not a longer caption.
@@ -16,8 +16,8 @@ convention:
   A sentence inline in `.ts`/`.tsx` fails `i18next/no-literal-string`
   and `check-ui-copy.sh`.
 - **Never reference internal documents.** `docs/…` paths, ADR ids, goal
-  files, § symbols mean nothing inside the app. State only the behavior.
-- **Never name another product to explain a feature.** Review-checked.
+  files, § symbols mean nothing inside the app.
+- **Never name another product to explain a feature.**
 - **No spec-asides.** A dash clause justifying the design is
   documentation — state the rule the user experiences.
 - **Present tense, sentence case, second person implied.** "Runs every
@@ -26,5 +26,5 @@ convention:
   picker in the same view, or change the sentence.
 
 The test, mirroring comments.md's: read the string as a first-time user
-with no repo access — every clause they couldn't act on is spec
-narrative, not copy.
+with no repo access — every clause they couldn't act on is narrative,
+not copy.
