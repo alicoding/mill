@@ -272,7 +272,6 @@
   },
   "whatsNew": {
     "title": "What's new",
-    "versionHeading": "Version {{version}}",
     "empty": "Release notes appear here after an update check finds a new version.",
     "checkButton": "Check for updates"
   },
