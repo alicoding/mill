@@ -43,7 +43,10 @@ brief carries more, not less, than an Opus one would need.
   Review, so a stopped agent's last message is a deliverable, not a
   status.
 - **The pre-PR review step** (from `divergences.md` § Operations): the
-  reviewer dispatch and the Important-blocks rule.
+  reviewer dispatch and the Important-blocks rule — and that CI's
+  `review-report` job mechanically rejects the PR without a `## Review`
+  section carrying `Contract match: yes` and `Important findings open: 0`
+  in the PR body itself.
 - **Adoption named**: the brief quotes the goal file's chosen
   library/framework, version, and entry-point API, or the recorded
   search that found none. Missing → stop, run the `research` agent
