@@ -36,6 +36,12 @@ import { TrayPanelApp } from './TrayPanelApp'
 import { RunMonitorApp } from './RunMonitorApp'
 import { AppearanceProvider } from './AppearanceProvider'
 import { background } from '../shared/background'
+import { installDriveBridge } from '../shared/driveBridge'
+
+// A no-op outside a MILL_DRIVE_BRIDGE=1 build (see driveBridge.ts) --
+// registered before the first render so a driving check never races
+// window.__millRunCommand's own availability against page load.
+installDriveBridge()
 
 // docs/adr/0033-quick-panel-second-window.md: the Quick Panel is a
 // second Wails window loading this SAME compiled bundle, at a hash
