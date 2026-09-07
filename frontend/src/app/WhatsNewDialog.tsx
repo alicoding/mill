@@ -21,7 +21,6 @@ export function WhatsNewDialog() {
   const { t } = useTranslation('app')
   const open = useUISignalStore((s) => s.whatsNewOpen)
   const close = useUISignalStore((s) => s.closeWhatsNew)
-  const notesVersion = useUpdateNoticeStore((s) => s.notesVersion)
   const notesHTML = useUpdateNoticeStore((s) => s.notesHTML)
 
   if (!open) return null
@@ -37,9 +36,6 @@ export function WhatsNewDialog() {
     <Dialog title={t('whatsNew.title')} onClose={close} width="520px" data-component="whats-new">
       {notesHTML ? (
         <Stack gap="condensed">
-          <Text weight="semibold" size="small" data-testid="whats-new-version">
-            {t('whatsNew.versionHeading', { version: notesVersion })}
-          </Text>
           <div
             className={mirrorStyles.markdownBody}
             data-testid="whats-new-notes"

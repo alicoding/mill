@@ -93,8 +93,11 @@ test("The pill's secondary link and Settings' own link both open What's new, ren
     await page.getByTestId('notice-whats-new').click()
     const dialog = page.getByRole('dialog', { name: "What's new" })
     await expect(dialog).toBeVisible()
-    await expect(page.getByTestId('whats-new-version')).toContainText('9.9.9')
     const notes = page.getByTestId('whats-new-notes')
+    // Each release's own version+date heading lives INSIDE the notes
+    // body now (goal 0376's accumulated list) -- no separate dialog-
+    // level version line to assert on.
+    await expect(notes.locator('h3')).toContainText('9.9.9')
     await expect(notes.locator('li')).toHaveText(['Fake note one', 'Fake note two'])
     // goal 0127: the manual-install tail past the marker never renders
     // in-app, proven here through the real render path (an <li>, not
@@ -108,7 +111,7 @@ test("The pill's secondary link and Settings' own link both open What's new, ren
     // two doors.
     await page.getByTestId('open-whats-new').click()
     await expect(dialog).toBeVisible()
-    await expect(page.getByTestId('whats-new-version')).toContainText('9.9.9')
+    await expect(notes.locator('h3')).toContainText('9.9.9')
     await expect(notes.locator('li')).toHaveText(['Fake note one', 'Fake note two'])
 
     await page.close()
