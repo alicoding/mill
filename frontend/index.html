@@ -4,6 +4,32 @@
      from the stored choice once React mounts. -->
 <html lang="en" data-light-theme="light" data-dark-theme="dark" data-color-mode="auto" data-mill-theme="light" data-mill-scheme="light">
   <head>
+    <!-- Top-level CSP (goal 0375 S1a): confines Mill's own document the
+         way pluginFrameBootstrap.ts already confines every plugin frame.
+         Must stay the first head element so it governs every element
+         after it. No directive here allows string-eval or wasm-eval:
+         grep of frontend/src and every built dist/assets/*.js chunk
+         finds no WebAssembly reference outside vendor/pdfjs, and that
+         codec runs inside its OWN iframe document
+         (AtlasPdfObjectContent.tsx's `/vendor/pdfjs/...` src), never
+         this top document, so script-src needs neither 'unsafe-eval'
+         nor 'wasm-unsafe-eval'. connect-src's 127.0.0.1/localhost
+         wildcards cover Wails' and Vite's dev ports, which vary per
+         run. frame-src 'self' (no blob:) covers the same-origin
+         drawio-editor and pdf.js iframes (DrawioEditorMount.tsx,
+         AtlasPdfObjectContent.tsx); every other iframe in the app uses
+         srcDoc, which frame-src does not gate. media-src needs blob:
+         and data: for OutputMediaView.tsx's <audio>/<video>, whose src
+         a captured or converted binary output may set to either
+         scheme. worker-src keeps blob: matching the Go-side document
+         policy (internal/services/wiring/cspmiddleware.go) even though
+         no code today constructs a real Worker, so a future one is not
+         silently blocked by a narrower duplicate. This meta tag and
+         that Go header are two independent enforcement points over the
+         same document; production gets whichever is stricter per
+         directive, so keeping the two aligned (rather than drifting)
+         is deliberate here. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: data:; font-src 'self' data:; connect-src 'self' http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:*; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
     <!-- Theme before first paint: the persisted choice, else the system's
          (the same keys shared/appearance.ts writes). Without this the page
          painted dark until React mounted, seconds later behind plugin
