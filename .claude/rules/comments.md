@@ -1,7 +1,7 @@
 # Comment discipline — constraints, not narrative
 
 No `paths` frontmatter — applies to every hand-written source file
-regardless of language, the same way architecture.md does.
+regardless of language.
 
 **A code comment states what the code cannot: an invariant, a
 non-obvious constraint, an external tool's gotcha, the property a

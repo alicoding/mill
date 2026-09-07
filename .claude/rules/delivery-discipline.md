@@ -6,6 +6,11 @@ No `paths` frontmatter — applies to every goal, every language.
 - Goal file carries three Research headings before Plan: **Precedent**
   (best-in-class tools, real search), **Today** (what Mill does now,
   read/probed), **Gap** (the delta Plan answers). No Gap ⇒ not Ready.
+- **Adoption named before dispatch.** Precedent also names the library,
+  framework or package that already solves it: a real search (the
+  `research` agent), primary source linked, version pinned, entry-point
+  API named — or the search that found none. No coding brief goes out
+  without it.
 - A capability map for any schema/adopt-vs-build call with more than
   one real future use (SPEC §3.3).
 - A goal file: Goal/Plan/**Acceptance as a checkable predicate**.
@@ -18,7 +23,6 @@ No `paths` frontmatter — applies to every goal, every language.
   archived goals without the field are classified lazily, when a grep
   for a new bug surfaces them — never by bulk archaeology.
 - No SPEC.md `OPEN` dependency silently resolved by starting.
-- No estimate/story-point step.
 
 ## Definition of Ready, part 2 — the integration-surfaces triage
 Before a capability's goal starts, answer EVERY line in the goal file —

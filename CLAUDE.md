@@ -30,15 +30,15 @@ model below: ADR-0050.
    pr-shepherd), conclusion returned, not the dump.
 
 Model picks: **Haiku** for read-only volume (`explorer`). **Sonnet is the DEFAULT
-builder for every delegation** — bounded mechanical execution from a written spec
-(regens, migrations, test runs, features with a complete contract) covers nearly
-everything once the brief is complete. **Opus only when the brief states in one
-sentence why this task needs local judgment inside the contract**, not just size.
-**Never Fable for a delegation**: a Fable builder drains the shared session window at
-a multiple of Opus/Sonnet (three windows lost in one day); Fable is the
+builder for every delegation.** **Opus only when the brief states in one sentence
+which judgment inside the contract Sonnet cannot make**, and never more than ONE
+Opus builder at a time. **Never Fable for a delegation**: Fable is the
 orchestrator's own reasoning only. Every `Agent` delegation states its model
-explicitly; the task is *fixed and bounded* (a written brief with objective gates, per
-`.claude/skills/brief`) or the missing piece is still the orchestrator's.
+explicitly; the task is *fixed and bounded* (a written brief with objective gates,
+per `.claude/skills/brief`) or the missing piece is still the orchestrator's. A
+coding brief is not dispatchable until its goal file's Precedent names the
+library/framework/package that already solves the problem (the DoR "Adoption
+named" gate in delivery-discipline.md); the builder writes the adapter, never the wheel.
 The brief also carries the adoption decision — which commodity/pattern, at
 which abstraction level (adopt-converged-patterns.md's dispatch lock); an
 agent never chooses a library, and pre-rule hand-rolled code migrates on touch.

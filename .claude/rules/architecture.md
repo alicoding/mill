@@ -1,7 +1,6 @@
 # Architecture & reuse discipline
 
-No `paths` frontmatter — cuts across Go/TypeScript, loads every session
-like CLAUDE.md.
+No `paths` frontmatter — cuts across Go/TypeScript, loads every session.
 
 **SOLID, DRY, DDD with a concrete reuse boundary.** Buy generic/
 commodity concerns (parsing, UI widgets, OS plumbing, wire protocols)
@@ -13,7 +12,7 @@ ports/adapters at the domain boundary.
 **Research → Adopt → Compose for any new capability.** Research what
 exists (a real search, never an assumption); adopt the proven commodity
 behind ports/adapters; compose the remainder from Mill's own primitives
-(nodes, triggers, Configure entities — ADR-0035). Hand-roll only when
+(nodes, triggers, Configure entities). Hand-roll only when
 research shows nothing satisfies the hard constraints (§1.1).
 
 **Default to adopting over hand-rolling, even when hand-rolling would be
@@ -41,7 +40,7 @@ implementing a side effect (toggles configure the kernel). The other
 direction: outside→inside doors (webhooks, agent hooks, watchers) fire a
 platform TRIGGER; the effect is an editable workflow or plugin, never a
 hardcoded pipe. Platform-internal behavior SHOULD consume Mill's own
-composition surface. Kernel changes (SPEC §9.5 list) need an ADR.
+composition surface. Kernel changes need an ADR.
 
 **Build the multi-purpose surface, not the hardcoded use case.** A new
 affordance: if a SECOND consumer is plausible, it arrives as a named,
@@ -73,5 +72,4 @@ Thread affinity, reentrancy, blocking behavior, error semantics don't
 appear in a signature. Before calling an adopted library from a
 callback/goroutine/handler it did not itself create, VERIFY the
 affinity contract against its own source and state it at Mill's
-boundary. Never infer one call's contract from a sibling's — has cost a
-P0 crash class here.
+boundary. Never infer one call's contract from a sibling's.
