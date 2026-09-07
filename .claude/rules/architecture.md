@@ -20,28 +20,28 @@ research shows nothing satisfies the hard constraints (§1.1).
 smaller.** The deciding question is who owns and maintains this six
 months from now — infrastructure-shaped code (durable execution, retry/
 backoff, queues) becomes unbounded maintenance once hand-rolled. A
-*shape* (a UI component family, a CLI parser) can be commodity even
-with no single named library — check the kit first
-(`.claude/rules/frontend.md`).
+*shape* (a UI component family, a CLI parser) can be commodity with no
+single named library — check the kit first.
 
 **Adopting a dependency means reading its whole API, not what day one
 needs.** Before building ANY capability inside a domain an adopted
-dependency owns (windows, tray/menu, dialogs, storage) — enumerate its
+dependency owns — enumerate its
 API from its vendored source and state what you found, including
 "nothing," via one grep of `~/go/pkg/mod`/`node_modules`. Confirmed:
-goal 0190; `internal/adapters/dockbadge` is the counter-example. Every
+goal 0190. Every
 cgo file carries a `framework-api-audit` line pinned to Wails' version
 (`scripts/check-framework-api-first.sh`).
 
-**The core/composition boundary.** Before building ANY new capability:
-node, trigger, connector, or true kernel change?
+**The core/composition boundary, both directions.** Before ANY new
+capability: node, trigger, connector, or true kernel change
 ([ADR-0035](../../docs/adr/0035-core-vs-composition-boundary.md), SPEC
-§9.5.) "I want that, but on a different channel/condition/event" MUST
-arrive as composition — never a bespoke service path plus a Settings
-toggle (toggles configure the kernel, never implement a side effect).
-Platform-internal behavior SHOULD consume Mill's own composition
-surface rather than a parallel mini-pipeline. SPEC §9.5 has the
-protected-kernel list; changes there need an ADR.
+§9.5)? "That again, with a different channel/condition/event" arrives as
+composition — never a bespoke service path or a Settings toggle
+implementing a side effect (toggles configure the kernel). The other
+direction: outside→inside doors (webhooks, agent hooks, watchers) fire a
+platform TRIGGER; the effect is an editable workflow or plugin, never a
+hardcoded pipe. Platform-internal behavior SHOULD consume Mill's own
+composition surface. Kernel changes (SPEC §9.5 list) need an ADR.
 
 **Build the multi-purpose surface, not the hardcoded use case.** A new
 affordance: if a SECOND consumer is plausible, it arrives as a named,
