@@ -4,10 +4,12 @@
 # boxing-glove line among green ticks with no FAIL wording, so the
 # job's own output must state the block unmistakably -- on failure
 # this script's last printed line is the COMMIT BLOCKED banner.
-# ls_lint v2.3.1 already honors .gitignore for untracked paths and
-# its -error-output-format json carries no extra path detail; the
-# wrapper therefore blocks every non-zero exit and changes no
-# allowlist semantics.
+# ls_lint v2.3.1 does not honor .gitignore -- scope control is
+# .ls-lint.yml's own ignore: list -- and its -error-output-format json
+# carries no ignored/untracked distinction; the wrapper therefore
+# blocks every non-zero exit, including for untracked gitignored-at-
+# root paths outside the ignore list, and changes no allowlist
+# semantics (masking a block, never the block itself, is the defect).
 set -uo pipefail
 
 output="$(ls_lint 2>&1)"
