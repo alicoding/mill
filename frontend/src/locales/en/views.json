@@ -135,6 +135,7 @@
       "secretRefUnavailable": "Unlock the vault in Secrets to pick one.",
       "secretRefGroupVault": "Vault",
       "secretRefGroupSources": "Secret sources",
+      "canvasHostLabel": "Draws in Mill's window",
       "meta": {
         "groupObjects": "Object",
         "groupMedia": "Media",

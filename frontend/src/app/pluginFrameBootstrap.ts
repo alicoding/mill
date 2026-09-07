@@ -64,10 +64,26 @@ export function frameBootstrapUrl(): string {
   return new URL(FRAME_BOOTSTRAP_PATH, window.location.href).href
 }
 
-function framePolicy(base: string, bootstrap: string): string {
+// ACTIVATION_SCRIPT_PATH is the third-party activation frame's own
+// script (docs/goals/0375 S1b): it imports the plugin's main.js and
+// exposes the same MillPluginAPI shape a same-DOM plugin holds, built
+// over messages rather than direct calls. Distinct from bootstrap.js
+// -- an activation frame's document has no plugin-authored page, so it
+// never needs window.acquireMillApi()'s entry-page contract.
+export const ACTIVATION_SCRIPT_PATH = '/plugin-frame/activation.js'
+
+export function activationScriptUrl(): string {
+  return new URL(ACTIVATION_SCRIPT_PATH, window.location.href).href
+}
+
+// framePolicy takes every script the document loads with <script src>
+// as its own CSP source: a source naming a path (not just an origin)
+// matches only that exact path, so bootstrap.js and activation.js each
+// need their own entry when a frame loads both.
+function framePolicy(base: string, scripts: readonly string[]): string {
   return [
     `default-src 'none'`,
-    `script-src ${base} ${bootstrap}`,
+    `script-src ${base} ${scripts.join(' ')}`,
     `style-src ${base} 'unsafe-inline'`,
     `img-src ${base} data: blob:`,
     `font-src ${base} data:`,
@@ -82,17 +98,44 @@ function escapeForAttribute(json: string): string {
   return json.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+// ActivationFrameInit is an activation frame's own mount data (docs/
+// goals/0375 S1b), carried on the same "mill-frame-init" meta element
+// an entry page's FrameInit uses -- the two never share a document, so
+// the one name is unambiguous. settings and storage are resolved
+// snapshots (settings.get/storage.get stay synchronous frame-side);
+// a later change arrives as an event instead of a re-read.
+export interface ActivationFrameInit {
+  pluginId: string
+  millVersion: string
+  // version rides the query on main.js's import, so a reinstalled
+  // plugin never serves a cached module -- the same cache-busting a
+  // same-DOM activation's own import URL carries.
+  version: string
+  settings: Record<string, boolean | string | number>
+  storage: Record<string, unknown>
+}
+
 // buildFrameSrcdoc prepends Mill's four head pieces to the plugin's own
 // page. The pieces go FIRST so the policy governs every element after
-// it and the bootstrap exists before the page's own script runs; the
-// page keeps everything else it wrote, including its own <head>.
-export function buildFrameSrcdoc(base: string, bootstrap: string, html: string, init: FrameInit, tokens: string): string {
+// it and every script exists before the page's own script runs; the
+// page keeps everything else it wrote, including its own <head>. An
+// activation frame has no plugin-authored page: html is "" and it
+// still gets a <head>, per the function's own no-tag fallback.
+export function buildFrameSrcdoc(base: string, scripts: readonly string[], html: string, init: FrameInit | ActivationFrameInit, tokens: string): string {
   const head = [
     `<base href="${base}">`,
-    `<meta http-equiv="Content-Security-Policy" content="${framePolicy(base, bootstrap)}">`,
+    `<meta http-equiv="Content-Security-Policy" content="${framePolicy(base, scripts)}">`,
     `<meta name="mill-frame-init" content="${escapeForAttribute(JSON.stringify(init))}">`,
     `<style id="mill-tokens">${tokens}</style>`,
-    `<script src="${bootstrap}"></script>`,
+    // crossorigin="anonymous" makes each a VERIFIED CORS fetch rather
+    // than an anonymously cross-origin classic script: the frame's
+    // origin is opaque, so every script here is cross-origin to it by
+    // definition, and an unverified cross-origin script's own dynamic
+    // import() (the activation script's own door onto main.js) resolves
+    // relative specifiers against "about:blank" instead of its real URL
+    // -- a browser restriction, not a Mill choice. The server answers
+    // the matching header (cspmiddleware.go's PluginFrameCORSMiddleware).
+    ...scripts.map((src) => `<script src="${src}" crossorigin="anonymous"></script>`),
   ].join('')
   const headOpen = /<head[^>]*>/i.exec(html)
   if (headOpen) {

@@ -8,10 +8,10 @@ kind: reference
 
 | Family | Level | Conformance | Example | E2E | Docs | SDK types | MCP | Docs behind code (days) | Flags |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| canvasObjects | experimental | no | yes | yes | yes | yes | yes | 0 | — |
+| canvasObjects | experimental | no | yes | yes | yes | yes | yes | 1 | — |
 | steps | experimental | no | yes | yes | yes | no | yes | 0 | — |
 | captures | experimental | no | no | yes | yes | yes | n/a | 0 | — |
-| settings | stable | yes | yes | yes | yes | yes | n/a | 1 | — |
+| settings | stable | yes | yes | yes | yes | yes | n/a | 0 | — |
 | network | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
 | views | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
 | commands | stable | yes | yes | yes | yes | yes | yes | 0 | — |

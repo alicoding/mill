@@ -188,6 +188,20 @@ func TestHasE2E_RegistrationCallAndContributesLiteral(t *testing.T) {
 	}
 }
 
+// TestHasE2E_DeclaredSurfaceNeedsNoRegisterCall is the regression this
+// goal (docs/goals/0375 S1b) found: an entry-declared view, capture or
+// canvas object opens straight off the manifest and calls registerX
+// only when it needs the message relay, so a spec exercising ONE
+// through nothing but its manifest's own declarative shape must still
+// count as e2e evidence.
+func TestHasE2E_DeclaredSurfaceNeedsNoRegisterCall(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeE2ESpec(t, repoRoot, "runtime-plugin-capture.spec.ts", "manifest: { contributes: { captures: [{ id: 'thought', entry: 'thought.html' }] } },\nmain: 'export function activate() {}\\n',\n")
+	if !hasE2E(repoRoot, "captures") {
+		t.Error(`hasE2E(repoRoot, "captures") = false, want true: the manifest's own "captures: [" shape appears with no registerCapture call anywhere`)
+	}
+}
+
 // TestHasE2E_FixtureManifest covers the third route: an e2e fixture
 // plugin's own manifest.json declaring a non-empty contributes.<family>.
 func TestHasE2E_FixtureManifest(t *testing.T) {

@@ -42,8 +42,10 @@ func NewPluginService(settingsPath string, guardrail *guardrailsvc.GuardrailServ
 func ComposedAssetMiddleware(remoteAuth *remoteauthsvc.RemoteAuthService, plugins *pluginsvc.PluginService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		// The document policy (cspmiddleware.go) wraps everything so every
-		// served document carries it, the remote-auth gate included.
-		return CSPMiddleware()(AssetMiddleware(remoteAuth)(plugins.AssetMiddleware()(next)))
+		// served document carries it, the remote-auth gate included; the
+		// plugin-frame CORS header (cspmiddleware.go) rides the same
+		// static-asset path the embedded bundle falls through to.
+		return CSPMiddleware()(PluginFrameCORSMiddleware()(AssetMiddleware(remoteAuth)(plugins.AssetMiddleware()(next))))
 	}
 }
 

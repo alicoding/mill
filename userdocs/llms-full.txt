@@ -4245,8 +4245,9 @@ your plugin feels like part of Mill.
     acquireMillApi()` is its door back to Mill. Styles may stay
     inline. A canvas object's page receives the object as its context
     and writes back through `object.updatePayload`; its face is
-    always interactive. A surface that draws into Mill's own document
-    instead still works; `renderFace` is the deprecated form. (checked)
+    always interactive. A canvas object may still draw into Mill's own
+    document instead (`renderFace`, the deprecated form) — see rule 32
+    for why a view or capture may not. (checked)
 
 22. A canvas object whose face reports an open editor declares
     `content: "interactive"` on the same object. `content` says what
@@ -4318,6 +4319,18 @@ your plugin feels like part of Mill.
     (`"placement": "board-switcher"`) that writes card fields through
     `api.content.setCardFields` declares the `edit-card-fields`
     capability. (checked)
+
+## Sandboxed activation
+
+32. `main.js` itself activates inside a sandboxed frame, the same
+    isolation an entry page gets — unless your manifest declares a
+    canvas object, which still activates alongside Mill's own document
+    until Mill ships a framed canvas API. Because of that, a view or
+    capture must declare an entry page (rule 21): Mill can no longer
+    draw one in its own document, so a view or capture with no entry
+    page refuses the install. `registerCommand`, `registerView` and
+    `registerCapture` work the same either way — write one `main.js`
+    for both. (checked: refuses the install)
 
 ## Checking your own plugin
 
@@ -4616,10 +4629,10 @@ A refused install leaves nothing on disk.
 
 | Family | Level | Conformance | Example | E2E | Docs | SDK types | MCP | Docs behind code (days) | Flags |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| canvasObjects | experimental | no | yes | yes | yes | yes | yes | 0 | — |
+| canvasObjects | experimental | no | yes | yes | yes | yes | yes | 1 | — |
 | steps | experimental | no | yes | yes | yes | no | yes | 0 | — |
 | captures | experimental | no | no | yes | yes | yes | n/a | 0 | — |
-| settings | stable | yes | yes | yes | yes | yes | n/a | 1 | — |
+| settings | stable | yes | yes | yes | yes | yes | n/a | 0 | — |
 | network | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
 | views | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
 | commands | stable | yes | yes | yes | yes | yes | yes | 0 | — |

@@ -65,7 +65,7 @@ export function PluginFrame(props: PluginFrameProps) {
       const html = await response.text()
       if (!live) return
       const state = api?.storage.get(stateKey)
-      setSrcdoc(buildFrameSrcdoc(pluginAssetBase(pluginId), frameBootstrapUrl(), html, { theme, state, context }, millTokenCss(hostTokenReader())))
+      setSrcdoc(buildFrameSrcdoc(pluginAssetBase(pluginId), [frameBootstrapUrl()], html, { theme, state, context }, millTokenCss(hostTokenReader())))
     }
     load().catch((err: unknown) => {
       if (!live) return
