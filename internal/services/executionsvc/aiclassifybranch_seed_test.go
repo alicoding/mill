@@ -44,7 +44,7 @@ func runSeededAIClassifyBranch(t *testing.T, classification string) RunSummary {
 	}))
 	t.Cleanup(srv.Close)
 
-	orig := swapAIProviderLookup(t, func(id string) (composition.ResolvedAIProvider, error) {
+	orig := swapAIProviderLookup(t, func(id string, _ composition.SecretAccessRun) (composition.ResolvedAIProvider, error) {
 		if id != "example-local-ollama" {
 			t.Errorf("lookupAIProviderFn called with id %q, want the seed's real aiproviderId %q", id, "example-local-ollama")
 		}

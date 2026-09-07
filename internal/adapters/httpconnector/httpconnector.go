@@ -10,6 +10,7 @@
 package httpconnector
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"strings"
@@ -69,6 +70,23 @@ type Request struct {
 	URL     string
 	Headers map[string]string
 	Body    string
+	// Context is forwarded verbatim onto the outbound request and, by
+	// extension, to ClientTLS.ConfigFor's own ctx parameter -- this
+	// package never reads a value out of it (the same "opaque, only
+	// carried" contract composition.ExecContext.RunContext already
+	// documents), it only relays it to whichever port asked for it. nil
+	// means context.Background(), exactly like retryablehttp.NewRequest's
+	// own default.
+	Context context.Context
+}
+
+// requestContext returns req.Context, defaulting to Background so every
+// call site stays nil-safe.
+func requestContext(req Request) context.Context {
+	if req.Context != nil {
+		return req.Context
+	}
+	return context.Background()
 }
 
 // Response is the call's result, returned alongside a nil error for any
@@ -98,7 +116,7 @@ func Execute(req Request) (Response, error) {
 		bodyReader = strings.NewReader(req.Body)
 	}
 
-	httpReq, err := retryablehttp.NewRequest(req.Method, req.URL, bodyReader)
+	httpReq, err := retryablehttp.NewRequestWithContext(requestContext(req), req.Method, req.URL, bodyReader)
 	if err != nil {
 		return Response{}, err
 	}
@@ -143,7 +161,7 @@ func ExecuteStream(req Request) (*http.Response, error) {
 		bodyReader = strings.NewReader(req.Body)
 	}
 
-	httpReq, err := retryablehttp.NewRequest(req.Method, req.URL, bodyReader)
+	httpReq, err := retryablehttp.NewRequestWithContext(requestContext(req), req.Method, req.URL, bodyReader)
 	if err != nil {
 		return nil, err
 	}

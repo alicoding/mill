@@ -216,7 +216,7 @@ func TestAdoptSecretsIntoStore_MovesAnAIProviderKey(t *testing.T) {
 	if _, err := cfg.AdoptSecretsIntoStore(); err != nil {
 		t.Fatalf("AdoptSecretsIntoStore: %v", err)
 	}
-	rp, err := cfg.resolveAIProvider(p.ID)
+	rp, err := cfg.resolveAIProvider(p.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveAIProvider after adoption: %v", err)
 	}

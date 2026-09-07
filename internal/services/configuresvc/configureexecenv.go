@@ -84,7 +84,7 @@ func (c *ConfigureService) resolveExecEnv(id string, run composition.SecretAcces
 		return composition.ResolvedExecEnv{}, fmt.Errorf("no execution environment with id %q", id)
 	}
 
-	actx := secretaudit.AccessContext{Context: secretaudit.ContextExecEnv, RunID: run.RunID, WorkflowID: run.WorkflowID}
+	actx := secretaudit.AccessContext{Context: secretaudit.ContextExecEnv, RunID: run.RunID, WorkflowID: run.WorkflowID, StepID: run.StepID}
 	env, err := c.resolveVaultRefEnv("execution environment", found.Label, found.Env, actx)
 	if err != nil {
 		return composition.ResolvedExecEnv{}, err

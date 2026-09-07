@@ -131,7 +131,7 @@ func WireCodingLoopSecrets(codeLoopService *codeloopsvc.CodeLoopService, secretS
 			}
 		}
 		if id, _, found := secretService.LookupVaultSecretByEnvName(varName); found {
-			actx := secretaudit.AccessContext{Context: secretaudit.ContextCodingLoopShell, RunID: run.RunID, WorkflowID: run.WorkflowID}
+			actx := secretaudit.AccessContext{Context: secretaudit.ContextCodingLoopShell, RunID: run.RunID, WorkflowID: run.WorkflowID, StepID: run.StepID}
 			if v, err := secretService.ResolveSecretValue(id, actx); err == nil {
 				return v, composition.SecretSourceVault, true
 			}

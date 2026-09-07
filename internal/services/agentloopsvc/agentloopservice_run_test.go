@@ -163,11 +163,11 @@ func withScriptedChat(t *testing.T, turns ...func(aiclient.ChatRequest) (aiclien
 
 func stubResolvableProvider(t *testing.T) {
 	t.Helper()
-	composition.SetAIProviderLookup(func(id string) (composition.ResolvedAIProvider, error) {
+	composition.SetAIProviderLookup(func(id string, _ composition.SecretAccessRun) (composition.ResolvedAIProvider, error) {
 		return composition.ResolvedAIProvider{Kind: "openai-compatible", BaseURL: "http://example.invalid", Model: "m"}, nil
 	})
 	t.Cleanup(func() {
-		composition.SetAIProviderLookup(func(id string) (composition.ResolvedAIProvider, error) {
+		composition.SetAIProviderLookup(func(id string, _ composition.SecretAccessRun) (composition.ResolvedAIProvider, error) {
 			return composition.ResolvedAIProvider{}, errors.New("no AI provider lookup registered (yet)")
 		})
 	})
