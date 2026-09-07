@@ -1,6 +1,9 @@
 package audit
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 // AllowedAttributes is, per Kind, the ONLY keys a producer may put in
 // Entry.Attributes -- the goal 0351 Decision 1 gate: an audit row must
@@ -27,18 +30,9 @@ var AllowedAttributes = map[Kind][]string{
 func ValidateAttributes(kind Kind, attrs map[string]string) error {
 	allowed := AllowedAttributes[kind]
 	for key := range attrs {
-		if !containsKey(allowed, key) {
+		if !slices.Contains(allowed, key) {
 			return fmt.Errorf("audit: attribute %q not allowed for kind %q", key, kind)
 		}
 	}
 	return nil
-}
-
-func containsKey(keys []string, key string) bool {
-	for _, k := range keys {
-		if k == key {
-			return true
-		}
-	}
-	return false
 }

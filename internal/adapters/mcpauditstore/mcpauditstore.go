@@ -94,19 +94,44 @@ func (s *Store) UpdateOutcome(writeID string, outcome mcpaudit.Outcome, errorTex
 		return nil
 	}
 	ctx := context.Background()
-	matchID, err := findParkedRowID(ctx, s.db, writeID)
+	// Runs inside one transaction -- SQLite serializes writers on the
+	// reserved lock a write transaction takes, so a second concurrent
+	// UpdateOutcome for the same writeID can't interleave its own
+	// find-then-update between this one's SELECT and UPDATE. The final
+	// UPDATE's own "outcome = parked" guard (updateOutcomeRow) is a
+	// second, independent safeguard against the same race.
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
+		return fmt.Errorf("mcpauditstore: update outcome for parked write %q: begin: %w", writeID, err)
+	}
+	matchID, err := findParkedRowID(ctx, tx, writeID)
+	if err != nil {
+		_ = tx.Rollback()
 		return fmt.Errorf("mcpauditstore: update outcome for parked write %q: %w", writeID, err)
 	}
 	if matchID == 0 {
-		return nil
+		return tx.Rollback()
 	}
-	return updateOutcomeRow(ctx, s.db, matchID, outcome, errorText)
+	if err := updateOutcomeRow(ctx, tx, matchID, outcome, errorText); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("mcpauditstore: update outcome for parked write %q: %w", writeID, err)
+	}
+	return tx.Commit()
+}
+
+// querier is satisfied by both *sql.DB and *sql.Tx -- UpdateOutcome
+// runs its find-then-update on one *sql.Tx so both steps see a
+// consistent snapshot; the migration path (migrate.go) never calls
+// these, so no Execer-style dual-use is needed here.
+type querier interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
 
 // findParkedRowID returns the most recent still-parked mcp-call row's id
 // whose Attributes["parked_write_id"] is writeID, or 0 when none match.
-func findParkedRowID(ctx context.Context, db *sql.DB, writeID string) (int64, error) {
+func findParkedRowID(ctx context.Context, db querier, writeID string) (int64, error) {
 	//nolint:gosec // G202: EntryColumns/TableName are this package's own compile-time constants, never caller input; the only caller-supplied values (kind, outcome) are bound as placeholders below.
 	q := "SELECT " + auditstore.EntryColumns + " FROM " + auditstore.TableName + " WHERE kind = ? AND outcome = ? ORDER BY id DESC"
 	rows, err := db.QueryContext(ctx, q, string(audit.KindMCPCall), string(mcpaudit.OutcomeParked))
@@ -132,8 +157,12 @@ func findParkedRowID(ctx context.Context, db *sql.DB, writeID string) (int64, er
 // updateOutcomeRow rewrites row id's outcome and its attributes'
 // error_text via a read-modify-write on the JSON blob -- Go-side rather
 // than a SQL JSON1 function, so this never depends on the build's
-// SQLite carrying that extension.
-func updateOutcomeRow(ctx context.Context, db *sql.DB, id int64, outcome mcpaudit.Outcome, errorText string) error {
+// SQLite carrying that extension. The UPDATE's own "AND outcome = ?
+// (parked)" guard mirrors the pre-goal-0351 single-statement UPDATE's
+// atomicity: a row already resolved by a concurrent call is left alone
+// rather than clobbered, even if this ever runs outside UpdateOutcome's
+// own transaction wrapper.
+func updateOutcomeRow(ctx context.Context, db querier, id int64, outcome mcpaudit.Outcome, errorText string) error {
 	var attrsJSON string
 	if err := db.QueryRowContext(ctx, "SELECT attributes FROM "+auditstore.TableName+" WHERE id = ?", id).Scan(&attrsJSON); err != nil {
 		return fmt.Errorf("mcpauditstore: update outcome: read: %w", err)
@@ -148,8 +177,8 @@ func updateOutcomeRow(ctx context.Context, db *sql.DB, id int64, outcome mcpaudi
 		return fmt.Errorf("mcpauditstore: update outcome: marshal: %w", err)
 	}
 	//nolint:gosec // G202: auditstore.TableName is this package's own compile-time constant, never caller input; the only caller-supplied values (outcome, encoded, id) are bound as placeholders below.
-	q := "UPDATE " + auditstore.TableName + " SET outcome = ?, attributes = ? WHERE id = ?"
-	if _, err := db.ExecContext(ctx, q, string(outcome), string(encoded), id); err != nil {
+	q := "UPDATE " + auditstore.TableName + " SET outcome = ?, attributes = ? WHERE id = ? AND outcome = ?"
+	if _, err := db.ExecContext(ctx, q, string(outcome), string(encoded), id, string(mcpaudit.OutcomeParked)); err != nil {
 		return fmt.Errorf("mcpauditstore: update outcome: write: %w", err)
 	}
 	return nil
