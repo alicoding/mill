@@ -210,8 +210,32 @@ func (c *ConfigureService) UpdateHTTPRequest(id, label, baseURL, method, body st
 // by other requests or wanted again -- deleting the last thing that
 // pointed at a credential is not consent to destroy it.
 func (c *ConfigureService) DeleteHTTPRequest(id string) error {
-	if err := c.refIntegrityError("request", "request", id); err != nil {
+	restore, label, err := c.deleteHTTPRequest(id)
+	if err != nil {
 		return err
+	}
+	announce := func(id string) { dataevent.Emit("request", id) }
+	c.registerEntityDelete("request", id, label, restore,
+		func() error {
+			if _, _, err := c.deleteHTTPRequest(id); err != nil {
+				return err
+			}
+			announce(id)
+			return nil
+		}, announce)
+	announce(id) // goal 0017: live-sync every open surface
+	return nil
+}
+
+// deleteHTTPRequest is DeleteHTTPRequest's unrecorded core (ADR-0044's
+// configure-entity entry family): removal + tombstone + persist, with
+// no journal entry. Returns the restorer the recorded undo closure runs
+// and the removed request's label for the journal label. The delete is
+// HTTP-request-shaped (not entitystore.DeleteRecoverable) because
+// c.requests predates the descriptor recipe.
+func (c *ConfigureService) deleteHTTPRequest(id string) (func() error, string, error) {
+	if err := c.refIntegrityError("request", "request", id); err != nil {
+		return nil, "", err
 	}
 
 	c.mu.Lock()
@@ -224,7 +248,7 @@ func (c *ConfigureService) DeleteHTTPRequest(id string) error {
 	}
 	if idx == -1 {
 		c.mu.Unlock()
-		return fmt.Errorf("no request with id %q", id)
+		return nil, "", fmt.Errorf("no request with id %q", id)
 	}
 	removed := c.requests[idx]
 	wasBuiltIn := removed.BuiltIn
@@ -239,18 +263,16 @@ func (c *ConfigureService) DeleteHTTPRequest(id string) error {
 			c.mu.Lock()
 			c.requests = insertHTTPRequestAt(c.requests, idx, removed)
 			c.mu.Unlock()
-			return fmt.Errorf("tombstone deleted request %q: %w", id, err)
+			return nil, "", fmt.Errorf("tombstone deleted request %q: %w", id, err)
 		}
 	}
 	if err := c.persistHTTPRequests(); err != nil {
 		c.mu.Lock()
 		c.requests = insertHTTPRequestAt(c.requests, idx, removed)
 		c.mu.Unlock()
-		return fmt.Errorf("save request deletion: %w", err)
+		return nil, "", fmt.Errorf("save request deletion: %w", err)
 	}
-	c.undo.remember("request", id, c.httpRequestRestorer(id, idx, removed, wasBuiltIn))
-	dataevent.Emit("request", id) // goal 0017: live-sync every open surface
-	return nil
+	return c.httpRequestRestorer(id, idx, removed, wasBuiltIn), removed.Label, nil
 }
 
 // insertHTTPRequestAt reinserts r at idx (clamped to the current

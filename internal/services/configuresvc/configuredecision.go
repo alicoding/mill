@@ -193,22 +193,10 @@ func (c *ConfigureService) UpdateDecision(id, label string, category decision.Ca
 }
 
 func (c *ConfigureService) DeleteDecision(id string) error {
-	if err := c.refIntegrityError("decision", "decision", id); err != nil {
-		return err
-	}
-	// A deleted built-in gets a tombstone so top-up seeding never
-	// resurrects it -- same discipline DeleteHTTPRequest already
-	// applies. Removal and tombstone must succeed together
-	// (docs/goals/0025 item 2).
-	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
-	clearTombstone := func(id string) error { return seeding.ClearTombstone(c.store, id) }
-	restore, err := entitystore.DeleteRecoverable(&c.mu, &c.decisions, c.persistDecisions, recordTombstone, clearTombstone, decisionDescriptor, id)
-	if err != nil {
-		return err
-	}
-	c.undo.remember("decision", id, restore)
-	dataevent.Emit("decision", id) // goal 0017: live-sync every open surface
-	return nil
+	announce := func(id string) { dataevent.Emit("decision", id) }
+	return deleteEntity(c, "decision", &c.decisions, c.persistDecisions, decisionDescriptor,
+		func(id string) error { return c.refIntegrityError("decision", "decision", id) },
+		func(d decision.Decision) string { return d.Label }, announce, id)
 }
 
 // No DuplicateDecision RPC: checked against the precedent first

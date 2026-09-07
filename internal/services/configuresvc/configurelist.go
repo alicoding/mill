@@ -3,6 +3,7 @@ package configuresvc
 import (
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/composition"
@@ -169,7 +170,11 @@ func (c *ConfigureService) createListWithID(id, label, description string, colum
 // decision 3's evolution check (typedfield.ValidateFieldEvolution's
 // own doc comment has the full rule).
 func (c *ConfigureService) UpdateList(id, label, description string, columns []typedfield.Field, newFieldTombstones []typedfield.FieldTombstone) (list.List, error) {
+	var beforeColumns []typedfield.Field
+	var beforeTombstones []typedfield.FieldTombstone
 	updated, err := entitystore.Update(&c.mu, &c.lists, c.persistLists, listDescriptor, id, func(previous list.List) (list.List, error) {
+		beforeColumns = copyFields(previous.Columns)
+		beforeTombstones = slices.Clone(previous.FieldTombstones)
 		l := previous
 		tombstones := typedfield.MergeTombstones(previous.FieldTombstones, newFieldTombstones)
 		if err := list.ValidateFieldEvolutionWithRows(previous.Columns, columns, tombstones, previous.Rows); err != nil {
@@ -188,28 +193,18 @@ func (c *ConfigureService) UpdateList(id, label, description string, columns []t
 	if err != nil {
 		return list.List{}, err
 	}
+	// The journal's list-schema entry is the columns/tombstones delta
+	// alone (configurelistundo.go) -- a label-only save carries none.
+	c.recordSchemaWrite(updated, beforeColumns, beforeTombstones)
 	dataevent.Emit("list", updated.ID) // goal 0017: live-sync every open surface
 	return updated, nil
 }
 
 func (c *ConfigureService) DeleteList(id string) error {
-	if err := c.refIntegrityError("list", "list", id); err != nil {
-		return err
-	}
-	// A deleted built-in gets a tombstone so top-up seeding never
-	// resurrects it -- same discipline DeleteHTTPRequest/DeleteDecision
-	// already apply. Removal and tombstone must succeed together
-	// (docs/goals/0025 item 2): an untombstoned removal would silently
-	// come back on the next restart's top-up seeding.
-	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
-	clearTombstone := func(id string) error { return seeding.ClearTombstone(c.store, id) }
-	restore, err := entitystore.DeleteRecoverable(&c.mu, &c.lists, c.persistLists, recordTombstone, clearTombstone, listDescriptor, id)
-	if err != nil {
-		return err
-	}
-	c.undo.remember("list", id, restore)
-	dataevent.Emit("list", id) // goal 0017: live-sync every open surface
-	return nil
+	announce := func(id string) { dataevent.Emit("list", id) }
+	return deleteEntity(c, "list", &c.lists, c.persistLists, listDescriptor,
+		func(id string) error { return c.refIntegrityError("list", "list", id) },
+		func(l list.List) string { return l.Label }, announce, id)
 }
 
 // --- persistence ---

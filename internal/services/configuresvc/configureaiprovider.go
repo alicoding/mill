@@ -172,18 +172,10 @@ func (c *ConfigureService) UpdateAIProvider(id, label string, kind aiprovider.Ki
 // shaped error, not surfaced), same reasoning DeleteHTTPRequest's own
 // c.credentials.Delete call already documents.
 func (c *ConfigureService) DeleteAIProvider(id string) error {
-	if err := c.refIntegrityError("aiprovider", "AI provider", id); err != nil {
-		return err
-	}
-	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
-	clearTombstone := func(id string) error { return seeding.ClearTombstone(c.store, id) }
-	restore, err := entitystore.DeleteRecoverable(&c.mu, &c.aiProviders, c.persistAIProviders, recordTombstone, clearTombstone, aiProviderDescriptor, id)
-	if err != nil {
-		return err
-	}
-	c.undo.remember("aiprovider", id, restore)
-	dataevent.Emit("aiprovider", id) // goal 0017: live-sync every open surface
-	return nil
+	announce := func(id string) { dataevent.Emit("aiprovider", id) }
+	return deleteEntity(c, "aiprovider", &c.aiProviders, c.persistAIProviders, aiProviderDescriptor,
+		func(id string) error { return c.refIntegrityError("aiprovider", "AI provider", id) },
+		func(p aiprovider.AIProvider) string { return p.Label }, announce, id)
 }
 
 // --- persistence ---

@@ -18,6 +18,7 @@ import { ConfigureAIProviders } from './ConfigureAIProviders'
 import { ConfigureStepTypes } from './ConfigureStepTypes'
 import ConfigureKindNav from './ConfigureKindNav'
 import { clearConfigureHash, kindFromHash, readLastConfigureKind, rememberConfigureKind, writeConfigureHash } from './configureRoute'
+import { useUndoJournal } from '../shared/useUndoJournal'
 import rail from '../shared/RailLayout.module.css'
 import styles from './ConfigureView.module.css'
 
@@ -55,6 +56,16 @@ const PANES: Record<ConfigureKindID, () => ReactNode> = {
 function ConfigureView({ initialTab }: { initialTab?: string }) {
   const { t } = useTranslation('configure')
   const isNarrowViewport = useIsNarrowViewport()
+
+  // ⌘Z/⇧⌘Z here walk the app's ONE undo journal (ADR-0044, goal 0352):
+  // a List cell/row/column edit and any Configure entity delete are
+  // steps on the same history the board's own edits land on, in the
+  // order they were made. Mounted at the view, never per pane: panes
+  // stay mounted while hidden, so a pane-level mount would double-
+  // register and apply every step twice. The staleness notice the
+  // journal returns needs one quiet line above the pane it names.
+  const [undoNotice, setUndoNotice] = useState('')
+  useUndoJournal({ onSkip: setUndoNotice, onApplied: () => setUndoNotice('') })
 
   const [kind, setKind] = useState<ConfigureKindID>(() => {
     if (initialTab) return resolveConfigureKind(initialTab)
@@ -95,6 +106,9 @@ function ConfigureView({ initialTab }: { initialTab?: string }) {
       <div className={isNarrowViewport ? `${rail.layoutNarrow} ${styles.layoutNarrow}` : `${rail.layout} ${styles.layout}`} data-testid="configure-view">
         <ConfigureKindNav activeId={kind} onSelect={select} />
         <div className={styles.pane}>
+          {undoNotice && (
+            <p className={styles.notice} data-testid="configure-undo-notice">{undoNotice}</p>
+          )}
           {CONFIGURE_KINDS.filter((k) => mounted.includes(k.id)).map((k) => (
             <div key={k.id} hidden={k.id !== kind} data-testid={`configure-pane-${k.id}`}>
               {PANES[k.id]()}

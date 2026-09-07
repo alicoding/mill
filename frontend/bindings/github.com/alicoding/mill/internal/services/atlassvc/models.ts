@@ -497,4 +497,12 @@ export interface UndoResult {
 export interface UndoState {
     "HasUndo": boolean;
     "HasRedo": boolean;
+
+    /**
+     * TopKind/TopID name the entry ⌘Z would pop next. The delete toast
+     * watches the pair and hides once the journal's top step is no
+     * longer the delete it offers (ADR-0044 amendment item 5).
+     */
+    "TopKind": string;
+    "TopID": string;
 }

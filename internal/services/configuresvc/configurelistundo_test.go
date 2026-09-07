@@ -239,10 +239,13 @@ func TestListCellUndo_SkipsWhenTheColumnWasRemoved(t *testing.T) {
 	rowID := h.rows(t)[0].ID
 
 	h.writeCell(t, rowID, "qty", "9")
-	if _, err := h.cfg.UpdateList(h.list.ID, h.list.Label, "", []typedfield.Field{
+	// The column leaves through the unrecorded schema core, so the cell
+	// entry is still the newest thing on the journal when Undo pops it
+	// (the recorded door would put the schema step on top instead).
+	if err := h.cfg.setListSchema(h.list.ID, []typedfield.Field{
 		{Key: "name", Label: "Name", Type: typedfield.TypeText},
 	}, []typedfield.FieldTombstone{{Key: "qty", Type: typedfield.TypeText}}); err != nil {
-		t.Fatalf("UpdateList: %v", err)
+		t.Fatalf("setListSchema: %v", err)
 	}
 
 	res := h.atlas.Undo()

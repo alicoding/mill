@@ -20,6 +20,7 @@ import { useUISignalStore } from '../shared/uiSignalStore'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
+import { useUndoJournal } from '../shared/useUndoJournal'
 import PageContainer from '../shared/PageContainer'
 import { FirstRunIntro } from '../shared/FirstRunIntro'
 import { ConfigureSecretSources } from '../configure/ConfigureSecretSources'
@@ -107,6 +108,15 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   const [capability, setCapability] = useState('none')
   const [lockAfterSeconds, setLockAfterSeconds] = useState(0)
 
+  // The Sources section's rows delete through the same registry command
+  // Configure's own panes use, and that delete's toast Undo pops the
+  // app's ONE undo journal (ADR-0044, goal 0352 part 2) -- the journal
+  // consumer must be mounted on every surface that can delete, or the
+  // toast's Undo bumps a signal nobody reads here. One mount per
+  // surface; views never overlap.
+  const [undoNotice, setUndoNotice] = useState('')
+  useUndoJournal({ onSkip: setUndoNotice, onApplied: () => setUndoNotice('') })
+
   const sectionSwitch = (
     <SegmentedControl aria-label={t('sections.ariaLabel')} className={styles.sections} data-testid="secrets-sections">
       <SegmentedControl.Button selected={section === 'vault'} onClick={() => setSection('vault')} data-testid="secrets-section-vault">
@@ -144,6 +154,9 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
         </Text>
       </Stack>
       {sectionSwitch}
+      {undoNotice && (
+        <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-undo-notice">{undoNotice}</Text>
+      )}
     </>
   )
 
