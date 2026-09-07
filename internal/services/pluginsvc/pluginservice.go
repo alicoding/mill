@@ -464,7 +464,7 @@ func (p *PluginService) RequestGuardedAction(pluginID string, kind string, attri
 	}
 	decision, err := p.guardrail.RequestGuardedAction(context.Background(), guardrailsvc.GuardedAction{
 		Kind:        kind,
-		Attributes:  attributes,
+		Attributes:  pluginActorAttributes(pluginID, plugin, attributes),
 		Description: description,
 		Source:      "plugin:" + pluginID,
 	})

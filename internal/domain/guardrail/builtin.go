@@ -55,11 +55,22 @@ const (
 	// title as Attributes["secret"], and ask outranks any allow rule a
 	// user later adds for the host.
 	PluginFetchSecretRuleID = "plugin-fetch-uses-secret"
+	// BuiltInPluginEditCardFieldsRuleID allows a bundled plugin's
+	// card-field write without a per-write ask (docs/goals/0357 S1b):
+	// scoped by Condition to Attributes["plugin.builtin"], never by
+	// skipping evaluation, so a third-party plugin (Builtin=false)
+	// still falls through to the class default (ask) and the rule
+	// itself stays visible/deletable like any other.
+	BuiltInPluginEditCardFieldsRuleID = "builtin-plugin-edit-card-fields"
 )
 
 // pluginFetchKind mirrors pluginsvc.FetchKind without importing the
 // service package (domain stays leaf).
 const pluginFetchKind = "net.fetch"
+
+// pluginCardSetFieldsKind mirrors pluginsvc.CardFieldsKind, same
+// reason as pluginFetchKind above.
+const pluginCardSetFieldsKind = "card.set-fields"
 
 // BuiltIn returns the seeded example guardrail rules -- goal 0203 S2's
 // "uses a stored secret" proof, plus goal 0240 S3's default shell
@@ -130,6 +141,18 @@ func BuiltIn() []Rule {
 			// erroring condition matches (fail-closed), which would park
 			// every plain fetch.
 			Condition: `("secret" in Attributes) and Attributes["secret"] != ""`,
+			BuiltIn:   true,
+			Seed:      seedorigin.Stamp(1),
+		},
+		{
+			ID:         BuiltInPluginEditCardFieldsRuleID,
+			Label:      "Allow bundled extensions to edit card fields",
+			Effect:     EffectAllow,
+			NodeTypeID: pluginCardSetFieldsKind,
+			// Attributes is a plain string map on the wire (pluginsvc's
+			// GuardedAction.Attributes), so the actor's bool is compared
+			// as a string, not a native boolean.
+			Condition: `Attributes["plugin.builtin"] == "true"`,
 			BuiltIn:   true,
 			Seed:      seedorigin.Stamp(1),
 		},

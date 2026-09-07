@@ -58,7 +58,7 @@ func (p *PluginService) ListDirForPlugin(pluginID, dir string) (PluginListDirRes
 	if p.guardrail == nil {
 		return PluginListDirResult{}, errors.New("guardrail unavailable: a plugin file listing is always evaluated")
 	}
-	attrs := map[string]string{"path": dir}
+	attrs := pluginActorAttributes(pluginID, plugin, map[string]string{"path": dir})
 	verdict := p.guardrail.EvaluateAction(ListFilesKind, attrs, guardrail.ClassRead)
 	out := PluginListDirResult{Approved: verdict.Effect == guardrail.EffectAllow, Effect: string(verdict.Effect), RuleLabel: verdict.RuleLabel, Entries: []PluginFileEntry{}}
 	if verdict.Effect == guardrail.EffectAsk {

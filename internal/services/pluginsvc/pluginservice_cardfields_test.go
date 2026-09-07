@@ -3,6 +3,7 @@ package pluginsvc
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alicoding/mill/internal/domain/atlas"
 	"github.com/alicoding/mill/internal/domain/guardrail"
@@ -112,6 +113,74 @@ func TestSetCardFieldsForPlugin_DenyRuleStopsTheWrite(t *testing.T) {
 	}
 	if len(writer.writes) != 0 {
 		t.Errorf("a denied ask still wrote: %v", writer.writes)
+	}
+}
+
+// docs/goals/0357 S1b: a bundled plugin's card-field write is approved
+// by the seeded rule with no ask, and the write still lands through
+// the exact same door an ask-then-approve write does -- an
+// allow-by-rule decision changes nothing about what gets audited.
+func TestSetCardFieldsForPlugin_BuiltInPluginAllowedBySeededRule(t *testing.T) {
+	root := t.TempDir()
+	store := servicetest.NewFakeStore()
+	guard := guardrailsvc.NewGuardrailService(store, compositionsvc.NewCompositionService(store))
+	svc := New(root, guard, "1.0.0")
+	writer := &fakeFieldWriter{}
+	svc.WireContentWrites(writer)
+
+	out, err := svc.SetCardFieldsForPlugin("mill-roadmap", "card-1", map[string]string{"horizon": "Now"})
+	if err != nil {
+		t.Fatalf("SetCardFieldsForPlugin(mill-roadmap): %v", err)
+	}
+	if !out.Approved || out.Effect != string(guardrail.EffectAllow) || out.RuleLabel != "Allow bundled extensions to edit card fields" {
+		t.Errorf("built-in plugin write = %+v, want an immediate allow naming the seeded rule", out)
+	}
+	if len(writer.writes) != 1 || writer.writes[0]["horizon"] != "Now" {
+		t.Errorf("the field door saw %v, want exactly the written map -- an allow-by-rule write is audited the same as any other", writer.writes)
+	}
+}
+
+// A third-party plugin (Builtin=false) is unaffected by the seeded
+// rule -- its card-field write still asks, same as before this goal.
+func TestSetCardFieldsForPlugin_ThirdPartyPluginStillAsks(t *testing.T) {
+	svc, guard, writer := newCardFieldsHarness(t)
+
+	type result struct {
+		out PluginContentWriteResult
+		err error
+	}
+	done := make(chan result, 1)
+	go func() {
+		out, err := svc.SetCardFieldsForPlugin("roadmapper", "card-1", map[string]string{"horizon": "Now"})
+		done <- result{out, err}
+	}()
+
+	deadline := time.Now().Add(2 * time.Second)
+	var pendingID string
+	for time.Now().Before(deadline) {
+		if pending := guard.PendingGuardedActions(); len(pending) == 1 {
+			pendingID = pending[0].ID
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if pendingID == "" {
+		t.Fatal("a third-party plugin's card-field write never parked for a human decision")
+	}
+	if err := guard.ResolveGuardedAction(pendingID, true); err != nil {
+		t.Fatalf("ResolveGuardedAction: %v", err)
+	}
+
+	select {
+	case r := <-done:
+		if r.err != nil || !r.out.Approved {
+			t.Fatalf("after approval: %+v %v", r.out, r.err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("SetCardFieldsForPlugin never unblocked after the human approved")
+	}
+	if len(writer.writes) != 1 {
+		t.Errorf("writer.writes = %v, want exactly the approved write", writer.writes)
 	}
 }
 
