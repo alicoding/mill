@@ -5,8 +5,10 @@ import { Blankslate } from '@primer/react/experimental'
 import { ChevronLeftIcon, ChevronRightIcon, HistoryIcon } from '@primer/octicons-react'
 import { CompositionService, SecretService } from '../shared/bindings'
 import type { SecretAccessRecord } from '../shared/bindings'
+import { runCommand } from '../shared/commands'
 import { formatUpdated } from '../shared/inventorySort'
 import listStyles from '../shared/ListCard.module.css'
+import { contextCopyKey, errorCopyKey, type SecretAccessContext, type SecretAccessFailureKind } from './secretAccessHistoryCopy'
 
 // Goal 0203 S3: "who read this credential, and when" -- read-only, one
 // component for both entry points the design contract names: the
@@ -20,27 +22,6 @@ const PAGE_SIZE = 25
 const OUTCOME_VARIANT: Record<string, LabelProps['variant']> = {
   read: 'success',
   error: 'danger',
-}
-
-// contextCopyKey maps one record's context (+ whether a workflow name
-// resolved) to its locale key -- see secrets.json's accessHistory.* for
-// the actual sentences. A workflow-attributed read always wins over the
-// context's own generic phrase, matching the design contract's own
-// "Read by workflow <name>" example.
-function contextCopyKey(context: string, hasWorkflow: boolean): string {
-  if (hasWorkflow && (context === 'mcp-server-spawn' || context === 'exec-env' || context === 'http-header')) {
-    return 'accessHistory.readByWorkflow'
-  }
-  switch (context) {
-    case 'mcp-server-spawn': return 'accessHistory.readMcpServerSpawn'
-    case 'exec-env': return 'accessHistory.readExecEnv'
-    case 'http-header': return 'accessHistory.readHttpHeader'
-    case 'configure-tools-preview': return 'accessHistory.readConfigureToolsPreview'
-    case 'ui-reveal': return 'accessHistory.readUiReveal'
-    case 'ui-copy': return 'accessHistory.readUiCopy'
-    case 'plugin-fetch': return 'accessHistory.readPluginFetch'
-    default: return 'accessHistory.readGeneric'
-  }
 }
 
 export function SecretsAccessHistoryDialog({ entryId, entryLabel, onClose }: {
@@ -100,13 +81,29 @@ export function SecretsAccessHistoryDialog({ entryId, entryLabel, onClose }: {
         <>
           <ActionList showDividers aria-label={heading} data-testid="secrets-access-history-list">
             {records.map((r) => {
+              const context = r.context as SecretAccessContext
               const workflowLabel = r.workflowId ? workflowLabels[r.workflowId] : undefined
+              const hasWorkflow = Boolean(workflowLabel)
               const isError = r.outcome === 'error'
+              const failureKind = (r.failureKind ?? '') as SecretAccessFailureKind
+              const errorKey = isError ? errorCopyKey(failureKind) : null
               const description = isError
-                ? t('accessHistory.readFailed')
-                : t(contextCopyKey(r.context, Boolean(workflowLabel)), { label: workflowLabel, actor: r.actor?.replace(/^plugin:/, '') })
+                ? (errorKey ? t(errorKey, { reference: r.entryId }) : (r.errorText || t('accessHistory.readFailed')))
+                : t(contextCopyKey(context, hasWorkflow, Boolean(r.stepId)), {
+                    workflow: workflowLabel, step: r.stepId, actor: r.actor?.replace(/^plugin:/, ''),
+                  })
+              // The workflow name is the run's own deep link (goal
+              // 0371) -- the same run.open command door every other run
+              // row in Mill opens through (docs/SPEC.md §7's one
+              // run-detail viewer), never a bespoke navigation.
+              const opensRun = !isError && hasWorkflow && Boolean(r.runId)
               return (
-                <ActionList.Item key={r.id} role="listitem" data-testid="secrets-access-history-row">
+                <ActionList.Item
+                  key={r.id}
+                  role="listitem"
+                  data-testid="secrets-access-history-row"
+                  onSelect={opensRun ? () => { void runCommand('run.open', { kind: 'run', runId: r.runId, workflowId: r.workflowId }) } : undefined}
+                >
                   {entryId ? description : r.label}
                   <ActionList.Description variant="block">
                     {entryId ? formatUpdated(r.timestamp) : [description, formatUpdated(r.timestamp)].join(' · ')}

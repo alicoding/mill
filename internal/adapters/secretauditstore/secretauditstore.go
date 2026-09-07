@@ -66,7 +66,9 @@ CREATE TABLE IF NOT EXISTS secret_access (
 	workflow_id TEXT NOT NULL DEFAULT '',
 	actor TEXT NOT NULL DEFAULT '',
 	outcome TEXT NOT NULL,
-	error_text TEXT NOT NULL DEFAULT ''
+	error_text TEXT NOT NULL DEFAULT '',
+	step_id TEXT NOT NULL DEFAULT '',
+	failure_kind TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_secret_access_timestamp ON secret_access(timestamp);
 CREATE INDEX IF NOT EXISTS idx_secret_access_entry_id ON secret_access(entry_id);
@@ -78,6 +80,17 @@ CREATE INDEX IF NOT EXISTS idx_secret_access_context ON secret_access(context);
 	// actor arrived with ADR-0048 (plugin readers); a store created
 	// before it lacks the column and is widened in place.
 	if err := ensureColumn(db, "actor", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	// step_id arrived with goal 0371; same widen-in-place convention.
+	if err := ensureColumn(db, "step_id", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	// failure_kind arrived with goal 0378; same widen-in-place
+	// convention. A row written before this column existed reads back
+	// "" -- the same "no dedicated label" fallback an unclassified
+	// failure gets.
+	if err := ensureColumn(db, "failure_kind", "TEXT NOT NULL DEFAULT ''"); err != nil {
 		return err
 	}
 	return nil
@@ -126,10 +139,10 @@ func (s *Store) Insert(ctx context.Context, r secretaudit.Record) (int64, error)
 		ts = time.Now().UTC()
 	}
 	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO secret_access (timestamp, entry_id, label, context, run_id, workflow_id, actor, outcome, error_text)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO secret_access (timestamp, entry_id, label, context, run_id, workflow_id, actor, outcome, error_text, step_id, failure_kind)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		ts.Format(timestampLayout), r.EntryID, r.Label, string(r.Context), r.RunID, r.WorkflowID, r.Actor,
-		string(r.Outcome), secretaudit.TruncateError(r.ErrorText),
+		string(r.Outcome), secretaudit.TruncateError(r.ErrorText), r.StepID, string(r.FailureKind),
 	)
 	if err != nil {
 		return 0, fmt.Errorf("secretauditstore: insert: %w", err)

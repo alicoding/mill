@@ -147,6 +147,10 @@
     "seedRevision": 1,
     "fingerprint": "0fde6bdf29e4ebb04f1438adf87b09a8064ec94b1a2fcc7a99e685e2497c22ae"
   },
+  "guardrailrule:builtin-plugin-edit-card-fields": {
+    "seedRevision": 1,
+    "fingerprint": "307b4224794c0736d0fbb2615f91aae997c02b1f1d7e7a8c876567ceea8945a5"
+  },
   "guardrailrule:example-secret-guard-rule": {
     "seedRevision": 1,
     "fingerprint": "1c08007bbeeea7f8badb47a7d1d2d85fb6669fbbc917f0d81104666e5ae52c41"
@@ -396,8 +400,8 @@
     "fingerprint": "36d4113c0ce217af1be0cf743d3b754b879f174e69a4cf38f0325754c11687f3"
   },
   "workflow:example-secret-guard-workflow": {
-    "seedRevision": 4,
-    "fingerprint": "e93e39c37e0f8beb202cae1d639b1c6e39fbdccb64bda5ffa38642f00f69634b"
+    "seedRevision": 5,
+    "fingerprint": "223483e56a4de953fd34bb706aa060dab902ebcd75a188c27b669fbd69686c74"
   },
   "workflow:example-sha256-clipboard-workflow": {
     "seedRevision": 2,

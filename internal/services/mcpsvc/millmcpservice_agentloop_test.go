@@ -85,11 +85,11 @@ func (h *agentloopHarness) topicKindID(t *testing.T) string {
 // restored via t.Cleanup so it never leaks into another test.
 func (h *agentloopHarness) wireProvider(t *testing.T, srv *httptest.Server) {
 	t.Helper()
-	composition.SetAIProviderLookup(func(id string) (composition.ResolvedAIProvider, error) {
+	composition.SetAIProviderLookup(func(id string, _ composition.SecretAccessRun) (composition.ResolvedAIProvider, error) {
 		return composition.ResolvedAIProvider{Kind: "openai-compatible", BaseURL: srv.URL, Model: "m"}, nil
 	})
 	t.Cleanup(func() {
-		composition.SetAIProviderLookup(func(id string) (composition.ResolvedAIProvider, error) {
+		composition.SetAIProviderLookup(func(id string, _ composition.SecretAccessRun) (composition.ResolvedAIProvider, error) {
 			return composition.ResolvedAIProvider{}, errors.New("no AI provider lookup registered (yet)")
 		})
 	})

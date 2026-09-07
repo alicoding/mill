@@ -2,11 +2,13 @@ package secretsvc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/adapters/secretauditstore"
+	"github.com/alicoding/mill/internal/adapters/secretvault"
 )
 
 // AuditRetentionKeep mirrors mcpauditsvc.RetentionKeep's own number and
@@ -67,18 +69,33 @@ func (s *SecretService) CloseAudit() error {
 // written. Silently does nothing when no audit store is wired (every
 // test that constructs SecretService without calling OpenAudit) --
 // audit is observability, not a correctness gate on resolution.
-func (s *SecretService) recordAccess(entryID, label string, actx secretaudit.AccessContext, outcome secretaudit.Outcome, errText string) {
+// failureKind is meaningless (left "") for OutcomeRead.
+func (s *SecretService) recordAccess(entryID, label string, actx secretaudit.AccessContext, outcome secretaudit.Outcome, failureKind secretaudit.FailureKind, errText string) {
 	if s.auditStore == nil {
 		return
 	}
 	rec := secretaudit.Record{
 		EntryID: entryID, Label: label, Context: actx.Context,
-		RunID: actx.RunID, WorkflowID: actx.WorkflowID, Actor: actx.Actor,
-		Outcome: outcome, ErrorText: errText,
+		RunID: actx.RunID, WorkflowID: actx.WorkflowID, StepID: actx.StepID, Actor: actx.Actor,
+		Outcome: outcome, FailureKind: failureKind, ErrorText: errText,
 	}
 	if _, err := s.auditStore.Insert(context.Background(), rec); err != nil {
 		s.auditLog.Error("secret audit: insert", "error", err, "entryId", entryID, "context", actx.Context)
 	}
+}
+
+// failureKindForVaultErr classifies a secretvault error into the audit
+// record's FailureKind: secretvault.ErrNotFound (a reference naming no
+// entry the vault can produce) becomes FailureKindUnrecognizedEntry --
+// the same condition the guardrail gate itself labels
+// (configuresvc.unknownVaultLabel) -- everything else is
+// FailureKindOther. err is assumed non-nil (only called on the
+// OutcomeError path).
+func failureKindForVaultErr(err error) secretaudit.FailureKind {
+	if errors.Is(err, secretvault.ErrNotFound) {
+		return secretaudit.FailureKindUnrecognizedEntry
+	}
+	return secretaudit.FailureKindOther
 }
 
 // RecordAccess is recordAccess exported for a caller outside this
@@ -92,7 +109,7 @@ func (s *SecretService) recordAccess(entryID, label string, actx secretaudit.Acc
 //
 //wails:ignore
 func (s *SecretService) RecordAccess(entryID, label string, actx secretaudit.AccessContext, outcome secretaudit.Outcome, errText string) {
-	s.recordAccess(entryID, label, actx, outcome, errText)
+	s.recordAccess(entryID, label, actx, outcome, "", errText)
 }
 
 // ListSecretAccessRequest is the bound read API's request shape --
@@ -114,16 +131,18 @@ type ListSecretAccessRequest struct {
 // "adapter type stays free of a frontend-JSON concern" reasoning
 // mcpauditsvc.MCPCallRecord's own doc comment gives.
 type SecretAccessRecord struct {
-	ID         int64  `json:"id"`
-	Timestamp  string `json:"timestamp"`
-	EntryID    string `json:"entryId"`
-	Label      string `json:"label"`
-	Context    string `json:"context"`
-	RunID      string `json:"runId"`
-	WorkflowID string `json:"workflowId"`
-	Actor      string `json:"actor"`
-	Outcome    string `json:"outcome"`
-	ErrorText  string `json:"errorText"`
+	ID          int64  `json:"id"`
+	Timestamp   string `json:"timestamp"`
+	EntryID     string `json:"entryId"`
+	Label       string `json:"label"`
+	Context     string `json:"context"`
+	RunID       string `json:"runId"`
+	WorkflowID  string `json:"workflowId"`
+	StepID      string `json:"stepId"`
+	Actor       string `json:"actor"`
+	Outcome     string `json:"outcome"`
+	FailureKind string `json:"failureKind"`
+	ErrorText   string `json:"errorText"`
 }
 
 // ListSecretAccessResponse carries one page plus the total matching-row
@@ -174,7 +193,8 @@ func (s *SecretService) ListSecretAccess(req ListSecretAccessRequest) (ListSecre
 		out = append(out, SecretAccessRecord{
 			ID: r.ID, Timestamp: r.Timestamp.Format("2006-01-02T15:04:05.000Z07:00"),
 			EntryID: r.EntryID, Label: r.Label, Context: string(r.Context),
-			RunID: r.RunID, WorkflowID: r.WorkflowID, Actor: r.Actor, Outcome: string(r.Outcome), ErrorText: r.ErrorText,
+			RunID: r.RunID, WorkflowID: r.WorkflowID, StepID: r.StepID, Actor: r.Actor, Outcome: string(r.Outcome),
+			FailureKind: string(r.FailureKind), ErrorText: r.ErrorText,
 		})
 	}
 	return ListSecretAccessResponse{Records: out, Total: total}, nil

@@ -41,7 +41,7 @@ func (s *Store) List(filter Filter, limit, offset int) ([]secretaudit.Record, in
 		return nil, 0, fmt.Errorf("secretauditstore: count: %w", err)
 	}
 
-	q := "SELECT id, timestamp, entry_id, label, context, run_id, workflow_id, actor, outcome, error_text FROM secret_access " +
+	q := "SELECT id, timestamp, entry_id, label, context, run_id, workflow_id, actor, outcome, error_text, step_id, failure_kind FROM secret_access " +
 		where + " ORDER BY id DESC LIMIT ? OFFSET ?"
 	rows, err := s.db.QueryContext(context.Background(), q, append(args, limit, offset)...)
 	if err != nil {
@@ -52,12 +52,13 @@ func (s *Store) List(filter Filter, limit, offset int) ([]secretaudit.Record, in
 	var out []secretaudit.Record
 	for rows.Next() {
 		var r secretaudit.Record
-		var ts, ctxVal, outcome string
-		if err := rows.Scan(&r.ID, &ts, &r.EntryID, &r.Label, &ctxVal, &r.RunID, &r.WorkflowID, &r.Actor, &outcome, &r.ErrorText); err != nil {
+		var ts, ctxVal, outcome, failureKind string
+		if err := rows.Scan(&r.ID, &ts, &r.EntryID, &r.Label, &ctxVal, &r.RunID, &r.WorkflowID, &r.Actor, &outcome, &r.ErrorText, &r.StepID, &failureKind); err != nil {
 			return nil, 0, fmt.Errorf("secretauditstore: scan: %w", err)
 		}
 		r.Context = secretaudit.Context(ctxVal)
 		r.Outcome = secretaudit.Outcome(outcome)
+		r.FailureKind = secretaudit.FailureKind(failureKind)
 		if parsed, err := time.Parse(timestampLayout, ts); err == nil {
 			r.Timestamp = parsed
 		}

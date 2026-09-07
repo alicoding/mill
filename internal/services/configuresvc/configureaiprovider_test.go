@@ -5,6 +5,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/domain/aiprovider"
+	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/servicetest"
 )
@@ -66,7 +67,7 @@ func TestDeleteAIProvider_RemovesItAndLeavesTheStoredKey(t *testing.T) {
 			t.Error("AIProviders() still returns the deleted provider")
 		}
 	}
-	if _, err := cfg.resolveAIProvider(p.ID); err == nil {
+	if _, err := cfg.resolveAIProvider(p.ID, composition.SecretAccessRun{}); err == nil {
 		t.Error("resolveAIProvider found a provider after it was deleted")
 	}
 	if secrets.Len() != 1 {
@@ -80,7 +81,7 @@ func TestResolveAIProvider_NoSecretConfigured_EmptyAPIKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateAIProvider returned error: %v", err)
 	}
-	rp, err := cfg.resolveAIProvider(p.ID)
+	rp, err := cfg.resolveAIProvider(p.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveAIProvider returned error: %v", err)
 	}
@@ -101,7 +102,7 @@ func TestResolveAIProvider_KeyResolvesThroughItsReference(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateAIProvider returned error: %v", err)
 	}
-	rp, err := cfg.resolveAIProvider(p.ID)
+	rp, err := cfg.resolveAIProvider(p.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveAIProvider returned error: %v", err)
 	}
@@ -112,7 +113,7 @@ func TestResolveAIProvider_KeyResolvesThroughItsReference(t *testing.T) {
 	if _, err := cfg.UpdateAIProvider(p.ID, p.Label, p.Kind, p.BaseURL, p.Model, ""); err != nil {
 		t.Fatalf("UpdateAIProvider clearing the key reference: %v", err)
 	}
-	rp2, err := cfg.resolveAIProvider(p.ID)
+	rp2, err := cfg.resolveAIProvider(p.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveAIProvider returned error: %v", err)
 	}
@@ -129,7 +130,7 @@ func TestResolveAIProvider_ReferenceToAMissingEntry_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateAIProvider returned error: %v", err)
 	}
-	if _, err := cfg.resolveAIProvider(p.ID); err == nil {
+	if _, err := cfg.resolveAIProvider(p.ID, composition.SecretAccessRun{}); err == nil {
 		t.Fatal("resolveAIProvider with a reference to a missing entry returned nil error, want an error")
 	}
 }
@@ -140,7 +141,7 @@ func TestResolveAIProvider_BlankAnthropicBaseURLDefaultsToRealHost(t *testing.T)
 	if err != nil {
 		t.Fatalf("CreateAIProvider returned error: %v", err)
 	}
-	rp, err := cfg.resolveAIProvider(p.ID)
+	rp, err := cfg.resolveAIProvider(p.ID, composition.SecretAccessRun{})
 	if err != nil {
 		t.Fatalf("resolveAIProvider returned error: %v", err)
 	}
@@ -151,7 +152,7 @@ func TestResolveAIProvider_BlankAnthropicBaseURLDefaultsToRealHost(t *testing.T)
 
 func TestResolveAIProvider_UnknownID_Rejected(t *testing.T) {
 	cfg, _ := newTestConfigureService(t)
-	if _, err := cfg.resolveAIProvider("does-not-exist"); err == nil {
+	if _, err := cfg.resolveAIProvider("does-not-exist", composition.SecretAccessRun{}); err == nil {
 		t.Fatal("resolveAIProvider with an unknown id returned nil error, want an error")
 	}
 }
@@ -213,7 +214,7 @@ func TestExportImportAIProvider_FreshImportNeverCarriesASecret(t *testing.T) {
 	if imported.Label != p.Label || imported.BaseURL != p.BaseURL || imported.Model != p.Model {
 		t.Errorf("imported provider %+v doesn't match the original's content", imported)
 	}
-	if rp, err := cfg.resolveAIProvider(imported.ID); err != nil || rp.APIKey != "should-never-export" {
+	if rp, err := cfg.resolveAIProvider(imported.ID, composition.SecretAccessRun{}); err != nil || rp.APIKey != "should-never-export" {
 		t.Errorf("imported provider resolves APIKey=%q (err=%v) -- the reference travelled and resolves against this device's own store", rp.APIKey, err)
 	}
 }
@@ -244,7 +245,7 @@ func TestExportImportAIProvider_UpdateInPlace_PreservesTheExistingSecret(t *test
 	if imported.ID != p.ID {
 		t.Errorf("ImportAIProvider.ID = %q, want the same id %q (update in place)", imported.ID, p.ID)
 	}
-	if rp, err := cfg.resolveAIProvider(imported.ID); err != nil || rp.APIKey != "keep-me" {
+	if rp, err := cfg.resolveAIProvider(imported.ID, composition.SecretAccessRun{}); err != nil || rp.APIKey != "keep-me" {
 		t.Errorf("resolveAIProvider after update: APIKey=%q, err=%v, want %q preserved", rp.APIKey, err, "keep-me")
 	}
 }

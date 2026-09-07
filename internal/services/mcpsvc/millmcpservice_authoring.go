@@ -258,7 +258,7 @@ func (m *MillMCPService) registerAuthoringTools() {
 			res, jerr := jsonResult(validationResult{Issues: []composition.Issue{{Severity: composition.SeverityError, Message: err.Error()}}})
 			return res, nil, jerr
 		}
-		issues := composition.ValidateGraph(resolved, edges, attributes)
+		issues := composition.ValidateGraph(resolved, edges, attributes) //nolint:contextcheck // static graph validation only, no run to thread; openapispec.Parse deliberately takes no context
 		res, jerr := jsonResult(validationResult{Valid: !hasErrorIssue(issues), Issues: issues})
 		return res, nil, jerr
 	})
@@ -407,7 +407,7 @@ func (m *MillMCPService) registerAuthoringTools() {
 		if in.Test {
 			kind = executionsvc.RunKindTest
 		}
-		summary, err := m.exec.RunWorkflowWithPayload(id, kind, in.Values, in.Payload)
+		summary, err := m.exec.RunWorkflowWithPayload(id, kind, in.Values, in.Payload) //nolint:contextcheck // pre-flight graph validation has no run context to thread; openapispec.Parse deliberately takes none
 		if err != nil {
 			return nil, nil, err
 		}

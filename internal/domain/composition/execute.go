@@ -190,6 +190,10 @@ func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepR
 				}
 				ctx = gated
 			}
+			// CurrentStepID names the node whose exec is about to run
+			// (goal 0371) -- set here, not earlier, so a guardrail-gate
+			// edit to ctx above can never clobber it.
+			ctx.CurrentStepID = node.ID
 			ctx, err = run(node.ID, func() (ExecContext, error) { return entry.exec(node, ctx) })
 			if err != nil {
 				return "", fmt.Errorf("step %s: %w", node.NodeTypeID, err)

@@ -58,7 +58,7 @@ const aiProvidersKey = "configure-aiproviders"
 // allows that combination) -- the domain-layer default, independent of
 // internal/adapters/aiclient's own identical fallback, so either layer
 // alone already does the right thing (aiclient.go's own doc comment).
-func (c *ConfigureService) resolveAIProvider(id string) (composition.ResolvedAIProvider, error) {
+func (c *ConfigureService) resolveAIProvider(id string, run composition.SecretAccessRun) (composition.ResolvedAIProvider, error) {
 	c.mu.Lock()
 	var p aiprovider.AIProvider
 	found := false
@@ -78,7 +78,7 @@ func (c *ConfigureService) resolveAIProvider(id string) (composition.ResolvedAIP
 	// reference resolves to an empty key with no error and no audit
 	// line -- this entity has no AuthType field to gate on the way
 	// resolveHTTPRequest does.
-	actx := secretaudit.AccessContext{Context: secretaudit.ContextAIProvider}
+	actx := secretaudit.AccessContext{Context: secretaudit.ContextAIProvider, RunID: run.RunID, WorkflowID: run.WorkflowID, StepID: run.StepID}
 	apiKey, err := c.resolveOptionalSecretRef(p.Label, fieldAIProviderKey, p.KeyRef, actx)
 	if err != nil {
 		return composition.ResolvedAIProvider{}, err
