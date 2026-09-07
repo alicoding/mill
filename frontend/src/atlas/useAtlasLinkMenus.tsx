@@ -1,143 +1,69 @@
 import { useCallback, useState } from 'react'
 import type { TFunction } from 'i18next'
-import type { BoardObject, Card, Link, LinkKind, Note, Perspective } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
-import type { TombstoneResult } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc/models'
+import type { Card, LinkKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { runCommand } from '../shared/commands'
 import { AtlasService } from '../shared/bindings'
-import { refreshAtlas } from './atlasStore'
-import { isGroupCard } from './atlasBoardLayout'
-import { atlasCardShareActions } from './atlasCardShare'
+import { background } from '../shared/background'
+import { atlasSelectionContext } from '../shared/atlasSelectionStore'
+import { atlasFacts } from '../shared/atlasSelectionFacts'
 import type { ContextMenuItem, ContextMenuState } from '../shared/ContextMenu'
 import { AtlasEdgeLabelPopover } from './AtlasEdgeLabelPopover'
 import { perspectiveMembershipMenuItems } from './atlasPerspectiveMenuItems'
-import { buildExportMenuChoice, runCardExport } from './atlasCardExportMenu'
-import type { UnitExporter } from './unitRegistry'
 
-const ARTERY_MENU_TITLE_MAX = 28
-
-// An artery's own right-click labels ("Open <title>") stay one line
-// regardless of how long the connected card's title is.
-function truncateTitle(title: string): string {
-  return title.length > ARTERY_MENU_TITLE_MAX ? `${title.slice(0, ARTERY_MENU_TITLE_MAX - 1)}…` : title
-}
+type Pos = { x: number; y: number }
 
 // AtlasView's own card + edge context menus (goal 0081 slice A4,
 // LOCKED design §6d) -- split out of AtlasView.tsx (architecture.md's
-// 500-line convention), extending goal 0075's original pair: a
-// mirror-path card leads with kind-aware verbs (Open file/Reveal in
-// file manager) before the existing Zoom/Open/share/Delete block,
-// every card gets "Add linked card…", and an edge gains Change link
-// kind/Edit label/Remove link -- gated to a NON-aggregated edge
-// (count === 1), since acting on one specific link within a count>1
-// aggregated artery has no per-link picker in this slice.
-export function useAtlasLinkMenus({
-  t, allCards, allLinks, allNotes, allObjects, linkKinds, perspectives, setMenu, drill, onOpenCard, onError, onDeleted, onPerspectiveToast, requestLinkedCard, guardDelete,
-}: {
+// 500-line convention). Every item is a registry command over the
+// selection context (goal 0346 slice B): this hook decides WHICH card
+// or link an item names and where the click was; the command decides
+// its label, whether it is offered, and what it does. A mirror-path
+// card leads with kind-aware verbs (Open file/Reveal in file manager)
+// before Zoom/Open/share/Delete; an edge gains Change link kind/Edit
+// label/Remove link, gated by the command to a single link (an
+// aggregated artery is not one link).
+export function useAtlasLinkMenus({ t, allCards, linkKinds, setMenu }: {
   t: TFunction<'atlas'>
   allCards: Card[]
-  allLinks: Link[]
-  allNotes: Note[]
-  allObjects: BoardObject[]
   linkKinds: LinkKind[]
-  perspectives: Perspective[]
   setMenu: (state: ContextMenuState | null) => void
-  drill: (id: string) => void
-  onOpenCard: (id: string) => void
-  onError: (message: string) => void
-  onDeleted: (result: TombstoneResult) => void
-  onPerspectiveToast: (message: string) => void
-  requestLinkedCard: (fromCardID: string, pos: { x: number; y: number }) => void
-  // The container-delete gate (goal 0149 gap 3).
-  guardDelete: (cardIDs: string[], noteIDs: string[], exec: () => void) => void
 }) {
-  const [labelTarget, setLabelTarget] = useState<{ linkID: string; pos: { x: number; y: number }; initialLabel: string } | null>(null)
+  const [labelTarget, setLabelTarget] = useState<{ linkID: string; pos: Pos; initialLabel: string } | null>(null)
 
-  // Instant, no confirm (goal 0093's quick-delete-with-undo guard) --
-  // onDeleted reports the TombstoneResult to AtlasView's shared undo
-  // toast.
-  const deleteCard = (id: string) => guardDelete([id], [], () => {
-    AtlasService.DeleteCard(id)
-      .then((result) => { onDeleted(result); void refreshAtlas() })
-      .catch((err) => onError(String(err)))
-  })
+  const cardContext = (cardID: string, pos: Pos) => atlasSelectionContext({ cards: [cardID], notes: [], objects: [], links: [] }, { pos })
 
-  const openCardMenu = (cardID: string, pos: { x: number; y: number }) => {
+  const openCardMenu = (cardID: string, pos: Pos) => {
     const card = allCards.find((c) => c.ID === cardID)
     if (!card) return
-    const share = atlasCardShareActions(card, onError)
-    // isGroupCard only counts Card children -- a card holding ONLY
-    // Notes (the seeded Scratchpad inbox, docs/goals/0090) still needs
-    // its own Zoom-in door, since a Note's containment is otherwise
-    // unreachable from the board (visibleNotes only renders once
-    // viewedID equals the note's own ParentID).
-    const place = isGroupCard(allCards, card, allNotes, allObjects)
-    const perspectiveItems = perspectiveMembershipMenuItems({ t, perspectives, cardIDs: [card.ID], pos, setMenu, onToast: onPerspectiveToast })
-    const mirrorItems: ContextMenuItem[] = card.MirrorPath
-      ? [
-          { id: 'open-file', label: t('contextMenu.openFile'), run: () => void AtlasService.OpenCardMirror(card.ID).catch((err) => onError(String(err))) },
-          { id: 'reveal-in-file-manager', label: t('contextMenu.revealInFileManager'), run: () => void AtlasService.RevealCardMirror(card.ID).catch((err) => onError(String(err))) },
-          { id: 'd0', divider: true },
-        ]
-      : []
-    // Export-as (ADR-0043 §3, goal 0133 slice E1): buildExportMenuChoice
-    // is the single source deciding whether this shows at all and
-    // whether it's a direct download or a format submenu -- the card
-    // page's kebab menu (AtlasCardOverlay) resolves the identical
-    // choice off the same card, so the two surfaces can never drift.
-    const exportChoice = buildExportMenuChoice({
-      card,
-      t,
-      onDownload: (exporter) => void runCardExport(card, exporter, onError),
-      onOpenFormats: (exporters: UnitExporter[]) => setMenu({
-        x: pos.x,
-        y: pos.y,
-        items: exporters.map((exp): ContextMenuItem => ({ id: `export-${exp.format}`, label: exp.label, run: () => void runCardExport(card, exp, onError) })),
-      }),
-    })
-    const exportItems: ContextMenuItem[] = exportChoice ? [{ id: exportChoice.id, label: exportChoice.label, run: exportChoice.run }, { id: 'd0c', divider: true }] : []
-    // Fit to content (goal 0193's "expand to the point you can see the
-    // remaining content", expressed as one action rather than a mode):
-    // only the plain note face has content that clips by a fixed line
-    // count -- a frame's box is computed from its children and a
-    // table's from its rows, neither of which this measures.
-    const fitToContentItem: ContextMenuItem[] = !isGroupCard(allCards, card, allNotes, allObjects) && !card.ProjectionListID
-      ? [{
-          id: 'fit-to-content',
-          label: t('contextMenu.fitToContent'),
-          run: () => {
-            const el = document.querySelector<HTMLElement>(`.react-flow__node[data-id="${card.ID}"] [data-testid="atlas-note-card"]`)
-            if (!el) return
-            // scrollHeight under a temporary height:auto is this card's
-            // true natural content height (flex children with
-            // min-height:0 collapse to nothing left to grow into once
-            // the parent itself has no fixed height) -- overflow:clip
-            // still reports it correctly, it just never PAINTS past the
-            // box while clamped.
-            const previousHeight = el.style.height
-            el.style.height = 'auto'
-            const naturalHeight = el.scrollHeight
-            el.style.height = previousHeight
-            void AtlasService.SetCardSize(card.ID, el.offsetWidth, naturalHeight)
-          },
-        }]
-      : []
+    const ctx = cardContext(cardID, pos)
+    // Export-as (ADR-0043 §3): one format downloads directly; several
+    // open as a submenu naming each -- the command's own label says
+    // which, and the same command serves the card page's kebab.
+    const exporters = atlasFacts().card(cardID)?.exporters ?? []
+    const exportItems: ContextMenuItem[] = exporters.length > 1
+      ? [{ id: 'export-as', label: t('export.menuLabel'), submenu: exporters.map((e) => ({ id: `export-${e.format}`, commandId: 'atlas.card.exportAs', ctx: atlasSelectionContext({ cards: [cardID], notes: [], objects: [], links: [] }, { pos, format: e.format }) })) }]
+      : [{ id: 'export-as', commandId: 'atlas.card.exportAs', ctx }]
     setMenu({
       x: pos.x,
       y: pos.y,
       items: [
-        ...mirrorItems,
+        { id: 'open-file', commandId: 'atlas.card.openFile', ctx },
+        { id: 'reveal-in-file-manager', commandId: 'atlas.card.revealInFileManager', ctx },
+        { id: 'd0', divider: true },
         ...exportItems,
-        { id: 'add-linked-card', label: t('contextMenu.addLinkedCard'), run: () => requestLinkedCard(card.ID, pos) },
+        { id: 'd0c', divider: true },
+        { id: 'add-linked-card', commandId: 'atlas.card.addLinkedCard', ctx },
         { id: 'd0b', divider: true },
-        ...(place ? [{ id: 'zoom', label: t('contextMenu.zoomIn'), run: () => drill(card.ID) }] : []),
-        { id: 'open', label: t('contextMenu.open'), run: () => onOpenCard(card.ID) },
-        ...fitToContentItem,
+        { id: 'zoom', commandId: 'atlas.card.zoomIn', ctx },
+        { id: 'open', commandId: 'atlas.card.open', ctx },
+        { id: 'fit-to-content', commandId: 'atlas.card.fitToContent', ctx },
         { id: 'd1', divider: true },
-        { id: 'copy-context', label: t('share.copyContext'), run: () => void share.copyAsContext(false) },
-        { id: 'copy-link', label: t('share.copyCloudLink'), run: () => void share.copyCloudLink() },
-        ...(card.MirrorPath ? [{ id: 'reveal', label: t('share.revealFile'), run: () => void share.revealFile() }] : []),
-        ...(perspectiveItems.length > 0 ? [{ id: 'd1b', divider: true } as ContextMenuItem, ...perspectiveItems] : []),
+        { id: 'copy-context', commandId: 'atlas.card.copyContext', ctx },
+        { id: 'copy-link', commandId: 'atlas.card.copyLink', ctx },
+        { id: 'd1b', divider: true },
+        ...perspectiveMembershipMenuItems({ t, cardIDs: [card.ID] }),
         { id: 'd2', divider: true },
-        { id: 'delete', label: t('overlay.delete'), danger: true, run: () => deleteCard(card.ID) },
+        { id: 'delete', commandId: 'atlas.delete.selection', ctx, danger: true },
       ],
     })
   }
@@ -148,40 +74,46 @@ export function useAtlasLinkMenus({
   // useCallback-stable: AtlasBoard's own edges memo takes this as a
   // dependency, and an unstable reference here rebuilt the whole
   // edges array on every unrelated AtlasView render.
+  const linkContext = (linkID: string, pos?: Pos, target?: { card?: string; linkKind?: string }) =>
+    atlasSelectionContext({ cards: [], notes: [], objects: [], links: [linkID] }, { pos, ...target })
+
   const removeLink = useCallback((linkID: string) => {
-    void AtlasService.DeleteLink(linkID).catch((err) => onError(String(err)))
-  }, [onError])
+    void runCommand('atlas.link.remove', linkContext(linkID))
+  }, [])
 
-  const openChangeKindMenu = useCallback((linkID: string, pos: { x: number; y: number }) => {
-    setMenu({
-      x: pos.x,
-      y: pos.y,
-      items: linkKinds.map((lk): ContextMenuItem => ({
-        id: lk.ID,
-        label: lk.Label,
-        run: () => void AtlasService.SetLinkKind(linkID, lk.ID).catch((err) => onError(String(err))),
-      })),
-    })
-  }, [linkKinds, setMenu, onError])
+  const kindItems = useCallback((linkID: string, pos: Pos): ContextMenuItem[] => linkKinds.map((lk): ContextMenuItem => ({
+    id: lk.ID,
+    commandId: 'atlas.link.setKind',
+    ctx: linkContext(linkID, pos, { linkKind: lk.ID }),
+  })), [linkKinds])
 
-  const openArteryMenu = (sourceID: string, targetID: string, linkID: string, count: number, pos: { x: number; y: number }) => {
-    const source = allCards.find((c) => c.ID === sourceID)
-    const target = allCards.find((c) => c.ID === targetID)
-    if (!source || !target) return
+  const openChangeKindMenu = useCallback((linkID: string, pos: Pos) => {
+    setMenu({ x: pos.x, y: pos.y, items: kindItems(linkID, pos) })
+  }, [kindItems, setMenu])
+
+  const openArteryMenu = (sourceID: string, targetID: string, linkID: string, count: number, pos: Pos) => {
     const items: ContextMenuItem[] = [
-      { id: 'open-source', label: t('contextMenu.openCard', { title: truncateTitle(source.Title) }), run: () => onOpenCard(source.ID) },
-      { id: 'open-target', label: t('contextMenu.openCard', { title: truncateTitle(target.Title) }), run: () => onOpenCard(target.ID) },
+      { id: 'open-source', commandId: 'atlas.card.open', ctx: linkContext(linkID, pos, { card: sourceID }) },
+      { id: 'open-target', commandId: 'atlas.card.open', ctx: linkContext(linkID, pos, { card: targetID }) },
     ]
+    // Acting on one specific link within a count>1 aggregated artery
+    // has no per-link picker: the link items name the artery's own id
+    // only when it IS one link.
     if (count === 1) {
-      const link = allLinks.find((l) => l.ID === linkID)
+      const ctx = linkContext(linkID, pos)
       items.push(
         { id: 'd1', divider: true },
-        { id: 'change-kind', label: t('contextMenu.changeLinkKind'), run: () => openChangeKindMenu(linkID, pos) },
-        { id: 'edit-label', label: t('contextMenu.editLabel'), run: () => setLabelTarget({ linkID, pos, initialLabel: link?.Label ?? '' }) },
-        { id: 'remove-link', label: t('contextMenu.removeLink'), danger: true, run: () => removeLink(linkID) },
+        { id: 'change-kind', label: t('contextMenu.changeLinkKind'), submenu: kindItems(linkID, pos) },
+        { id: 'edit-label', commandId: 'atlas.link.editLabel', ctx },
+        { id: 'remove-link', commandId: 'atlas.link.remove', ctx, danger: true },
       )
     }
     setMenu({ x: pos.x, y: pos.y, items })
+  }
+
+  // The label popover the atlas.link.editLabel request opens.
+  const editLabel = (linkID: string, pos: Pos) => {
+    setLabelTarget({ linkID, pos, initialLabel: atlasFacts().link(linkID)?.label ?? '' })
   }
 
   const labelPopover = labelTarget && (
@@ -191,11 +123,11 @@ export function useAtlasLinkMenus({
       onSubmit={(label) => {
         const linkID = labelTarget.linkID
         setLabelTarget(null)
-        void AtlasService.UpdateLink(linkID, label).catch((err) => onError(String(err)))
+        void background(AtlasService.UpdateLink(linkID, label), 'atlas.link.updateLabel')
       }}
       onCancel={() => setLabelTarget(null)}
     />
   )
 
-  return { openCardMenu, openArteryMenu, labelPopover, removeLink, openChangeKindMenu }
+  return { openCardMenu, openArteryMenu, labelPopover, removeLink, openChangeKindMenu, editLabel }
 }

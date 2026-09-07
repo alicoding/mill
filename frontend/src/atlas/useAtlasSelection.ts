@@ -1,6 +1,8 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { OnSelectionChangeFunc } from '@xyflow/react'
 import type { BoardObject, Card, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { useAtlasSelectionStore } from '../shared/atlasSelectionStore'
+import type { ResolvedBoardEdge } from './atlasLinkResolution'
 
 // Multi-selection state + the two context-menu paths that read it
 // (goal 0081; split from AtlasBoard.tsx along the selection seam at
@@ -22,13 +24,18 @@ import type { BoardObject, Card, Note } from '../../bindings/github.com/alicodin
 // the pointerdown snapshot covers the node-handler path, where React
 // Flow re-selects the pressed node (clearing the multi-selection) on
 // the SAME pointer-down that later fires onNodeContextMenu.
-export function useAtlasSelection({ cards, notes, objects, onMultiSelectContextMenu }: {
+export function useAtlasSelection({ cards, notes, objects, arteries, spaceId, onMultiSelectContextMenu }: {
   cards: Card[]
   notes: Note[]
   // Board objects (goal 0179/0180): a third split, same shape as
   // cards/notes -- multi-selecting/deleting a mix of cards, notes and
   // objects is one gesture, not three.
   objects: BoardObject[]
+  // The board's edges, so a selected single-link artery reaches the
+  // shared selection (goal 0346 slice B); an aggregated one is not one
+  // link and never does.
+  arteries: ResolvedBoardEdge[]
+  spaceId: string
   onMultiSelectContextMenu: (cardIDs: string[], noteIDs: string[], objectIDs: string[], pos: { x: number; y: number }) => void
 }) {
   const selectedIDsRef = useRef<string[]>([])
@@ -56,13 +63,24 @@ export function useAtlasSelection({ cards, notes, objects, onMultiSelectContextM
   // can't join that cycle.
   const [applyToken, setApplyToken] = useState(0)
 
-  const onSelectionChange: OnSelectionChangeFunc = useCallback(({ nodes: selected }) => {
+  // The ONE place the shared selection (shared/atlasSelectionStore.ts,
+  // goal 0346 slice B) is written from React Flow: this subscription,
+  // never a per-node effect (goal 0161's render-count law).
+  const onSelectionChange: OnSelectionChangeFunc = useCallback(({ nodes: selected, edges }) => {
     const ids = selected.map((n) => n.id)
     selectedIDsRef.current = ids
-    setSelectedCards(ids.filter((id) => cards.some((c) => c.ID === id)))
-    setSelectedNotes(ids.filter((id) => notes.some((n) => n.ID === id)))
-    setSelectedObjects(ids.filter((id) => objects.some((o) => o.ID === id)))
-  }, [cards, notes, objects])
+    const selectedCardIDs = ids.filter((id) => cards.some((c) => c.ID === id))
+    const selectedNoteIDs = ids.filter((id) => notes.some((n) => n.ID === id))
+    const selectedObjectIDs = ids.filter((id) => objects.some((o) => o.ID === id))
+    setSelectedCards(selectedCardIDs)
+    setSelectedNotes(selectedNoteIDs)
+    setSelectedObjects(selectedObjectIDs)
+    const links = edges.map((e) => e.id).filter((id) => arteries.some((a) => a.id === id && a.count === 1))
+    useAtlasSelectionStore.getState().setSelection({ spaceId, cards: selectedCardIDs, notes: selectedNoteIDs, objects: selectedObjectIDs, links })
+  }, [cards, notes, objects, arteries, spaceId])
+
+  // Leaving the board leaves nothing selected behind for the palette.
+  useEffect(() => () => useAtlasSelectionStore.getState().clearSelection(), [])
 
   // The selection tray's own clear (Escape, or the tray's clear
   // affordance): resets every split so a stale ref can't reopen a
@@ -72,6 +90,7 @@ export function useAtlasSelection({ cards, notes, objects, onMultiSelectContextM
     setSelectedCards([])
     setSelectedNotes([])
     setSelectedObjects([])
+    useAtlasSelectionStore.getState().clearSelection()
   }, [])
 
   // A programmatic single-selection (goal 0199): a discrete tool's
@@ -86,8 +105,9 @@ export function useAtlasSelection({ cards, notes, objects, onMultiSelectContextM
     setSelectedCards([])
     setSelectedNotes([])
     setSelectedObjects([id])
+    useAtlasSelectionStore.getState().setSelection({ spaceId, cards: [], notes: [], objects: [id], links: [] })
     setApplyToken((t) => t + 1)
-  }, [])
+  }, [spaceId])
 
   // The same programmatic single-selection, for a freshly landed NOTE
   // (goal 0218's paste-fallback note) -- kept as its own function
@@ -99,8 +119,9 @@ export function useAtlasSelection({ cards, notes, objects, onMultiSelectContextM
     setSelectedCards([])
     setSelectedNotes([id])
     setSelectedObjects([])
+    useAtlasSelectionStore.getState().setSelection({ spaceId, cards: [], notes: [id], objects: [], links: [] })
     setApplyToken((t) => t + 1)
-  }, [])
+  }, [spaceId])
 
   // Snapshot the selection BEFORE React Flow's own handlers re-select
   // the pressed node -- unconditional (not button===2) because a macOS

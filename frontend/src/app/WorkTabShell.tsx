@@ -105,9 +105,9 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
       x: pos.x,
       y: pos.y,
       items: [
-        { id: 'close', label: t('commandPalette.closeTab'), run: () => requestClose({ kind: 'one', key: tab.key }) },
-        { id: 'close-others', label: t('workTabShell.closeOtherTabs'), run: () => requestClose({ kind: 'others', keepKey: tab.key }) },
-        { id: 'close-all', label: t('workTabShell.closeAllTabs'), danger: true, run: () => requestClose({ kind: 'all' }) },
+        { id: 'close', label: t('commandPalette.closeTab'), commandId: 'tab.close', ctx: { kind: 'tab', key: tab.key } },
+        { id: 'close-others', label: t('workTabShell.closeOtherTabs'), commandId: 'tab.closeOthers', ctx: { kind: 'tab', key: tab.key } },
+        { id: 'close-all', label: t('workTabShell.closeAllTabs'), commandId: 'tab.closeAll', danger: true },
       ],
     })
   }

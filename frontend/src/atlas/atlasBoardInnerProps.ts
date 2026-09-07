@@ -91,8 +91,6 @@ export interface AtlasBoardInnerProps {
   allNotes: import('../../bindings/github.com/alicoding/mill/internal/domain/atlas/models').Note[]
   onCreateTableSized: (cols: number, rows: number, at?: { X: number; Y: number }, parentID?: string) => void
   onOpenTableFromList: () => void
-  // The selection tray's own "Group into new area" -- the multi-select context menu's own dispatcher, reused.
-  onGroupSelection: (cardIDs: string[], noteIDs: string[], objectIDs: string[], pos: { x: number; y: number }) => void
   // AtlasView's downward creation requests (pane-menu adds, promote,
   // frame placements, group) -- useAtlasCreation.ts has the shape.
   placementRequest?: AtlasPlacementRequest | null

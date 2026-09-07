@@ -123,6 +123,18 @@ interface UISignalState {
   // OWN id, so a board with several diagrams stays unambiguous.
   atlasDiagramFitRequest: { id: string; seq: number } | null
   requestAtlasDiagramFit: (objectID: string) => void
+  // The rows of two inventories outside Configure whose actions are
+  // registry commands (goal 0346 slice B): a guardrail rule's edit form
+  // and reload, a perspective's inline rename and its (confirmed)
+  // delete -- each consumed by the one surface that owns that UI.
+  guardrailRuleEditRequest: { id: string; seq: number } | null
+  requestGuardrailRuleEdit: (id: string) => void
+  guardrailRulesRevision: number
+  bumpGuardrailRules: () => void
+  atlasPerspectiveRenameRequest: { id: string; seq: number } | null
+  requestAtlasPerspectiveRename: (id: string) => void
+  atlasPerspectiveDeleteRequest: { id: string; seq: number } | null
+  requestAtlasPerspectiveDelete: (id: string) => void
   // "Previous page" / "Next page" (goal 0354): the step, not the target
   // page -- the frame holding the live viewer is the only place that
   // knows where the face currently is, so the command carries -1/+1 and
@@ -311,6 +323,14 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   requestAtlasTableRename: (objectID) => set((s) => ({ atlasTableRenameRequest: { id: objectID, seq: (s.atlasTableRenameRequest?.seq ?? 0) + 1 } })),
   atlasDiagramFitRequest: null,
   requestAtlasDiagramFit: (objectID) => set((s) => ({ atlasDiagramFitRequest: { id: objectID, seq: (s.atlasDiagramFitRequest?.seq ?? 0) + 1 } })),
+  guardrailRuleEditRequest: null,
+  requestGuardrailRuleEdit: (id) => set((s) => ({ guardrailRuleEditRequest: { id, seq: (s.guardrailRuleEditRequest?.seq ?? 0) + 1 } })),
+  guardrailRulesRevision: 0,
+  bumpGuardrailRules: () => set((s) => ({ guardrailRulesRevision: s.guardrailRulesRevision + 1 })),
+  atlasPerspectiveRenameRequest: null,
+  requestAtlasPerspectiveRename: (id) => set((s) => ({ atlasPerspectiveRenameRequest: { id, seq: (s.atlasPerspectiveRenameRequest?.seq ?? 0) + 1 } })),
+  atlasPerspectiveDeleteRequest: null,
+  requestAtlasPerspectiveDelete: (id) => set((s) => ({ atlasPerspectiveDeleteRequest: { id, seq: (s.atlasPerspectiveDeleteRequest?.seq ?? 0) + 1 } })),
   atlasDiagramPageRequest: null,
   requestAtlasDiagramPage: (objectID, delta) => set((s) => ({ atlasDiagramPageRequest: { id: objectID, delta, seq: (s.atlasDiagramPageRequest?.seq ?? 0) + 1 } })),
   atlasImagePopoverRequest: 0,

@@ -92,10 +92,21 @@ var targetNouns = map[string]string{
 	"entity":   "entity",
 	"listGrid": "table rows",
 	"jsonNode": "tree row",
+	"tab":      "tab",
+}
+
+// The kinds whole "selected X" phrasing would garble ("the selected
+// selection"), each given its own full sentence instead.
+var targetPhrases = map[string]string{
+	"selection":     "Acts on the board's current selection",
+	"canvasElement": "Acts on the item you clicked",
 }
 
 func describeEnablement(enabled bool, needs string) string {
 	if needs != "" {
+		if phrase, ok := targetPhrases[needs]; ok {
+			return phrase
+		}
 		noun, ok := targetNouns[needs]
 		if !ok {
 			noun = needs

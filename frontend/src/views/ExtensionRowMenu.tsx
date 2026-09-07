@@ -25,6 +25,9 @@ export function ExtensionRowMenu({ id, name }: { id: string; name: string }) {
     })
   const removeCommand = findCommand('extension.remove')
   const canRemove = removeCommand !== undefined && (removeCommand.enabled?.(ctx) ?? true)
+  // The question is the command's own (goal 0346 slice B): the row
+  // hosts the dialog, the family phrases it.
+  const removeConfirm = removeCommand?.confirm?.(ctx) ?? null
   if (items.length === 0 && !canRemove) return null
 
   return (
@@ -58,11 +61,11 @@ export function ExtensionRowMenu({ id, name }: { id: string; name: string }) {
           </ActionList>
         </ActionMenu.Overlay>
       </ActionMenu>
-      {confirming && (
+      {confirming && removeConfirm && (
         <ConfirmDialog
-          title={t('settings.extensions.removeConfirmTitle', { name })}
-          body={t('settings.extensions.removeConfirmBody')}
-          confirmLabel={t('settings.extensions.removeConfirmButton')}
+          title={removeConfirm.title}
+          body={removeConfirm.body}
+          confirmLabel={removeConfirm.confirmLabel}
           onCancel={() => setConfirming(false)}
           onConfirm={() => {
             setConfirming(false)

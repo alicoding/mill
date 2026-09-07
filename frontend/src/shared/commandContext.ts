@@ -8,8 +8,7 @@
 // argument, so a command's availability and its effect read the same
 // target.
 //
-// A kind is added only when a real surface needs it -- the four below
-// are the ones that exist today. `pinned` on 'entry' is the entry's
+// A kind is added only when a real surface needs it. `pinned` on 'entry' is the entry's
 // own state at the moment the surface offers the action: the clipboard
 // entry list is a dialog's local state, unreachable from this leaf, so
 // the invoker states it rather than a command re-fetching it.
@@ -47,6 +46,34 @@ export type CommandContext =
   // row holds focus are that mount's own state, unreachable from this
   // leaf.
   | { kind: 'jsonNode'; path: string; key: string; value: string }
+  // The Atlas board's live selection (goal 0346 slice B): the ids of
+  // every selected card, note, board object and single link, plus the
+  // space they sit in. The board writes it into
+  // shared/atlasSelectionStore.ts on React Flow's own selection change;
+  // a menu hands the same shape for the thing it was opened on. A
+  // data-driven item ("Open <linked card>", "Add to <perspective>") is
+  // ONE command with the chosen thing in `target`, never a command per
+  // row. `pos` is where the invoker was (a right-click point) for a
+  // command that opens a popover there; absent from a keystroke.
+  | { kind: 'selection'; spaceId: string; cards: string[]; notes: string[]; objects: string[]; links: string[]; target?: SelectionTarget }
+  // A work tab other than the active one -- the tab strip's own
+  // right-click names the tab under the pointer, which the active-tab
+  // commands otherwise act on (goal 0346 slice B).
+  | { kind: 'tab'; key: string }
+  // A step or connection on the workflow canvas, or a point on its
+  // pane (goal 0346 slice B): the canvas's right-click names the thing
+  // under the pointer, and the command reaches the canvas through the
+  // store's canvasCommandRequest seam with that target attached.
+  | { kind: 'canvasElement'; nodeId?: string; edgeId?: string; pos?: { x: number; y: number } }
+
+export interface SelectionTarget {
+  card?: string
+  perspective?: string
+  linkKind?: string
+  format?: string
+  pluginItem?: string
+  pos?: { x: number; y: number }
+}
 
 export type CommandContextKind = CommandContext['kind']
 
@@ -87,4 +114,18 @@ export function entryContext(ctx: CommandContext | undefined): { entryId: string
 
 export function listGridContext(ctx: CommandContext | undefined): { listID: string; rowIDs: string[]; columnKey?: string; text?: string } | null {
   return ctx?.kind === 'listGrid' ? { listID: ctx.listID, rowIDs: ctx.rowIDs, columnKey: ctx.columnKey, text: ctx.text } : null
+}
+
+export type SelectionContext = Extract<CommandContext, { kind: 'selection' }>
+
+export function selectionContext(ctx: CommandContext | undefined): SelectionContext | null {
+  return ctx?.kind === 'selection' ? ctx : null
+}
+
+export function tabContext(ctx: CommandContext | undefined): { key: string } | null {
+  return ctx?.kind === 'tab' ? { key: ctx.key } : null
+}
+
+export function canvasElementContext(ctx: CommandContext | undefined): { nodeId?: string; edgeId?: string; pos?: { x: number; y: number } } | null {
+  return ctx?.kind === 'canvasElement' ? { nodeId: ctx.nodeId, edgeId: ctx.edgeId, pos: ctx.pos } : null
 }

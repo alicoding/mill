@@ -3,6 +3,8 @@ import type { RefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import { isEditableTarget } from '../shared/keybinding'
 import { useAppStore } from '../shared/store'
+import { runCommand } from '../shared/commands'
+import { atlasSelectionContext } from '../shared/atlasSelectionStore'
 import { isFocusInsideBoard, readSelectedNodeIDs } from './atlasFocusContainment'
 
 // The selection tray's own state glue + keyboard doors (owner-caught
@@ -27,7 +29,7 @@ import { isFocusInsideBoard, readSelectedNodeIDs } from './atlasFocusContainment
 // keypress landed between an unsubscribe and the next resubscribe and
 // was silently dropped.
 export function useAtlasSelectionTray<TNode extends Node>({
-  selectedCards, selectedNotes, selectedObjects, clearSelection, setNodes, onDeleteSelection, onGroupSelection, wrapperRef,
+  selectedCards, selectedNotes, selectedObjects, clearSelection, setNodes, wrapperRef,
 }: {
   selectedCards: string[]
   selectedNotes: string[]
@@ -37,8 +39,6 @@ export function useAtlasSelectionTray<TNode extends Node>({
   selectedObjects: string[]
   clearSelection: () => void
   setNodes: (updater: (nodes: TNode[]) => TNode[]) => void
-  onDeleteSelection: (cardIDs: string[], noteIDs: string[], objectIDs?: string[]) => void
-  onGroupSelection: (cardIDs: string[], noteIDs: string[], objectIDs: string[], pos: { x: number; y: number }) => void
   // Escape's own ladder must never fire on top of some OTHER surface
   // (a Dialog, a popover) that's legitimately consuming the same
   // keypress to close/cancel itself -- see atlasFocusContainment.ts's
@@ -55,9 +55,9 @@ export function useAtlasSelectionTray<TNode extends Node>({
   // only a 2+ one, and can't wait on this state mirror's own timing.
   const hasSelection = selectedCards.length + selectedNotes.length + selectedObjects.length >= 2
 
-  const latest = useRef({ selectedCards, selectedNotes, selectedObjects, hasSelection, clearSelection, setNodes, onDeleteSelection, onGroupSelection })
+  const latest = useRef({ selectedCards, selectedNotes, selectedObjects, hasSelection, clearSelection, setNodes })
   useEffect(() => {
-    latest.current = { selectedCards, selectedNotes, selectedObjects, hasSelection, clearSelection, setNodes, onDeleteSelection, onGroupSelection }
+    latest.current = { selectedCards, selectedNotes, selectedObjects, hasSelection, clearSelection, setNodes }
   })
 
   // Clears BOTH halves: React Flow's own node.selected flags (so the
@@ -70,11 +70,11 @@ export function useAtlasSelectionTray<TNode extends Node>({
     latest.current.setNodes((nds) => nds.map((n) => (n.selected ? { ...n, selected: false } : n)))
   }, [])
 
+  // Group and Delete run the registry commands over the live selection
+  // (goal 0346 slice B) -- the same two the right-click menu and the
+  // palette run; the command's own enablement is the 2+ threshold.
   const triggerGroup = useCallback((pos: { x: number; y: number }) => {
-    const { selectedCards: cards, selectedNotes: notes, selectedObjects: objects, onGroupSelection: onGroup } = latest.current
-    // Any 2+ placed things group (goal 0266) -- same threshold the
-    // tray's own visibility uses.
-    if (cards.length + notes.length + objects.length >= 2) onGroup(cards, notes, objects, pos)
+    void runCommand('atlas.group.selection', atlasSelectionContext(undefined, { pos }))
   }, [])
 
   // Bare-G has no click point of its own -- anchors the SAME popover a
@@ -118,5 +118,5 @@ export function useAtlasSelectionTray<TNode extends Node>({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [clearAll, groupFromKeyboard, wrapperRef])
 
-  return { trayRef, hasSelection, onGroup: triggerGroup, onDelete: () => onDeleteSelection(selectedCards, selectedNotes, selectedObjects) }
+  return { trayRef, hasSelection, onGroup: triggerGroup, onDelete: () => { void runCommand('atlas.delete.selection', atlasSelectionContext()) } }
 }

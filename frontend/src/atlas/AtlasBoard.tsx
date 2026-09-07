@@ -77,7 +77,7 @@ import { background } from '../shared/background'
 // media-query gate AtlasNoteCardNode.module.css's own flip already
 // uses, read here in JS via usePrefersReducedMotion since React Flow's
 // own transition durations are JS options, not CSS.
-function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, allNotes, objects, allObjects, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onObjectContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onGroupSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, onQuietToast, onOpenNote, placementRequest, promoteRequest, groupRequest, freePlacementRef }: AtlasBoardInnerProps) {
+function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, filterTotalCount, filterPresentKindIDs, cards, allCards, kinds, links, linkKinds, notes, allNotes, objects, allObjects, parentID, arrangeRequest, viewedID, focusRequest, onDrill, onOpenOverlay, onFocusHandled, onCardContextMenu, onPaneContextMenu, onArteryContextMenu, onEdgeDeleteLink, onEdgeChangeKind, onNoteContextMenu, onObjectContextMenu, onFrameContextMenu, onFrameInteriorContextMenu, onMultiSelectContextMenu, onDeleteSelection, onPasteConverted, onCreateTableSized, onOpenTableFromList, onQuietToast, onOpenNote, placementRequest, promoteRequest, groupRequest, freePlacementRef }: AtlasBoardInnerProps) {
   const { t } = useTranslation('atlas')
   const readOnly = useIsNarrowViewport()
   const reduceMotion = usePrefersReducedMotion()
@@ -142,10 +142,10 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
   const imagePopover = useAtlasImagePopoverSignal({ armedToolId: armedTool.armedToolId, arm: armedTool.arm, disarm: armedTool.disarm })
   const imageCreate = useAtlasImageCreate({ allCards, viewedID })
   const creation = useAtlasCreation({ parentID, allCards, kinds, notes, objects, readOnly, screenToFlowPosition, placementRequest, promoteRequest, groupRequest, cardBoxes: topLevelBoxes, noteBoxes, objectBoxesRef, armedToolId: armedTool.armedToolId, armedToolLocked: armedTool.locked, armSharedTool: armedTool.arm, disarmShared: armedTool.disarm, toggleShared: armedTool.toggle })
-  const selection = useAtlasSelection({ cards, notes, objects, onMultiSelectContextMenu })
+  const selection = useAtlasSelection({ cards, notes, objects, arteries, spaceId: parentID, onMultiSelectContextMenu })
   const wrapperClicks = useAtlasPaneClick({ tablePicker, topLevelBoxes, screenToFlowPosition, onCreateTableSized, placeAt: creation.placeAt })
 
-  useAtlasDeleteKey({ cards, notes, objects, selectedIDsRef: selection.selectedIDsRef, onDeleteSelection })
+  useAtlasDeleteKey({ selectedIDsRef: selection.selectedIDsRef })
 
   // Zoom chip / group-header click / Enter on a region frame (routed
   // here through AtlasGroupNode's own data.onDrill) all fly the camera
@@ -254,7 +254,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
 
   useAtlasSelectAll({ cards, notes, objects, setNodes })
 
-  const { trayRef, hasSelection: haveSelection, onGroup: onTrayGroup, onDelete: onTrayDelete } = useAtlasSelectionTray({ selectedCards: selection.selectedCards, selectedNotes: selection.selectedNotes, selectedObjects: selection.selectedObjects, clearSelection: selection.clearSelection, setNodes, onDeleteSelection, onGroupSelection, wrapperRef })
+  const { trayRef, hasSelection: haveSelection, onGroup: onTrayGroup, onDelete: onTrayDelete } = useAtlasSelectionTray({ selectedCards: selection.selectedCards, selectedNotes: selection.selectedNotes, selectedObjects: selection.selectedObjects, clearSelection: selection.clearSelection, setNodes, wrapperRef })
 
   const minimap = useAtlasMinimapToggle()
 
