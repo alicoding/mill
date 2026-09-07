@@ -1,11 +1,17 @@
 package configuresvc
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
+	"time"
 
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/typedfield"
+	"github.com/alicoding/mill/internal/services/dataevent"
+	"github.com/alicoding/mill/internal/services/entitystore"
 )
 
 // A List row edit is undoable in the app's ONE actor-scoped journal
@@ -18,7 +24,7 @@ import (
 // the user made them. The origin -- board table or Configure's List
 // page -- is not a separate stack; it is the same actor.
 //
-// Two entry families:
+// Three entry families:
 //   - list-cell {listID, rowID, column, previous, next} -- one cell's
 //     content write. Consecutive writes to the SAME cell coalesce
 //     (the journal's own 2-second fold window), so retyping a cell is
@@ -26,9 +32,19 @@ import (
 //   - list-row {listID, rowID, index, row} -- a row inserted, deleted,
 //     or rewritten in more than one column at once (a paste across a
 //     row, a status change). Never coalesced: each is its own step.
-//
-// A schema edit (rename/insert/remove a column) is NOT journaled --
-// UpdateList is a whole-record write, not a row door.
+//   - list-schema {listID, previousColumns, nextColumns,
+//     previousTombstones, nextTombstones} -- one UpdateList call whose
+//     schema delta is non-empty (a column rename, insert, removal,
+//     retype or reorder). The entry carries the columns and tombstones
+//     before and after, never a whole-record snapshot, and its inverse
+//     (setListSchema) writes ONLY those two slices back, leaving label,
+//     description and every row as they stand at replay time. A
+//     removal's deleted values need no capture of their own: removing a
+//     column is a FieldTombstones entry, never a value deletion -- the
+//     rows still carry the removed key's values, so restoring the
+//     column and dropping its tombstone restores them whole.
+//     Consecutive edits to ONE column (the header rename's retyping)
+//     coalesce under listID/schema/<column>.
 //
 // Replay writes through the unrecorded cores in configurelistrow.go
 // while the journal holds its own recording suppressed, so an undo
@@ -37,19 +53,20 @@ import (
 // deleted, the column removed -- returns an error, which the journal
 // reports as its skip notice rather than applying half a step.
 
-// listUndoRecorder is the journal's record call, injected once at the
-// composition root (WireUndoJournal) -- nil, and every door below is
-// inert, which is what a test or a headless build that never wires a
-// board gets. Same nil-means-off seam discipline as the List
-// projection reader on the other side.
-type listUndoRecorder func(kind, id, label, coalesceKey string, undo, redo func() error)
+// undoRecorder is the journal's record call, injected once at the
+// composition root (WireUndoJournal) -- nil, and every door below (and
+// configureentityundo.go's) is inert, which is what a test or a
+// headless build that never wires a board gets. Same nil-means-off
+// seam discipline as the List projection reader on the other side.
+type undoRecorder func(kind, id, label, coalesceKey string, undo, redo func() error)
 
-// WireUndoJournal connects the List row doors to the app's actor-scoped
-// undo journal. Exported for wiring only, never a frontend RPC.
+// WireUndoJournal connects the List and entity doors to the app's
+// actor-scoped undo journal. Exported for wiring only, never a
+// frontend RPC.
 //
 //wails:ignore
-func (c *ConfigureService) WireUndoJournal(record listUndoRecorder) {
-	c.recordListUndo = record
+func (c *ConfigureService) WireUndoJournal(record undoRecorder) {
+	c.recordUndo = record
 }
 
 // listRowSnapshot is a row exactly as it stood before a door touched
@@ -86,7 +103,7 @@ func (c *ConfigureService) rowSnapshot(listID, rowID string) (listRowSnapshot, b
 // restores the row's whole previous values and status. A write that
 // changed nothing records nothing.
 func (c *ConfigureService) recordRowWrite(l list.List, before listRowSnapshot, rowID string) {
-	if c.recordListUndo == nil {
+	if c.recordUndo == nil {
 		return
 	}
 	i := indexOfRow(l.Rows, rowID)
@@ -104,7 +121,7 @@ func (c *ConfigureService) recordRowWrite(l list.List, before listRowSnapshot, r
 	}
 	previousValues, previousStatus := copyRowValues(before.row.Values), before.row.Status
 	nextValues, nextStatus := copyRowValues(after.Values), after.Status
-	c.recordListUndo("list-row", l.ID+"/"+rowID, l.Label, "",
+	c.recordUndo("list-row", l.ID+"/"+rowID, l.Label, "",
 		func() error { return c.restoreRowValues(l.ID, rowID, previousValues, previousStatus) },
 		func() error { return c.restoreRowValues(l.ID, rowID, nextValues, nextStatus) },
 	)
@@ -115,7 +132,7 @@ func (c *ConfigureService) recordRowWrite(l list.List, before listRowSnapshot, r
 func (c *ConfigureService) recordCellWrite(l list.List, before listRowSnapshot, rowID, column, next string) {
 	previous := before.row.Values[column]
 	cellID := fmt.Sprintf("%s/%s/%s", l.ID, rowID, column)
-	c.recordListUndo("list-cell", cellID, l.Label, cellID,
+	c.recordUndo("list-cell", cellID, l.Label, cellID,
 		func() error { return c.setListCell(l.ID, rowID, column, previous) },
 		func() error { return c.setListCell(l.ID, rowID, column, next) },
 	)
@@ -124,11 +141,11 @@ func (c *ConfigureService) recordCellWrite(l list.List, before listRowSnapshot, 
 // recordRowInsert journals a row the grid added: undo removes it, redo
 // puts the same row back at the same index.
 func (c *ConfigureService) recordRowInsert(l list.List, row list.Row, index int) {
-	if c.recordListUndo == nil {
+	if c.recordUndo == nil {
 		return
 	}
 	row.Values = copyRowValues(row.Values)
-	c.recordListUndo("list-row", l.ID+"/"+row.ID, l.Label, "",
+	c.recordUndo("list-row", l.ID+"/"+row.ID, l.Label, "",
 		func() error { return c.deleteRowForUndo(l.ID, row.ID) },
 		func() error { return c.restoreListRow(l.ID, row, index) },
 	)
@@ -137,11 +154,11 @@ func (c *ConfigureService) recordRowInsert(l list.List, row list.Row, index int)
 // recordRowDelete journals a row the grid removed: undo puts the whole
 // row back where it sat, redo removes it again.
 func (c *ConfigureService) recordRowDelete(l list.List, before listRowSnapshot) {
-	if c.recordListUndo == nil {
+	if c.recordUndo == nil {
 		return
 	}
 	row, index := before.row, before.index
-	c.recordListUndo("list-row", l.ID+"/"+row.ID, l.Label, "",
+	c.recordUndo("list-row", l.ID+"/"+row.ID, l.Label, "",
 		func() error { return c.restoreListRow(l.ID, row, index) },
 		func() error { return c.deleteRowForUndo(l.ID, row.ID) },
 	)
@@ -224,4 +241,111 @@ func hasColumn(columns []typedfield.Field, key string) bool {
 		}
 	}
 	return false
+}
+
+// recordSchemaWrite journals one UpdateList call under the list-schema
+// family -- only when the call's schema actually changed (the door is
+// a whole-record write: a label-only save passes the columns back
+// unchanged and records nothing). previous* are the stored columns and
+// tombstones captured before the door's mutate ran; updated is the
+// persisted record.
+func (c *ConfigureService) recordSchemaWrite(updated list.List, previousColumns []typedfield.Field, previousTombstones []typedfield.FieldTombstone) {
+	if c.recordUndo == nil {
+		return
+	}
+	if fieldsEqual(previousColumns, updated.Columns) && slices.Equal(previousTombstones, updated.FieldTombstones) {
+		return
+	}
+	nextColumns := copyFields(updated.Columns)
+	nextTombstones := slices.Clone(updated.FieldTombstones)
+	coalesce := ""
+	if column := schemaDeltaColumn(previousColumns, nextColumns, previousTombstones, nextTombstones); column != "" {
+		coalesce = updated.ID + "/schema/" + column
+	}
+	c.recordUndo("list-schema", updated.ID, updated.Label, coalesce,
+		func() error { return c.setListSchema(updated.ID, previousColumns, previousTombstones) },
+		func() error { return c.setListSchema(updated.ID, nextColumns, nextTombstones) },
+	)
+}
+
+// setListSchema writes ONE List's Columns and FieldTombstones back,
+// leaving label, description and every row as they stand -- a journal
+// inverse applies exactly the recorded schema delta, never a stale
+// whole-record snapshot. It skips ValidateFieldEvolutionWithRows on
+// purpose: that guard answers "is this a legal NEW schema write", and
+// a replayed inverse is a state the guard already approved as
+// persisted -- undoing a column INSERT reads as an untombstoned
+// removal and would be refused outright. list.Validate's
+// well-formedness is the one check that can meaningfully fail here.
+func (c *ConfigureService) setListSchema(listID string, columns []typedfield.Field, tombstones []typedfield.FieldTombstone) error {
+	updated, err := entitystore.Update(&c.mu, &c.lists, c.persistLists, listDescriptor, listID, func(current list.List) (list.List, error) {
+		l := current
+		l.Columns = copyFields(columns)
+		l.FieldTombstones = slices.Clone(tombstones)
+		l.UpdatedAt = time.Now()
+		l.Seed = l.Seed.Touch()
+		if err := list.Validate(l); err != nil {
+			return list.List{}, err
+		}
+		return l, nil
+	})
+	if err != nil {
+		return err
+	}
+	dataevent.Emit("list", updated.ID)
+	return nil
+}
+
+// schemaDeltaColumn names the one column a delta touched when the write
+// kept the SAME keys in the same order and untouched tombstones -- the
+// header rename/retype coalesce target. Anything wider (an insert, a
+// removal, a reorder) has no single target and never coalesces.
+func schemaDeltaColumn(previous, next []typedfield.Field, previousTombstones, nextTombstones []typedfield.FieldTombstone) string {
+	if len(previous) != len(next) || !slices.Equal(previousTombstones, nextTombstones) {
+		return ""
+	}
+	key := ""
+	for i := range previous {
+		if previous[i].Key != next[i].Key {
+			return ""
+		}
+		if fieldIdentityEqual(previous[i], next[i]) {
+			continue
+		}
+		if key != "" {
+			return ""
+		}
+		key = next[i].Key
+	}
+	return key
+}
+
+// fieldIdentityEqual compares two fields by their JSON identity -- a
+// Field's facets include slices (Options, OptionColors, Suggestions...)
+// a == cannot read, and its JSON form IS its persisted identity. The
+// struct is pure values, so marshalling cannot fail.
+func fieldIdentityEqual(a, b typedfield.Field) bool {
+	aj, _ := json.Marshal(a)
+	bj, _ := json.Marshal(b)
+	return bytes.Equal(aj, bj)
+}
+
+func fieldsEqual(a, b []typedfield.Field) bool {
+	return slices.EqualFunc(a, b, fieldIdentityEqual)
+}
+
+// copyFields deep-copies a columns slice -- clone every slice facet
+// Field grows (a shallow copy would let a journal entry's snapshot drift
+// with the live record it replaced).
+func copyFields(fields []typedfield.Field) []typedfield.Field {
+	out := make([]typedfield.Field, len(fields))
+	for i, f := range fields {
+		f.Options = slices.Clone(f.Options)
+		f.OptionColors = slices.Clone(f.OptionColors)
+		f.Suggestions = slices.Clone(f.Suggestions)
+		f.FrontmatterAliases = slices.Clone(f.FrontmatterAliases)
+		f.RollupDoneValues = slices.Clone(f.RollupDoneValues)
+		out[i] = f
+	}
+	return out
 }

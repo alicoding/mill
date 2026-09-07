@@ -8,10 +8,13 @@ import (
 // DeleteRecoverable is DeleteWithTombstone plus the way back (goal
 // 0270): it returns a restore func that reinserts the removed value at
 // its original index (clamped), clears the seed tombstone a built-in's
-// delete recorded, and persists. Restore refuses when an entity with
-// the same id has since been created; a failed persist removes the
-// value again so memory and store never disagree.
-func DeleteRecoverable[T any](mu *sync.Mutex, items *[]T, persist func() error, recordTombstone, clearTombstone func(id string) error, d Descriptor[T], id string) (func() error, error) {
+// delete recorded, and persists -- and the removed value itself, so a
+// caller journaling the delete (ADR-0044's configure-entity entry
+// family) has the record it removed without a second lookup. Restore
+// refuses when an entity with the same id has since been created; a
+// failed persist removes the value again so memory and store never
+// disagree.
+func DeleteRecoverable[T any](mu *sync.Mutex, items *[]T, persist func() error, recordTombstone, clearTombstone func(id string) error, d Descriptor[T], id string) (func() error, T, error) {
 	mu.Lock()
 	idx := find(*items, id, d.GetID)
 	var removed T
@@ -20,9 +23,10 @@ func DeleteRecoverable[T any](mu *sync.Mutex, items *[]T, persist func() error, 
 	}
 	mu.Unlock()
 	if err := DeleteWithTombstone(mu, items, persist, recordTombstone, d, id); err != nil {
-		return nil, err
+		var zero T
+		return nil, zero, err
 	}
-	return restorer(mu, items, persist, clearTombstone, d, id, idx, removed, d.IsBuiltIn(removed)), nil
+	return restorer(mu, items, persist, clearTombstone, d, id, idx, removed, d.IsBuiltIn(removed)), removed, nil
 }
 
 // restorer is DeleteRecoverable's way back: reinsert at the original

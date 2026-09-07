@@ -75,15 +75,9 @@ func (c *ConfigureService) UpdateSecretSource(id, label string, kind secretsourc
 }
 
 func (c *ConfigureService) DeleteSecretSource(id string) error {
-	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
-	clearTombstone := func(id string) error { return seeding.ClearTombstone(c.store, id) }
-	restore, err := entitystore.DeleteRecoverable(&c.mu, &c.secretSources, c.persistSecretSources, recordTombstone, clearTombstone, secretSourceDescriptor, id)
-	if err != nil {
-		return err
-	}
-	c.undo.remember("secretsource", id, restore)
-	dataevent.Emit("secretsource", id)
-	return nil
+	announce := func(id string) { dataevent.Emit("secretsource", id) }
+	return deleteEntity(c, "secretsource", &c.secretSources, c.persistSecretSources, secretSourceDescriptor, nil,
+		func(s secretsource.Source) string { return s.Label }, announce, id)
 }
 
 func (c *ConfigureService) persistSecretSources() error {

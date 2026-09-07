@@ -123,11 +123,12 @@ type ConfigureService struct {
 	// that can't currently see a title must still answer SOMETHING,
 	// never error, for a workflow that isn't even running yet.
 	secretLabelsLister func() ([]secret.Summary, error)
-	// recordListUndo journals a List row edit into the app's one
-	// actor-scoped undo journal (ADR-0044, goal 0352 --
-	// configurelistundo.go), wired late via WireUndoJournal. Nil until
-	// wired, which leaves every row door recording nothing.
-	recordListUndo listUndoRecorder
+	// recordUndo journals a List edit or an entity delete into the app's
+	// one actor-scoped undo journal (ADR-0044 -- configurelistundo.go and
+	// configureentityundo.go hold the entry families), wired late via
+	// WireUndoJournal. Nil until wired, which leaves every door below
+	// recording nothing.
+	recordUndo undoRecorder
 }
 
 // SetSecretResolver wires ConfigureService's own vault-reference

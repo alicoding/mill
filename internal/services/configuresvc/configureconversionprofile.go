@@ -79,15 +79,9 @@ func (c *ConfigureService) UpdateConversionProfile(id, label, description string
 }
 
 func (c *ConfigureService) DeleteConversionProfile(id string) error {
-	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
-	clearTombstone := func(id string) error { return seeding.ClearTombstone(c.store, id) }
-	restore, err := entitystore.DeleteRecoverable(&c.mu, &c.conversionProfiles, c.persistConversionProfiles, recordTombstone, clearTombstone, conversionProfileDescriptor, id)
-	if err != nil {
-		return err
-	}
-	c.undo.remember("conversionprofile", id, restore)
-	dataevent.Emit("conversionprofile", id)
-	return nil
+	announce := func(id string) { dataevent.Emit("conversionprofile", id) }
+	return deleteEntity(c, "conversionprofile", &c.conversionProfiles, c.persistConversionProfiles, conversionProfileDescriptor, nil,
+		func(p conversionprofile.Profile) string { return p.Label }, announce, id)
 }
 
 func (c *ConfigureService) persistConversionProfiles() error {

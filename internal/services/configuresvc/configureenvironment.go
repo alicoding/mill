@@ -120,21 +120,15 @@ func (c *ConfigureService) UpdateEnvironment(id, label string, vars []environmen
 // borrows its variables (compositionsvc.WorkflowsReferencing knows
 // both, ADR-0040 decision 3).
 func (c *ConfigureService) DeleteEnvironment(id string) error {
-	if err := c.refIntegrityError("environment", "environment", id); err != nil {
-		return err
+	precheck := func(id string) error {
+		if err := c.refIntegrityError("environment", "environment", id); err != nil {
+			return err
+		}
+		return c.execEnvsUsingEnvironmentError(id)
 	}
-	if err := c.execEnvsUsingEnvironmentError(id); err != nil {
-		return err
-	}
-	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
-	clearTombstone := func(id string) error { return seeding.ClearTombstone(c.store, id) }
-	restore, err := entitystore.DeleteRecoverable(&c.mu, &c.environments, c.persistEnvironments, recordTombstone, clearTombstone, environmentDescriptor, id)
-	if err != nil {
-		return err
-	}
-	c.undo.remember("environment", id, restore)
-	dataevent.Emit("environment", id) // goal 0017: live-sync every open surface
-	return nil
+	announce := func(id string) { dataevent.Emit("environment", id) }
+	return deleteEntity(c, "environment", &c.environments, c.persistEnvironments, environmentDescriptor, precheck,
+		func(e environment.Environment) string { return e.Label }, announce, id)
 }
 
 // execEnvsUsingEnvironmentError is the second half of this entity's
