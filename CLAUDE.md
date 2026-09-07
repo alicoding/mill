@@ -29,13 +29,14 @@ model below: ADR-0050.
    commit/rebase babysitting belong to agents (explorer, test-investigator,
    pr-shepherd), conclusion returned, not the dump.
 
-Model picks: **Haiku** for read-only volume (`explorer`), **Sonnet** for bounded
-mechanical execution from a written spec (regens, migrations, test runs, small features
-with a complete contract), **Opus** for execution needing local judgment inside the
-contract (multi-file UI from a design doc, a root-cause with a written procedure, a
-library adoption). **Never Fable for a delegation**: a Fable builder drains the shared
-session window at a multiple of Opus/Sonnet (three windows lost in one day); Fable is
-the orchestrator's own reasoning only. Every `Agent` delegation states its model
+Model picks: **Haiku** for read-only volume (`explorer`). **Sonnet is the DEFAULT
+builder for every delegation** — bounded mechanical execution from a written spec
+(regens, migrations, test runs, features with a complete contract) covers nearly
+everything once the brief is complete. **Opus only when the brief states in one
+sentence why this task needs local judgment inside the contract**, not just size.
+**Never Fable for a delegation**: a Fable builder drains the shared session window at
+a multiple of Opus/Sonnet (three windows lost in one day); Fable is the
+orchestrator's own reasoning only. Every `Agent` delegation states its model
 explicitly; the task is *fixed and bounded* (a written brief with objective gates, per
 `.claude/skills/brief`) or the missing piece is still the orchestrator's.
 The brief also carries the adoption decision — which commodity/pattern, at
@@ -116,7 +117,9 @@ unmerged. Revisit at v1.
 1. **Research** — three parts, each its own heading in the goal file BEFORE Plan:
    - **Precedent** — the best-in-class tools people actually use (two or three, named,
      from a real search) and how each does it: interaction, labels, states, data shape.
-     "Nothing exists for X" needs a real search behind it, not an assumption.
+     "Nothing exists for X" needs a real search behind it, not an assumption. Also names
+     the existing framework/library that already solves it, so the brief reads "adopt
+     it and write the adapter" — what makes a Sonnet builder sufficient.
    - **Today** — what Mill does now, read from the code and probed live: the files, the
      states, "nothing" when honest.
    - **Gap** — precedent against today, line by line: what's missing, what's a forced
