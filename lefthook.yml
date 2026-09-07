@@ -114,8 +114,13 @@ pre-commit:
       # unconditional is cheap. Mirrors CI's own root-file-naming job
       # (also unconditional). Requires `go install
       # github.com/loeffel-io/ls-lint/v2/cmd/ls_lint@v2.3.1` once locally
-      # (same one-time-setup shape as golangci-lint itself).
-      run: ls_lint
+      # (same one-time-setup shape as golangci-lint itself). Runs through
+      # scripts/check-root-naming.sh so a failure ends in an unmistakable
+      # COMMIT BLOCKED banner -- this job runs without a glob, and
+      # lefthook's summary line on its own gave a failed run no FAIL
+      # wording (goal 0358 S10).
+      fail_text: COMMIT BLOCKED -- see the banner above; only allowlisted names live at the repo root (.ls-lint.yml)
+      run: ./scripts/check-root-naming.sh
     - name: go-vet
       glob: "*.go"
       run: go vet . ./internal/...
