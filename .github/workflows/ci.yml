@@ -863,10 +863,49 @@ jobs:
         # nonsense inside an app about to update itself.
         run: |
           MERGE_TITLE="$(git log -1 --pretty=%s)"
+          # A squash-merge commit's subject carries the PR number in
+          # parens (this repo's own convention, e.g. "... (#750)") --
+          # the same string MERGE_TITLE already is, just pattern-
+          # matched instead of a second API round trip to find it.
+          PR_NUMBER="$(printf '%s' "$MERGE_TITLE" | grep -oE '#[0-9]+' | tail -1 | tr -d '#')"
+          PR_BODY=""
+          if [ -n "$PR_NUMBER" ]; then
+            PR_BODY="$(gh pr view "$PR_NUMBER" --repo "${GITHUB_REPOSITORY}" --json body --jq '.body' 2>/dev/null || true)"
+          fi
+          # The merging PR's own body stops at the first commit-trailer
+          # line (the agent attribution/session-link block this repo's
+          # PR descriptions end with) -- everything past it is
+          # provenance, not what changed. Leading/trailing blank lines
+          # are dropped and internal blank runs collapsed to one so a
+          # trimmed body still reads as normal paragraphs.
+          PR_SUMMARY="$(printf '%s\n' "$PR_BODY" | awk '
+            /^🤖/ { exit }
+            /^https:\/\/claude\.ai\// { exit }
+            { lines[++n] = $0 }
+            END {
+              start = 1; end = n
+              while (start <= end && lines[start] ~ /^[[:space:]]*$/) start++
+              while (end >= start && lines[end] ~ /^[[:space:]]*$/) end--
+              blank = 0
+              for (i = start; i <= end; i++) {
+                if (lines[i] ~ /^[[:space:]]*$/) {
+                  if (blank) continue
+                  blank = 1
+                } else {
+                  blank = 0
+                }
+                print lines[i]
+              }
+            }
+          ')"
           {
             echo "## What's new"
             echo ""
             echo "- ${MERGE_TITLE}"
+            if [ -n "$PR_SUMMARY" ]; then
+              echo ""
+              echo "$PR_SUMMARY"
+            fi
             echo ""
             echo "<!-- in-app-notes-end -->"
             echo "## Manual install"
