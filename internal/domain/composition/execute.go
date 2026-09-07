@@ -64,6 +64,11 @@ type ExecuteOptions struct {
 	// field's own doc comment (types.go). Empty (every caller before
 	// this field existed) means exactly today's behavior.
 	EnvironmentID string
+	// Responder seeds the root ExecContext.Responder -- see that
+	// field's own doc comment (types.go). nil (every caller before
+	// this field existed, and every run this goal's own ingress didn't
+	// start) means exactly today's behavior.
+	Responder WebhookResponder
 }
 
 // GuardrailGate is the injected approval seam (docs/adr/0022): called
@@ -147,7 +152,7 @@ func executeWorkflow(nodes []Node, edges []Edge, attrs []AttributeDef, run StepR
 		return "", err
 	}
 
-	ctx := ExecContext{Payload: opts.InitialPayload, Attributes: attributesEnv(attrs, opts.AttrValues), RunContext: opts.RunContext, Stepped: opts.Stepped, WorkflowID: opts.WorkflowID, SecretsToken: opts.SecretsToken, EnvironmentID: opts.EnvironmentID}
+	ctx := ExecContext{Payload: opts.InitialPayload, Attributes: attributesEnv(attrs, opts.AttrValues), RunContext: opts.RunContext, Stepped: opts.Stepped, WorkflowID: opts.WorkflowID, SecretsToken: opts.SecretsToken, EnvironmentID: opts.EnvironmentID, Responder: opts.Responder}
 	// visited records each node's position in path (traversal order) so
 	// a cycle hit below can report the actual loop -- e.g. "b -> c -> b"
 	// -- instead of a bare "contains a cycle" (goal 0021 gap 4: a

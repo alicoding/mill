@@ -1,12 +1,17 @@
 package triggersvc
 
+import "github.com/alicoding/mill/internal/domain/composition"
+
 // triggerStarter registers the live listener a trigger node type needs,
 // given the owning TriggerService (for its own state -- s.hkRaw, s.fire
-// -- and mutation helpers) and the trigger node's config. Returns nil,
+// -- and mutation helpers), the trigger's own ARMED graph (goal 0373:
+// trigger-webhook's own starter scans it for a respond-webhook node so
+// dispatch knows whether this listener can answer -- every other
+// starter ignores it), and the trigger node's config. Returns nil,
 // nil for a trigger type with nothing to start yet (e.g. no hotkey
 // assigned) -- not an error, same as the old switch's per-case early
 // returns.
-type triggerStarter func(s *TriggerService, workflowID string, config map[string]string) (*activeListener, error)
+type triggerStarter func(s *TriggerService, workflowID string, nodes []composition.Node, config map[string]string) (*activeListener, error)
 
 var triggerRegistry = map[string]triggerStarter{}
 
