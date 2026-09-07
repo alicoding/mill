@@ -3,9 +3,10 @@ package secretauditstore
 import (
 	"context"
 	"fmt"
-	"time"
 
+	"github.com/alicoding/mill/internal/adapters/auditstore"
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
+	"github.com/alicoding/mill/internal/domain/audit"
 )
 
 // Filter narrows List's result set -- EntryID empty means "no filter,"
@@ -23,26 +24,31 @@ type Filter struct {
 // List returns, newest first, the page of records matching filter
 // starting at offset and holding at most limit rows, plus the total row
 // count matching filter (ignoring limit/offset) -- mirrors
-// mcpauditstore.List's own paging contract.
+// mcpauditstore.List's own paging contract. EntryID and ActorPrefix
+// both map onto real columns (target_id, source) on the shared table,
+// so filtering and paging both happen in SQL, unlike mcpauditstore's
+// own Direction filter.
 func (s *Store) List(filter Filter, limit, offset int) ([]secretaudit.Record, int, error) {
-	where := "WHERE 1=1"
-	args := []any{}
+	where := "WHERE kind = ?"
+	args := []any{string(audit.KindSecretAccess)}
 	if filter.EntryID != "" {
-		where += " AND entry_id = ?"
+		where += " AND target_id = ?"
 		args = append(args, filter.EntryID)
 	}
 	if filter.ActorPrefix != "" {
-		where += " AND substr(actor, 1, ?) = ?"
+		where += " AND substr(source, 1, ?) = ?"
 		args = append(args, len(filter.ActorPrefix), filter.ActorPrefix)
 	}
 
+	//nolint:gosec // G202: auditstore.TableName/where are built from this package's own compile-time constants and column names, never caller input; every caller-supplied value is bound as a placeholder in args.
+	countQ := "SELECT COUNT(*) FROM " + auditstore.TableName + " " + where
 	var total int
-	if err := s.db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM secret_access "+where, args...).Scan(&total); err != nil {
+	if err := s.db.QueryRowContext(context.Background(), countQ, args...).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("secretauditstore: count: %w", err)
 	}
 
-	q := "SELECT id, timestamp, entry_id, label, context, run_id, workflow_id, actor, outcome, error_text, step_id, failure_kind FROM secret_access " +
-		where + " ORDER BY id DESC LIMIT ? OFFSET ?"
+	//nolint:gosec // G202: EntryColumns/TableName/where are all built from this package's own compile-time constants and column names, never caller input; every caller-supplied value is bound as a placeholder in args.
+	q := "SELECT " + auditstore.EntryColumns + " FROM " + auditstore.TableName + " " + where + " ORDER BY id DESC LIMIT ? OFFSET ?"
 	rows, err := s.db.QueryContext(context.Background(), q, append(args, limit, offset)...)
 	if err != nil {
 		return nil, 0, fmt.Errorf("secretauditstore: list: %w", err)
@@ -51,18 +57,11 @@ func (s *Store) List(filter Filter, limit, offset int) ([]secretaudit.Record, in
 
 	var out []secretaudit.Record
 	for rows.Next() {
-		var r secretaudit.Record
-		var ts, ctxVal, outcome, failureKind string
-		if err := rows.Scan(&r.ID, &ts, &r.EntryID, &r.Label, &ctxVal, &r.RunID, &r.WorkflowID, &r.Actor, &outcome, &r.ErrorText, &r.StepID, &failureKind); err != nil {
-			return nil, 0, fmt.Errorf("secretauditstore: scan: %w", err)
+		e, err := auditstore.ScanEntry(rows)
+		if err != nil {
+			return nil, 0, fmt.Errorf("secretauditstore: list: %w", err)
 		}
-		r.Context = secretaudit.Context(ctxVal)
-		r.Outcome = secretaudit.Outcome(outcome)
-		r.FailureKind = secretaudit.FailureKind(failureKind)
-		if parsed, err := time.Parse(timestampLayout, ts); err == nil {
-			r.Timestamp = parsed
-		}
-		out = append(out, r)
+		out = append(out, fromEntry(e))
 	}
 	if err := rows.Err(); err != nil {
 		return nil, 0, fmt.Errorf("secretauditstore: list: %w", err)
