@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 import { injectHeadingAnchors, parseHeadings } from './docsHeadings'
 
@@ -43,13 +44,14 @@ describe('injectHeadingAnchors', () => {
   })
 })
 
-describe('stripTags robustness (via parseHeadings)', () => {
+describe('malformed markup robustness (via parseHeadings)', () => {
   it('reduces malformed fragments to inert text -- no surviving tag openers', () => {
     const [h] = parseHeadings('<h2 id="x">Hi <b>there</b> <script bad</h2>')
     expect(h.text).not.toContain('<')
     expect(h.text).toContain('Hi there')
-    // Reassembly: stripping the complete inner tag must not leave a
-    // freshly-formed one behind.
+    // Reassembly: a real parser never lets a split tag re-form one
+    // ("<scr<script>ipt>" collapsing back into a live tag is exactly
+    // the failure class regex-based stripping is prone to).
     const [r] = parseHeadings('<h2 id="y">a<scr<b>ipt>b</h2>')
     expect(r.text).not.toContain('<')
   })

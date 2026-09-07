@@ -166,16 +166,42 @@ export function themeSelector(family: ResolvedMode, schemeId: string): string {
 // only the documented tokens, so it needs the family's whole palette
 // underneath it; rewriting those selectors onto Mill's resolved pair
 // is what supplies it without copying a single color value by hand.
-const PRIMER_SELECTOR = /\[data-color-mode(?:="[a-z]+")?\](?:\[data-color-mode="auto"\])?\[data-(?:light|dark)-theme="BASE"\]/g
+// matchesPrimerSelector tests an ALREADY-PARSED rule's own selectorText
+// (never the raw stylesheet text) against Primer's vendored shape for
+// one base scheme -- both blocks below name it in a different
+// data-*-theme attribute, but both describe the same built-in palette.
+function matchesPrimerSelector(selectorText: string, base: string): boolean {
+	return selectorText.includes(`-theme="${base}"]`)
+}
 
-function primerSelectorPattern(base: string): RegExp {
-	return new RegExp(PRIMER_SELECTOR.source.replace('BASE', base), 'g')
+// rewritePrimerSelectors walks the parsed stylesheet's own rule tree
+// (goal 0382: through the CSS OM, never a regex over the stylesheet
+// text) so a selector inside a nested @media block is reached the same
+// way as one at the top level. Returns whether it changed anything, so
+// a file with nothing to rebase can come back byte-identical rather
+// than merely re-serialized.
+function rewritePrimerSelectors(rules: Iterable<CSSRule>, base: string, target: string): boolean {
+	let rewrote = false
+	for (const rule of rules) {
+		if (rule instanceof CSSMediaRule) {
+			if (rewritePrimerSelectors(rule.cssRules, base, target)) rewrote = true
+		} else if (rule instanceof CSSStyleRule && matchesPrimerSelector(rule.selectorText, base)) {
+			rule.selectorText = target
+			rewrote = true
+		}
+	}
+	return rewrote
 }
 
 // rebaseThemeCss rewrites one of Primer's own functional theme files
 // so its declarations apply under a contributed theme's scheme id.
 export function rebaseThemeCss(baseCss: string, base: 'light' | 'dark', family: ResolvedMode, schemeId: string): string {
-	return baseCss.replace(primerSelectorPattern(base), themeSelector(family, schemeId))
+	const sheet = new CSSStyleSheet()
+	sheet.replaceSync(baseCss)
+	if (!rewritePrimerSelectors(sheet.cssRules, base, themeSelector(family, schemeId))) return baseCss
+	return Array.from(sheet.cssRules)
+		.map((rule) => rule.cssText)
+		.join('\n')
 }
 
 // buildThemeCss is the whole stylesheet the host injects for one
