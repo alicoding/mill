@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.97.1-beta.2383](https://github.com/alicoding/mill/compare/v0.97.0-beta.2383...v0.97.1-beta.2383) (2026-09-07)
+
+
+### Bug Fixes
+
+* a failed root-file-naming gate can no longer look green -- banner-first failure output at commit time (goal 0358 S10) ([#751](https://github.com/alicoding/mill/issues/751)) ([9bbdd6a](https://github.com/alicoding/mill/commit/9bbdd6a5278f72bf962566f56bed0484b1c2c687))
+
 ## [0.5.0](https://github.com/alicoding/mill/compare/v0.4.0...v0.5.0) (2026-08-22)
 
 
