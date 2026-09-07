@@ -1,6 +1,6 @@
 # UX writing — product copy, not spec narrative
 
-No `paths` frontmatter — loads unconditionally like architecture.md.
+No `paths` frontmatter — loads unconditionally.
 
 UI copy tells the user what they can do and what happens next, in their
 vocabulary — never the system's internals. The bar is converged industry

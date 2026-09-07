@@ -41,6 +41,12 @@ brief carries more, not less, than an Opus one would need.
   the never-list.
 - **Report shape**: the exact fields the report must carry, so a
   stopped agent's last message is a deliverable, not a status.
+- **Adoption named**: the brief quotes the goal file's chosen
+  library/framework, version, and entry-point API, or the recorded
+  search that found none. Missing → stop, run the `research` agent
+  first, do not dispatch.
+- **Model**: Sonnet unless the brief carries a one-sentence Opus
+  justification; never Fable; at most one Opus builder live.
 
 ## Tier calibration
 

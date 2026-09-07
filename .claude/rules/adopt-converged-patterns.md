@@ -1,6 +1,6 @@
 # Adopt converged patterns — novelty in the surface, familiarity in the interactions
 
-No `paths` frontmatter — unconditional. History: ADR-0050.
+No `paths` frontmatter — unconditional.
 
 ## The law
 
@@ -44,7 +44,7 @@ invent neither side.
 
 Work in a subsystem that finds Mill hand-rolling what a converged
 library ships migrates it FIRST — proved by old tests passing
-unmodified (the upgrade-ground rule) — before the feature on top.
+unmodified — before the feature on top.
 Found outside any goal: a BACKLOG entry the same day, never tolerated
 legacy.
 

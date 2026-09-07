@@ -69,7 +69,7 @@ resort carrying a same-line comment naming why.
   retries 2/local 1; read the first flake's trace.zip.
 - **CI-only flakes are chased locally under CPU throttle**:
   `E2E_CPU_THROTTLE=4 npx playwright test <spec> --retries=0
-  --repeat-each=3` reproduces a load race, else look elsewhere.
+  --repeat-each=3` reproduces a load race.
 - **CI shards run one worker each** (`fullyParallel` in CI only) — a
   file needing order declares `test.describe.configure({ mode:
   'serial' })`.
@@ -99,11 +99,11 @@ resort carrying a same-line comment naming why.
 - **Duplication (`dupl` @ 150, repo-wide)**: clusters excluded BY NAME
   (test twins, `configuresvc/`, `atlasservice_builtin.go`).
 - **Cognitive complexity (`gocognit` @ 15, NEW/CHANGED code only)**:
-  legacy offenders grandfathered (burn-down list in the goal file).
+  legacy offenders grandfathered.
 - **eslint-plugin-sonarjs**: `cognitive-complexity` @ 15,
   `no-duplicated-branches`, `no-identical-functions`.
 
-## Shared-pool vs dedicated e2e servers — declare it up front
+## Shared-pool vs dedicated e2e servers
 
 A spec reading GLOBAL app state (queue/filter contents, review history,
 seeded-collection counts) runs on a DEDICATED server pair, named in its
