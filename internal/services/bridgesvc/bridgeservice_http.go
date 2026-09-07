@@ -16,12 +16,15 @@ import (
 // The bridge's four browser routes. Everything lives under one prefix
 // so a future mount alongside other handlers can never collide with an
 // app route. The hook door's own route constant lives with its handler
-// in bridgeservice_hooks.go.
+// in bridgeservice_hooks.go. RootPath is the exception: it is the
+// listener's own address, answered for a human who pastes it into a
+// browser rather than a tool that reads it (goal 0369).
 const (
 	EventsPath   = "/__mill/bridge/events"
 	ResultPath   = "/__mill/bridge/result"
 	PairPath     = "/__mill/bridge/pair"
 	TestPagePath = "/__mill/bridge/test-page"
+	RootPath     = "/"
 )
 
 // maxResultBytes caps a result POST. A step result carries a status, a
@@ -51,6 +54,10 @@ func (s *BridgeService) Handler() http.Handler {
 	mux.HandleFunc(PairPath, s.handlePair)
 	mux.HandleFunc(TestPagePath, s.handleTestPage)
 	mux.HandleFunc(HookEventPath, s.handleHookEvent)
+	// "{$}" (Go 1.22+ ServeMux) matches ONLY the exact root path -- a
+	// bare "/" pattern would instead catch every unmatched path on this
+	// mux, turning a real typo into a false 200.
+	mux.HandleFunc(RootPath+"{$}", s.handleRoot)
 	return mux
 }
 
@@ -78,6 +85,48 @@ func (s *BridgeService) handlePair(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, pairing)
+}
+
+// rootPageHTML is what a human meets pasting the bridge's own address
+// into a browser instead of the extension's popup, rather than Go's
+// bare "404 page not found". No token, no external assets: whoever
+// reaches this has no credential yet and this page is not the app.
+const rootPageHTML = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mill</title>
+<style>
+ body { font: 15px/1.5 system-ui, sans-serif; margin: 3rem auto; max-width: 32rem; padding: 0 1rem; }
+ h1 { font-size: 1.1rem; }
+</style>
+</head>
+<body>
+<h1>Mill's connection endpoint</h1>
+<p>This is Mill's local connection endpoint. It only answers requests from this computer.</p>
+<p>The browser extension and hook recipes talk to it here.</p>
+<p>Open Mill, then go to Settings &gt; Connections.</p>
+</body>
+</html>
+`
+
+// handleRoot answers the bridge's own address for a human, not a tool
+// -- loopback-gated and token-free the same way the pairing exchange
+// and the test page are: nothing that reaches this listener from
+// outside this Mac carries a credential yet, or should learn Mill's
+// bridge exists at all.
+func (s *BridgeService) handleRoot(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !isLoopback(r) {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write([]byte(rootPageHTML))
 }
 
 // handleEvents is the one long-lived stream: server-sent events, one
