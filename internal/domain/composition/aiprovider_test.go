@@ -58,7 +58,7 @@ func TestAINodeEffectOverride_NonAINodeFallsThrough(t *testing.T) {
 func TestAINodeEffectOverride_UnresolvableProviderFallsThroughFailSafe(t *testing.T) {
 	prev := lookupAIProviderFn
 	t.Cleanup(func() { lookupAIProviderFn = prev })
-	lookupAIProviderFn = func(id string) (ResolvedAIProvider, error) {
+	lookupAIProviderFn = func(id string, _ SecretAccessRun) (ResolvedAIProvider, error) {
 		return ResolvedAIProvider{}, fmt.Errorf("no such provider")
 	}
 	_, ok := aiNodeEffectOverride(Node{NodeTypeID: "process-ai-completion", Config: map[string]string{"aiproviderId": "missing"}})
@@ -70,7 +70,7 @@ func TestAINodeEffectOverride_UnresolvableProviderFallsThroughFailSafe(t *testin
 func TestAINodeEffectOverride_LocalhostDowngradesToClassLocal(t *testing.T) {
 	prev := lookupAIProviderFn
 	t.Cleanup(func() { lookupAIProviderFn = prev })
-	lookupAIProviderFn = func(id string) (ResolvedAIProvider, error) {
+	lookupAIProviderFn = func(id string, _ SecretAccessRun) (ResolvedAIProvider, error) {
 		return ResolvedAIProvider{BaseURL: "http://localhost:11434"}, nil
 	}
 	class, ok := aiNodeEffectOverride(Node{NodeTypeID: "process-ai-completion", Config: map[string]string{"aiproviderId": "p1"}})
@@ -82,7 +82,7 @@ func TestAINodeEffectOverride_LocalhostDowngradesToClassLocal(t *testing.T) {
 func TestAINodeEffectOverride_RemoteHostFallsThroughToStaticExternal(t *testing.T) {
 	prev := lookupAIProviderFn
 	t.Cleanup(func() { lookupAIProviderFn = prev })
-	lookupAIProviderFn = func(id string) (ResolvedAIProvider, error) {
+	lookupAIProviderFn = func(id string, _ SecretAccessRun) (ResolvedAIProvider, error) {
 		return ResolvedAIProvider{BaseURL: "https://api.anthropic.com"}, nil
 	}
 	_, ok := aiNodeEffectOverride(Node{NodeTypeID: "process-ai-classify", Config: map[string]string{"aiproviderId": "p1"}})
@@ -98,7 +98,7 @@ func TestAINodeEffectOverride_RemoteHostFallsThroughToStaticExternal(t *testing.
 func TestEffectForNode_AICompletionLocalhost(t *testing.T) {
 	prev := lookupAIProviderFn
 	t.Cleanup(func() { lookupAIProviderFn = prev })
-	lookupAIProviderFn = func(id string) (ResolvedAIProvider, error) {
+	lookupAIProviderFn = func(id string, _ SecretAccessRun) (ResolvedAIProvider, error) {
 		return ResolvedAIProvider{BaseURL: "http://127.0.0.1:11434"}, nil
 	}
 	got := EffectForNode(Node{NodeTypeID: "process-ai-completion", Config: map[string]string{"aiproviderId": "p1"}})
@@ -110,7 +110,7 @@ func TestEffectForNode_AICompletionLocalhost(t *testing.T) {
 func TestEffectForNode_AICompletionRemoteStaysExternal(t *testing.T) {
 	prev := lookupAIProviderFn
 	t.Cleanup(func() { lookupAIProviderFn = prev })
-	lookupAIProviderFn = func(id string) (ResolvedAIProvider, error) {
+	lookupAIProviderFn = func(id string, _ SecretAccessRun) (ResolvedAIProvider, error) {
 		return ResolvedAIProvider{BaseURL: "https://api.openai.com"}, nil
 	}
 	got := EffectForNode(Node{NodeTypeID: "process-ai-completion", Config: map[string]string{"aiproviderId": "p1"}})

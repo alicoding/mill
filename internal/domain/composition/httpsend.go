@@ -1,6 +1,7 @@
 package composition
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -62,8 +63,12 @@ func defaultMethodAndPath(rc ResolvedHTTPRequest, overrideMethod, overridePath s
 // philosophy, matching n8n's own HTTP Request node default), and
 // JOSE-decrypt the response. headers/query are mutated in place (an
 // auth strategy may add to either) -- callers pass a fresh map/Values
-// per call, never a shared one.
-func sendHTTPRequest(rc ResolvedHTTPRequest, method, urlPath, body string, headers map[string]string, query url.Values, pathParams map[string]string) (string, error) {
+// per call, never a shared one. run (goal 0371) is forwarded onto the
+// outbound request's own Context so a client-certificate resolved
+// during THIS call's TLS handshake (httpconnector's own lazy,
+// per-request dial) can attribute its audit line to the same run/step
+// -- the one seam here with no ExecContext of its own to read.
+func sendHTTPRequest(rc ResolvedHTTPRequest, method, urlPath, body string, headers map[string]string, query url.Values, pathParams map[string]string, run SecretAccessRun) (string, error) {
 	body, err := ApplyJOSEEncryption(rc.JOSE, rc.JOSERecipientPublicKeyPEM, body)
 	if err != nil {
 		return "", err
@@ -85,6 +90,7 @@ func sendHTTPRequest(rc ResolvedHTTPRequest, method, urlPath, body string, heade
 		URL:     fullURL,
 		Headers: headers,
 		Body:    body,
+		Context: WithSecretAccessRun(context.Background(), run),
 	})
 	if err != nil {
 		return "", clientcert.DescribeTransportFailure(err, HostOf(fullURL))

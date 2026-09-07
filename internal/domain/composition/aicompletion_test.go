@@ -13,7 +13,7 @@ func withAIStubs(t *testing.T, provider ResolvedAIProvider, complete func(aiclie
 	t.Helper()
 	prevLookup, prevComplete := lookupAIProviderFn, aiCompleteFn
 	t.Cleanup(func() { lookupAIProviderFn, aiCompleteFn = prevLookup, prevComplete })
-	lookupAIProviderFn = func(id string) (ResolvedAIProvider, error) { return provider, nil }
+	lookupAIProviderFn = func(id string, _ SecretAccessRun) (ResolvedAIProvider, error) { return provider, nil }
 	aiCompleteFn = complete
 }
 
