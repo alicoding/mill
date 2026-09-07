@@ -372,7 +372,7 @@
     "openWorkflow": "Open workflow",
     "allWorkflows": "All workflows",
     "selectEntity": "Select a {{noun}}…",
-    "selectEntityVowel": "Select an {{noun}}\u2026",
+    "selectEntityVowel": "Select an {{noun}}…",
     "createNewEntity": "+ Create new {{noun}}…",
     "noCallableWorkflowsHint": "No callable workflows yet. Give a workflow a \"callable by another workflow\" trigger, then pick it here.",
     "createEntityTitle": "Create {{noun}}",
@@ -632,7 +632,7 @@
     "editAriaLabel": "Edit {{label}}",
     "exportAriaLabel": "Export {{label}}",
     "deleteAriaLabel": "Delete {{label}}",
-    "searchPlaceholder": "Search environments\u2026",
+    "searchPlaceholder": "Search environments…",
     "emptyHeading": "No environments yet",
     "emptyDescription": "A named set of variables a run selects, so one workflow can target a sandbox or production without being edited.",
     "environmentFromLabel": "Variables from environment",
@@ -684,7 +684,8 @@
     "columns": {
       "label": "Label",
       "kind": "Kind",
-      "path": "Path"
+      "path": "Path",
+      "keys": "Keys"
     },
     "pathPlaceholderBruno": "/path/to/collection",
     "pathPlaceholderOnePassword": "Vault name (optional)",
@@ -693,7 +694,11 @@
     "kindFromExtension": "From {{name}}",
     "problemPluginMissing": "The extension for this source isn't installed.",
     "problemPluginDisabled": "The extension for this source is turned off.",
-    "pathPlaceholderDotenv": "/path/to/project/.env"
+    "pathPlaceholderDotenv": "/path/to/project/.env",
+    "showKeys": "Show keys",
+    "hideKeys": "Hide keys",
+    "keyCount_one": "{{count}} key",
+    "keyCount_other": "{{count}} keys"
   },
   "advancedDisclosure": {
     "summary": "Advanced"

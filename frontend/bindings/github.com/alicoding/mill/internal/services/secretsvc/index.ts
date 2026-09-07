@@ -8,6 +8,8 @@ export {
 
 export type {
     DotenvFound,
+    DotenvScanResult,
+    DotenvSkipped,
     ImportPreview,
     ListSecretAccessRequest,
     ListSecretAccessResponse,

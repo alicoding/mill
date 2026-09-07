@@ -13,6 +13,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/domain/secret"
 	"github.com/alicoding/mill/internal/domain/secretsource"
+	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/alicoding/mill/internal/domain/vaultref"
 )
 
@@ -167,6 +168,27 @@ var cliResolve = func(src secretsource.Source, id string) (string, error) {
 		return clisecrets.ResolveOnePassword(context.Background(), id)
 	}
 	return clisecrets.ResolveBitwarden(context.Background(), id)
+}
+
+// ListDotenvSourceKeys reads one dotenv source's file and returns its
+// key NAMES, sorted -- never a value. The source's own row expands to
+// this list (goal 0367), read fresh on each expand; a source whose file
+// cannot be read is answered with the sentence its row shows.
+func (s *SecretService) ListDotenvSourceKeys(sourceID string) ([]string, error) {
+	for _, src := range s.sourcesSnapshot() {
+		if src.ID != sourceID {
+			continue
+		}
+		if src.Kind != secretsource.KindEnv {
+			return nil, fmt.Errorf("secret source %q is not a dotenv file", sourceID)
+		}
+		keys, err := dotenvsource.Keys(src.Path)
+		if err != nil {
+			return nil, usererror.Wrap("dotenv-source-unreadable", "The file for this source can't be read.", err)
+		}
+		return keys, nil
+	}
+	return nil, fmt.Errorf("secret source %q is not configured", sourceID)
 }
 
 // SourceProblems reports, per source id, why a source currently lists

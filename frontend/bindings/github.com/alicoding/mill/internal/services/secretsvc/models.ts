@@ -22,11 +22,37 @@ export interface DotenvFound {
     "Keys": number;
 
     /**
+     * AlreadySource marks a file already configured as a source: the
+     * picker shows it disabled rather than adding a duplicate (goal
+     * 0367).
+     */
+    "AlreadySource": boolean;
+
+    /**
      * Label is what a source created from this file would be called;
      * Tag is what an entry imported out of it would be tagged with.
      */
     "Label": string;
     "Tag": string;
+}
+
+/**
+ * DotenvScanResult is one scan's full answer: the parseable files a
+ * source or import can come from, and the ones it could not parse.
+ */
+export interface DotenvScanResult {
+    "Found": DotenvFound[] | null;
+    "Skipped": DotenvSkipped[] | null;
+}
+
+/**
+ * DotenvSkipped is one dotenv-named file the scan could not read,
+ * named with its reason in the results view rather than silently
+ * omitted.
+ */
+export interface DotenvSkipped {
+    "RelPath": string;
+    "Reason": string;
 }
 
 /**

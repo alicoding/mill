@@ -19,6 +19,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
+	"github.com/alicoding/mill/internal/domain/secretsource"
 )
 
 // SeedFingerprint is one golden's committed authoring record
@@ -174,6 +175,12 @@ func AllSeedFingerprints() map[string]SeedFingerprint {
 		rev := o.Seed.SeedRevision
 		o.ID, o.CreatedAt, o.UpdatedAt, o.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
 		out[keyFor("atlasobject", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(o)}
+	}
+	for _, s := range secretsource.BuiltIn() {
+		id := s.ID
+		rev := s.Seed.SeedRevision
+		s.ID, s.CreatedAt, s.UpdatedAt, s.Seed = "", time.Time{}, time.Time{}, seedorigin.Origin{}
+		out[keyFor("secretsource", id)] = SeedFingerprint{SeedRevision: rev, Fingerprint: fingerprintContent(s)}
 	}
 	for _, r := range guardrail.BuiltIn() {
 		id := r.ID

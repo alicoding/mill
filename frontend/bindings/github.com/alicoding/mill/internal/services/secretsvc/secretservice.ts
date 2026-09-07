@@ -23,7 +23,9 @@ import * as $models from "./models.js";
 
 /**
  * AddDotenvSources creates one dotenv source per chosen path, returning
- * how many were added.
+ * how many were added. A path already configured as a source is not
+ * added again -- the picker shows it disabled; this is the backstop
+ * for a call that came from anywhere else (goal 0367).
  */
 export function AddDotenvSources(folder: string, paths: string[] | null): $CancellablePromise<number> {
     return $Call.ByID(3271941789, folder, paths);
@@ -92,9 +94,11 @@ export function DeleteSecret(id: string): $CancellablePromise<void> {
 }
 
 /**
- * FindDotenvFiles lists the dotenv files under folder.
+ * FindDotenvFiles lists the dotenv files under folder, marking each
+ * that is already configured as a source and naming each that could
+ * not be parsed.
  */
-export function FindDotenvFiles(folder: string): $CancellablePromise<$models.DotenvFound[] | null> {
+export function FindDotenvFiles(folder: string): $CancellablePromise<$models.DotenvScanResult> {
     return $Call.ByID(4170139972, folder);
 }
 
@@ -110,8 +114,11 @@ export function GeneratePassword(length: number, upper: boolean, lower: boolean,
 /**
  * ImportDotenvKeys stores every key of the chosen files as its own
  * entry: the key's name as the title, the folder it came from as a
- * tag, and the file it came from recorded on the entry. Returns how
- * many entries were created.
+ * tag, and the file it came from recorded on the entry. A locked vault
+ * is refused UP FRONT -- never after a partial import -- and a key a
+ * previous import of the same file already stored is updated in place,
+ * never appended a second time (goal 0367). Returns how many entries
+ * were written.
  */
 export function ImportDotenvKeys(folder: string, paths: string[] | null): $CancellablePromise<number> {
     return $Call.ByID(3362783527, folder, paths);
@@ -125,6 +132,16 @@ export function ImportDotenvKeys(folder: string, paths: string[] | null): $Cance
  */
 export function ImportExport(path: string, deleteAfter: boolean): $CancellablePromise<number> {
     return $Call.ByID(274568475, path, deleteAfter);
+}
+
+/**
+ * ListDotenvSourceKeys reads one dotenv source's file and returns its
+ * key NAMES, sorted -- never a value. The source's own row expands to
+ * this list (goal 0367), read fresh on each expand; a source whose file
+ * cannot be read is answered with the sentence its row shows.
+ */
+export function ListDotenvSourceKeys(sourceID: string): $CancellablePromise<string[] | null> {
+    return $Call.ByID(353800799, sourceID);
 }
 
 /**

@@ -14,6 +14,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/secretvault"
 	"github.com/alicoding/mill/internal/domain/secret"
 	"github.com/alicoding/mill/internal/domain/secretsource"
+	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/alicoding/mill/internal/services/servicetest"
 )
 
@@ -178,6 +179,39 @@ func TestResolveSecretValue_SourceBackedEntry_ReadsTheSourceAtUseTime(t *testing
 	}
 	if got != "tok-123" {
 		t.Errorf("resolved %q, want the source's current value", got)
+	}
+}
+
+// A dotenv source's row lists its key NAMES (goal 0367): the read-back
+// answer carries names only, sorted, and a source whose file cannot be
+// read is answered with the one sentence its row shows.
+func TestListDotenvSourceKeys_NamesOnly_ReadableSentenceOnFailure(t *testing.T) {
+	s := envSourceService(t)
+	keys, err := s.ListDotenvSourceKeys("proj-env")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(keys) != 2 || keys[0] != "API_TOKEN" || keys[1] != "OTHER" {
+		t.Fatalf("keys = %v", keys)
+	}
+	for _, k := range keys {
+		if strings.Contains(k, "tok-123") {
+			t.Error("a value leaked into the keys read-back")
+		}
+	}
+
+	// An unreadable file answers the usererror family the row shows.
+	broken := secretsource.Source{ID: "broken-env", Label: "Broken", Kind: secretsource.KindEnv, Path: filepath.Join(t.TempDir(), "missing", ".env")}
+	s.SetSourcesLister(func() []secretsource.Source { return []secretsource.Source{broken} })
+	if _, err := s.ListDotenvSourceKeys("broken-env"); err == nil {
+		t.Fatal("an unreadable file must be answered")
+	} else if ue, ok := usererror.Of(err); !ok || ue.Code != "dotenv-source-unreadable" || ue.Message != "The file for this source can't be read." {
+		t.Fatalf("unreadable error = %+v", err)
+	}
+
+	// A source id that is not configured is answered by name.
+	if _, err := s.ListDotenvSourceKeys("work-op"); err == nil || !strings.Contains(err.Error(), "not configured") {
+		t.Fatalf("unknown source err = %v", err)
 	}
 }
 

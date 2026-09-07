@@ -113,3 +113,13 @@
    button keeps its own width instead of being squeezed to one word per
    line (Settings > Extensions' trust strip). */
 .nowrapAction { flex-shrink: 0; }
+
+/* A dotenv source's expanded key names (goal 0367): one name per line,
+   mono, inside the row's own disclosure. */
+.keyList {
+    margin: 0;
+    padding: 0 0 var(--base-size-4) var(--base-size-16);
+    list-style: none;
+    font-family: var(--fontStack-monospace);
+    font-size: var(--text-codeInline-size, 85%);
+}

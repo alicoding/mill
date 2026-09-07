@@ -8,6 +8,7 @@ package wiring
 import (
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
@@ -51,6 +52,10 @@ func WireSecrets(vaultPath, backupDir string, credentials credential.Store, stor
 	// the first, and on every install that never enabled the old one.
 	secretService.MigrateLegacyPresenceProtection()
 	configureService.SetSecretResolver(secretService.ResolveSecretValue)
+	// Goal 0367: the seeded example dotenv source materializes its own
+	// file beside the vault's own data (the per-worker temp dir under
+	// e2e), now that the directory exists to write it into.
+	configureService.SetSeedAssetsDir(filepath.Dir(vaultPath))
 	secretService.SetSourcesLister(configureService.SecretSources)
 	// Goal 0306 S4: "Add as sources" on the .env scan creates the same
 	// Configure entity the Sources page's own form does, through this

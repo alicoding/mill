@@ -240,9 +240,18 @@ Why every such field is a pick, not a text box, is in
 ## Use a value you keep elsewhere
 
 1. Open **Secrets › Sources** and add the source — your shell
-   environment, a `.env` file, or a password manager's CLI.
-2. Its keys now appear in every picker under **Secret sources**. Pick
-   one exactly as you would a vault entry; Mill reads the value at run
+   environment, a `.env` file, or a password manager's CLI. For `.env`
+   files, **Find .env files…** scans a folder you pick (also from the
+   command palette) and ticks what it found; a file that is already a
+   source is left unticked, and one Mill cannot read is named with the
+   reason.
+2. **Import keys** copies a picked file's entries into the vault
+   (importing again updates them in place); **Add as sources** reads
+   them live from the file instead.
+3. A `.env` row shows its key count; **Show keys** lists the key
+   names — never the values.
+4. Its keys appear in every picker under **Secret sources**. Pick one
+   exactly as you would a vault entry; Mill reads the value at run
    time and never copies it into the vault.
 
 ## If the picker is greyed out
@@ -2760,6 +2769,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `secret.row.delete` | Delete | — | Global | Acts on the selected entity |
 | `secret.row.edit` | Edit | — | Global | Acts on the selected entity |
 | `secret.row.history` | History | — | Global | Acts on the selected entity |
+| `secrets.findDotenvFiles` | Find .env files… | — | Global | Always available |
 | `secrets.lockVault` | Lock vault | — | Global | Conditional — available only in a matching state |
 | `secrets.resetVault` | Start a new vault | — | Global | Conditional — available only in a matching state |
 | `secrets.restoreVaultFromBackup` | Restore the last backup | — | Global | Conditional — available only in a matching state |
@@ -3980,6 +3990,8 @@ such satellite file, quoted whole:
 ```ts
 import type { Command } from './commands'
 import { SecretService } from './bindings'
+import { useAppStore } from './store'
+import { useUISignalStore } from './uiSignalStore'
 import { refreshVaultBackupTime, refreshVaultStatus, useVaultStatusStore } from './vaultStatusStore'
 import type { UserError } from './userError'
 import { userErrorFrom } from './userError'
@@ -4005,6 +4017,21 @@ function record(promise: Promise<unknown>): void {
 }
 
 export const SECRETS_COMMANDS: Command[] = [
+  {
+    // "Find .env files…" (goal 0367): opens the Sources section's scan
+    // dialog from anywhere. Navigation first, the set-then-consume
+    // signal second -- the section may mount fresh on that navigation,
+    // and the signal is what the freshly-mounted view consumes. Quick
+    // Panel's own row overrides run() (panel window ≠ main window).
+    id: 'secrets.findDotenvFiles',
+    label: 'commands.secrets.findDotenvFiles',
+    defaultBinding: null,
+    quickPanel: true,
+    run: () => {
+      useAppStore.getState().setView({ kind: 'secrets', tab: 'sources' })
+      useUISignalStore.getState().requestSecretsDotenvScan()
+    },
+  },
   {
     // The vault seat's anchor (goal 0335): its own `menu` fixes the
     // seat's File-menu position, but shared/menuSpec.ts's seatOverrides

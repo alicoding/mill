@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, FormControl, IconButton, Select, Stack, Text, TextInput } from '@primer/react'
+import { Button, FormControl, IconButton, Select, Spinner, Stack, Text, TextInput } from '@primer/react'
 import { LockIcon, PencilIcon, PlusIcon, SearchIcon, TrashIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
@@ -16,6 +16,7 @@ import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { entityRowContext } from '../shared/entityRowCommands'
 import { useEntityActionError } from '../shared/entityActionErrorStore'
 import { runCommand } from '../shared/commands'
+import { messageFor } from '../shared/userError'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useUISignalStore } from '../shared/uiSignalStore'
@@ -28,9 +29,9 @@ import styles from '../shared/ListCard.module.css'
 // secrets through -- a dotenv file, a password manager's command-line
 // tool, or a store an installed extension contributes (goal 0306 S4) --
 // whose keys then appear in every secret picker beside the vault's own
-// entries. No import/export (a source names a path on this machine) and
-// no seeds (enabling a source is always the user's act), so the shared
-// page renders without those controls.
+// entries. No import/export (a source names a path on this machine);
+// the one seeded source (goal 0367's example) is what proves a dotenv
+// row's key listing works out of the box.
 export function ConfigureSecretSources() {
   const { t } = useTranslation('configure')
   // A row action's refusal, recorded by the command that met it
@@ -56,6 +57,14 @@ export function ConfigureSecretSources() {
   const [problems, setProblems] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
   const [scanOpen, setScanOpen] = useState(false)
+  // A dotenv source's own key NAMES (goal 0367): keyCounts feeds the
+  // collapsed row's "{count} keys" caption (the read-back error's
+  // sentence takes its place), keyLists backs the disclosure expander.
+  // The list is read fresh on every expand, never cached between
+  // expansions, so the row always answers the file as it is now.
+  const [keyCounts, setKeyCounts] = useState<Record<string, { count: number; error: string }>>({})
+  const [keyLists, setKeyLists] = useState<Record<string, { keys: string[]; error: string }>>({})
+  const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({})
 
   const refetch = () => {
     void refreshSecretSources()
@@ -84,6 +93,70 @@ export function ConfigureSecretSources() {
     startCreate()
     consumeConfigureCreate()
   }, [configureCreateRequest])
+
+  // "Find .env files…" from the palette or Quick Panel (goal 0367):
+  // navigate already landed this view; consume the signal by opening
+  // the same dialog the header button opens.
+  const dotenvScanRequest = useUISignalStore((s) => s.secretsDotenvScanRequest)
+  const consumeDotenvScan = useUISignalStore((s) => s.consumeSecretsDotenvScan)
+  useEffect(() => {
+    if (!dotenvScanRequest) return
+    setScanOpen(true)
+    consumeDotenvScan()
+  }, [dotenvScanRequest])
+
+  // The collapsed row's count is one name-read per dotenv source,
+  // refreshed with the sources themselves: an unreadable file's
+  // sentence takes the count's place in the caption.
+  useEffect(() => {
+    let live = true
+    const dotenv = (sources ?? []).filter((s) => s.Kind === Kind.KindEnv)
+    void Promise.all(dotenv.map(async (s) => {
+      try {
+        const keys = await SecretService.ListDotenvSourceKeys(s.ID)
+        return [s.ID, { count: (keys ?? []).length, error: '' }] as const
+      } catch (err) {
+        return [s.ID, { count: -1, error: messageFor(err, t) }] as const
+      }
+    })).then((entries) => { if (live) setKeyCounts(Object.fromEntries(entries)) })
+    return () => { live = false }
+  }, [sources])
+
+  // The disclosure reads fresh on every expand; collapsing forgets the
+  // last answer entirely rather than showing a stale list next time.
+  const toggleKeys = (sourceID: string, expanded: boolean) => {
+    setExpandedKeys((prev) => ({ ...prev, [sourceID]: expanded }))
+    if (!expanded) {
+      setKeyLists((prev) => {
+        const next = { ...prev }
+        delete next[sourceID]
+        return next
+      })
+      return
+    }
+    setKeyLists((prev) => ({ ...prev, [sourceID]: { keys: [], error: '' } }))
+    SecretService.ListDotenvSourceKeys(sourceID)
+      .then((keys) => setKeyLists((prev) => ({ ...prev, [sourceID]: { keys: keys ?? [], error: '' } })))
+      .catch((err) => setKeyLists((prev) => ({ ...prev, [sourceID]: { keys: [], error: messageFor(err, t) } })))
+  }
+
+  const keysContent = (sourceID: string) => {
+    const entry = keyLists[sourceID]
+    if (!entry) return <Spinner size="small" data-testid={`secretsource-keys-loading-${sourceID}`} />
+    if (entry.error) return <Text size="small" className={styles.error} data-testid={`secretsource-keys-error-${sourceID}`}>{entry.error}</Text>
+    return (
+      <ul className={styles.keyList} data-testid={`secretsource-keys-${sourceID}`}>
+        {entry.keys.map((k) => <li key={k}>{k}</li>)}
+      </ul>
+    )
+  }
+
+  const keyCountCaption = (s: SecretSource) => {
+    const entry = keyCounts[s.ID]
+    if (!entry) return ''
+    if (entry.error) return `⚠ ${entry.error}`
+    return t('configureSecretSources.keyCount', { count: entry.count })
+  }
 
   // Picking an extension's kind offers the path it declares a default
   // for, so the common case is one click and Save.
@@ -124,7 +197,21 @@ export function ConfigureSecretSources() {
     builtIn: s.BuiltIn,
     updatedAt: s.UpdatedAt,
     createdAt: s.CreatedAt,
-    description: [kindLabel(s.Kind), s.Path, problems[s.ID] ? `⚠ ${problemText(problems[s.ID], t)}` : ''].filter(Boolean).join(' · '),
+    // The key count leads the path: the row's one-line description
+    // truncates the tail, and the count is the glanceable part.
+    description: [
+      kindLabel(s.Kind),
+      s.Kind === Kind.KindEnv ? keyCountCaption(s) : '',
+      s.Path,
+      problems[s.ID] ? `⚠ ${problemText(problems[s.ID], t)}` : '',
+    ].filter(Boolean).join(' · '),
+    disclosure: s.Kind === Kind.KindEnv ? {
+      showLabel: t('configureSecretSources.showKeys'),
+      hideLabel: t('configureSecretSources.hideKeys'),
+      expanded: expandedKeys[s.ID] === true,
+      onToggle: (next) => toggleKeys(s.ID, next),
+      content: keysContent(s.ID),
+    } : undefined,
     onOpen: () => startEdit(s),
     menuActions: [
       { commandId: 'configure.secretsource.delete', ctx: entityRowContext('secretsource', s.ID), danger: true },
@@ -195,6 +282,7 @@ export function ConfigureSecretSources() {
               { header: t('configureSecretSources.columns.label'), field: 'Label', rowHeader: true, sortBy: 'alphanumeric' },
               { header: t('configureSecretSources.columns.kind'), id: 'kind', renderCell: (s) => kindLabel(s.Kind) },
               { header: t('configureSecretSources.columns.path'), id: 'path', width: 'growCollapse', minWidth: '160px', renderCell: (s) => <TruncatedCell text={s.Path} mono /> },
+              { header: t('configureSecretSources.columns.keys'), id: 'keys', renderCell: (s) => (s.Kind === Kind.KindEnv ? keyCountCaption(s) : '') },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (s) => (

@@ -71,6 +71,20 @@ export interface InventoryItem {
   updatedLabel?: string
   meta?: ReactNode
   primaryAction?: ReactNode
+  // A disclosure expander the row renders under its own text (goal
+  // 0367's dotenv key read-back is the first consumer): showLabel/
+  // hideLabel are the button's text per state, and `content` renders
+  // only while expanded -- ExamplesSection's own collapsed-means-
+  // absent rule, per row. The row mounts it inside the item body, not
+  // as a sibling, so the owning ActionList's role="list" keeps its
+  // aria-required-children sound.
+  disclosure?: {
+    showLabel: string
+    hideLabel: string
+    expanded: boolean
+    onToggle: (expanded: boolean) => void
+    content: ReactNode
+  }
   onOpen: () => void
   menuActions: InventoryMenuAction[]
 }

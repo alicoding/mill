@@ -1,6 +1,6 @@
 import type { ElementType, ReactNode } from 'react'
 import { CounterLabel } from '@primer/react'
-import { CommandPaletteIcon, CopyIcon, GearIcon, HomeIcon, PlayIcon } from '@primer/octicons-react'
+import { CommandPaletteIcon, CopyIcon, GearIcon, HomeIcon, PlayIcon, SearchIcon } from '@primer/octicons-react'
 import { commandLabel, findCommand, runCommand } from '../shared/commands'
 import { quickPanelRowIds } from '../shared/quickPanelCommands'
 import type { Card, Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
@@ -253,6 +253,17 @@ function buildActionRows(params: {
       leadingVisual: CopyIcon,
       trailingVisual: <HotkeyHint commandId="panel.applyClipboard" />,
       run: applyFromClipboard,
+    }),
+    // goal 0367: the registry run() assumes the main window (setView),
+    // so the panel's own row navigates there instead, with the scan
+    // dialog opened once the Sources section lands.
+    'secrets.findDotenvFiles': () => ({
+      id: 'cmd:secrets.findDotenvFiles',
+      groupId: 'actions',
+      text: commandLabel(findCommand('secrets.findDotenvFiles')!),
+      searchText: 'find dotenv env files scan folder sources',
+      leadingVisual: SearchIcon,
+      run: () => openMain('secrets:dotenv-scan'),
     }),
     // docs/goals/0240 S1: always present, same unblock-yourself-in-place
     // reasoning as panel.applyClipboard above -- this IS the away-from-

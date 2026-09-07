@@ -32,9 +32,18 @@ Why every such field is a pick, not a text box, is in
 ## Use a value you keep elsewhere
 
 1. Open **Secrets › Sources** and add the source — your shell
-   environment, a `.env` file, or a password manager's CLI.
-2. Its keys now appear in every picker under **Secret sources**. Pick
-   one exactly as you would a vault entry; Mill reads the value at run
+   environment, a `.env` file, or a password manager's CLI. For `.env`
+   files, **Find .env files…** scans a folder you pick (also from the
+   command palette) and ticks what it found; a file that is already a
+   source is left unticked, and one Mill cannot read is named with the
+   reason.
+2. **Import keys** copies a picked file's entries into the vault
+   (importing again updates them in place); **Add as sources** reads
+   them live from the file instead.
+3. A `.env` row shows its key count; **Show keys** lists the key
+   names — never the values.
+4. Its keys appear in every picker under **Secret sources**. Pick one
+   exactly as you would a vault entry; Mill reads the value at run
    time and never copies it into the vault.
 
 ## If the picker is greyed out

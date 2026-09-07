@@ -30,9 +30,12 @@ func TestScan_FindsDotenvFilesAndSkipsWhatItMust(t *testing.T) {
 	write(t, filepath.Join(root, "a", "b", "c", "d", "e", ".env"), "NOPE=1\n")
 	write(t, filepath.Join(root, "readme.md"), "not an env file")
 
-	found, err := Scan(root)
+	found, skipped, err := Scan(root)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(skipped) != 0 {
+		t.Fatalf("skipped = %+v", skipped)
 	}
 	paths := make([]string, 0, len(found))
 	for _, f := range found {
@@ -46,10 +49,32 @@ func TestScan_FindsDotenvFilesAndSkipsWhatItMust(t *testing.T) {
 	}
 }
 
+// A dotenv-named file that cannot be parsed is named with its reason,
+// never silently omitted (goal 0367).
+func TestScan_NamesAFileItCannotParseWithTheReason(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, ".env"), "A=1\n")
+	write(t, filepath.Join(root, "api", ".env.broken"), "\"BAD LINE\n")
+
+	found, skipped, err := Scan(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(found) != 1 || found[0].RelPath != ".env" {
+		t.Fatalf("found = %+v", found)
+	}
+	if len(skipped) != 1 || skipped[0].RelPath != "api/.env.broken" {
+		t.Fatalf("skipped = %+v", skipped)
+	}
+	if skipped[0].Reason == "" || strings.Contains(skipped[0].Reason, skipped[0].Path) {
+		t.Fatalf("reason should carry the parse cause, not the path: %q", skipped[0].Reason)
+	}
+}
+
 // A scan without a folder is refused by name: there is no folder Mill
 // may walk on its own, and the home directory is never a default.
 func TestScan_RefusesAnEmptyFolder(t *testing.T) {
-	if _, err := Scan("  "); err == nil || !strings.Contains(err.Error(), "choose a folder") {
+	if _, _, err := Scan("  "); err == nil || !strings.Contains(err.Error(), "choose a folder") {
 		t.Fatalf("empty folder: %v", err)
 	}
 }

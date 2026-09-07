@@ -3,6 +3,7 @@ import { Events } from '@wailsio/runtime'
 import { useAppStore } from '../shared/store'
 import type { View } from '../shared/store'
 import { parseNavigateTarget } from '../shared/navigateTarget'
+import { useUISignalStore } from '../shared/uiSignalStore'
 
 // docs/adr/0033: the Quick Panel's (and ApprovalPrompt's) "Open in
 // Mill"/jump rows live in separate Wails windows with their own React
@@ -25,7 +26,17 @@ import { parseNavigateTarget } from '../shared/navigateTarget'
 export function useMillNavigate(setView: (view: View) => void): void {
   useEffect(() => {
     return Events.On('mill-navigate', (evt) => {
-      const action = parseNavigateTarget(evt.data as string)
+      const target = evt.data as string
+      // secrets.findDotenvFiles from the panel (goal 0367): navigate to
+      // the Secrets view's Sources section AND open its scan dialog.
+      // The set-then-consume signal survives a fresh mount of the
+      // section itself; the navigate-target grammar carries no dialog.
+      if (target === 'secrets:dotenv-scan') {
+        setView({ kind: 'secrets', tab: 'sources' })
+        useUISignalStore.getState().requestSecretsDotenvScan()
+        return
+      }
+      const action = parseNavigateTarget(target)
       if (!action) return
       if ('view' in action) setView(action.view)
       else useAppStore.getState().openWorkTab(action.workTab)
