@@ -17,6 +17,11 @@ pre-commit:
     - name: framework-api-first
       glob: "*.go"
       run: ./scripts/check-framework-api-first.sh
+    - name: framework-api-first-selftest
+      # Fixture-tests the location half of the gate above (goal 0385) --
+      # same probe-on-touch shape as review-report-selftest.
+      glob: "scripts/check-framework-api-first*.sh"
+      run: ./scripts/check-framework-api-first-selftest.sh
     - name: test-side-effects
       # Goal 0356: a _test.go file constructing the real clipboard Host
       # adapter without the MILL_CLIPBOARD_HOST_OK opt-in in the same
@@ -37,8 +42,24 @@ pre-commit:
       glob: "frontend/src/locales/**/*.json"
       run: ./scripts/check-ui-copy.sh
     - name: drag-regions
-      glob: "frontend/src/**/*.{css,ts,tsx}"
+      # Goal 0385 widened this to *.go too: the cross-check walks every
+      # tracked Go file for a Frameless: true window construction, not
+      # just auxwindows.go/main.go by name, so a future window family
+      # split (the 500-line convention) still gets caught.
+      glob: "{frontend/src/**/*.{css,ts,tsx},*.go}"
       run: ./scripts/check-drag-regions.sh
+    - name: drag-regions-selftest
+      glob: "scripts/check-drag-regions*.sh"
+      run: ./scripts/check-drag-regions-selftest.sh
+    - name: vendor-names
+      # Goal 0385: semgrep/vendor-names.yml's own header comment carries
+      # the value-vs-concept rule and the case-sensitivity split.
+      # Requires `brew install semgrep` once (task setup:hooks).
+      glob: "{internal/domain/composition/**,internal/services/bridgesvc/**,internal/services/remoteauthsvc/**,frontend/src/views/**,frontend/src/locales/**,userdocs/**,semgrep/**}"
+      run: semgrep --config semgrep/ --error --quiet
+    - name: vendor-names-selftest
+      glob: "{semgrep/**,scripts/check-vendor-names-selftest.sh}"
+      run: ./scripts/check-vendor-names-selftest.sh
     - name: toolbar-action-testids
       glob: "{frontend/src/atlas/AtlasToolbar.tsx,frontend/e2e/*.spec.ts,frontend/e2e/fixtures/toolbarActions.ts}"
       run: ./scripts/check-toolbar-action-testids.sh

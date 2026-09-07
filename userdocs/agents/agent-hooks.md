@@ -46,7 +46,7 @@ declaring those to use. The posted body also arrives whole as the
 run's payload.
 
 For a hook config in an agent tool, the entry is the same curl — for
-example a Claude Code `Stop` hook:
+example a coding agent's own `Stop` hook:
 
 ```json
 {
@@ -56,7 +56,7 @@ example a Claude Code `Stop` hook:
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://127.0.0.1:8092/__mill/hooks/event -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"source\":\"claude-code\",\"title\":\"Agent finished\",\"body\":\"A task completed.\"}'"
+            "command": "curl -s -X POST http://127.0.0.1:8092/__mill/hooks/event -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"source\":\"my-coding-agent\",\"title\":\"Agent finished\",\"body\":\"A task completed.\"}'"
           }
         ]
       }
