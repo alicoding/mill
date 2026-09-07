@@ -173,22 +173,10 @@ func (c *ConfigureService) UpdateMCPServer(id, label, command string, args []str
 }
 
 func (c *ConfigureService) DeleteMCPServer(id string) error {
-	if err := c.refIntegrityError("mcpserver", "MCP server", id); err != nil {
-		return err
-	}
-	// A deleted built-in gets a tombstone so top-up seeding never
-	// resurrects it -- same discipline DeleteHTTPRequest/DeleteDecision/
-	// DeleteList already apply. Removal and tombstone must succeed
-	// together (docs/goals/0025 item 2).
-	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
-	clearTombstone := func(id string) error { return seeding.ClearTombstone(c.store, id) }
-	restore, err := entitystore.DeleteRecoverable(&c.mu, &c.mcpServers, c.persistMCPServers, recordTombstone, clearTombstone, mcpServerDescriptor, id)
-	if err != nil {
-		return err
-	}
-	c.undo.remember("mcpserver", id, restore)
-	dataevent.Emit("mcpserver", id) // goal 0017: live-sync every open surface
-	return nil
+	announce := func(id string) { dataevent.Emit("mcpserver", id) }
+	return deleteEntity(c, "mcpserver", &c.mcpServers, c.persistMCPServers, mcpServerDescriptor,
+		func(id string) error { return c.refIntegrityError("mcpserver", "MCP server", id) },
+		func(s mcpserver.MCPServer) string { return s.Label }, announce, id)
 }
 
 // ListMCPServerTools is a live, on-demand reference lookup (connects to

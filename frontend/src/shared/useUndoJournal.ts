@@ -6,12 +6,13 @@ import { background } from './background'
 
 // Owns the actor-scoped undo journal's frontend half (goal 0219 S2,
 // ADR-0044): keeps uiSignalStore's atlasUndoAvailable/atlasRedoAvailable
-// flags in sync with the Go journal (polling AtlasService.UndoState()
-// on every atlas OR list dataevent -- the same mill-data-changed
+// flags and atlasUndoTop in sync with the Go journal (polling
+// AtlasService.UndoState() on every mill-data-changed event -- the same
 // channel every other read surface already refreshes from; a List row
-// edit made in a board table or on the List page journals under the
-// same actor, goal 0352, so its availability arrives on the list
-// channel), and applies atlasUndoRequest/atlasRedoRequest ticks
+// edit made in a board table or a Configure entity delete journals
+// under the same actor, goal 0352, so its availability arrives on
+// whichever family channel the door emitted), and applies
+// atlasUndoRequest/atlasRedoRequest ticks
 // (bumped by the atlas.undo/atlas.redo commands, including the
 // dedicated ⌘Z/⇧⌘Z listener in app/useKeymapDispatch.ts) by calling
 // the matching RPC. Undo() and Redo() apply the inverse through the
@@ -27,20 +28,21 @@ import { background } from './background'
 // quiet notice line the host already renders, never a new surface.
 //
 // ONE mount at a time: the journal is app-wide, and the surfaces that
-// mount it (the board, Configure's List page) are alternative views of
-// the same window, never both on screen at once.
+// mount it (the board, ConfigureView) are alternative views of the same
+// window, never both on screen at once.
 export function useUndoJournal({ onSkip, onApplied }: { onSkip: (message: string) => void; onApplied?: () => void }) {
   const refreshState = () => {
     void background(AtlasService.UndoState()
-      .then((s) => useUISignalStore.getState().setAtlasUndoRedoAvailable({ hasUndo: s.HasUndo, hasRedo: s.HasRedo })), 'undoJournal.undoState')
+      .then((s) => {
+        const store = useUISignalStore.getState()
+        store.setAtlasUndoRedoAvailable({ hasUndo: s.HasUndo, hasRedo: s.HasRedo })
+        store.setAtlasUndoTop(s.TopKind ? { kind: s.TopKind, id: s.TopID } : null)
+      }), 'undoJournal.undoState')
   }
 
   useEffect(() => {
     refreshState()
-    return Events.On('mill-data-changed', (evt) => {
-      const entity = (evt.data as { entity?: string })?.entity
-      if (entity === 'atlas' || entity === 'list') refreshState()
-    })
+    return Events.On('mill-data-changed', () => refreshState())
   }, [])
 
   const apply = (call: () => Promise<{ Applied: boolean; Skipped: boolean; Message: string }>) => {

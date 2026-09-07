@@ -89,15 +89,8 @@ func (c *ConfigureService) UpdateClientCertificate(id, label, host, certRef, key
 }
 
 func (c *ConfigureService) DeleteClientCertificate(id string) error {
-	recordTombstone := func(id string) error { return seeding.RecordTombstone(c.store, id) }
-	clearTombstone := func(id string) error { return seeding.ClearTombstone(c.store, id) }
-	restore, err := entitystore.DeleteRecoverable(&c.mu, &c.clientCerts, c.persistClientCertificates, recordTombstone, clearTombstone, clientCertDescriptor, id)
-	if err != nil {
-		return err
-	}
-	c.undo.remember("clientcert", id, restore)
-	c.clientCertsChanged(id)
-	return nil
+	return deleteEntity(c, "clientcert", &c.clientCerts, c.persistClientCertificates, clientCertDescriptor, nil,
+		func(cert clientcert.ClientCertificate) string { return cert.Label }, c.clientCertsChanged, id)
 }
 
 // DuplicateClientCertificate copies one entity's fields onto a new one,

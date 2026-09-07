@@ -25,6 +25,14 @@
     min-width: 0;
 }
 
+/* The undo journal's skip notice (goal 0352): a quiet line directly
+   above the pane it applies to, in the page's own inset. */
+.notice {
+    color: var(--fgColor-muted);
+    margin: 0;
+    padding: var(--s-2) var(--s-4) 0;
+}
+
 /* The page's own title row sits above the shell, so it carries no
    bottom inset of its own: the rail and the pane below each open with
    their own top inset, and a second one here reads as a gap between

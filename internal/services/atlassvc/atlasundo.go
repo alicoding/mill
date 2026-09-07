@@ -225,15 +225,25 @@ func (a *AtlasService) EndUndoMark() {
 type UndoState struct {
 	HasUndo bool
 	HasRedo bool
+	// TopKind/TopID name the entry ⌘Z would pop next. The delete toast
+	// watches the pair and hides once the journal's top step is no
+	// longer the delete it offers (ADR-0044 amendment item 5).
+	TopKind string
+	TopID   string
 }
 
 func (a *AtlasService) UndoState() UndoState {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
-	return UndoState{
+	state := UndoState{
 		HasUndo: len(a.undoStacks[actorUI]) > 0,
 		HasRedo: len(a.redoStacks[actorUI]) > 0,
 	}
+	if state.HasUndo {
+		top := a.undoStacks[actorUI][len(a.undoStacks[actorUI])-1]
+		state.TopKind, state.TopID = top.entityKind, top.entityID
+	}
+	return state
 }
 
 func (a *AtlasService) setSuppressRecording(v bool) {

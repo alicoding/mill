@@ -169,6 +169,13 @@ interface UISignalState {
   atlasUndoAvailable: boolean
   atlasRedoAvailable: boolean
   setAtlasUndoRedoAvailable: (state: { hasUndo: boolean; hasRedo: boolean }) => void
+  // atlasUndoTop names the journal entry ⌘Z would pop next (goal 0352
+  // part 2): the Configure delete toast watches it and hides itself once
+  // the top step is no longer the delete it offers — either because the
+  // delete was undone or because a newer step landed on top of it.
+  // Kind/id come straight from UndoState's TopKind/TopID.
+  atlasUndoTop: { kind: string; id: string } | null
+  setAtlasUndoTop: (top: { kind: string; id: string } | null) => void
   atlasUndoRequest: number
   requestAtlasUndo: () => void
   atlasRedoRequest: number
@@ -350,6 +357,8 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   atlasUndoAvailable: false,
   atlasRedoAvailable: false,
   setAtlasUndoRedoAvailable: ({ hasUndo, hasRedo }) => set({ atlasUndoAvailable: hasUndo, atlasRedoAvailable: hasRedo }),
+  atlasUndoTop: null,
+  setAtlasUndoTop: (top) => set({ atlasUndoTop: top }),
   atlasUndoRequest: 0,
   requestAtlasUndo: () => set((s) => ({ atlasUndoRequest: s.atlasUndoRequest + 1 })),
   atlasRedoRequest: 0,
