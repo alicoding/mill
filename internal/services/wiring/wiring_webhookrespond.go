@@ -7,6 +7,8 @@
 package wiring
 
 import (
+	"time"
+
 	"github.com/alicoding/mill/internal/services/bridgesvc"
 	"github.com/alicoding/mill/internal/services/triggersvc"
 )
@@ -18,15 +20,30 @@ import (
 // package didn't start.
 func WireWebhookRespond(bridge *bridgesvc.BridgeService, trigger *triggersvc.TriggerService) {
 	bridge.SetWebhookEventSink(func(values map[string]string, raw []byte) *bridgesvc.WebhookWait {
-		wait := trigger.DispatchWebhookEvent(values, raw)
-		if wait == nil {
-			return nil
-		}
-		relay := make(chan bridgesvc.WebhookReply, 1)
-		go func() {
-			r := <-wait.Reply
-			relay <- bridgesvc.WebhookReply{Status: r.Status, ContentType: r.ContentType, Body: r.Body}
-		}()
-		return &bridgesvc.WebhookWait{Reply: relay, Budget: wait.Budget}
+		return relayWebhookWait(trigger.DispatchWebhookEvent(values, raw))
 	})
+}
+
+// relayWebhookWait adapts triggersvc's own WebhookWait/WebhookReply
+// onto bridgesvc's identically-shaped types, one goroutine per post --
+// split out of WireWebhookRespond so the leak this goroutine must NOT
+// have is unit-testable without a real TriggerService/BridgeService.
+func relayWebhookWait(wait *triggersvc.WebhookWait) *bridgesvc.WebhookWait {
+	if wait == nil {
+		return nil
+	}
+	relay := make(chan bridgesvc.WebhookReply, 1)
+	go func() {
+		// Bounded by the SAME budget bridgesvc's own handler already
+		// waits on: a listener still parked past the budget never
+		// sends anything on wait.Reply (goal 0373 design contract item
+		// 5), and this goroutine must not outlive the HTTP response it
+		// exists to feed.
+		select {
+		case r := <-wait.Reply:
+			relay <- bridgesvc.WebhookReply{Status: r.Status, ContentType: r.ContentType, Body: r.Body}
+		case <-time.After(wait.Budget):
+		}
+	}()
+	return &bridgesvc.WebhookWait{Reply: relay, Budget: wait.Budget}
 }
