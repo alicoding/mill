@@ -31,7 +31,7 @@ func (s *SecretService) ResolveSecretValue(id string, actx secretaudit.AccessCon
 	}
 	e, err := s.vault.Get(id)
 	if err != nil {
-		s.recordAccess(id, "", actx, secretaudit.OutcomeError, err.Error())
+		s.recordAccess(id, "", actx, secretaudit.OutcomeError, failureKindForVaultErr(err), err.Error())
 		return "", err
 	}
 	// A source-backed entry (goal 0306) holds no value: the reference
@@ -43,12 +43,12 @@ func (s *SecretService) ResolveSecretValue(id string, actx secretaudit.AccessCon
 		value, handled, err := s.resolveProvider(e.SourceRef, actx)
 		if !handled {
 			err = fmt.Errorf("the entry %q names a source Mill does not recognize", e.Title)
-			s.recordAccess(id, e.Title, actx, secretaudit.OutcomeError, err.Error())
+			s.recordAccess(id, e.Title, actx, secretaudit.OutcomeError, secretaudit.FailureKindOther, err.Error())
 			return "", err
 		}
 		return value, err
 	}
-	s.recordAccess(id, e.Title, actx, secretaudit.OutcomeRead, "")
+	s.recordAccess(id, e.Title, actx, secretaudit.OutcomeRead, "", "")
 	return e.Password, nil
 }
 
@@ -64,10 +64,10 @@ func (s *SecretService) RevealSecret(id string) (secret.Entry, error) {
 	e, err := s.vault.Get(id)
 	actx := secretaudit.AccessContext{Context: secretaudit.ContextUIReveal}
 	if err != nil {
-		s.recordAccess(id, "", actx, secretaudit.OutcomeError, err.Error())
+		s.recordAccess(id, "", actx, secretaudit.OutcomeError, failureKindForVaultErr(err), err.Error())
 		return secret.Entry{}, err
 	}
-	s.recordAccess(id, e.Title, actx, secretaudit.OutcomeRead, "")
+	s.recordAccess(id, e.Title, actx, secretaudit.OutcomeRead, "", "")
 	return e, nil
 }
 

@@ -64,3 +64,24 @@ export function contextCopyKey(context: SecretAccessContext, hasWorkflow: boolea
     case 'request-test': return 'accessHistory.readRequestTest'
   }
 }
+
+// SecretAccessFailureKind mirrors secretaudit.FailureKind's own const
+// block (internal/adapters/secretaudit/secretaudit.go) by hand, same
+// hand-synced convention as SecretAccessContext above -- plus "" for a
+// row written before this field existed, which the Go side never
+// backfills.
+export type SecretAccessFailureKind = 'unrecognized-entry' | 'other' | ''
+
+// errorCopyKey maps an OutcomeError row's FailureKind to the locale key
+// naming that failure in the user's own vocabulary -- null means "no
+// dedicated label," and the caller falls back to the row's own capped
+// ErrorText. An exhaustive switch with NO default, same reasoning as
+// contextCopyKey: a FailureKind this dialog doesn't know yet fails
+// `tsc` here instead of silently falling back.
+export function errorCopyKey(failureKind: SecretAccessFailureKind): string | null {
+  switch (failureKind) {
+    case 'unrecognized-entry': return 'accessHistory.unrecognizedEntry'
+    case 'other': return null
+    case '': return null
+  }
+}

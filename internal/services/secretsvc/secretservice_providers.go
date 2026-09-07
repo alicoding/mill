@@ -91,7 +91,7 @@ func (s *SecretService) resolveProvider(id string, actx secretaudit.AccessContex
 	sourceID, key, found := strings.Cut(rest, "/")
 	if !found || key == "" {
 		err = fmt.Errorf("secret reference %q: expected env:<source>/<KEY>", id)
-		s.recordAccess(id, "", actx, secretaudit.OutcomeError, err.Error())
+		s.recordAccess(id, "", actx, secretaudit.OutcomeError, secretaudit.FailureKindOther, err.Error())
 		return "", true, err
 	}
 	var src *secretsource.Source
@@ -103,7 +103,7 @@ func (s *SecretService) resolveProvider(id string, actx secretaudit.AccessContex
 	}
 	if src == nil {
 		err = fmt.Errorf("secret source %q is not configured", sourceID)
-		s.recordAccess(id, "", actx, secretaudit.OutcomeError, err.Error())
+		s.recordAccess(id, "", actx, secretaudit.OutcomeError, secretaudit.FailureKindOther, err.Error())
 		return "", true, err
 	}
 	if src.Kind.IsPlugin() {
@@ -113,24 +113,24 @@ func (s *SecretService) resolveProvider(id string, actx secretaudit.AccessContex
 	if isCLIKind(src.Kind) {
 		v, cerr := cliResolve(*src, key)
 		if cerr != nil {
-			s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeError, cerr.Error())
+			s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeError, secretaudit.FailureKindOther, cerr.Error())
 			return "", true, cerr
 		}
-		s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeRead, "")
+		s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeRead, "", "")
 		return v, true, nil
 	}
 	values, err := dotenvsource.Read(envPathOf(*src))
 	if err != nil {
-		s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeError, err.Error())
+		s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeError, secretaudit.FailureKindOther, err.Error())
 		return "", true, err
 	}
 	v, present := values[key]
 	if !present {
 		err = fmt.Errorf("secret source %q has no key %q", src.Label, key)
-		s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeError, err.Error())
+		s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeError, secretaudit.FailureKindOther, err.Error())
 		return "", true, err
 	}
-	s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeRead, "")
+	s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeRead, "", "")
 	return v, true, nil
 }
 

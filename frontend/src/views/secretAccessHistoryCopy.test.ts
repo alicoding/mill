@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import i18n from '../app/i18n'
-import { contextCopyKey, type SecretAccessContext } from './secretAccessHistoryCopy'
+import { contextCopyKey, errorCopyKey, type SecretAccessContext, type SecretAccessFailureKind } from './secretAccessHistoryCopy'
 
 // The hard-coded sync check goal 0371's own design contract calls for:
 // secretaudit.Context's full const block (internal/adapters/secretaudit/
@@ -59,5 +59,29 @@ describe('contextCopyKey', () => {
   it('the step phrase interpolates the step id', () => {
     const resolved = i18n.t('accessHistory.readByWorkflowStep', { ns: 'secrets', workflow: 'Nightly sync', step: 'send-step' })
     expect(resolved).toBe('Read by workflow "Nightly sync" · step send-step')
+  })
+})
+
+// The hard-coded sync check goal 0378's own contract calls for:
+// secretaudit.FailureKind's full const block (internal/adapters/
+// secretaudit/secretaudit.go), copied here by hand -- plus "" for a row
+// written before the field existed. A FailureKind added on the Go side
+// with no matching case here fails `tsc` at errorCopyKey's own
+// exhaustive switch, same sync mechanism GO_CONTEXTS gives contextCopyKey.
+const GO_FAILURE_KINDS: SecretAccessFailureKind[] = ['unrecognized-entry', 'other', '']
+
+describe('errorCopyKey', () => {
+  it('maps unrecognized-entry to a resolvable locale key that interpolates the reference', () => {
+    const key = errorCopyKey('unrecognized-entry')
+    expect(key).not.toBeNull()
+    const resolved = i18n.t(key as string, { ns: 'secrets', reference: 'example-secret-guard-token' })
+    expect(resolved).toBe('Unrecognized vault entry · example-secret-guard-token')
+  })
+
+  it('falls back to the raw error text for every other FailureKind (including a pre-migration empty row)', () => {
+    for (const failureKind of GO_FAILURE_KINDS) {
+      if (failureKind === 'unrecognized-entry') continue
+      expect(errorCopyKey(failureKind), `FailureKind ${JSON.stringify(failureKind)} unexpectedly got a dedicated label`).toBeNull()
+    }
   })
 })

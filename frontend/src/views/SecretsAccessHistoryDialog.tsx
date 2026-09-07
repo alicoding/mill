@@ -8,7 +8,7 @@ import type { SecretAccessRecord } from '../shared/bindings'
 import { runCommand } from '../shared/commands'
 import { formatUpdated } from '../shared/inventorySort'
 import listStyles from '../shared/ListCard.module.css'
-import { contextCopyKey, type SecretAccessContext } from './secretAccessHistoryCopy'
+import { contextCopyKey, errorCopyKey, type SecretAccessContext, type SecretAccessFailureKind } from './secretAccessHistoryCopy'
 
 // Goal 0203 S3: "who read this credential, and when" -- read-only, one
 // component for both entry points the design contract names: the
@@ -85,8 +85,10 @@ export function SecretsAccessHistoryDialog({ entryId, entryLabel, onClose }: {
               const workflowLabel = r.workflowId ? workflowLabels[r.workflowId] : undefined
               const hasWorkflow = Boolean(workflowLabel)
               const isError = r.outcome === 'error'
+              const failureKind = (r.failureKind ?? '') as SecretAccessFailureKind
+              const errorKey = isError ? errorCopyKey(failureKind) : null
               const description = isError
-                ? (r.errorText || t('accessHistory.readFailed'))
+                ? (errorKey ? t(errorKey, { reference: r.entryId }) : (r.errorText || t('accessHistory.readFailed')))
                 : t(contextCopyKey(context, hasWorkflow, Boolean(r.stepId)), {
                     workflow: workflowLabel, step: r.stepId, actor: r.actor?.replace(/^plugin:/, ''),
                   })

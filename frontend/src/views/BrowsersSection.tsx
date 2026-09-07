@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, Button, IconButton, Label, Link, Stack, Text } from '@primer/react'
+import { ActionList, Button, Label, Link, Stack, Text } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { BrowserIcon, CheckIcon, CopyIcon, FileDirectoryIcon, PlusIcon } from '@primer/octicons-react'
 import { useState } from 'react'
@@ -10,6 +10,7 @@ import { formatUpdated } from '../shared/inventorySort'
 import { writeClipboardText } from '../shared/clipboardWrite'
 import { runCommand, findCommand } from '../shared/commands'
 import { useBrowserBridgeStore, refreshBrowserBridge } from '../shared/browserBridgeStore'
+import { PAIRING_POLL_MS, gainedMember, usePairingCountdown, formatCountdown } from '../shared/pairingCountdown'
 import { background } from '../shared/background'
 import { useAppStore } from '../shared/store'
 import listStyles from '../shared/ListCard.module.css'
@@ -35,12 +36,43 @@ function BrowsersSection() {
   const extensionPath = useBrowserBridgeStore((s) => s.extensionPath)
   const testSteps = useBrowserBridgeStore((s) => s.testSteps)
   const testDurationMS = useBrowserBridgeStore((s) => s.testDurationMS)
+  const pairingBaselineCount = useBrowserBridgeStore((s) => s.pairingBaselineCount)
+  const clearPairing = useBrowserBridgeStore((s) => s.clearPairing)
   const error = useBrowserBridgeStore((s) => s.error)
   const revoke = useBrowserBridgeStore((s) => s.revoke)
   const [revoking, setRevoking] = useState<DeviceInfo | null>(null)
   const [copied, setCopied] = useState(false)
+  const [codeCopied, setCodeCopied] = useState(false)
 
   useEffect(() => { void refreshBrowserBridge() }, [])
+
+  // Never gate the section behind its fetch: a section that collapses
+  // to zero height on first paint and pops in shifts every section
+  // below it, which the deep-link scroll test pins.
+  const list = browsers ?? []
+
+  const remainingMS = usePairingCountdown(pairing?.expiresAt)
+
+  // The card clears itself once the server's own TTL elapses -- a dead
+  // code must never keep showing as if it still worked.
+  useEffect(() => {
+    if (pairing && remainingMS <= 0) clearPairing()
+  }, [pairing, remainingMS, clearPairing])
+
+  // The card also clears the instant this browser's own pairing
+  // succeeds, read from the same poll below.
+  useEffect(() => {
+    if (pairing && gainedMember(pairingBaselineCount, list.length)) clearPairing()
+  }, [pairing, pairingBaselineCount, list.length, clearPairing])
+
+  // Mill has no server push for "a browser just paired" -- while a
+  // code is showing, re-poll the list on the same cadence the countdown
+  // ticks so a completed pairing clears the card without a reload.
+  useEffect(() => {
+    if (!pairing) return
+    const id = setInterval(() => { void refreshBrowserBridge() }, PAIRING_POLL_MS)
+    return () => clearInterval(id)
+  }, [pairing])
 
   const copyAddress = () => {
     if (!status?.address) return
@@ -50,6 +82,14 @@ function BrowsersSection() {
     }), 'browsers.copyAddress')
   }
 
+  const copyCode = () => {
+    if (!pairing) return
+    void background(writeClipboardText(pairing.code).then(() => {
+      setCodeCopied(true)
+      setTimeout(() => setCodeCopied(false), 1500)
+    }), 'browsers.copyCode')
+  }
+
   const confirmRevoke = () => {
     if (!revoking) return
     const target = revoking
@@ -57,10 +97,6 @@ function BrowsersSection() {
     void background(revoke(target.id), 'browsers.revoke')
   }
 
-  // Never gate the section behind its fetch: a section that collapses
-  // to zero height on first paint and pops in shifts every section
-  // below it, which the deep-link scroll test pins.
-  const list = browsers ?? []
   const testCommand = findCommand('browser.test')
   const canTest = testCommand ? (!testCommand.enabled || testCommand.enabled()) : false
 
@@ -105,17 +141,20 @@ function BrowsersSection() {
           <Text size="small" className={monoStyles.mono} data-testid="bridge-address">
             {status?.address ?? ''}
           </Text>
-          <IconButton
-            icon={copied ? CheckIcon : CopyIcon}
+          <Button
             size="small"
-            variant="invisible"
-            aria-label={copied ? t('settings.browsers.addressCopiedAriaLabel') : t('settings.browsers.addressCopyAriaLabel')}
+            leadingVisual={copied ? CheckIcon : CopyIcon}
             onClick={copyAddress}
             data-testid="bridge-address-copy"
-          />
+          >
+            {copied ? t('settings.browsers.addressCopiedButton') : t('settings.browsers.addressCopyButton')}
+          </Button>
         </Stack>
         <Text as="p" size="small" className={listStyles.muted}>
           {status?.envOverride ? t('settings.browsers.addressEnvCaption') : t('settings.browsers.addressCaption')}
+        </Text>
+        <Text as="p" size="small" className={listStyles.muted}>
+          {t('settings.browsers.addressBrowserFallback')}
         </Text>
       </Stack>
 
@@ -140,11 +179,24 @@ function BrowsersSection() {
 
       {pairing && (
         <Stack direction="vertical" gap="condensed" style={{ marginTop: 'var(--base-size-8)' }} data-testid="browser-pairing-code-panel">
-          <Text size="large" weight="semibold" className={monoStyles.mono} data-testid="browser-pairing-code">
-            {pairing.code}
-          </Text>
+          <Stack direction="horizontal" gap="condensed" align="center">
+            <Text size="large" weight="semibold" className={monoStyles.mono} data-testid="browser-pairing-code">
+              {pairing.code}
+            </Text>
+            <Button
+              size="small"
+              leadingVisual={codeCopied ? CheckIcon : CopyIcon}
+              onClick={copyCode}
+              data-testid="browser-pairing-code-copy"
+            >
+              {codeCopied ? t('settings.browsers.codeCopiedButton') : t('settings.browsers.codeCopyButton')}
+            </Button>
+          </Stack>
           <Text as="p" size="small" className={listStyles.muted}>
             {t('settings.browsers.codeExpiry')}
+          </Text>
+          <Text as="p" size="small" className={listStyles.muted} data-testid="browser-pairing-code-countdown">
+            {t('settings.browsers.codeCountdown', { time: formatCountdown(remainingMS) })}
           </Text>
         </Stack>
       )}
