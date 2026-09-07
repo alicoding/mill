@@ -33,7 +33,7 @@ func TestPairingPage_ServerAndDesktopModeRenderDifferentCopy(t *testing.T) {
 		t.Errorf("server mode body = %q, must not point at Settings (no window to show it in)", serverBody)
 	}
 	if !strings.Contains(desktopBody, "Open Settings") {
-		t.Errorf("desktop mode body = %q, want it to name Settings > Remote access", desktopBody)
+		t.Errorf("desktop mode body = %q, want it to name Settings > Connections > Devices", desktopBody)
 	}
 	if strings.Contains(desktopBody, "server&#39;s log") {
 		t.Errorf("desktop mode body = %q, must not point at a server log", desktopBody)
