@@ -109,14 +109,16 @@ type UpdateNotice struct {
 	// failure (checkForUpdates has only the one stage, so nothing to
 	// classify) and for every non-error state.
 	StateReasonStage string `json:"stateReasonStage"`
-	// NotesVersion/NotesHTML (goal 0220 S2) carry the release notes from
+	// NotesVersion/NotesHTML carry the release notes from
 	// CheckForUpdates' most recent found result, rendered through the
 	// same markdown adapter docssvc uses -- the "What's new" surface's
-	// entire data source. NotesVersion can differ from StateVersion (a
-	// newer check's notes arrived while an earlier download stays
-	// staged-and-ready after a supersede-download failure); the version
-	// header always names the version the rendered notes actually
-	// belong to. Both empty until a check has ever found an update.
+	// entire data source. NotesHTML accumulates every release newer
+	// than installed (goal 0376), newest first, as its own headed
+	// section; NotesVersion is the newest entry's version, matching
+	// StateVersion's own naming EXCEPT it can differ (a newer check's
+	// notes arrived while an earlier download stays staged-and-ready
+	// after a supersede-download failure). Both empty until a check has
+	// ever found an update.
 	NotesVersion string `json:"notesVersion"`
 	NotesHTML    string `json:"notesHTML"`
 }
@@ -188,7 +190,9 @@ func (s *SettingsService) UpdateNoticeState() UpdateNotice {
 		StateVersion:     version,
 		StateReason:      reason,
 		StateReasonStage: string(reasonStage),
-		NotesVersion:     s.lastNotesVersion,
+	}
+	if len(s.lastNotesEntries) > 0 {
+		n.NotesVersion = trimVersionPrefix(s.lastNotesEntries[0].Version)
 	}
 	if !s.lastCheckAt.IsZero() {
 		n.LastCheckAt = s.lastCheckAt.Format(time.RFC3339)
@@ -197,25 +201,26 @@ func (s *SettingsService) UpdateNoticeState() UpdateNotice {
 	// never does, so this is unreachable in practice; a render failure
 	// still degrades to an empty notes section rather than dropping the
 	// whole state machine response.
-	if s.lastNotesRaw != "" {
-		if html, err := markdown.RenderHTML(s.lastNotesRaw); err == nil {
+	if len(s.lastNotesEntries) > 0 {
+		if html, err := markdown.RenderHTML(buildNotesMarkdown(s.lastNotesEntries, s.lastNotesTruncated)); err == nil {
 			n.NotesHTML = html
 		}
 	}
 	return n
 }
 
-// recordUpdateNotes is checkForUpdates' own hook (goal 0220 S2): stores
-// the release notes a found result carried, unconditionally -- unlike
-// recordAvailableUpdate, dismissal never suppresses this, since
-// dismissing the notice pill must never also hide "What's new" in
-// Settings. The newest found result always overwrites the previous
-// one, matching the state machine's own "newest known version wins"
-// rule (deriveUpdateState's supersede handling).
-func (s *SettingsService) recordUpdateNotes(version, notes string) {
+// recordUpdateNotes is checkForUpdates' own hook: stores the release
+// notes list a found result carried (goal 0376), newest first,
+// unconditionally -- unlike recordAvailableUpdate, dismissal never
+// suppresses this, since dismissing the notice pill must never also
+// hide "What's new" in Settings. The newest found result always
+// overwrites the previous list, matching the state machine's own
+// "newest known version wins" rule (deriveUpdateState's supersede
+// handling).
+func (s *SettingsService) recordUpdateNotes(entries []UpdateNoteEntry, truncated bool) {
 	s.mu.Lock()
-	s.lastNotesVersion = version
-	s.lastNotesRaw = notes
+	s.lastNotesEntries = entries
+	s.lastNotesTruncated = truncated
 	s.mu.Unlock()
 }
 

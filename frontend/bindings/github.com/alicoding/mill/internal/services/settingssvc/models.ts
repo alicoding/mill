@@ -152,14 +152,16 @@ export interface UpdateNotice {
     "stateReasonStage": string;
 
     /**
-     * NotesVersion/NotesHTML (goal 0220 S2) carry the release notes from
+     * NotesVersion/NotesHTML carry the release notes from
      * CheckForUpdates' most recent found result, rendered through the
      * same markdown adapter docssvc uses -- the "What's new" surface's
-     * entire data source. NotesVersion can differ from StateVersion (a
-     * newer check's notes arrived while an earlier download stays
-     * staged-and-ready after a supersede-download failure); the version
-     * header always names the version the rendered notes actually
-     * belong to. Both empty until a check has ever found an update.
+     * entire data source. NotesHTML accumulates every release newer
+     * than installed (goal 0376), newest first, as its own headed
+     * section; NotesVersion is the newest entry's version, matching
+     * StateVersion's own naming EXCEPT it can differ (a newer check's
+     * notes arrived while an earlier download stays staged-and-ready
+     * after a supersede-download failure). Both empty until a check has
+     * ever found an update.
      */
     "notesVersion": string;
     "notesHTML": string;

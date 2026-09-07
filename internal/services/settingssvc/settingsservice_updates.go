@@ -37,12 +37,13 @@ import (
 // for the caller to log, never fatal, since a broken updater must
 // never block the app from starting.
 func InitUpdater(u *updater.Updater, repo, currentVersion, channel string, s *SettingsService) error {
+	httpClient := newUpdaterHTTPClient(currentVersion, s.OutboundProxyURL())
 	ghProvider, err := updaterGithub.New(updaterGithub.Config{
 		Repository:    repo,
 		AssetMatcher:  UpdaterAssetMatcher,
 		ChecksumAsset: "SHA256SUMS",
 		Prerelease:    channel == "beta",
-		HTTPClient:    newUpdaterHTTPClient(currentVersion, s.OutboundProxyURL()),
+		HTTPClient:    httpClient,
 	})
 	if err != nil {
 		return fmt.Errorf("updater provider init: %w", err)
@@ -54,6 +55,12 @@ func InitUpdater(u *updater.Updater, repo, currentVersion, channel string, s *Se
 		return fmt.Errorf("updater init: %w", err)
 	}
 	s.SetUpdater(u)
+	// listReleasesNewerThan (settingsservice_updates_notes.go) needs
+	// the same repo/channel/client InitUpdater just resolved to
+	// enumerate every release newer than installed for the "what's
+	// new" notes list -- cached here rather than reconstructed per
+	// check.
+	s.setUpdaterNotesSource(repo, channel == "beta", httpClient)
 	return nil
 }
 
@@ -274,7 +281,7 @@ func (s *SettingsService) checkForUpdates(ctx context.Context) (UpdateCheckResul
 		// Carries the marker + below-the-fold text so e2e proves the trim
 		// through the real render path.
 		fakeNotes := trimReleaseNotesForApp("## What's new\n\n- Fake note one\n- Fake note two\n\n" + inAppNotesEndMarker + "\n## Manual install\nxattr slop that must never render in-app")
-		s.recordUpdateNotes(fake, fakeNotes)
+		s.recordUpdateNotes(fakeNoteEntries(fake, fakeNotes), false)
 		return UpdateCheckResult{
 			UpdateAvailable: true,
 			Version:         fake,
@@ -304,7 +311,8 @@ func (s *SettingsService) checkForUpdates(ctx context.Context) (UpdateCheckResul
 	s.recordCheckOutcome(UpdateCheckOutcomeFound, "")
 	s.triggerAutoDownloadPolicy(rel.Version)
 	notes := trimReleaseNotesForApp(rel.Notes)
-	s.recordUpdateNotes(rel.Version, notes)
+	entries, truncated := s.buildUpdateNoteEntries(ctx, u.CurrentVersion(), rel)
+	s.recordUpdateNotes(entries, truncated)
 	return UpdateCheckResult{UpdateAvailable: true, Version: rel.Version, CurrentVersion: s.AppVersion(), Notes: notes}, nil
 }
 
