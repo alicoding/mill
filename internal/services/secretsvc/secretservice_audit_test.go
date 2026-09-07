@@ -128,6 +128,36 @@ func TestResolveSecretValue_ErrorOutcome_RecordsAnErrorAuditLine(t *testing.T) {
 	if rec.ErrorText == "" {
 		t.Error("ErrorText is empty, want the resolution failure's own message")
 	}
+	// "does-not-exist" isn't a valid vault entry id, so the vault
+	// itself answers ErrNotFound -- the same condition a dangling
+	// "vault:" reference hits (goal 0378).
+	if rec.FailureKind != secretaudit.FailureKindUnrecognizedEntry {
+		t.Errorf("FailureKind = %q, want %q", rec.FailureKind, secretaudit.FailureKindUnrecognizedEntry)
+	}
+}
+
+// TestResolveSecretValue_LockedVault_RecordsFailureKindOther proves the
+// FailureKind classification is specific to secretvault.ErrNotFound
+// (goal 0378): a locked vault fails resolution for an unrelated reason
+// and must not be mislabeled as an unrecognized entry.
+func TestResolveSecretValue_LockedVault_RecordsFailureKindOther(t *testing.T) {
+	s := newAuditedTestService(t)
+	// No SetupVault call: the vault stays locked.
+
+	if _, err := s.ResolveSecretValue("some-id", secretaudit.AccessContext{Context: secretaudit.ContextExecEnv}); err == nil {
+		t.Fatal("ResolveSecretValue on a locked vault returned nil error, want an error")
+	}
+
+	records, total, err := s.auditStore.List(secretauditFilter(), 10, 0)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if total != 1 || len(records) != 1 {
+		t.Fatalf("audit rows = %d, want exactly 1: %+v", total, records)
+	}
+	if records[0].FailureKind != secretaudit.FailureKindOther {
+		t.Errorf("FailureKind = %q, want %q", records[0].FailureKind, secretaudit.FailureKindOther)
+	}
 }
 
 // TestRedactKnownSecrets_NeverAudited pins the goal file's own

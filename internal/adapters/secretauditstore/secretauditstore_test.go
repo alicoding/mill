@@ -290,3 +290,52 @@ func TestStore_List_FiltersByActorPrefix(t *testing.T) {
 		}
 	}
 }
+
+// TestStore_FailureKindRoundTripsAndOldSchemaIsWidened mirrors the
+// Actor/StepID tests above for failure_kind (goal 0378): a store
+// created before the column existed is widened in place on open, and
+// a legacy error row (no failure_kind) reads back empty rather than
+// failing.
+func TestStore_FailureKindRoundTripsAndOldSchemaIsWidened(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "execution.db")
+	legacy, err := sqlOpen(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := legacy.ExecContext(context.Background(), `CREATE TABLE secret_access (
+	id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, entry_id TEXT NOT NULL,
+	label TEXT NOT NULL DEFAULT '', context TEXT NOT NULL, run_id TEXT NOT NULL DEFAULT '',
+	workflow_id TEXT NOT NULL DEFAULT '', actor TEXT NOT NULL DEFAULT '', outcome TEXT NOT NULL,
+	error_text TEXT NOT NULL DEFAULT '', step_id TEXT NOT NULL DEFAULT '')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := legacy.ExecContext(context.Background(), `INSERT INTO secret_access (timestamp, entry_id, context, outcome, error_text) VALUES ('2026-01-01T00:00:00.000Z', 'old', 'exec-env', 'error', 'secretvault: entry not found: invalid entry id "old"')`); err != nil {
+		t.Fatal(err)
+	}
+	_ = legacy.Close()
+
+	store, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open on a pre-failure_kind schema: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	if _, err := store.Insert(context.Background(), secretaudit.Record{
+		EntryID: "example-secret-guard-token", Context: secretaudit.ContextExecEnv, Outcome: secretaudit.OutcomeError,
+		FailureKind: secretaudit.FailureKindUnrecognizedEntry, ErrorText: "secretvault: entry not found",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rows, total, err := store.List(Filter{}, 10, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 2 || len(rows) != 2 {
+		t.Fatalf("List = %d rows / total %d, want 2 / 2", len(rows), total)
+	}
+	if rows[0].FailureKind != secretaudit.FailureKindUnrecognizedEntry {
+		t.Errorf("new row FailureKind = %q, want %q", rows[0].FailureKind, secretaudit.FailureKindUnrecognizedEntry)
+	}
+	if rows[1].FailureKind != "" {
+		t.Errorf("legacy row FailureKind = %q, want empty", rows[1].FailureKind)
+	}
+}

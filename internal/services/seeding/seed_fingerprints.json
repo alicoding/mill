@@ -400,8 +400,8 @@
     "fingerprint": "36d4113c0ce217af1be0cf743d3b754b879f174e69a4cf38f0325754c11687f3"
   },
   "workflow:example-secret-guard-workflow": {
-    "seedRevision": 4,
-    "fingerprint": "e93e39c37e0f8beb202cae1d639b1c6e39fbdccb64bda5ffa38642f00f69634b"
+    "seedRevision": 5,
+    "fingerprint": "223483e56a4de953fd34bb706aa060dab902ebcd75a188c27b669fbd69686c74"
   },
   "workflow:example-sha256-clipboard-workflow": {
     "seedRevision": 2,

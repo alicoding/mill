@@ -126,6 +126,7 @@ export interface SecretAccessRecord {
     "stepId": string;
     "actor": string;
     "outcome": string;
+    "failureKind": string;
     "errorText": string;
 }
 
