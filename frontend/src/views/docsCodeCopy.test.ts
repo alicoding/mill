@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 import { CHECK_ICON_SVG, COPY_ICON_SVG, injectCodeCopyButtons } from './docsCodeCopy'
 
@@ -23,7 +24,8 @@ describe('injectCodeCopyButtons', () => {
   it('wraps every code block on a page with multiple fences', () => {
     const html = '<pre><code class="language-go">a()</code></pre><p>mid</p><pre><code class="language-ts">b()</code></pre>'
     const got = injectCodeCopyButtons(html, 'wrapClass', 'btnClass', 'Copy code')
-    expect(got.match(/data-testid="docs-code-copy"/g)).toHaveLength(2)
+    const doc = new DOMParser().parseFromString(got, 'text/html')
+    expect(doc.querySelectorAll('[data-testid="docs-code-copy"]')).toHaveLength(2)
   })
 
   it('escapes a copy label that would otherwise break the attribute', () => {
