@@ -150,6 +150,11 @@ func init() {
 				Description: "Fire only for events whose source field matches this exactly, in lowercase. Leave empty to fire on any source, or on an event with no source at all.",
 				Default:     "", Type: FieldText,
 			},
+			{
+				Key: "respondWithinSeconds", Label: "Reply within (seconds)", Type: FieldNumber,
+				Default:     "55",
+				Description: "How long the caller waits for a reply before Mill answers for it. Only matters when this workflow has an Answer the webhook step.",
+			},
 		},
 	}, nil)
 	RegisterNodeType(NodeType{

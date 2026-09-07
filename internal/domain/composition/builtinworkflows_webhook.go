@@ -52,3 +52,46 @@ func builtInWebhookWorkflows() []Workflow {
 		},
 	}
 }
+
+// builtInWebhookRespondWorkflows returns the seeded proof for the
+// respond-webhook step (goal 0373): trigger-webhook waits for this
+// workflow's own reply before answering the tool that posted the
+// event. Ships ENABLED and inert: it only runs when a caller posts
+// with source "example-reply", which nothing does until a real tool
+// is pointed at it.
+func builtInWebhookRespondWorkflows() []Workflow {
+	const (
+		triggerID = "example-webhook-respond-trigger"
+		respondID = "example-webhook-respond-node"
+	)
+	nodes, err := ResolveNodeDefaults([]Node{
+		{ID: triggerID, NodeTypeID: "trigger-webhook", Position: Position{X: 0, Y: 0},
+			Config: map[string]string{"source": "example-reply", "respondWithinSeconds": "30"}},
+		{ID: respondID, NodeTypeID: RespondWebhookNodeTypeID, Position: Position{X: 0, Y: 100},
+			Config: map[string]string{
+				"status":      "200",
+				"body":        `{"decision":"allow","reason":"Mill saw {{title}}"}`,
+				"contentType": "application/json",
+			}},
+	})
+	if err != nil {
+		panic("built-in workflow references an unknown node type: " + err.Error())
+	}
+
+	return []Workflow{
+		{
+			ID:          "webhook-respond-workflow",
+			Label:       "Example: Answer a webhook",
+			Description: "Runs when a tool posts to Mill's hook endpoint with source \"example-reply\", and answers with a JSON decision the tool can read. Edit it like any workflow: change the reply, scope it to your own tool's source, or add steps before the reply to decide what it says.",
+			Nodes:       nodes,
+			Attributes: []AttributeDef{
+				{Key: "title", Label: "Title", Type: FieldText},
+			},
+			Edges: []Edge{
+				{ID: "example-webhook-respond-e0", Source: triggerID, Target: respondID},
+			},
+			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
+		},
+	}
+}

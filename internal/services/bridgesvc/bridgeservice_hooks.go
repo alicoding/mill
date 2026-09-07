@@ -24,8 +24,10 @@ const HookEventPath = "/__mill/hooks/event"
 // dispatch, never a direct notification (the door fires a trigger; the
 // workflow it arms decides what happens next). values is the posted
 // object's scalar top-level fields stringified; raw is the body
-// exactly as posted.
-type webhookEventSink func(values map[string]string, raw []byte)
+// exactly as posted. Returns nil when no started run's graph can ever
+// answer this caller (today's immediate-ACK case, goal 0373 design
+// contract item 3); otherwise a WebhookWait the caller waits on.
+type webhookEventSink func(values map[string]string, raw []byte) *WebhookWait
 
 // SetWebhookEventSink wires the dispatch seam the hook route calls
 // after a request passes its token and shape checks. A late-bound
@@ -100,6 +102,5 @@ func (s *BridgeService) handleHookEvent(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	sink(values, raw)
-	w.WriteHeader(http.StatusAccepted)
+	s.answerHookEvent(w, sink(values, raw))
 }

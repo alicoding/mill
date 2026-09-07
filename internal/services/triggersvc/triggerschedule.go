@@ -1,11 +1,14 @@
 package triggersvc
 
-import "github.com/alicoding/mill/internal/adapters/schedule"
+import (
+	"github.com/alicoding/mill/internal/adapters/schedule"
+	"github.com/alicoding/mill/internal/domain/composition"
+)
 
 // Schema registers from internal/domain/composition/triggers.go, not
 // here -- see that file's doc comment.
 func init() {
-	RegisterTrigger("trigger-schedule", func(s *TriggerService, workflowID string, config map[string]string) (*activeListener, error) {
+	RegisterTrigger("trigger-schedule", func(s *TriggerService, workflowID string, _ []composition.Node, config map[string]string) (*activeListener, error) {
 		cronExpr := config["cron"]
 		if cronExpr == "" {
 			return nil, nil
