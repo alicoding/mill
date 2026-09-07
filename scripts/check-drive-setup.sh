@@ -76,8 +76,9 @@ fi
 # settings.json/execution.db corruption (project memory: "never run two
 # data-sharing instances").
 mill_pids="$(pgrep -x mill 2>/dev/null || true)"
+# grep -c . counts non-empty lines, so an empty $mill_pids already
+# yields 0 here with no separate empty-string guard needed.
 mill_count="$(echo "$mill_pids" | grep -c . 2>/dev/null || true)"
-[ -z "$mill_pids" ] && mill_count=0
 if [ "$mill_count" -le 1 ]; then
   pass "$mill_count Mill process(es) running"
 else
