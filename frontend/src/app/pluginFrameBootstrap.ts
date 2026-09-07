@@ -85,24 +85,24 @@ function escapeForAttribute(json: string): string {
 // buildFrameSrcdoc prepends Mill's four head pieces to the plugin's own
 // page. The pieces go FIRST so the policy governs every element after
 // it and the bootstrap exists before the page's own script runs; the
-// page keeps everything else it wrote, including its own <head>.
+// page keeps everything else it wrote. Parsed via DOMParser (goal
+// 0382): the browser's own HTML parser always resolves a head to
+// inject into, however the page opened its tags -- a document with no
+// head or html element of its own gets one, matching how the iframe
+// that actually renders this srcdoc would parse it anyway -- where a
+// regex hunting for a literal "<head" or "<html" can be fooled by a
+// comment or string containing the same text.
 export function buildFrameSrcdoc(base: string, bootstrap: string, html: string, init: FrameInit, tokens: string): string {
-  const head = [
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  const injected = doc.createElement('head')
+  injected.innerHTML = [
     `<base href="${base}">`,
     `<meta http-equiv="Content-Security-Policy" content="${framePolicy(base, bootstrap)}">`,
     `<meta name="mill-frame-init" content="${escapeForAttribute(JSON.stringify(init))}">`,
     `<style id="mill-tokens">${tokens}</style>`,
     `<script src="${bootstrap}"></script>`,
   ].join('')
-  const headOpen = /<head[^>]*>/i.exec(html)
-  if (headOpen) {
-    const at = headOpen.index + headOpen[0].length
-    return html.slice(0, at) + head + html.slice(at)
-  }
-  const htmlOpen = /<html[^>]*>/i.exec(html)
-  if (htmlOpen) {
-    const at = htmlOpen.index + htmlOpen[0].length
-    return html.slice(0, at) + `<head>${head}</head>` + html.slice(at)
-  }
-  return `<head>${head}</head>${html}`
+  doc.head.prepend(...Array.from(injected.childNodes))
+  const doctype = doc.doctype ? `<!doctype ${doc.doctype.name}>` : ''
+  return doctype + doc.documentElement.outerHTML
 }

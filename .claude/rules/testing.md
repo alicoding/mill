@@ -19,7 +19,7 @@ worker spawns its own `bin/mill-server` on fresh `mkdtemp` files, torn
 down at end (`e2e/fixtures/server.ts`). Shared-pool specs import
 `test`/`expect` from that fixture, never `@playwright/test` directly.
 **Specs with their own dedicated server** call `spawnMillServer`
-themselves (`atlas-authoring.spec.ts`, `atlas-session-restore.spec.ts`).
+themselves (e.g. `atlas-authoring.spec.ts`).
 - Within-file cleanup discipline applies — delete what you create.
 - Tests/e2e default to memory (`MILL_CLIPBOARD=memory`); a real-pasteboard test spawns `host` under the lock (`withClipboardLock`).
 - `e2e/persistence.spec.ts` is the only spec allowed its own server pair.
@@ -44,13 +44,12 @@ content bumps its `SeedRevision`, or
 - **Unit tests** — pure logic across its input range.
 - **Integration/adapter tests** — adapters against real backing.
 - **Interaction e2e** — states data can't express (hover, drag,
-  truncation, pointer-events).
+  pointer-events).
 - **Smoke/liveness** — app-level boot, non-blocking.
 - **Real-webview engine parity** (`scripts/webview-bridge-smoke.sh`) —
-  catches engine divergence between real WKWebView and the
-  Chromium-based suite. Non-required, local-only. DoR corollary: a
-  feature depending on engine-level semantics names whether it gets a
-  smoke-registry check.
+  catches WKWebView/Chromium divergence. Non-required, local-only; a
+  feature depending on engine-level semantics names whether it needs
+  this check.
 - **Manual-only registry** — OS-bound checks, listed with reasons, never
   silently absent; lives in the `manual-checks` skill.
 
@@ -75,9 +74,8 @@ resort carrying a same-line comment naming why.
 - **The flake protocol**: flaking twice → FIXED or entered in
   `frontend/e2e/QUARANTINE.md`. Retry-passing is never a fix.
 - **Interaction helpers live in `e2e/fixtures/`** — used by 2+ files
-  MUST be promoted: the per-worker server, `withClipboardLock`,
-  `clickCanvasNode`, `atlasCards`/`atlasPage`, `waitForViewportStable`,
-  `gotoAppReady`/`waitForAppReady`.
+  MUST be promoted: the per-worker server, `clickCanvasNode`,
+  `atlasCards`/`atlasPage`, `waitForViewportStable`.
 - **A shortcut-first test calls `gotoAppReady`** (`fixtures/appReady.ts`),
   never bare `page.goto`: the app mounts after an async plugin-load
   gate, so `goto` resolving isn't mount.
@@ -89,13 +87,12 @@ resort carrying a same-line comment naming why.
   failing as a silent zero-match.
 - **Assertion style**: prefer retrying `expect(...)` over
   `boundingBox()` after anything animated; a new `waitForTimeout` needs
-  a same-line reason; actions time out at 15 s (`actionTimeout`),
-  failing with the locator, not the 90 s budget.
+  a same-line reason; actions time out at 15 s (`actionTimeout`).
 
 ## Quality gates: duplication + cognitive complexity
 
 - **Duplication (`dupl` @ 150, repo-wide)**: clusters excluded BY NAME
-  (test twins, `configuresvc/`, `atlasservice_builtin.go`).
+  (test twins, `configuresvc/`).
 - **Cognitive complexity (`gocognit` @ 15, NEW/CHANGED code only)**:
   legacy offenders grandfathered.
 - **eslint-plugin-sonarjs**: `cognitive-complexity` @ 15,
@@ -103,10 +100,10 @@ resort carrying a same-line comment naming why.
 
 ## Shared-pool vs dedicated e2e servers
 
-A spec reading GLOBAL app state (queue/filter contents, review history,
-seeded-collection counts) runs on a DEDICATED server pair, named in its
+A spec reading GLOBAL app state (e.g. queue/filter contents) runs on a
+DEDICATED server pair, named in its
 header comment. Shared pool is for specs scoped to entities they create
 and delete themselves. No test may depend on state an earlier test left — seed it inline.
 
 ## The installed app is the verification driver
-Every user-facing or windowing change is driven on the REAL installed app before its PR merges: build and install the PR's app (`task install:app` from the worktree, after quitting the running Mill by its own PID — never `pkill -f`), launch `/Applications/Mill.app` by path, exercise the changed surface for real (hotkeys via `osascript`, drags via `cliclick`, `screencapture` for evidence), then relaunch. No permission is asked to quit or relaunch — this machine is a development driver. Server-mode Playwright and the seeded proofs are the automated evidence; they never substitute for the installed-build pass. The screenshots from that pass are reviewed against the design contract before the PR opens.
+Every user-facing or windowing change is driven on the REAL installed app before its PR merges: build and install the PR's app (`task install:app` from the worktree, after quitting the running Mill by its own PID — never `pkill -f`), launch `/Applications/Mill.app` by path, exercise the changed surface for real (hotkeys via `osascript`, drags via `cliclick`, `screencapture` for evidence), then relaunch — no permission asked. Server-mode Playwright and the seeded proofs are automated evidence, never a substitute for this pass, whose screenshots are reviewed against the design contract before the PR opens.

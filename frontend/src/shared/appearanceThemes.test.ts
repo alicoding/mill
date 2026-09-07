@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
 	acceptPluginTheme,
@@ -58,7 +59,14 @@ describe('the injected stylesheet', () => {
 		const rebased = rebaseThemeCss(PRIMER_LIGHT, 'light', 'light', 'p.sepia')
 		expect(rebased).not.toContain('data-light-theme="light"')
 		expect(rebased).not.toContain('data-dark-theme="light"')
-		expect(rebased.split(themeSelector('light', 'p.sepia')).length - 1).toBe(3)
+		// The CSS OM rewrite works rule by rule: Primer's comma-separated
+		// pair (explicit "light" and "auto" color-mode, both meaning the
+		// same resolved theme) collapses onto ONE selector per rule --
+		// cascade-equivalent, since Mill already resolved which applies
+		// before injecting this stylesheet -- so the target selector
+		// appears once for the top-level rule and once inside the media
+		// block, not once per original comma branch.
+		expect(rebased.split(themeSelector('light', 'p.sepia')).length - 1).toBe(2)
 		// The prefers-color-scheme block Primer wraps its auto form in
 		// survives the rewrite.
 		expect(rebased).toContain('@media (prefers-color-scheme: dark)')
