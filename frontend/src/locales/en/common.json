@@ -115,7 +115,9 @@
     "auth-failed": "Mill couldn't confirm it's you.",
     "copy-blocked": "Copy failed: the browser blocked clipboard access",
     "working-directory-missing": "The working directory {{path}} doesn't exist.",
-    "working-directory-relative": "The working directory must be an absolute path."
+    "working-directory-relative": "The working directory must be an absolute path.",
+    "dotenv-source-unreadable": "The file for this source can't be read.",
+    "vault-locked-import": "Unlock the vault to import keys."
   },
   "list": {
     "sort": "Sort",
@@ -384,7 +386,8 @@
       "lockVault": "Lock vault",
       "unlockVault": "Unlock vault",
       "resetVault": "Start a new vault",
-      "restoreVaultFromBackup": "Restore the last backup"
+      "restoreVaultFromBackup": "Restore the last backup",
+      "findDotenvFiles": "Find .env files…"
     },
     "settings": {
       "open": "Open Settings",

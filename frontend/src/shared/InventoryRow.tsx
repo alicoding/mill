@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, ActionMenu, IconButton, Stack, Text } from '@primer/react'
-import { KebabHorizontalIcon } from '@primer/octicons-react'
+import { ActionList, ActionMenu, Button, IconButton, Stack, Text } from '@primer/react'
+import { ChevronDownIcon, ChevronRightIcon, KebabHorizontalIcon } from '@primer/octicons-react'
 import { ConfirmDialog } from './ConfirmDialog'
 import { menuActionLabel, menuActionsToContextMenuItems, performMenuAction, runMenuAction, visibleMenuActions, type ContextMenuOpener, type InventoryItem, type InventoryMenuAction } from './inventoryItem'
 import styles from './InventoryList.module.css'
@@ -62,6 +62,30 @@ export function InventoryRow({ item, onOpenMenu }: { item: InventoryItem; onOpen
         <ActionList.Description variant="inline" truncate>
           <span data-testid="inventory-row-description">{item.description}</span>
         </ActionList.Description>
+      )}
+      {item.disclosure && (
+        // The same bubbling guard the trailing cluster carries: the
+        // expander is a button inside the Item's body, so without the
+        // guard a key-list click would also fire the row's onSelect.
+        <div
+          className={styles.disclosure}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <Button
+            variant="invisible"
+            size="small"
+            leadingVisual={item.disclosure.expanded ? ChevronDownIcon : ChevronRightIcon}
+            aria-expanded={item.disclosure.expanded}
+            onClick={() => item.disclosure!.onToggle(!item.disclosure!.expanded)}
+            data-testid={`inventory-row-disclosure-${item.id}`}
+          >
+            {item.disclosure.expanded ? item.disclosure.hideLabel : item.disclosure.showLabel}
+          </Button>
+          {item.disclosure.expanded && (
+            <div data-testid={`inventory-row-disclosure-content-${item.id}`}>{item.disclosure.content}</div>
+          )}
+        </div>
       )}
       <ActionList.TrailingVisual>
         {/* Interactive trailing content (a primary action button, the

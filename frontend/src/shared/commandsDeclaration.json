@@ -1698,6 +1698,14 @@
     "needs": "entity"
   },
   {
+    "id": "secrets.findDotenvFiles",
+    "label": "Find .env files…",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
     "id": "secrets.lockVault",
     "label": "Lock vault",
     "binding": null,

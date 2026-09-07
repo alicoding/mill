@@ -88,6 +88,15 @@ interface UISignalState {
   secretPanelRequest: { panel: 'edit' | 'history'; id: string } | null
   requestSecretPanel: (panel: 'edit' | 'history', id: string) => void
   consumeSecretPanel: () => void
+  // secrets.findDotenvFiles (goal 0367): open the Sources section's
+  // .env scan dialog from anywhere. Set-then-consume (a boolean, not a
+  // counter), exactly configureCreateRequest's own shape and remount
+  // reason: the Secrets view's Sources section may mount FRESH on the
+  // navigation the command itself raises, after the request was already
+  // set, and a counter-vs-ref comparison would silently miss it.
+  secretsDotenvScanRequest: boolean
+  requestSecretsDotenvScan: () => void
+  consumeSecretsDotenvScan: () => void
   // review.rules (goal 0078): a monotonic counter, same shape as
   // atlasJumpRequest -- legal because the command is surface-scoped to
   // 'review' (shared/commands.ts), so ReviewView is always already
@@ -310,6 +319,9 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   secretPanelRequest: null,
   requestSecretPanel: (panel, id) => set({ secretPanelRequest: { panel, id } }),
   consumeSecretPanel: () => set({ secretPanelRequest: null }),
+  secretsDotenvScanRequest: false,
+  requestSecretsDotenvScan: () => set({ secretsDotenvScanRequest: true }),
+  consumeSecretsDotenvScan: () => set({ secretsDotenvScanRequest: false }),
   extensionUpdateRequest: null,
   requestExtensionUpdate: (id) => set({ extensionUpdateRequest: id }),
   consumeExtensionUpdate: () => set({ extensionUpdateRequest: null }),

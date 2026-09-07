@@ -58,7 +58,7 @@ test('a folder with no .env files says so', async ({ page }) => {
 		await page.getByTestId('secretsource-scan-open').click()
 		await page.getByTestId('secret-scan-folder').fill(dir)
 		await page.getByTestId('secret-scan-run').click()
-		await expect(page.getByTestId('secret-scan-empty')).toHaveText('No .env files under this folder.')
+		await expect(page.getByTestId('secret-scan-empty')).toHaveText(`No .env files under ${dir}.`)
 	} finally {
 		fs.rmSync(dir, { recursive: true, force: true })
 	}

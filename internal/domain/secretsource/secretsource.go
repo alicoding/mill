@@ -98,6 +98,35 @@ func Validate(s Source) error {
 	return nil
 }
 
-// BuiltIn: no seeded sources -- a source names a file on the user's
-// own machine, so enabling one is always the user's act (ADR-0050).
-func BuiltIn() []Source { return nil }
+// ExampleDotenvSourceID names the seeded example dotenv source
+// (goal 0367): the one source Mill ships, pointing at a dotenv file of
+// its own materialized under the app's data dir, so "a source lists
+// its keys" is visible before the reader configures anything.
+const ExampleDotenvSourceID = "secretsource-example-dotenv"
+
+// DotenvSeedPathMarker carries the golden's path until the service
+// layer materializes the file under the real data dir (atlas's own
+// seedAsset key is the template): the domain package stays free of
+// where user data lives.
+const DotenvSeedPathMarker = "seed:example-dotenv"
+
+// ExampleDotenvFileContent is the fixture the example source reads --
+// placeholder values only, never a real credential.
+const ExampleDotenvFileContent = "# Mill's example dotenv source; placeholder values only.\nEXAMPLE_API_TOKEN=example-token\nEXAMPLE_PROJECT_SLUG=example-project\n"
+
+// BuiltIn ships one seeded example (goal 0367): a dotenv source whose
+// file Mill materializes itself, so a dotenv row's key listing has a
+// working example out of the box. Every OTHER source still names a
+// file on the user's own machine, always the user's act (ADR-0050).
+func BuiltIn() []Source {
+	return []Source{
+		{
+			ID:      ExampleDotenvSourceID,
+			Label:   "Example: Project .env",
+			Kind:    KindEnv,
+			Path:    DotenvSeedPathMarker,
+			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
+		},
+	}
+}

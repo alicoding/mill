@@ -235,6 +235,10 @@
     "seedRevision": 2,
     "fingerprint": "093d33cbd3cdd9ec2a1f105f07ae8d111e75d9e5c7e66e98f24ffa10278c682d"
   },
+  "secretsource:secretsource-example-dotenv": {
+    "seedRevision": 1,
+    "fingerprint": "e12aae0f9408aa086264b2fc9bc72e9c8d1d4f54fcf0b141ec8e3b1ee14864a5"
+  },
   "workflow:backup-mill-data-workflow": {
     "seedRevision": 1,
     "fingerprint": "33182d6efa709f8e0e2ca012b2f1d90827afb85b1974a5e6b8af01b8827cab55"

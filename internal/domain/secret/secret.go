@@ -71,7 +71,12 @@ type Summary struct {
 	FieldNames []string
 	Kind       Kind
 	SourceRef  string
-	UpdatedAt  time.Time
+	// Origin names where an entry came from when not typed by hand
+	// ("import:<file>") -- provenance, never a value, so the browse
+	// surface may read it the same way it reads the title (goal 0367's
+	// import dedupe matches on title + origin without a reveal).
+	Origin    string
+	UpdatedAt time.Time
 }
 
 // Validate checks an Entry is well-formed before it's persisted -- same
@@ -112,5 +117,5 @@ func validateFields(fields []Field) error {
 // call site shares, so "what a summary omits" has exactly one
 // definition.
 func (e Entry) ToSummary() Summary {
-	return Summary{ID: e.ID, Title: e.Title, Username: e.Username, URL: e.URL, Tags: NormalizeTags(e.Tags), FieldNames: FieldNames(e.Fields), Kind: NormalizeKind(string(e.Kind)), SourceRef: e.SourceRef, UpdatedAt: e.UpdatedAt}
+	return Summary{ID: e.ID, Title: e.Title, Username: e.Username, URL: e.URL, Tags: NormalizeTags(e.Tags), FieldNames: FieldNames(e.Fields), Kind: NormalizeKind(string(e.Kind)), SourceRef: e.SourceRef, Origin: e.Origin, UpdatedAt: e.UpdatedAt}
 }
