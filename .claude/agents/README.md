@@ -25,11 +25,19 @@ never boot-loaded.
   any merge action beyond re-arming auto-merge — the one documented
   incident class for PR agents (hallucinated reviews, bad
   approvals, workflow-file edits) lives exactly past that line.
+- **reviewer** (Haiku) — fresh-context diff review against the
+  builder's own brief, `divergences.md`, and
+  `adopt-converged-patterns.md`; ≤5 severity-tagged findings,
+  dispatched by the builder before `gh pr create` (goal 0383). This
+  supersedes the 2026-08-17 skip below: that call rested on the
+  managed `/code-review` GitHub App, which is Team/Enterprise-gated
+  and neutral-by-design (never blocks a merge on its own); goal 0383's
+  data found zero review of any kind on 16 same-day merged PRs, so the
+  enforcement half — blocking on Important findings — has to live in
+  Mill's own dispatch path regardless, which is what a Mill-owned
+  agent gives for the same plumbing cost.
 
 ## Deliberately skipped, with the evidence
-- **code-reviewer**: the official /code-review plugin is strictly
-  stronger (parallel multi-model pipeline, cross-validation,
-  confidence gating) than any single hand-rolled reviewer.
 - **security-reviewer**: the official posture is a deterministic
   hook, not a standing agent; Mill's guardrail gate is the
   domain-appropriate mechanism. Occasional deep dives go to

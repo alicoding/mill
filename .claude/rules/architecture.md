@@ -6,8 +6,8 @@ No `paths` frontmatter — cuts across Go/TypeScript, loads every session.
 commodity concerns (parsing, UI widgets, OS plumbing, wire protocols)
 via a well-vetted library. Mill's own **core domain** — what a guardrail
 evaluates and why, Capture → Process → Apply, the action/capability
-model, session-identity resolution — stays hand-written, behind
-ports/adapters at the domain boundary.
+model — stays hand-written, behind ports/adapters at the domain
+boundary.
 
 **Research → Adopt → Compose for any new capability.** Research what
 exists (a real search, never an assumption); adopt the proven commodity
@@ -16,10 +16,9 @@ behind ports/adapters; compose the remainder from Mill's own primitives
 research shows nothing satisfies the hard constraints (§1.1).
 
 **Default to adopting over hand-rolling, even when hand-rolling would be
-smaller.** Infrastructure-shaped code (durable execution, retry/backoff,
-queues) becomes unbounded maintenance once hand-rolled. A *shape* (a UI
-component family, a CLI parser) can be commodity with no single named
-library — check the kit first.
+smaller.** Infrastructure-shaped code becomes unbounded maintenance once
+hand-rolled. A *shape* (a UI component family, a CLI parser) can be
+commodity with no single named library — check the kit first.
 
 **Adopting a dependency means reading its whole API, not what day one
 needs.** Before building ANY capability inside a domain an adopted
@@ -31,11 +30,11 @@ file carries a `framework-api-audit` line pinned to Wails' version
 
 **The core/composition boundary, both directions.** Before ANY new
 capability: node, trigger, connector, or true kernel change
-([ADR-0035](../../docs/adr/0035-core-vs-composition-boundary.md), SPEC
-§9.5)? "That again, with a different channel/condition/event" arrives as
+([ADR-0035](../../docs/adr/0035-core-vs-composition-boundary.md))?
+"That again, with a different channel/condition/event" arrives as
 composition — never a bespoke service path or a Settings toggle
 implementing a side effect (toggles configure the kernel). The other
-direction: outside→inside doors (webhooks, agent hooks, watchers) fire a
+direction: outside→inside doors (webhooks, watchers) fire a
 platform TRIGGER; the effect is an editable workflow or plugin, never a
 hardcoded pipe. Platform-internal behavior SHOULD consume Mill's own
 composition surface. Kernel changes need an ADR.
@@ -71,3 +70,10 @@ appear in a signature. Before calling an adopted library from a
 callback/goroutine/handler it did not itself create, VERIFY the
 affinity contract against its own source and state it at Mill's
 boundary. Never infer one call's contract from a sibling's.
+
+**Structured text is parsed, never matched.** HTML/XML through the DOM
+(`DOMParser` in app code, jsdom in Vitest, `golang.org/x/net/html` in
+Go), JSON through the parser, URLs through `URL`/`net/url`, CSS through
+the CSS OM — in tests as much as app code. A regular expression over
+any of them is a defect; CodeQL's tag-filter query family blocks the
+merge (goal 0382 swept the stock).

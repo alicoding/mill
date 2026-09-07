@@ -235,6 +235,37 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-hook-command-guard.sh
 
+  # Fixture-tests check-review-report.sh itself (fixed PR bodies piped
+  # on stdin), same shape as hook-command-guard's own probe job -- keeps
+  # the gate below from silently drifting either permissive or strict.
+  review-report-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-review-report-selftest.sh
+
+  # Enforces goal 0383's pre-PR reviewer dispatch is not advisory: the
+  # PR body must carry a "## Review" section with the reviewer's fixed
+  # report shape, "Contract match: yes", and the exact line "Important
+  # findings open: 0" -- see scripts/check-review-report.sh. Skips green
+  # on release-please's and Dependabot's own PRs, which carry no builder
+  # brief to review against.
+  review-report:
+    if: >-
+      github.event_name == 'pull_request' &&
+      !startsWith(github.head_ref, 'release-please') &&
+      !startsWith(github.head_ref, 'dependabot/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-review-report.sh "${{ github.event.pull_request.number }}"
+
   # Enforces the root-layout rule (exactly one root Go file, main.go;
   # services live under internal/services/<ctx>svc) via ls-lint
   # (adopted, not hand-rolled -- unlike file-loc-limit, a real commodity
@@ -700,6 +731,8 @@ jobs:
       - rules-frontmatter
       - standing-context
       - hook-command-guard
+      - review-report-selftest
+      - review-report
       - go-mod-tidy
       - root-file-naming
       - sdk-freshness
