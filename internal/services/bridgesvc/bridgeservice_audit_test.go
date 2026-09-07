@@ -117,7 +117,7 @@ func TestHandleResult_UnauthorizedToken_RecordsRejectedRow(t *testing.T) {
 func TestHandleHookEvent_Success_RecordsAcceptedRow(t *testing.T) {
 	auth := &stubAuth{hookToken: "hook-secret"}
 	svc, srv, reader := newAuditedService(t, auth)
-	svc.SetWebhookEventSink(func(values map[string]string, raw []byte) {})
+	svc.SetWebhookEventSink(func(values map[string]string, raw []byte) *bridgesvc.WebhookWait { return nil })
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL+bridgesvc.HookEventPath,
 		strings.NewReader(`{"source":"claude-code","title":"Agent finished","body":"A task completed."}`))
 	if err != nil {
