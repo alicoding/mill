@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/clipboard"
+	"github.com/alicoding/mill/internal/domain/composition"
 )
 
 // clipboardHistoryPollInterval is faster than trigger-clipboard-watch's
@@ -45,7 +46,7 @@ func shouldCaptureClipboardChange(text string, consumeSelfWrite func(string) boo
 // Schema registers from internal/domain/composition/triggers.go, not
 // here -- see that file's doc comment.
 func init() {
-	RegisterTrigger("trigger-clipboard-change", func(s *TriggerService, workflowID string, _ map[string]string) (*activeListener, error) {
+	RegisterTrigger("trigger-clipboard-change", func(s *TriggerService, workflowID string, _ []composition.Node, _ map[string]string) (*activeListener, error) {
 		// clipboard.New() resolves to the in-memory Port inside a go
 		// test binary (goal 0356) -- never the real pasteboard by
 		// default. Resolved once so WatchChanges/ConsumeSelfWrite/
