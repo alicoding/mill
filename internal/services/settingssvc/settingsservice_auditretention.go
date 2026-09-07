@@ -40,12 +40,33 @@ func (s *SettingsService) GetAuditRetentionEntries() int {
 	return AuditRetentionEntriesDefault
 }
 
-// SetAuditRetentionEntries persists the cap. Rejects a non-positive
-// value so the trail can never be configured to prune itself to
-// nothing.
+// SetAuditRetentionEntries persists the cap and, once wired
+// (SetAuditRetentionChanged), prunes the shared trail to it
+// immediately -- the setting's own caption promises entries are
+// "removed automatically", which a restart-only prune would not honor.
+// Rejects a non-positive value so the trail can never be configured to
+// prune itself to nothing.
 func (s *SettingsService) SetAuditRetentionEntries(n int) error {
 	if n <= 0 {
 		return errAuditRetentionMustBePositive
 	}
-	return s.store.Set(auditRetentionEntriesKey, n)
+	if err := s.store.Set(auditRetentionEntriesKey, n); err != nil {
+		return err
+	}
+	if s.auditRetentionChanged != nil {
+		s.auditRetentionChanged(n)
+	}
+	return nil
+}
+
+// SetAuditRetentionChanged wires the seam SetAuditRetentionEntries
+// calls after persisting a new cap -- late-bound because auditsvc is
+// constructed AFTER settingsService in main.go's own sequence (it
+// reads GetAuditRetentionEntries for its own boot-time prune), the
+// same ordering constraint SetPluginPolicyChanged's own doc comment
+// describes for its seam.
+//
+//wails:ignore
+func (s *SettingsService) SetAuditRetentionChanged(fn func(int)) {
+	s.auditRetentionChanged = fn
 }

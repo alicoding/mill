@@ -39,16 +39,26 @@ func New(dbPath string, retentionKeep int, logger *slog.Logger) (*AuditService, 
 		logger = slog.Default()
 	}
 	s := &AuditService{store: store, log: logger}
-	if _, err := store.Prune(context.Background(), retentionKeep); err != nil {
-		// Retention pruning is housekeeping, not correctness -- same
-		// log-and-continue posture mcpauditsvc.New's own prune-at-boot
-		// failure takes.
-		logger.Error("audit: prune at boot", "error", err)
-	}
+	s.PruneNow(retentionKeep)
 	return s, nil
 }
 
 //wails:ignore
 func (s *AuditService) Close() error {
 	return s.store.Close()
+}
+
+// PruneNow prunes the shared table to keep newest rows across every
+// kind, right now -- called at boot (New) and again whenever
+// settingssvc.SetAuditRetentionEntries persists a new cap
+// (SettingsService.SetAuditRetentionChanged's own wiring, main.go),
+// so a lowered cap takes effect immediately rather than only at the
+// next restart. Best-effort: retention pruning is housekeeping, not
+// correctness, so a failure is logged and never returned.
+//
+//wails:ignore
+func (s *AuditService) PruneNow(keep int) {
+	if _, err := s.store.Prune(context.Background(), keep); err != nil {
+		s.log.Error("audit: prune", "error", err)
+	}
 }

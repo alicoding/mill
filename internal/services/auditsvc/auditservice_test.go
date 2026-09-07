@@ -145,3 +145,25 @@ func TestNew_PrunesAcrossEveryKindAtBoot(t *testing.T) {
 		t.Fatalf("got %d rows after a boot prune to keep=2, want 2: %q", len(lines), out)
 	}
 }
+
+// TestPruneNow_ChangedCapTakesEffectImmediately is the goal 0351
+// review fix's own proof: lowering the cap prunes the trail right
+// away, the same call settingsService.SetAuditRetentionChanged wires
+// to SetAuditRetentionEntries, never only at the next restart.
+func TestPruneNow_ChangedCapTakesEffectImmediately(t *testing.T) {
+	svc := openTestService(t)
+	for i := 0; i < 5; i++ {
+		if _, err := svc.store.Append(context.Background(), audit.Entry{Kind: audit.KindBridgeCommand}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	svc.PruneNow(2)
+	out, err := svc.ExportAuditTrail(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("got %d rows after PruneNow(2), want 2: %q", len(lines), out)
+	}
+}
