@@ -59,9 +59,9 @@ func newWiredStack(t *testing.T) (*executionsvc.ExecutionService, *codeloopsvc.C
 	// Same stub/restore shape codingloop_seed_test.go's own stubNotifier
 	// establishes: the seed's final apply-notify step otherwise fails
 	// with "no notifier registered (yet)" outside real app wiring.
-	composition.SetNotifier(func(string, string) error { return nil })
+	composition.SetNotifier(func(string, string, string) error { return nil })
 	t.Cleanup(func() {
-		composition.SetNotifier(func(string, string) error { return fmt.Errorf("no notifier registered (yet)") })
+		composition.SetNotifier(func(string, string, string) error { return fmt.Errorf("no notifier registered (yet)") })
 	})
 
 	secretService := secretsvc.NewSecretService(secretvault.New(filepath.Join(t.TempDir(), "secrets.kdbx")), credential.NewInMemory(), servicetest.NewFakeStore())

@@ -81,6 +81,15 @@ Fires when Mill's own engine emits an internal event (a run finishing, failing, 
   - **Event** — Which internal event fires this trigger. "Decision parked" fires when a guardrail ask or human-review checkpoint parks awaiting approval; the run events fire once a run reaches a terminal state; "update-available" fires when an update check finds a newer release on this install's channel.
   - **Workflow scope** — Fire for every workflow's matching event, or scope to one specific workflow. Empty means all workflows.
 
+### Webhook fired
+
+Fires when a tool on this machine posts to Mill's hook endpoint, so a workflow can react to what an agent or script just did, like showing a notification on every channel including a paired phone. Any fields the tool posts become attributes the workflow declares by name. Point the tool at the hook endpoint with a token from Settings.
+
+- Takes: nothing — Produces: JSON
+- Effect: none — pure computation
+- Settings:
+  - **Source (optional)** — Fire only for events whose source field matches this exactly, in lowercase. Leave empty to fire on any source, or on an event with no source at all.
+
 ## Capture
 
 ### Inspect clipboard
@@ -425,12 +434,13 @@ Moves or renames a local file to a new location.
 
 ### Notify me
 
-Shows a notification when the workflow reaches this step. "Body attribute" swaps the fixed message for an Attributes value.
+Shows a notification when the workflow reaches this step. "Title attribute" and "Body attribute" swap a fixed line for an Attributes value.
 
 - Takes: nothing — Produces: its input, unchanged
 - Effect: changes something on this machine
 - Settings:
   - **Title** — The notification's first line.
+  - **Title attribute (optional)** — Which Attributes field replaces the fixed title, when set.
   - **Message** — What the notification says.
   - **Body attribute (optional)** — Which Attributes field replaces the fixed message, when set.
 

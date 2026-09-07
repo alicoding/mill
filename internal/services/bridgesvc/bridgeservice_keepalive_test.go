@@ -29,6 +29,10 @@ func (a *revocableAuth) ValidateBrowserToken(token string) (remoteauthsvc.Device
 	return remoteauthsvc.DeviceInfo{ID: "browser-1", Label: "Chrome", Kind: remoteauthsvc.KindBrowser}, true
 }
 
+func (a *revocableAuth) ValidateHookToken(token string) (remoteauthsvc.DeviceInfo, bool) {
+	return remoteauthsvc.DeviceInfo{}, false
+}
+
 // TestEvents_KeepalivePingsAndClosesOnRevoke pins both jobs the
 // keepalive does: an idle stream keeps receiving pings (which is what
 // keeps a browser extension's service worker alive between commands),

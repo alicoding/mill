@@ -67,6 +67,10 @@ type activeListener struct {
 	// TriggerService's own atlasCardTriggers map (triggeratlascard.go,
 	// goal 0066) -- same in-process-registry-only shape as sysEventStop.
 	atlasCardStop func()
+	// webhookStop unregisters a trigger-webhook listener from
+	// TriggerService's own webhookTriggers map (triggerwebhook.go) --
+	// same in-process-registry-only shape as sysEventStop.
+	webhookStop func()
 }
 
 func (l *activeListener) stop() {
@@ -90,6 +94,9 @@ func (l *activeListener) stop() {
 	}
 	if l.atlasCardStop != nil {
 		l.atlasCardStop()
+	}
+	if l.webhookStop != nil {
+		l.webhookStop()
 	}
 }
 
@@ -130,6 +137,12 @@ type TriggerService struct {
 	// each entry's start/stop (triggeratlascard.go), mutated only while
 	// s.mu is held, same shape as sysEvents above.
 	atlasCardTriggers map[string][]string
+	// webhookTriggers indexes every armed trigger-webhook listener by
+	// its configured source matcher ("" is the catch-all bucket) --
+	// populated/depopulated by Sync via each entry's start/stop
+	// (triggerwebhook.go), mutated only while s.mu is held, same
+	// shape as sysEvents above.
+	webhookTriggers map[string][]string
 	// fwMu/fileWrites back the filesystem-watch structural cycle guard
 	// (docs/goals/0087, filewriteguard.go) -- its own mutex rather than
 	// reusing s.mu, since a recorder call arrives from a running node
@@ -160,6 +173,7 @@ func NewTriggerService(comp *compositionsvc.CompositionService, logger *slog.Log
 		store:             store,
 		sysEvents:         make(map[string][]systemEventBinding),
 		atlasCardTriggers: make(map[string][]string),
+		webhookTriggers:   make(map[string][]string),
 		fileWrites:        make(map[string]fileWriteRecord),
 	}
 	s.loadPersistedHotkeys()

@@ -26,6 +26,9 @@ import (
 // own behavior rather than re-testing the pairing store.
 type stubAuth struct {
 	token string
+	// hookToken is the hook door's own credential -- a separate field
+	// because the two kinds must never validate on each other's routes.
+	hookToken string
 	// Atomic: a test flips it while the stream's own goroutine may be
 	// re-checking the token on its keepalive tick.
 	revoked atomic.Bool
@@ -44,6 +47,13 @@ func (a *stubAuth) ValidateBrowserToken(token string) (remoteauthsvc.DeviceInfo,
 		return remoteauthsvc.DeviceInfo{}, false
 	}
 	return remoteauthsvc.DeviceInfo{ID: "browser-1", Label: "Chrome", Kind: remoteauthsvc.KindBrowser}, true
+}
+
+func (a *stubAuth) ValidateHookToken(token string) (remoteauthsvc.DeviceInfo, bool) {
+	if a.revoked.Load() || token == "" || token != a.hookToken {
+		return remoteauthsvc.DeviceInfo{}, false
+	}
+	return remoteauthsvc.DeviceInfo{ID: "hook-1", Label: "CI", Kind: remoteauthsvc.KindHook}, true
 }
 
 func newService(t *testing.T, auth *stubAuth) (*bridgesvc.BridgeService, *httptest.Server) {

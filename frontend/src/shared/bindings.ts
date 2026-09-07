@@ -97,6 +97,7 @@ export type { Event as NotificationEvent, Record as NotificationRecord } from '.
 export { RemoteAuthService } from '../../bindings/github.com/alicoding/mill/internal/services/remoteauthsvc'
 export type {
   DeviceInfo,
+  HookToken,
   PairingCodeInfo,
 } from '../../bindings/github.com/alicoding/mill/internal/services/remoteauthsvc'
 export { SecretService } from '../../bindings/github.com/alicoding/mill/internal/services/secretsvc'

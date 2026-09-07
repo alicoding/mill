@@ -2103,6 +2103,15 @@ Fires when Mill's own engine emits an internal event (a run finishing, failing, 
   - **Event** — Which internal event fires this trigger. "Decision parked" fires when a guardrail ask or human-review checkpoint parks awaiting approval; the run events fire once a run reaches a terminal state; "update-available" fires when an update check finds a newer release on this install's channel.
   - **Workflow scope** — Fire for every workflow's matching event, or scope to one specific workflow. Empty means all workflows.
 
+### Webhook fired
+
+Fires when a tool on this machine posts to Mill's hook endpoint, so a workflow can react to what an agent or script just did, like showing a notification on every channel including a paired phone. Any fields the tool posts become attributes the workflow declares by name. Point the tool at the hook endpoint with a token from Settings.
+
+- Takes: nothing — Produces: JSON
+- Effect: none — pure computation
+- Settings:
+  - **Source (optional)** — Fire only for events whose source field matches this exactly, in lowercase. Leave empty to fire on any source, or on an event with no source at all.
+
 ## Capture
 
 ### Inspect clipboard
@@ -2447,12 +2456,13 @@ Moves or renames a local file to a new location.
 
 ### Notify me
 
-Shows a notification when the workflow reaches this step. "Body attribute" swaps the fixed message for an Attributes value.
+Shows a notification when the workflow reaches this step. "Title attribute" and "Body attribute" swap a fixed line for an Attributes value.
 
 - Takes: nothing — Produces: its input, unchanged
 - Effect: changes something on this machine
 - Settings:
   - **Title** — The notification's first line.
+  - **Title attribute (optional)** — Which Attributes field replaces the fixed title, when set.
   - **Message** — What the notification says.
   - **Body attribute (optional)** — Which Attributes field replaces the fixed message, when set.
 
@@ -2801,6 +2811,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `view.home` | Go to Home | `⌘0` | Global | Always available |
 | `view.review` | Go to Review | `⌘5` | Global | Always available |
 | `view.secrets` | Go to Secrets | `⌘6` | Global | Always available |
+| `webhook.mint` | Add webhook token | — | Global | Always available |
 | `workflow.edit` | Edit workflow | — | Global | Conditional — available only in a matching state |
 | `workflow.new` | New workflow | `⌘N` | Global | Conditional — available only in a matching state |
 | `workflow.open` | Open workflow | — | Global | Acts on the selected workflow |
@@ -4856,3 +4867,119 @@ tool answers straight away and never parks.
 A plugin's own guarded actions — opening a URL, reading a folder,
 writing content — still take their own guardrail check when they run.
 Being reachable by an agent never widens what a plugin may do.
+
+---
+
+
+# Fire a workflow from a webhook
+
+An agent tool's hook config (a Stop hook, a build step, any script that
+can run curl) can POST an event to Mill, and a workflow starting from
+the **Webhook fired** trigger runs in response — the hook door, not
+MCP, so the tool never holds an agent session open to reach Mill.
+
+## Add a token
+
+Settings → Connections → **Webhooks** → *Add webhook token*. Give it
+a label naming the tool, copy the token the moment it appears — Mill
+shows it exactly once — and paste it into the tool's hook config.
+Mint one per tool; revoke any of them from the same list.
+
+Mill binds the door to this Mac only; the token is the credential,
+even from this Mac. The notification reaches a paired phone only if
+one is paired (Settings → Connections → Remote access).
+
+## Post an event
+
+Replace `<token>` with the minted token:
+
+```
+curl -s -X POST http://127.0.0.1:8092/__mill/hooks/event \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"source":"<tool>","title":"...","body":"..."}'
+```
+
+Any JSON object is accepted — a wrong or revoked token answers 401,
+anything that isn't a JSON object answers 400. `source` names which
+tool posted (lowercase, exact); the seeded **Notify when a webhook
+fires** workflow catches every source and notifies on every channel,
+including a paired phone. Scope a workflow to one tool by setting the
+trigger's Source field.
+
+Any JSON fields you post become attributes the catching workflow
+declares by name — a workflow that declares `title` and `body`
+attributes receives the posted `title` and `body`, and a sender can
+carry whatever else it needs (`run`, `duration`, `url`) for a workflow
+declaring those to use. The posted body also arrives whole as the
+run's payload.
+
+For a hook config in an agent tool, the entry is the same curl — for
+example a Claude Code `Stop` hook:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://127.0.0.1:8092/__mill/hooks/event -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"source\":\"claude-code\",\"title\":\"Agent finished\",\"body\":\"A task completed.\"}'"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Some tools hand their hook command the event JSON on stdin instead of
+letting the command build its own body. Pipe it straight through with
+`-d @-` and the workflow declares attributes by that tool's own field
+names, unchanged:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://127.0.0.1:8092/__mill/hooks/event -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d @-"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Some agent tools accept a hook handler of `type: "http"` instead of a
+command — declared as JSON config with the door's `url` and an
+`Authorization: Bearer <token>` header, no curl wrapper at all:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "http://127.0.0.1:8092/__mill/hooks/event",
+            "headers": {
+              "Authorization": "Bearer <token>",
+              "Content-Type": "application/json"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Either form is fire-and-forget: Mill acknowledges a well-formed post
+and never asks the tool to wait for, or read, anything back.
