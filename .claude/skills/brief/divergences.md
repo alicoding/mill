@@ -140,3 +140,10 @@ this file is the record, a brief is a projection of it.
   rewrites.
 - Lefthook Go gates can fail transiently while `task dev` rebuilds —
   rerun once before diagnosing.
+- Obvious: open the PR when the gates are green. Here: the builder first
+  dispatches the `reviewer` subagent (Haiku, fresh context) on `git diff
+  origin/main...HEAD` with the brief path; every Important finding is
+  fixed before `gh pr create`; the review report goes verbatim into the
+  final report under a "Review" heading. The orchestrator spot-checks it
+  against the diff. Important findings can only be waived in the goal
+  record.
