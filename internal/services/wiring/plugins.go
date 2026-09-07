@@ -70,6 +70,9 @@ type settingsTrust struct {
 	// paste-chain wiring's own tests.
 	hashOf   func(id string) string
 	signedOK func(id string) bool
+	// policyOK answers the organisation policy's verdict (goal 0349
+	// S6); nil in the paste-chain wiring's own tests.
+	policyOK func(id string) bool
 }
 
 func (t settingsTrust) Enabled(id string) bool {
@@ -117,6 +120,9 @@ func (t settingsTrust) mayRun(id string, builtin bool) bool {
 	if builtin {
 		return true
 	}
+	if t.policyOK != nil && !t.policyOK(id) {
+		return false
+	}
 	if list := t.Allowlist(); len(list) > 0 {
 		listed := false
 		for _, a := range list {
@@ -142,7 +148,7 @@ func WirePluginTrust(plugins *pluginsvc.PluginService, settings *settingssvc.Set
 	})
 	plugins.SetSigningKeys(settings.GetPluginSigningKeys)
 	grandfatherInstalledPlugins(plugins, settings)
-	trust := settingsTrust{settings: settings, hashOf: plugins.ContentHashOf, signedOK: plugins.SignedOK}
+	trust := settingsTrust{settings: settings, hashOf: plugins.ContentHashOf, signedOK: plugins.SignedOK, policyOK: plugins.PolicyAllows}
 	plugins.WireAudit(trust, pluginSecretAccessReader(secrets))
 	// The step-pack door (ADR-0051 §5): every runnable plugin's declared
 	// steps join the catalog and the executor, read fresh per lookup.
@@ -247,7 +253,7 @@ func (r pluginSecretResolver) Resolve(id, pluginID string) (string, error) {
 // in precedence order: the user's preferred kind (Settings >
 // Extensions, ADR-0051 slice 2) first, then ListPlugins' id order.
 func WirePluginIngestion(atlas *atlassvc.AtlasService, plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService) {
-	trust := settingsTrust{settings: settings, hashOf: plugins.ContentHashOf, signedOK: plugins.SignedOK}
+	trust := settingsTrust{settings: settings, hashOf: plugins.ContentHashOf, signedOK: plugins.SignedOK, policyOK: plugins.PolicyAllows}
 	atlas.WirePluginPasteClaims(func() []atlassvc.PluginPasteClaim {
 		return orderPasteClaims(plugins.URLPasteClaims(), func(c pluginsvc.IngestionClaim) bool { return trust.mayRun(c.PluginID, c.Builtin) }, settings.GetPreferredLinkPasteKind())
 	})

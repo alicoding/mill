@@ -33,6 +33,7 @@ export type {
     PluginListColumn,
     PluginListDirResult,
     PluginSource,
+    PolicyView,
     SecretSourceContribution,
     SecretSourceKindInfo,
     SecretSourcePathContribution,

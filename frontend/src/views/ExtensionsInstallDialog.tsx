@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Checkbox, Dialog, FormControl, Label, Stack, Text } from '@primer/react'
 import type { InstallPreview } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { ExtensionsPermissions } from './ExtensionsPermissions'
+import { ExtensionsNoticed } from './ExtensionsNoticed'
 import { tierLabelKey, tierVariant } from './extensionTrust'
 import listStyles from '../shared/ListCard.module.css'
 
@@ -11,12 +12,16 @@ import listStyles from '../shared/ListCard.module.css'
 // permission-prompt shape. The unverified tier adds one thing on top
 // of that list: an acknowledgment that nothing has reviewed this code,
 // which the Install button waits for.
-export function ExtensionsInstallDialog({ preview, busy, mode = 'install', onCancel, onInstall }: {
+export function ExtensionsInstallDialog({ preview, busy, mode = 'install', refusal = '', onCancel, onInstall }: {
   preview: InstallPreview
   busy: boolean
   // An update shows the same prompt with its own verbs; the unverified
   // title stays, because it is still unreviewed code landing.
   mode?: 'install' | 'update'
+  // A refusal the install itself answered with (the organisation's
+  // policy, or a static check over the downloaded files) -- shown in
+  // place, so the person reads why before the prompt closes.
+  refusal?: string
   onCancel: () => void
   onInstall: () => void
 }) {
@@ -25,7 +30,8 @@ export function ExtensionsInstallDialog({ preview, busy, mode = 'install', onCan
   const unverified = preview.Tier === 'unverified'
   const badgeKey = tierLabelKey(preview.Tier)
   const name = preview.Name || preview.ID
-  const confirmDisabled = busy || (unverified && !acknowledged)
+  const refused = refusal || preview.PolicyRefusal
+  const confirmDisabled = busy || !!refused || (unverified && !acknowledged)
   const titleKey = unverified ? 'extensions.install.unreviewedTitle' : mode === 'update' ? 'extensions.install.updateTitle' : 'extensions.install.title'
 
   return (
@@ -60,7 +66,14 @@ export function ExtensionsInstallDialog({ preview, busy, mode = 'install', onCan
             {t('extensions.install.unreviewedBody')}
           </Text>
         )}
+        {refused && (
+          <Stack direction="vertical" gap="none" data-testid="extensions-install-refusal">
+            <Text as="p" size="small" weight="semibold">{t('extensions.policy.refusedTitle')}</Text>
+            <Text as="p" size="small" className={listStyles.muted} data-testid="extensions-install-refusal-reason">{refused}</Text>
+          </Stack>
+        )}
         <ExtensionsPermissions preview={preview} testId="extensions-install-permissions" />
+        <ExtensionsNoticed warnings={preview.Warnings ?? []} testId="extensions-install-noticed" />
         {unverified && (
           <FormControl>
             <Checkbox

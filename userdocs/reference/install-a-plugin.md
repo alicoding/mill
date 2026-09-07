@@ -23,6 +23,10 @@ whether it writes to your boards, what it adds — and installs it only
 after you confirm. The new extension appears under **Installed**;
 reload to load it.
 
+On a Mac an organisation manages, Extensions says **Managed by
+<organisation>** and a policy file decides what may install and run;
+see [Managed extensions](managed-extensions.md).
+
 ### Installing from a link or a folder
 
 Not everything lives in a marketplace. Mill also installs from:

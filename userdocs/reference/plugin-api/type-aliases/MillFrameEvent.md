@@ -23,5 +23,8 @@ only a page that paints pixels itself needs to listen.
 `settings:changed` says a stored setting moved; read the new value
 with `call('settings.get', key)`. `contents:changed` says the board
 changed. `ctx` carries the surface's context, on mount and on every
-change: a capture's destination arrives here. `resize` carries the
-`{ width, height }` of the box the page is drawn in.
+change: a capture's destination arrives here, and a canvas object's
+face receives `{ object: { ID, Kind, Payload, Size }, mirror? }` --
+`mirror` only for a file-backed kind, as `{ dataUrl, failed }`.
+`resize` carries the `{ width, height }` of the box the page is
+drawn in.

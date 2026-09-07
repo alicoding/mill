@@ -40,6 +40,7 @@
 - [Register a command](reference/register-a-command.md): walks a new Command registry entry end to end, quoting a real registered command
 - [The plugin standard](reference/plugin-standard.md): the rules a shipped plugin follows, and which ones the conformance checker enforces
 - [Plugin theming](reference/plugin-theming.md): the theme variables a plugin renders with
+- [Managed extensions](reference/managed-extensions.md): the organisation policy file: allow and block lists, required tier, blocked capabilities, allowed sources, and what an install checks
 - [Plugin API maturity](reference/plugin-api-maturity.md): each contribution family's level and its proof, generated from the repository
 
 ## For agents

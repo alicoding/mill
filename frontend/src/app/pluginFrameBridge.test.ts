@@ -70,10 +70,19 @@ describe('callFrameMethod', () => {
     expect(cancel).not.toHaveBeenCalled()
   })
 
+  it("routes a face's object doors only through the controls the host supplied", async () => {
+    await expect(callFrameMethod(fakeApi(), 'object.updatePayload', [{ text: 'x' }])).rejects.toThrow("object.updatePayload is only available in a canvas object's face")
+    const updatePayload = vi.fn(async () => {})
+    const setEditing = vi.fn()
+    await expect(callFrameMethod(fakeApi(), 'object.updatePayload', [{ text: 'x' }], undefined, { updatePayload, setEditing })).resolves.toBe(true)
+    expect(updatePayload).toHaveBeenCalledWith({ text: 'x' })
+    await expect(callFrameMethod(fakeApi(), 'object.setEditing', [true], undefined, { updatePayload, setEditing })).resolves.toBe(true)
+    expect(setEditing).toHaveBeenCalledWith(true)
+  })
   it('keeps every whitelisted name routable', async () => {
     const api = fakeApi()
     for (const method of FRAME_METHODS) {
-      await expect(callFrameMethod(api, method, ['a', {}, 'c'], { done: () => {}, cancel: () => {} })).resolves.not.toThrow()
+      await expect(callFrameMethod(api, method, ['a', {}, 'c'], { done: () => {}, cancel: () => {} }, { updatePayload: async () => {}, setEditing: () => {} })).resolves.not.toThrow()
     }
   })
 })

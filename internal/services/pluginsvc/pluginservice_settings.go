@@ -54,6 +54,11 @@ type CanvasObjectContribution struct {
 	Kind           string   `json:"kind"`
 	FileExtensions []string `json:"fileExtensions"`
 	PastesURLs     bool     `json:"pastesURLs"`
+	// Entry names an .html page inside the plugin folder that draws
+	// this kind's board face in its own sandboxed frame (goal 0349
+	// S6); empty means the legacy renderFace form drawn into Mill's
+	// own document.
+	Entry string `json:"entry"`
 }
 
 // settingKeyPattern pins a setting key to the identifier shape the
