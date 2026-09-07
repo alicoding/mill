@@ -7,30 +7,33 @@ No `paths` frontmatter — applies to every goal, every language.
   (best-in-class tools, real search), **Today** (what Mill does now,
   read/probed), **Gap** (the delta Plan answers). No Gap ⇒ not Ready.
 - **Adoption named before dispatch.** Precedent also names the library,
-  framework or package that already solves it: a real search (the
-  `research` agent), primary source linked, version pinned, entry-point
-  API named — or the search that found none. No coding brief goes out
-  without it.
+  framework or package that already solves it: a real search, primary
+  source linked, version pinned, entry-point API named — or the search
+  that found none. No coding brief goes out without it.
 - A capability map for any schema/adopt-vs-build call with more than
   one real future use (SPEC §3.3).
 - A goal file: Goal/Plan/**Acceptance as a checkable predicate**.
 - Frontmatter header (`id`, `status`, `date`, `prs [..]`, `proof [..]`,
-  `spec_refs [..]`) — source data for the delivery-evidence ledger
-  (`docs/goals/0164-delivery-evidence-ledger.md`).
+  `spec_refs [..]`) — source data for the delivery-evidence ledger.
 - Bug-shaped goals also carry `defect_class: <kebab-slug>` — ONE axis.
   Grep `defect_class` across `goals/` before coining a new slug. **Two
   strikes: second occurrence makes the goal about the CLASS.** Older
   archived goals without the field are classified lazily, when a grep
   for a new bug surfaces them — never by bulk archaeology.
+- **One strike makes a class.** A CI or review finding is never fixed
+  as an instance: the same PR fixes the class — adds or confirms the
+  gate/rule that catches every occurrence and sweeps the existing
+  instances — or the instance fix carries the number of a goal filed
+  the same day.
 - No SPEC.md `OPEN` dependency silently resolved by starting.
 
 ## Definition of Ready, part 2 — the integration-surfaces triage
 Before a capability's goal starts, answer EVERY line in the goal file —
 "wired", "deliberately not, because …", or "follow-up goal NNNN":
 1. **Configure** — a "which external thing" value? → entity + RefKind.
-2. **Workflows** — composition-shaped (ADR-0035)? → composition + seed.
+2. **Workflows** — composition-shaped? → composition + seed.
 3. **Atlas** — knowledge a card should point at?
-4. **Settings** — an app-level preference (kernel config only)?
+4. **Settings** — an app-level preference?
 5. **Keyboard shortcut** — a command-registry entry?
 6. **Quick access** — palette entry + Quick Panel row?
 7. **Context menu** — ContextMenuItem sharing commandIds?
@@ -58,10 +61,8 @@ Before a capability's goal starts, answer EVERY line in the goal file —
 ## Session conduct
 - Reviewer findings triaged, not chased: act only on correctness/
   requirements gaps.
-- Post-merge worktree verification is CHECKED (`git worktree list`,
-  HEAD on the right branch).
-- Avoid: kitchen-sink sessions, and correcting the same thing twice
-  (third attempt is a restart-with-a-better-brief).
+- Post-merge worktree verification is CHECKED (`git worktree list`).
+- Avoid: kitchen-sink sessions, and correcting the same thing twice.
 - Long arcs write state to files, not context, at every checkpoint.
 
 ## Green baseline always
@@ -76,14 +77,13 @@ exemption.
 
 ## Tech debt
 A BACKLOG.md entry with the same DoR/DoD as any goal — never a bare
-TODO (a comment may point at a goal/ADR id, never stand alone).
+TODO.
 
-## Deferrals need a home (goal 0128)
+## Deferrals need a home
 A gap between a researched precedent and what Mill has today is NOT
 deferrable — build it in the goal that found it; an agent that would
 defer it reports it instead, including gaps found by any review. A
 deferral is legal only when the same sentence names its tracking home:
 a goal number, BACKLOG line, SPEC `OPEN` item, or revisit trigger —
 never standing alone. Goal files carry a "Deferred from this goal"
-section when scope was narrowed, feeding
-`docs/goals/archive/0128-deferred-register.md`.
+section when scope was narrowed.

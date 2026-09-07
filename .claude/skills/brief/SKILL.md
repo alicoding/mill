@@ -39,8 +39,14 @@ brief carries more, not less, than an Opus one would need.
 - **The operational block** (from `divergences.md` § Operations):
   worktree scope, e2e slot rule, poll-in-place, docs-repo handling,
   the never-list.
-- **Report shape**: the exact fields the report must carry, so a
-  stopped agent's last message is a deliverable, not a status.
+- **Report shape**: the exact fields the report must carry, including
+  Review, so a stopped agent's last message is a deliverable, not a
+  status.
+- **The pre-PR review step** (from `divergences.md` § Operations): the
+  reviewer dispatch and the Important-blocks rule — and that CI's
+  `review-report` job mechanically rejects the PR without a `## Review`
+  section carrying `Contract match: yes` and `Important findings open: 0`
+  in the PR body itself.
 - **Adoption named**: the brief quotes the goal file's chosen
   library/framework, version, and entry-point API, or the recorded
   search that found none. Missing → stop, run the `research` agent

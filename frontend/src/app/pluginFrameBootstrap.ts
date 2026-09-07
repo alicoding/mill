@@ -118,11 +118,19 @@ export interface ActivationFrameInit {
 // buildFrameSrcdoc prepends Mill's four head pieces to the plugin's own
 // page. The pieces go FIRST so the policy governs every element after
 // it and every script exists before the page's own script runs; the
-// page keeps everything else it wrote, including its own <head>. An
-// activation frame has no plugin-authored page: html is "" and it
-// still gets a <head>, per the function's own no-tag fallback.
+// page keeps everything else it wrote. Parsed via DOMParser (goal
+// 0382): the browser's own HTML parser always resolves a head to
+// inject into, however the page opened its tags -- a document with no
+// head or html element of its own gets one, matching how the iframe
+// that actually renders this srcdoc would parse it anyway -- where a
+// regex hunting for a literal "<head" or "<html" can be fooled by a
+// comment or string containing the same text. An activation frame has
+// no plugin-authored page at all: html is "" and DOMParser still gives
+// it a head to inject into.
 export function buildFrameSrcdoc(base: string, scripts: readonly string[], html: string, init: FrameInit | ActivationFrameInit, tokens: string): string {
-  const head = [
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  const injected = doc.createElement('head')
+  injected.innerHTML = [
     `<base href="${base}">`,
     `<meta http-equiv="Content-Security-Policy" content="${framePolicy(base, scripts)}">`,
     `<meta name="mill-frame-init" content="${escapeForAttribute(JSON.stringify(init))}">`,
@@ -137,15 +145,7 @@ export function buildFrameSrcdoc(base: string, scripts: readonly string[], html:
     // the matching header (cspmiddleware.go's PluginFrameCORSMiddleware).
     ...scripts.map((src) => `<script src="${src}" crossorigin="anonymous"></script>`),
   ].join('')
-  const headOpen = /<head[^>]*>/i.exec(html)
-  if (headOpen) {
-    const at = headOpen.index + headOpen[0].length
-    return html.slice(0, at) + head + html.slice(at)
-  }
-  const htmlOpen = /<html[^>]*>/i.exec(html)
-  if (htmlOpen) {
-    const at = htmlOpen.index + htmlOpen[0].length
-    return html.slice(0, at) + `<head>${head}</head>` + html.slice(at)
-  }
-  return `<head>${head}</head>${html}`
+  doc.head.prepend(...Array.from(injected.childNodes))
+  const doctype = doc.doctype ? `<!doctype ${doc.doctype.name}>` : ''
+  return doctype + doc.documentElement.outerHTML
 }

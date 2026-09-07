@@ -140,3 +140,39 @@ this file is the record, a brief is a projection of it.
   rewrites.
 - Lefthook Go gates can fail transiently while `task dev` rebuilds —
   rerun once before diagnosing.
+- Obvious: open the PR when the gates are green. Here: the builder first
+  dispatches the `reviewer` subagent (Haiku, fresh context) on `git diff
+  origin/main...HEAD` with the brief path; every Important finding is
+  fixed before `gh pr create`; the review report goes verbatim into the
+  final report under a "Review" heading. The orchestrator spot-checks it
+  against the diff. Important findings can only be waived in the goal
+  record.
+- Obvious: drive the app with the session's browser-automation tools
+  (the Chrome/Playwright MCP tools). Here: never from a builder — those
+  tools share ONE browser across every concurrent agent on this
+  machine, and a click has landed on another session's tab. A builder
+  drives its own headless Playwright script scoped to its own 9400+
+  port; the MCP browser tools are the orchestrator's only.
+- Obvious: `--wails-draggable` in a stylesheet just works. Here: goal
+  0333's gate `scripts/check-drag-regions.sh` keeps an ALLOWLIST of
+  stylesheets that may declare drag regions; a new one must be added to
+  the allowlist (one line, `RunMonitor.module.css`'s precedent) — name
+  the gate in any drag-region brief.
+- Obvious: `.screens/` in the worktree root for screenshots. Here: the
+  root-naming gate fails the commit on any stray root entry — screens
+  and commit logs live OUTSIDE the worktree (e.g. `<worktree>-screens/`).
+- Obvious: inspect HTML/XML/JSON/URLs with a regex, especially in a
+  test. Here: structured text is PARSED — HTML/XML via the DOM (jsdom in
+  Vitest, `DOMParser` in app code, `golang.org/x/net/html` in Go), JSON
+  via the parser, URLs via `URL`/`net/url`. CodeQL's bad-tag-filter
+  family blocks the merge; a regex over markup is a defect (goal 0382).
+- Obvious: fix what a gate flagged and move on. Here: one strike makes a
+  class — the same PR adds or confirms the gate/rule for the whole class
+  and sweeps existing instances, or names the same-day goal that does.
+- Obvious: the review step above is advisory once the builder says it's
+  done. Here: `scripts/check-review-report.sh` runs as CI's required
+  `review-report` job -- the PR body itself must carry a `## Review`
+  section with the reviewer's report, `Contract match: yes`, and the
+  exact line `Important findings open: 0`, or CI rejects the PR. Paste
+  the review report into the PR body under `## Review` with that exact
+  line, not just into the final chat report.
