@@ -20,6 +20,11 @@ No `paths` frontmatter — applies to every goal, every language.
   strikes: second occurrence makes the goal about the CLASS.** Older
   archived goals without the field are classified lazily, when a grep
   for a new bug surfaces them — never by bulk archaeology.
+- **One strike makes a class.** A CI or review finding is never fixed
+  as an instance: the same PR fixes the class — adds or confirms the
+  gate/rule that catches every occurrence and sweeps the existing
+  instances — or the instance fix carries the number of a goal filed
+  the same day.
 - No SPEC.md `OPEN` dependency silently resolved by starting.
 
 ## Definition of Ready, part 2 — the integration-surfaces triage
@@ -28,7 +33,7 @@ Before a capability's goal starts, answer EVERY line in the goal file —
 1. **Configure** — a "which external thing" value? → entity + RefKind.
 2. **Workflows** — composition-shaped? → composition + seed.
 3. **Atlas** — knowledge a card should point at?
-4. **Settings** — an app-level preference (kernel config only)?
+4. **Settings** — an app-level preference?
 5. **Keyboard shortcut** — a command-registry entry?
 6. **Quick access** — palette entry + Quick Panel row?
 7. **Context menu** — ContextMenuItem sharing commandIds?
@@ -56,10 +61,8 @@ Before a capability's goal starts, answer EVERY line in the goal file —
 ## Session conduct
 - Reviewer findings triaged, not chased: act only on correctness/
   requirements gaps.
-- Post-merge worktree verification is CHECKED (`git worktree list`,
-  HEAD on the right branch).
-- Avoid: kitchen-sink sessions, and correcting the same thing twice
-  (third attempt is a restart-with-a-better-brief).
+- Post-merge worktree verification is CHECKED (`git worktree list`).
+- Avoid: kitchen-sink sessions, and correcting the same thing twice.
 - Long arcs write state to files, not context, at every checkpoint.
 
 ## Green baseline always
@@ -74,7 +77,7 @@ exemption.
 
 ## Tech debt
 A BACKLOG.md entry with the same DoR/DoD as any goal — never a bare
-TODO (a comment may point at a goal/ADR id, never stand alone).
+TODO.
 
 ## Deferrals need a home
 A gap between a researched precedent and what Mill has today is NOT
