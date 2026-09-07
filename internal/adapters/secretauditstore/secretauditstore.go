@@ -1,22 +1,26 @@
-// Package secretauditstore is the SQL storage adapter for Mill's secret
-// read audit trail (goal 0203 S3): a table in the SAME execution SQLite
-// file DBOS/mcpauditstore already own, reached through its own
-// independent *sql.DB connection -- mcpauditstore.Open's own doc
-// comment names the adopted pattern (internal/adapters/backup
-// established it first); this package mirrors mcpauditstore's shape
-// deliberately but owns its OWN table, never mcpaudit's (a secret read
-// is not an MCP call). Domain types live in internal/adapters/
-// secretaudit (.claude/rules/backend.md's storage-lives-one-layer-up
-// rule); this package never imports a Wails-bound service.
+// Package secretauditstore is the storage adapter for Mill's secret
+// read audit trail (goal 0203 S3). Its own public Store/Open/Insert/
+// List/Prune API is UNCHANGED since goal 0351: every row now lives in
+// the shared internal/adapters/auditstore's audit_entries table
+// (kind="secret-access"), reached through this Store's own independent
+// *sql.DB connection to the SAME execution SQLite file mcpauditstore
+// also connects to. secret_access, this package's original table
+// (including any pre-goal-0351 widened columns: actor, step_id,
+// failure_kind), is migrated into audit_entries ONCE the first time
+// Open sees it still present, then dropped (migrate.go) -- callers of
+// this package never see the difference. Domain types live in
+// internal/adapters/secretaudit; this package never imports a
+// Wails-bound service.
 package secretauditstore
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
+	"github.com/alicoding/mill/internal/adapters/auditstore"
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
+	"github.com/alicoding/mill/internal/domain/audit"
 	_ "modernc.org/sqlite" // registers the "sqlite" database/sql driver name
 )
 
@@ -25,19 +29,17 @@ import (
 // concurrent writer holding the file's one write lock.
 const busyTimeoutMS = 5000
 
-// timestampLayout is RFC3339Nano in UTC -- lexicographically sortable,
-// same reasoning as mcpauditstore's own constant.
-const timestampLayout = time.RFC3339Nano
-
-// Store is one open connection to the execution SQLite file's
-// secret_access table.
+// Store is one open connection to the execution SQLite file, reading
+// and writing secret-access rows in the shared audit_entries table.
 type Store struct {
 	db *sql.DB
 }
 
 // Open opens dbPath (a plain sqlite file path, never a "sqlite:"-
-// prefixed DSN) as its own independent connection and ensures the
-// secret_access table/indexes exist.
+// prefixed DSN) as its own independent connection, ensures the shared
+// audit_entries table exists, and migrates any pre-goal-0351
+// secret_access table into it (migrate.go) -- a no-op once that
+// migration has already run.
 func Open(dbPath string) (*Store, error) {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
@@ -47,83 +49,15 @@ func Open(dbPath string) (*Store, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("secretauditstore: set busy_timeout: %w", err)
 	}
-	if err := ensureSchema(db); err != nil {
+	if _, err := auditstore.New(db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	if err := migrateLegacyTable(db); err != nil {
 		_ = db.Close()
 		return nil, err
 	}
 	return &Store{db: db}, nil
-}
-
-func ensureSchema(db *sql.DB) error {
-	const schema = `
-CREATE TABLE IF NOT EXISTS secret_access (
-	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	timestamp TEXT NOT NULL,
-	entry_id TEXT NOT NULL,
-	label TEXT NOT NULL DEFAULT '',
-	context TEXT NOT NULL,
-	run_id TEXT NOT NULL DEFAULT '',
-	workflow_id TEXT NOT NULL DEFAULT '',
-	actor TEXT NOT NULL DEFAULT '',
-	outcome TEXT NOT NULL,
-	error_text TEXT NOT NULL DEFAULT '',
-	step_id TEXT NOT NULL DEFAULT '',
-	failure_kind TEXT NOT NULL DEFAULT ''
-);
-CREATE INDEX IF NOT EXISTS idx_secret_access_timestamp ON secret_access(timestamp);
-CREATE INDEX IF NOT EXISTS idx_secret_access_entry_id ON secret_access(entry_id);
-CREATE INDEX IF NOT EXISTS idx_secret_access_context ON secret_access(context);
-`
-	if _, err := db.ExecContext(context.Background(), schema); err != nil {
-		return fmt.Errorf("secretauditstore: ensure schema: %w", err)
-	}
-	// actor arrived with ADR-0048 (plugin readers); a store created
-	// before it lacks the column and is widened in place.
-	if err := ensureColumn(db, "actor", "TEXT NOT NULL DEFAULT ''"); err != nil {
-		return err
-	}
-	// step_id arrived with goal 0371; same widen-in-place convention.
-	if err := ensureColumn(db, "step_id", "TEXT NOT NULL DEFAULT ''"); err != nil {
-		return err
-	}
-	// failure_kind arrived with goal 0378; same widen-in-place
-	// convention. A row written before this column existed reads back
-	// "" -- the same "no dedicated label" fallback an unclassified
-	// failure gets.
-	if err := ensureColumn(db, "failure_kind", "TEXT NOT NULL DEFAULT ''"); err != nil {
-		return err
-	}
-	return nil
-}
-
-// ensureColumn adds a column to secret_access when a pre-existing
-// store predates it -- SQLite's one supported ALTER, guarded by the
-// table's own column listing so a fresh schema is never altered twice.
-func ensureColumn(db *sql.DB, name, decl string) error {
-	rows, err := db.QueryContext(context.Background(), "PRAGMA table_info(secret_access)")
-	if err != nil {
-		return fmt.Errorf("secretauditstore: table_info: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var cid int
-		var colName, colType string
-		var notNull, pk int
-		var dflt sql.NullString
-		if err := rows.Scan(&cid, &colName, &colType, &notNull, &dflt, &pk); err != nil {
-			return fmt.Errorf("secretauditstore: table_info scan: %w", err)
-		}
-		if colName == name {
-			return nil
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("secretauditstore: table_info: %w", err)
-	}
-	if _, err := db.ExecContext(context.Background(), "ALTER TABLE secret_access ADD COLUMN "+name+" "+decl); err != nil {
-		return fmt.Errorf("secretauditstore: add column %s: %w", name, err)
-	}
-	return nil
 }
 
 // Close closes the underlying connection.
@@ -134,34 +68,52 @@ func (s *Store) Close() error {
 // Insert records r and returns its new row id. Timestamp defaults to
 // time.Now().UTC() when the caller left it zero.
 func (s *Store) Insert(ctx context.Context, r secretaudit.Record) (int64, error) {
-	ts := r.Timestamp
-	if ts.IsZero() {
-		ts = time.Now().UTC()
-	}
-	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO secret_access (timestamp, entry_id, label, context, run_id, workflow_id, actor, outcome, error_text, step_id, failure_kind)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		ts.Format(timestampLayout), r.EntryID, r.Label, string(r.Context), r.RunID, r.WorkflowID, r.Actor,
-		string(r.Outcome), secretaudit.TruncateError(r.ErrorText), r.StepID, string(r.FailureKind),
-	)
-	if err != nil {
-		return 0, fmt.Errorf("secretauditstore: insert: %w", err)
-	}
-	return res.LastInsertId()
+	return auditstore.InsertEntry(ctx, s.db, toEntry(r))
 }
 
-// Prune deletes every row past the newest keep rows (by id). keep <= 0
-// is a no-op, mirroring mcpauditstore.Prune's own guard. Returns the
-// number of rows deleted.
+// Prune deletes every row past the newest keep rows of THIS package's
+// own kind (secret-access) -- unlike the shared auditstore.Store.Prune,
+// which spans every kind (goal 0351 Decision 4's cap is applied there,
+// not here). keep <= 0 is a no-op. Returns the number of rows deleted.
 func (s *Store) Prune(keep int) (int64, error) {
 	if keep <= 0 {
 		return 0, nil
 	}
-	res, err := s.db.ExecContext(context.Background(),
-		`DELETE FROM secret_access WHERE id NOT IN (SELECT id FROM secret_access ORDER BY id DESC LIMIT ?)`, keep,
+	//nolint:gosec // G202: auditstore.TableName is this package's own compile-time constant, never caller input; the only caller-supplied values (kind, keep) are bound as placeholders below.
+	q := "DELETE FROM " + auditstore.TableName + " WHERE kind = ? AND id NOT IN (SELECT id FROM " + auditstore.TableName + " WHERE kind = ? ORDER BY id DESC LIMIT ?)"
+	res, err := s.db.ExecContext(context.Background(), q,
+		string(audit.KindSecretAccess), string(audit.KindSecretAccess), keep,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("secretauditstore: prune: %w", err)
 	}
 	return res.RowsAffected()
+}
+
+// toEntry maps one secretaudit.Record onto the shared envelope --
+// Context becomes Action, EntryID/Label become Target, Actor's own
+// string (a non-workflow reader like "plugin:<id>") becomes
+// Actor.Source (goal 0351 PR1 item 3's own mapping).
+func toEntry(r secretaudit.Record) audit.Entry {
+	e := audit.Entry{
+		ID: r.ID, Timestamp: r.Timestamp, Kind: audit.KindSecretAccess,
+		Action: string(r.Context), Outcome: string(r.Outcome), FailureKind: string(r.FailureKind),
+		Target:     audit.Target{Kind: "secret", ID: r.EntryID, Label: r.Label},
+		Attributes: map[string]string{},
+	}
+	e.Actor = audit.Actor{RunID: r.RunID, WorkflowID: r.WorkflowID, StepID: r.StepID, Source: r.Actor}
+	if r.ErrorText != "" {
+		e.Attributes["error_text"] = secretaudit.TruncateError(r.ErrorText)
+	}
+	return e
+}
+
+// fromEntry is toEntry's inverse.
+func fromEntry(e audit.Entry) secretaudit.Record {
+	return secretaudit.Record{
+		ID: e.ID, Timestamp: e.Timestamp, EntryID: e.Target.ID, Label: e.Target.Label,
+		Context: secretaudit.Context(e.Action), RunID: e.Actor.RunID, WorkflowID: e.Actor.WorkflowID,
+		StepID: e.Actor.StepID, Actor: e.Actor.Source, Outcome: secretaudit.Outcome(e.Outcome),
+		FailureKind: secretaudit.FailureKind(e.FailureKind), ErrorText: e.Attributes["error_text"],
+	}
 }
