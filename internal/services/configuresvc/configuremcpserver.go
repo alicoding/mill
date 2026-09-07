@@ -58,7 +58,7 @@ const mcpServersKey = "configure-mcpservers"
 // only, same as resolveHTTPRequest/resolveList.
 func (c *ConfigureService) resolveMCPServer(id string, run composition.SecretAccessRun) (composition.ResolvedMCPServer, error) {
 	return c.resolveMCPServerWithAccess(id, secretaudit.AccessContext{
-		Context: secretaudit.ContextMCPServerSpawn, RunID: run.RunID, WorkflowID: run.WorkflowID,
+		Context: secretaudit.ContextMCPServerSpawn, RunID: run.RunID, WorkflowID: run.WorkflowID, StepID: run.StepID,
 	})
 }
 

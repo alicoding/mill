@@ -92,6 +92,15 @@ const (
 	// attached as a header Mill sends on the plugin's behalf. Actor
 	// carries "plugin:<id>" -- the same source label Review shows.
 	ContextPluginFetch Context = "plugin-fetch"
+	// ContextRequestTest is configureservice_requesttest.go's
+	// TestHTTPRequestOperation (goal 0371) -- a human's manual "Test"
+	// click on a request draft in the Configure page, never a workflow
+	// run. Distinct from ContextIntegrationAuth (the SAME secret
+	// reference, resolved by an actual run): the two must render
+	// differently since only one of them ever carries a run to link to,
+	// the same reasoning that already separates
+	// ContextConfigureToolsPreview from ContextMCPServerSpawn.
+	ContextRequestTest Context = "request-test"
 )
 
 // Outcome is one read's recorded result -- deliberately just two values
@@ -121,16 +130,19 @@ func TruncateError(s string) string {
 // AccessContext is what a resolution seam knows about itself at the
 // moment it calls SecretService.ResolveSecretValue -- Context is always
 // known statically (each seam calls with its own fixed value); RunID/
-// WorkflowID are populated only when the read happened inside an actual
-// workflow run (composition.SecretAccessRun, threaded from ExecContext)
-// and are the zero value for every other caller (a Configure-page
-// preview, a dangling-reference existence check, a static graph
-// validation pass) -- "when in-run" per the goal file's own contract,
-// never a required field.
+// WorkflowID/StepID are populated only when the read happened inside an
+// actual workflow run (composition.SecretAccessRun, threaded from
+// ExecContext) and are the zero value for every other caller (a
+// Configure-page preview, a dangling-reference existence check, a
+// static graph validation pass) -- "when in-run" per the goal file's
+// own contract, never a required field.
 type AccessContext struct {
 	Context    Context
 	RunID      string
 	WorkflowID string
+	// StepID is the node id whose exec triggered this read (goal 0371) --
+	// empty exactly when RunID is (a step id means nothing outside a run).
+	StepID string
 	// Actor names a non-workflow reader ("plugin:<id>"); empty for
 	// every workflow-run and human seam, whose identity the other
 	// fields already carry.
@@ -149,8 +161,10 @@ type Record struct {
 	Context    Context
 	RunID      string
 	WorkflowID string
-	Actor      string
-	Outcome    Outcome
+	// StepID is AccessContext.StepID, persisted (goal 0371).
+	StepID  string
+	Actor   string
+	Outcome Outcome
 	// ErrorText is capped via TruncateError before it ever reaches
 	// storage; empty for OutcomeRead.
 	ErrorText string

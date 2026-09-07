@@ -427,31 +427,45 @@ type ExecContext struct {
 	// then has nothing to resolve against, which run pre-flight
 	// (ValidateEnvironmentVars) refuses before the run starts.
 	EnvironmentID string
+	// CurrentStepID is the node id whose exec function is running RIGHT
+	// NOW (goal 0371) -- set by executeWorkflow immediately before each
+	// node's own exec call (execute.go already has node.ID in scope
+	// there) and left untouched by every node's own exec function (same
+	// mutate-and-return contract WorkflowID/Stepped follow). Mirrors
+	// mcpaudit's own CallerIdentity thread ("the owning workflow step
+	// id"), carried on ExecContext instead of a context.Context value
+	// since every other run-scoped id already travels this way. Empty
+	// for ExecuteNodeAlone's step-test door and every unit test that
+	// builds an ExecContext by hand.
+	CurrentStepID string
 }
 
-// SecretAccessRun is the run/workflow identity a node's in-run
+// SecretAccessRun is the run/workflow/step identity a node's in-run
 // resolution of an MCP server/exec-env/HTTP-request happened under
-// (goal 0203 S3) -- a plain correlation-id pair, opaque to composition
-// itself (it never inspects these ids, only carries them), threaded
-// through lookupMCPServerFn/lookupExecEnvFn/lookupHTTPRequestFn so a
-// resolver on the OTHER side of that seam (configuresvc) can attribute
-// a secret read to the run that triggered it. Same "cross-service
+// (goal 0203 S3, StepID added goal 0371) -- a plain correlation-id
+// triple, opaque to composition itself (it never inspects these ids,
+// only carries them), threaded through lookupMCPServerFn/
+// lookupExecEnvFn/lookupHTTPRequestFn/lookupAIProviderFn so a resolver
+// on the OTHER side of that seam (configuresvc) can attribute a secret
+// read to the run and step that triggered it. Same "cross-service
 // bookkeeping without a domain-layer import" reasoning ExecContext's own
 // WorkflowID field already established (docs/goals/0087) -- composition
 // stays free of secretaudit's own adapter-layer vocabulary (Context,
 // Outcome), which belongs one layer up. The zero value (every non-run
-// caller: RefExists, static graph validation) means "no run in
-// progress," never an error.
+// caller: RefExists, static graph validation, a Configure-page preview)
+// means "no run in progress," never an error.
 type SecretAccessRun struct {
 	RunID      string
 	WorkflowID string
+	StepID     string
 }
 
 // secretAccessRunFromCtx builds a SecretAccessRun from a node's own
 // ExecContext -- the one helper every real-run lookup call site
-// (mcpcall.go, codeexec.go, integration.go, decisionoutcome.go) uses so
-// the RunID resolution (the opaque RunContext, via currentRunID) isn't
-// hand-copied at each site.
+// (mcpcall.go, codeexec.go, integration.go, decisionoutcome.go,
+// executeshellcommand.go, interpolate.go) uses so the RunID/StepID
+// resolution (the opaque RunContext, via currentRunID, and
+// CurrentStepID) isn't hand-copied at each site.
 func secretAccessRunFromCtx(ctx ExecContext) SecretAccessRun {
-	return SecretAccessRun{RunID: currentRunID(ctx.RunContext), WorkflowID: ctx.WorkflowID}
+	return SecretAccessRun{RunID: currentRunID(ctx.RunContext), WorkflowID: ctx.WorkflowID, StepID: ctx.CurrentStepID}
 }

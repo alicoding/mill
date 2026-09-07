@@ -268,7 +268,7 @@ func init() {
 			if err != nil {
 				return ctx, fmt.Errorf("decision-outcome: encode webhook body: %w", err)
 			}
-			if _, err := sendHTTPRequest(hreq, method, path, string(outputsJSON), headers, url.Values{}, nil); err != nil {
+			if _, err := sendHTTPRequest(hreq, method, path, string(outputsJSON), headers, url.Values{}, nil, secretAccessRunFromCtx(ctx)); err != nil {
 				return ctx, fmt.Errorf("decision-outcome: webhook: %w", err)
 			}
 		}

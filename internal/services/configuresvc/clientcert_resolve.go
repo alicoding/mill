@@ -15,6 +15,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/certmaterial"
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/domain/clientcert"
+	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/usererror"
 )
 
@@ -41,15 +42,22 @@ func revisionOf(entity clientcert.ClientCertificate) string {
 	return entity.ID + "@" + strconv.FormatInt(entity.UpdatedAt.UnixNano(), 10)
 }
 
-// ConfigFor is httpconnector.ClientTLS: what Mill presents to host.
+// ConfigFor is httpconnector.ClientTLS: what Mill presents to host. ctx
+// carries a composition.SecretAccessRun (goal 0371) when this handshake
+// is happening inside a real workflow run's own HTTP call
+// (composition.WithSecretAccessRun, attached by sendHTTPRequest) --
+// httpconnector forwards it here opaquely from httpconnector.Request's
+// own Context field, the one seam in this chain with no ExecContext of
+// its own. Its zero value (a Configure-page "Test" click, the
+// background expiry-status sweep) means "no run," never an error.
 //
 //wails:ignore
-func (c *ConfigureService) ConfigFor(_ context.Context, host string) (*tls.Config, string, bool, error) {
+func (c *ConfigureService) ConfigFor(ctx context.Context, host string) (*tls.Config, string, bool, error) {
 	entity, ok := clientcert.MostSpecific(c.ClientCertificates(), host)
 	if !ok || entity.CertRef == "" {
 		return nil, "", false, nil
 	}
-	cfg, err := c.buildClientTLSConfig(entity)
+	cfg, err := c.buildClientTLSConfig(entity, composition.SecretAccessRunFromContext(ctx))
 	if err != nil {
 		return nil, "", false, err
 	}
@@ -59,8 +67,8 @@ func (c *ConfigureService) ConfigFor(_ context.Context, host string) (*tls.Confi
 // buildClientTLSConfig resolves one entity's references and decodes
 // them. Every returned error already carries the sentence its surface
 // shows.
-func (c *ConfigureService) buildClientTLSConfig(entity clientcert.ClientCertificate) (*tls.Config, error) {
-	cert, err := c.loadClientCertificate(entity)
+func (c *ConfigureService) buildClientTLSConfig(entity clientcert.ClientCertificate, run composition.SecretAccessRun) (*tls.Config, error) {
+	cert, err := c.loadClientCertificate(entity, run)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +79,7 @@ func (c *ConfigureService) buildClientTLSConfig(entity clientcert.ClientCertific
 	}
 	cfg := &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12}
 	if entity.CARef != "" {
-		caPEM, err := c.resolveSecretRef(entity.Label, "CA certificate", entity.CARef, c.clientCertAudit())
+		caPEM, err := c.resolveSecretRef(entity.Label, "CA certificate", entity.CARef, c.clientCertAudit(run))
 		if err != nil {
 			return nil, err
 		}
@@ -85,8 +93,8 @@ func (c *ConfigureService) buildClientTLSConfig(entity clientcert.ClientCertific
 }
 
 // loadClientCertificate reads the material one entity names.
-func (c *ConfigureService) loadClientCertificate(entity clientcert.ClientCertificate) (tls.Certificate, error) {
-	actx := c.clientCertAudit()
+func (c *ConfigureService) loadClientCertificate(entity clientcert.ClientCertificate, run composition.SecretAccessRun) (tls.Certificate, error) {
+	actx := c.clientCertAudit(run)
 	certValue, err := c.resolveSecretRef(entity.Label, "certificate", entity.CertRef, actx)
 	if err != nil {
 		return tls.Certificate{}, err
@@ -110,8 +118,8 @@ func (c *ConfigureService) loadClientCertificate(entity clientcert.ClientCertifi
 	return cert, nil
 }
 
-func (c *ConfigureService) clientCertAudit() secretaudit.AccessContext {
-	return secretaudit.AccessContext{Context: secretaudit.ContextClientCertificate}
+func (c *ConfigureService) clientCertAudit(run composition.SecretAccessRun) secretaudit.AccessContext {
+	return secretaudit.AccessContext{Context: secretaudit.ContextClientCertificate, RunID: run.RunID, WorkflowID: run.WorkflowID, StepID: run.StepID}
 }
 
 // handshakeTimeout bounds the Test action, the same fail-safe bound
@@ -210,7 +218,7 @@ func (c *ConfigureService) clientCertificateStatus(entity clientcert.ClientCerti
 	}
 	status := clientcert.Status{ID: entity.ID, State: clientcert.StateIncomplete}
 	if entity.CertRef != "" {
-		cert, err := c.loadClientCertificate(entity)
+		cert, err := c.loadClientCertificate(entity, composition.SecretAccessRun{})
 		switch {
 		case err != nil && isNoKeyChosen(err):
 			status.State = clientcert.StateIncomplete
@@ -277,7 +285,7 @@ func (c *ConfigureService) TestClientCertificate(id string) error {
 	if strings.HasPrefix(entity.Host, "*.") {
 		return ErrTestNeedsExactHost
 	}
-	cfg, err := c.buildClientTLSConfig(entity)
+	cfg, err := c.buildClientTLSConfig(entity, composition.SecretAccessRun{})
 	if err != nil {
 		return err
 	}

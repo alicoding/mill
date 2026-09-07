@@ -265,7 +265,7 @@ func init() {
 		// fail-safe on non-2xx (SPEC.md §8), JOSE-decrypt the response.
 		// Same sequence this file always ran inline; decision-outcome's
 		// webhook call now goes through the identical function.
-		respBody, err := sendHTTPRequest(rc, method, urlPath, body, headers, query, pathParams)
+		respBody, err := sendHTTPRequest(rc, method, urlPath, body, headers, query, pathParams, secretAccessRunFromCtx(ctx))
 		if err != nil {
 			return ctx, fmt.Errorf("integration-http: %w", err)
 		}

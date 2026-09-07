@@ -224,3 +224,33 @@ func TestListSecretAccess_NoAuditStoreWired_ReturnsEmptyNotError(t *testing.T) {
 		t.Fatalf("resp = %+v, want empty", resp)
 	}
 }
+
+// TestListSecretAccess_StepIDRoundTripsToTheJSONRecord proves goal
+// 0371's frontend-facing shape: StepID travels from AccessContext
+// through recordAccess/the store and back out as
+// SecretAccessRecord.StepID, the same round trip RunID/WorkflowID
+// already make.
+func TestListSecretAccess_StepIDRoundTripsToTheJSONRecord(t *testing.T) {
+	s := newAuditedTestService(t)
+	if err := s.SetupVault(); err != nil {
+		t.Fatalf("SetupVault: %v", err)
+	}
+	a, err := s.CreateSecret("Deploy key", "", "deploy-fake", "", "", nil, "", "", nil)
+	if err != nil {
+		t.Fatalf("CreateSecret: %v", err)
+	}
+	s.RecordAccess(a.ID, "Deploy key", secretaudit.AccessContext{
+		Context: secretaudit.ContextExecEnv, RunID: "run-7", WorkflowID: "wf-7", StepID: "step-7",
+	}, secretaudit.OutcomeRead, "")
+
+	resp, err := s.ListSecretAccess(ListSecretAccessRequest{})
+	if err != nil {
+		t.Fatalf("ListSecretAccess: %v", err)
+	}
+	if len(resp.Records) != 1 {
+		t.Fatalf("records = %d, want 1", len(resp.Records))
+	}
+	if resp.Records[0].StepID != "step-7" {
+		t.Errorf("StepID = %q, want step-7", resp.Records[0].StepID)
+	}
+}

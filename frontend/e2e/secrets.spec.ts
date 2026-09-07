@@ -163,7 +163,7 @@ test('secret manager: create vault, store/reveal/copy/edit/history/delete a pass
     await bankDetailDialog.getByRole('button', { name: 'Access history' }).click()
     const entryAccessHistory = page.getByRole('dialog', { name: /Access history for/ })
     await expect(entryAccessHistory).toBeVisible()
-    await expect(entryAccessHistory.getByText('Shown to you')).toBeVisible()
+    await expect(entryAccessHistory.getByText('Shown to you · in Secrets')).toBeVisible()
     await entryAccessHistory.getByLabel('Close').click()
     await expect(bankDetailDialog).toBeVisible()
 
