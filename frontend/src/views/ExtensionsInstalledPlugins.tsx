@@ -114,6 +114,13 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
     const runtime = states.get(id)
     const error = p.Error || (runtime?.status === 'error' ? runtime.error : '')
     const badgeKey = tierLabelKey(p.Tier ?? '')
+    const policyBlocked = runtime?.status === 'policy'
+    // A blocked row's trailing cluster is already the widest the list
+    // carries (the policy label replaces the toggle); repeating the
+    // author and version alongside it overflows onto the name in the
+    // narrow split view. The detail pane and the Verification tab carry
+    // the full identity, so the row keeps name, tier and policy state.
+    const showOrigin = !policyBlocked
     return (
       <li key={id} data-testid="extensions-plugin-row" data-plugin-id={id}>
         <ExtensionRow
@@ -123,10 +130,10 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
           description={p.Manifest.description}
           meta={(
             <>
-              {p.Manifest.author && <Text size="small" className={listStyles.muted}>{p.Manifest.author}</Text>}
-              {p.Manifest.version && <Text size="small" className={listStyles.muted}>{t('extensions.versionLabel', { version: p.Manifest.version })}</Text>}
+              {showOrigin && p.Manifest.author && <Text size="small" className={listStyles.muted}>{p.Manifest.author}</Text>}
+              {showOrigin && p.Manifest.version && <Text size="small" className={listStyles.muted}>{t('extensions.versionLabel', { version: p.Manifest.version })}</Text>}
               {badgeKey && <Label variant={tierVariant(p.Tier ?? '')} data-testid="extensions-row-tier">{t(badgeKey)}</Label>}
-              {runtime?.status === 'policy' && (
+              {policyBlocked && (
                 <Label variant="attention" data-testid="extensions-row-policy">{t('extensions.policy.blockedStatus')}</Label>
               )}
             </>

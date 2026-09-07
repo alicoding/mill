@@ -77,7 +77,10 @@ test('a framed face renders its page inside a sandboxed frame, under the host ch
 	const { page, close } = await launchWithPlugins(0, { ports: PORTS, extraPlugins: [FRAMED_FACE] })
 	try {
 		await gotoAppReady(page)
-		await createBoardObjectViaRPC(page, 'framed-note', { text: 'hello' }, { X: 160, Y: 160 }, ATLAS_DEFAULT_SPACE_ID)
+		// Parked far outside the seeded rows (the atlas-arrange.spec.ts
+		// pattern): a spot this distant can never sit under a seeded
+		// card, so the hover's hit test reaches only this object.
+		await createBoardObjectViaRPC(page, 'framed-note', { text: 'hello' }, { X: 4000, Y: 4000 }, ATLAS_DEFAULT_SPACE_ID)
 		await openBoard(page)
 
 		const node = objectNode(page, 'framed-note')
@@ -88,23 +91,26 @@ test('a framed face renders its page inside a sandboxed frame, under the host ch
 		await expect(frame).toHaveAttribute('title', 'Framed note')
 		const face = page.frameLocator('iframe[data-testid="plugin-face-frame-framed-note"]')
 		await expect(face.getByTestId('face-text')).toHaveText('hello')
-		console.log('DEBUG box', JSON.stringify(await node.boundingBox()), 'viewport', await page.locator('.react-flow__viewport').first().getAttribute('style'))
 
 		// The chrome is the host's: the band and the idle click shield are
 		// siblings of the frame in Mill's own document, never inside it.
 		await expect(node.getByTestId('atlas-board-object-frame')).toBeVisible()
 		await expect(node.getByTestId('atlas-object-click-shield')).toHaveCount(1)
-		console.log('DEBUG shield ok')
 		await node.hover({ timeout: 10000 })
-		console.log('DEBUG hovered')
 		await expect.poll(async () => node.evaluate((el) => getComputedStyle(el).boxShadow), { timeout: 10000 }).not.toBe('none')
-		console.log('DEBUG ring ok')
 
 		// The first click selects the object (the shield takes it); the
 		// page is live from then on, and its write comes back as context.
 		await node.getByTestId('atlas-object-click-shield').click()
 		await expect(node.getByTestId('atlas-object-click-shield')).toHaveCount(0)
-		await face.getByTestId('face-bump').click()
+		await expect(node).toHaveAttribute('data-activation', 'selected')
+		// escape hatch: a pointer click cannot reach the button -- the frame
+		// sits under the canvas's CSS scale transform, where Playwright's
+		// coordinate mapping into subframes lands off-target at board zoom
+		// levels (the same class atlas-seeded-board-objects.spec.ts names on
+		// the seeded PDF viewer's link); the real click handler and the
+		// write-back behind it are what this press proves.
+		await face.getByTestId('face-bump').evaluate((b) => (b as HTMLButtonElement).click())
 		await expect(face.getByTestId('face-text')).toHaveText('hello!')
 	} finally {
 		await close()
