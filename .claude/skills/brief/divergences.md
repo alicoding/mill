@@ -169,3 +169,10 @@ this file is the record, a brief is a projection of it.
 - Obvious: fix what a gate flagged and move on. Here: one strike makes a
   class — the same PR adds or confirms the gate/rule for the whole class
   and sweeps existing instances, or names the same-day goal that does.
+- Obvious: the review step above is advisory once the builder says it's
+  done. Here: `scripts/check-review-report.sh` runs as CI's required
+  `review-report` job -- the PR body itself must carry a `## Review`
+  section with the reviewer's report, `Contract match: yes`, and the
+  exact line `Important findings open: 0`, or CI rejects the PR. Paste
+  the review report into the PR body under `## Review` with that exact
+  line, not just into the final chat report.
