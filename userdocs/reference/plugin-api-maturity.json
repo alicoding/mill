@@ -12,7 +12,7 @@
       "mcp": "yes",
       "codeChangedAt": "2026-09-07",
       "docsChangedAt": "2026-09-06",
-      "daysBehindCode": 0,
+      "daysBehindCode": 1,
       "flags": []
     },
     {
@@ -53,8 +53,8 @@
       "sdkTypes": true,
       "mcp": "n/a",
       "codeChangedAt": "2026-09-07",
-      "docsChangedAt": "2026-09-05",
-      "daysBehindCode": 1,
+      "docsChangedAt": "2026-09-07",
+      "daysBehindCode": 0,
       "flags": []
     },
     {

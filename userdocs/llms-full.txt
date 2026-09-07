@@ -2650,6 +2650,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.space.rename` | Rename space… | — | atlas | Acts on the board's current selection |
 | `atlas.undo` | Undo | — | atlas | Always available |
 | `atlas.up` | Go up one level | `⌘↑` | atlas | Always available |
+| `audit.export` | Export audit trail | — | Global | Always available |
 | `backup.export` | Export everything | — | Global | Always available |
 | `backup.now` | Back up now | — | Global | Always available |
 | `browser.pair` | Pair a browser | — | Global | Always available |
@@ -2906,6 +2907,7 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Save | ⌘S | `workflow.save` |
 | Export everything | — | `backup.export` |
 | Export plugin audit | — | `extensions.exportAudit` |
+| Export audit trail | — | `audit.export` |
 | Lock vault | — | `secrets.lockVault` |
 
 ### Edit
@@ -4616,10 +4618,10 @@ A refused install leaves nothing on disk.
 
 | Family | Level | Conformance | Example | E2E | Docs | SDK types | MCP | Docs behind code (days) | Flags |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| canvasObjects | experimental | no | yes | yes | yes | yes | yes | 0 | — |
+| canvasObjects | experimental | no | yes | yes | yes | yes | yes | 1 | — |
 | steps | experimental | no | yes | yes | yes | no | yes | 0 | — |
 | captures | experimental | no | no | yes | yes | yes | n/a | 0 | — |
-| settings | stable | yes | yes | yes | yes | yes | n/a | 1 | — |
+| settings | stable | yes | yes | yes | yes | yes | n/a | 0 | — |
 | network | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
 | views | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
 | commands | stable | yes | yes | yes | yes | yes | yes | 0 | — |
