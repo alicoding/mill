@@ -7,16 +7,14 @@ No `paths` frontmatter — applies to every goal, every language.
   (best-in-class tools, real search), **Today** (what Mill does now,
   read/probed), **Gap** (the delta Plan answers). No Gap ⇒ not Ready.
 - **Adoption named before dispatch.** Precedent also names the library,
-  framework or package that already solves it: a real search (the
-  `research` agent), primary source linked, version pinned, entry-point
-  API named — or the search that found none. No coding brief goes out
-  without it.
+  framework or package that already solves it: a real search, primary
+  source linked, version pinned, entry-point API named — or the search
+  that found none. No coding brief goes out without it.
 - A capability map for any schema/adopt-vs-build call with more than
   one real future use (SPEC §3.3).
 - A goal file: Goal/Plan/**Acceptance as a checkable predicate**.
 - Frontmatter header (`id`, `status`, `date`, `prs [..]`, `proof [..]`,
-  `spec_refs [..]`) — source data for the delivery-evidence ledger
-  (`docs/goals/0164-delivery-evidence-ledger.md`).
+  `spec_refs [..]`) — source data for the delivery-evidence ledger.
 - Bug-shaped goals also carry `defect_class: <kebab-slug>` — ONE axis.
   Grep `defect_class` across `goals/` before coining a new slug. **Two
   strikes: second occurrence makes the goal about the CLASS.** Older
@@ -28,7 +26,7 @@ No `paths` frontmatter — applies to every goal, every language.
 Before a capability's goal starts, answer EVERY line in the goal file —
 "wired", "deliberately not, because …", or "follow-up goal NNNN":
 1. **Configure** — a "which external thing" value? → entity + RefKind.
-2. **Workflows** — composition-shaped (ADR-0035)? → composition + seed.
+2. **Workflows** — composition-shaped? → composition + seed.
 3. **Atlas** — knowledge a card should point at?
 4. **Settings** — an app-level preference (kernel config only)?
 5. **Keyboard shortcut** — a command-registry entry?
@@ -78,12 +76,11 @@ exemption.
 A BACKLOG.md entry with the same DoR/DoD as any goal — never a bare
 TODO (a comment may point at a goal/ADR id, never stand alone).
 
-## Deferrals need a home (goal 0128)
+## Deferrals need a home
 A gap between a researched precedent and what Mill has today is NOT
 deferrable — build it in the goal that found it; an agent that would
 defer it reports it instead, including gaps found by any review. A
 deferral is legal only when the same sentence names its tracking home:
 a goal number, BACKLOG line, SPEC `OPEN` item, or revisit trigger —
 never standing alone. Goal files carry a "Deferred from this goal"
-section when scope was narrowed, feeding
-`docs/goals/archive/0128-deferred-register.md`.
+section when scope was narrowed.

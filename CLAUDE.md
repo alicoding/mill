@@ -23,7 +23,7 @@ model below: ADR-0050.
    when the change is smaller than the brief that would describe it, and states why.
 3. **A design question surfacing mid-build is reported, never decided by the agent**; the
    orchestrator decides and amends the brief.
-4. **Verification stays the orchestrator's**: eyes on the diff, the live build probed,
+4. **Verification stays the orchestrator's**: eyes on the diff, the INSTALLED app driven,
    the screenshot pass. Never accept an agent's report as the evidence.
 5. **Token accounting is a design constraint**: file spelunking, log reading,
    commit/rebase babysitting belong to agents (explorer, test-investigator,
