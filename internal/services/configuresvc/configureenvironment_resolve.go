@@ -28,7 +28,7 @@ func (c *ConfigureService) resolveEnvironment(id string, run composition.SecretA
 	if !ok {
 		return composition.ResolvedEnvironment{}, fmt.Errorf("no environment with id %q", id)
 	}
-	actx := secretaudit.AccessContext{Context: secretaudit.ContextEnvironmentVar, RunID: run.RunID, WorkflowID: run.WorkflowID}
+	actx := secretaudit.AccessContext{Context: secretaudit.ContextEnvironmentVar, RunID: run.RunID, WorkflowID: run.WorkflowID, StepID: run.StepID}
 	vars := make(map[string]string, len(found.Vars))
 	for _, v := range found.Vars {
 		if !v.Secret {

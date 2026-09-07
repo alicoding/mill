@@ -49,7 +49,7 @@ func (c *ConfigureService) resolveHTTPRequest(id string, run composition.SecretA
 		return composition.ResolvedHTTPRequest{}, fmt.Errorf("no request with id %q", id)
 	}
 
-	authCtx := secretaudit.AccessContext{Context: secretaudit.ContextIntegrationAuth, RunID: run.RunID, WorkflowID: run.WorkflowID}
+	authCtx := secretaudit.AccessContext{Context: secretaudit.ContextIntegrationAuth, RunID: run.RunID, WorkflowID: run.WorkflowID, StepID: run.StepID}
 	secret, err := c.resolveHTTPRequestSecret(req, authCtx)
 	if err != nil {
 		return composition.ResolvedHTTPRequest{}, err
@@ -58,7 +58,7 @@ func (c *ConfigureService) resolveHTTPRequest(id string, run composition.SecretA
 	if err != nil {
 		return composition.ResolvedHTTPRequest{}, err
 	}
-	actx := secretaudit.AccessContext{Context: secretaudit.ContextHTTPHeader, RunID: run.RunID, WorkflowID: run.WorkflowID}
+	actx := secretaudit.AccessContext{Context: secretaudit.ContextHTTPHeader, RunID: run.RunID, WorkflowID: run.WorkflowID, StepID: run.StepID}
 	headers, err := c.resolveVaultRefHeaders(req.Label, req.Headers, actx)
 	if err != nil {
 		return composition.ResolvedHTTPRequest{}, err

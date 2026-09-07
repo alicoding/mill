@@ -55,7 +55,7 @@ func init() {
 			},
 		},
 	}, func(node Node, ctx ExecContext) (ExecContext, error) {
-		rp, err := lookupAIProviderFn(node.Config[aiProviderIDConfigKey])
+		rp, err := lookupAIProviderFn(node.Config[aiProviderIDConfigKey], secretAccessRunFromCtx(ctx))
 		if err != nil {
 			return ctx, fmt.Errorf("process-ai-completion: %w", err)
 		}

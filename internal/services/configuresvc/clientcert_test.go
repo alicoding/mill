@@ -21,6 +21,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/adapters/secretauditstore"
 	"github.com/alicoding/mill/internal/domain/clientcert"
+	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/usererror"
 	pkcs12 "software.sslmate.com/src/go-pkcs12"
 )
@@ -237,6 +238,49 @@ func TestClientCertificate_ResolutionRecordsOneAuditLinePerRead(t *testing.T) {
 	for _, r := range records {
 		if r.Context != secretaudit.ContextClientCertificate {
 			t.Fatalf("audit context = %q, want %q", r.Context, secretaudit.ContextClientCertificate)
+		}
+		if r.RunID != "" || r.WorkflowID != "" || r.StepID != "" {
+			t.Fatalf("RunID/WorkflowID/StepID = %q/%q/%q, want empty (no run attached to this ctx)", r.RunID, r.WorkflowID, r.StepID)
+		}
+	}
+}
+
+// TestClientCertificate_RunAttachedToContext_RecordsRunAndStep proves
+// goal 0371's TLS-handshake seam: a run's own SecretAccessRun, attached
+// to ConfigFor's ctx the same way sendHTTPRequest attaches it
+// (composition.WithSecretAccessRun), reaches the audit line -- the one
+// resolver in this package with no ExecContext of its own to read.
+func TestClientCertificate_RunAttachedToContext_RecordsRunAndStep(t *testing.T) {
+	ca := newTestCA(t)
+	cfg, _ := newTestConfigureService(t)
+	cfg.clientCerts = nil
+	secrets, auditStore := newAuditedSecretService(t, cfg)
+	httpconnector.SetClientTLS(cfg)
+	t.Cleanup(func() { httpconnector.SetClientTLS(nil) })
+	_, certPEM, keyPEM := ca.issueLeaf(t, "mill-client", true, time.Now().Add(24*time.Hour))
+	certEntry, err := secrets.CreateSecret("cert", "", string(certPEM), "", "", nil, "certificate", "", nil)
+	if err != nil {
+		t.Fatalf("CreateSecret: %v", err)
+	}
+	keyEntry, err := secrets.CreateSecret("key", "", string(keyPEM), "", "", nil, "key", "", nil)
+	if err != nil {
+		t.Fatalf("CreateSecret: %v", err)
+	}
+	if _, err := cfg.CreateClientCertificate("Run-attributed", "api.example.com", "vault:"+certEntry.ID, "vault:"+keyEntry.ID, "", "", ""); err != nil {
+		t.Fatalf("CreateClientCertificate: %v", err)
+	}
+
+	ctx := composition.WithSecretAccessRun(t.Context(), composition.SecretAccessRun{RunID: "run-4", WorkflowID: "wf-4", StepID: "step-4"})
+	if _, _, ok, err := cfg.ConfigFor(ctx, "api.example.com"); err != nil || !ok {
+		t.Fatalf("ConfigFor = ok %v, err %v, want a resolved config", ok, err)
+	}
+	records, _, err := auditStore.List(secretauditstore.Filter{}, 10, 0)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	for _, r := range records {
+		if r.RunID != "run-4" || r.WorkflowID != "wf-4" || r.StepID != "step-4" {
+			t.Fatalf("RunID/WorkflowID/StepID = %q/%q/%q, want run-4/wf-4/step-4", r.RunID, r.WorkflowID, r.StepID)
 		}
 	}
 }

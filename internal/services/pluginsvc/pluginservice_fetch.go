@@ -122,7 +122,7 @@ func (p *PluginService) FetchForPlugin(pluginID string, req PluginFetchRequest) 
 	}
 	action := guardrailsvc.GuardedAction{
 		Kind:        FetchKind,
-		Attributes:  map[string]string{"host": host, "method": method, "url": req.URL, "declared": strconv.FormatBool(declared)},
+		Attributes:  pluginActorAttributes(pluginID, plugin, map[string]string{"host": host, "method": method, "url": req.URL, "declared": strconv.FormatBool(declared)}),
 		Description: fmt.Sprintf("%s %s", method, host),
 		Source:      "plugin:" + pluginID,
 	}

@@ -89,7 +89,7 @@ func init() {
 			return ctx, fmt.Errorf("process-ai-classify: no categories configured")
 		}
 
-		rp, err := lookupAIProviderFn(node.Config[aiProviderIDConfigKey])
+		rp, err := lookupAIProviderFn(node.Config[aiProviderIDConfigKey], secretAccessRunFromCtx(ctx))
 		if err != nil {
 			return ctx, fmt.Errorf("process-ai-classify: %w", err)
 		}

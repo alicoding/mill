@@ -29,8 +29,10 @@ type ResolvedAIProvider struct {
 // lookupAIProviderFn defaults to erroring so an ai-* node run before
 // ConfigureService exists (or before SetAIProviderLookup wires it)
 // fails loudly instead of silently no-op'ing -- same pattern every
-// other lookup*Fn in this package already uses.
-var lookupAIProviderFn = func(id string) (ResolvedAIProvider, error) {
+// other lookup*Fn in this package already uses. Takes a SecretAccessRun
+// (goal 0371, see mcpcall.go's lookupMCPServerFn for the reasoning) so
+// the API-key read this triggers attributes to the run/step that asked.
+var lookupAIProviderFn = func(id string, _ SecretAccessRun) (ResolvedAIProvider, error) {
 	return ResolvedAIProvider{}, fmt.Errorf("no AI provider lookup registered (yet) for id %q", id)
 }
 
@@ -38,16 +40,17 @@ var lookupAIProviderFn = func(id string) (ResolvedAIProvider, error) {
 // EffectForNode's dynamic-effect hook below) uses to resolve an
 // aiproviderId into its endpoint/model/secret. Called once from
 // main.go once ConfigureService exists.
-func SetAIProviderLookup(fn func(id string) (ResolvedAIProvider, error)) {
+func SetAIProviderLookup(fn func(id string, run SecretAccessRun) (ResolvedAIProvider, error)) {
 	lookupAIProviderFn = fn
 }
 
 // ResolveAIProvider exposes the currently-wired lookup to a caller
 // outside the node-execution path -- companionsvc's chat calls resolve
 // a provider through this SAME seam an ai-* node uses, never a second
-// resolution path (docs/goals/0101 slice 1).
+// resolution path (docs/goals/0101 slice 1). Carries no run (a chat
+// turn is not a workflow run).
 func ResolveAIProvider(id string) (ResolvedAIProvider, error) {
-	return lookupAIProviderFn(id)
+	return lookupAIProviderFn(id, SecretAccessRun{})
 }
 
 // composeAIUserContent implements every ai-* node's shared
@@ -127,7 +130,10 @@ func aiNodeEffectOverride(node Node) (guardrail.EffectClass, bool) {
 	if !aiNodeTypeIDs[node.NodeTypeID] {
 		return "", false
 	}
-	rp, err := lookupAIProviderFn(node.Config[aiProviderIDConfigKey])
+	// The guardrail-gate effect check runs BEFORE the node's own exec
+	// (docs/adr/0022) -- pre-run classification, not the run's own
+	// attributed read, so it carries no SecretAccessRun.
+	rp, err := lookupAIProviderFn(node.Config[aiProviderIDConfigKey], SecretAccessRun{})
 	if err != nil {
 		return "", false
 	}

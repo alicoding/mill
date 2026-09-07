@@ -103,11 +103,11 @@ func TestCancelGoal_UnknownSession_Errors(t *testing.T) {
 }
 
 func TestStartGoal_UnresolvableProvider_EmitsFailed(t *testing.T) {
-	composition.SetAIProviderLookup(func(id string) (composition.ResolvedAIProvider, error) {
+	composition.SetAIProviderLookup(func(id string, _ composition.SecretAccessRun) (composition.ResolvedAIProvider, error) {
 		return composition.ResolvedAIProvider{}, errors.New("no such provider")
 	})
 	t.Cleanup(func() {
-		composition.SetAIProviderLookup(func(id string) (composition.ResolvedAIProvider, error) {
+		composition.SetAIProviderLookup(func(id string, _ composition.SecretAccessRun) (composition.ResolvedAIProvider, error) {
 			return composition.ResolvedAIProvider{}, errors.New("no AI provider lookup registered (yet)")
 		})
 	})

@@ -78,7 +78,7 @@ func (m *MillMCPService) registerDebugTools() {
 		if m.exec == nil {
 			return nil, nil, fmt.Errorf("execution service not wired")
 		}
-		summary, err := m.exec.RunWorkflowStepped(id, in.Values, in.Payload)
+		summary, err := m.exec.RunWorkflowStepped(id, in.Values, in.Payload) //nolint:contextcheck // pre-flight graph validation has no run context to thread; openapispec.Parse deliberately takes none
 		if err != nil {
 			return nil, nil, err
 		}
