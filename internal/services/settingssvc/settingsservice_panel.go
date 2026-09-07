@@ -45,11 +45,10 @@ import (
 // mitigation directly rather than waiting for ApplicationStarted --
 // OnWindowEvent only registers a Go-side callback, no native run loop
 // dependency, same as WatchWindowGeometry's own direct-call timing.
-//
-// Deliberately never passed to WatchWindowGeometry -- the panel is a
-// fixed-size, fixed-position (WindowCentered) utility window, not
-// something whose geometry should persist across restarts the way the
-// main window's does.
+// Position persistence is wired separately, by wireAuxWindows calling
+// WatchPanelGeometry right after this (settingsservice_panelgeometry.go,
+// goal 0377) -- kept out of this method so the two independent
+// concerns (dismiss mitigation, geometry) stay in their own files.
 //
 //wails:ignore
 func (s *SettingsService) SetPanelWindow(w *windowing.Window) {

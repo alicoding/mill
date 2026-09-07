@@ -22,6 +22,12 @@ import (
 // settingsservice_presence.go (showing) and settingsservice_panel.go's
 // yieldFocusIfMainHidden (hiding).
 
+// quickPanelWidth/quickPanelHeight are the panel's fixed size
+// (DisableResize below) -- named so newQuickPanelWindow's own clamp
+// math (goal 0377) doesn't repeat the literals the WebviewWindowOptions
+// below already carry.
+const quickPanelWidth, quickPanelHeight = 560, 400
+
 // newQuickPanelWindow builds the Quick Panel (docs/adr/0033): a
 // floating window the summon hotkey toggles. URL is a hash route, not
 // a bare path: production asset serving has no SPA fallback, so a bare
@@ -30,12 +36,22 @@ import (
 // NOT a non-activating NSPanel (unmerged upstream at beta.4) --
 // showing this window still activates Mill and steals focus, which
 // SettingsService's yieldFocusIfMainHidden mitigates on dismiss.
-func newQuickPanelWindow(app *application.App) *application.WebviewWindow {
-	return app.Window.NewWithOptions(application.WebviewWindowOptions{
+//
+// A dragged position persists across summons (goal 0377, matching
+// Raycast/Alfred/Spotlight): when settingsService has one saved,
+// InitialPosition switches from WindowCentered to WindowXY with the
+// saved coordinate clamped into the nearest current screen's WorkArea
+// (settingssvc.ClampPanelPosition) -- so a position saved while an
+// external display was attached never reopens off-screen after it's
+// unplugged. Applied via WebviewWindowOptions before creation, same
+// "no move-after-creation path that avoids a flash" reasoning
+// LoadWindowGeometry's own doc comment gives for the main window.
+func newQuickPanelWindow(app *application.App, settingsService *settingssvc.SettingsService) *application.WebviewWindow {
+	opts := application.WebviewWindowOptions{
 		Name:             "quickpanel",
 		Title:            "Mill Quick Panel",
-		Width:            560,
-		Height:           400,
+		Width:            quickPanelWidth,
+		Height:           quickPanelHeight,
 		Hidden:           true,
 		Frameless:        true,
 		DisableResize:    true,
@@ -53,7 +69,31 @@ func newQuickPanelWindow(app *application.App) *application.WebviewWindow {
 			},
 		},
 		URL: "/#/quickpanel",
-	})
+	}
+	if x, y, ok := settingsService.LoadPanelGeometry(); ok {
+		opts.X, opts.Y = clampedPanelPosition(app, x, y)
+		opts.InitialPosition = application.WindowXY
+	}
+	return app.Window.NewWithOptions(opts)
+}
+
+// clampedPanelPosition converts app.Screen's live WorkArea data
+// (wails/v3@v3.0.0-beta.15's ScreenManager.GetAll/GetPrimary,
+// pkg/application/screenmanager.go -- confirmed directly against the
+// vendored source) into settingssvc.Rect and hands off to
+// ClampPanelPosition -- the one point that touches the real Screen
+// API, so that function's own math stays testable without one.
+func clampedPanelPosition(app *application.App, x, y int) (int, int) {
+	all := app.Screen.GetAll()
+	screens := make([]settingssvc.Rect, 0, len(all))
+	for _, screen := range all {
+		screens = append(screens, settingssvc.Rect{X: screen.WorkArea.X, Y: screen.WorkArea.Y, Width: screen.WorkArea.Width, Height: screen.WorkArea.Height})
+	}
+	var primary settingssvc.Rect
+	if p := app.Screen.GetPrimary(); p != nil {
+		primary = settingssvc.Rect{X: p.WorkArea.X, Y: p.WorkArea.Y, Width: p.WorkArea.Width, Height: p.WorkArea.Height}
+	}
+	return settingssvc.ClampPanelPosition(x, y, quickPanelWidth, quickPanelHeight, screens, primary)
 }
 
 // newApprovalPromptWindow builds the floating approval prompt
@@ -194,7 +234,8 @@ func wireAuxWindows(app *application.App, settingsService *settingssvc.SettingsS
 	// WrapAuxWindow, not WrapWindow: every window in this family opts
 	// out of macOS window restoration (docs/goals/0344). Only the main
 	// window, wired in main.go, stays restorable.
-	settingsService.SetPanelWindow(windowing.WrapAuxWindow(newQuickPanelWindow(app)))
+	settingsService.SetPanelWindow(windowing.WrapAuxWindow(newQuickPanelWindow(app, settingsService)))
+	settingsService.WatchPanelGeometry()
 	settingsService.SetApprovalPromptWindow(windowing.WrapAuxWindow(newApprovalPromptWindow(app)))
 	settingsService.SetRunMonitorWindow(windowing.WrapAuxWindow(newRunMonitorWindow(app)))
 	settingsService.SetCaptureWindow(windowing.WrapAuxWindow(newCaptureWindow(app)))

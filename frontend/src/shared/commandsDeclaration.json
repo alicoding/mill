@@ -1600,6 +1600,14 @@
     "needs": null
   },
   {
+    "id": "panel.resetPosition",
+    "label": "Reset Quick Panel position",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "perspective.row.delete",
     "label": "Delete perspective",
     "binding": null,

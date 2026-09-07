@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/alicoding/mill/internal/adapters/windowing"
 )
 
 // windowGeometryKey persists window position/size/maximized state --
@@ -74,13 +76,22 @@ func (s *SettingsService) LoadWindowGeometry() (x, y, width, height int, maximiz
 // diagnosable; a single failed write just means the window reopens at
 // its default position/size next launch, not a data-loss-shaped bug.
 func (s *SettingsService) persistWindowGeometry(g windowGeometry) {
+	s.persistGeometry(windowGeometryKey, g)
+}
+
+// persistGeometry is persistWindowGeometry's key-parameterized core --
+// goal 0377 extends this facility to a second window (the Quick Panel,
+// settingsservice_panelgeometry.go), keyed separately from the main
+// window's own windowGeometryKey so the two never collide or migrate
+// each other's saved state.
+func (s *SettingsService) persistGeometry(key string, g windowGeometry) {
 	data, err := json.Marshal(g)
 	if err != nil {
-		slog.Error("failed to marshal window geometry", "error", err)
+		slog.Error("failed to marshal window geometry", "key", key, "error", err)
 		return
 	}
-	if err := s.store.Set(windowGeometryKey, string(data)); err != nil {
-		slog.Error("failed to persist window geometry", "error", err)
+	if err := s.store.Set(key, string(data)); err != nil {
+		slog.Error("failed to persist window geometry", "key", key, "error", err)
 	}
 }
 
@@ -103,13 +114,24 @@ func (s *SettingsService) WatchWindowGeometry() {
 	if w == nil {
 		return
 	}
+	watchGeometry(w, s.persistWindowGeometry)
+}
 
+// watchGeometry is WatchWindowGeometry's key-agnostic core (goal 0377):
+// debounce-persists whichever window it's given through whichever
+// persist func the caller supplies -- WatchPanelGeometry
+// (settingsservice_panelgeometry.go) reuses this for the Quick Panel
+// rather than duplicating the debounce/OnGeometryChange wiring. A
+// package-level function, not a method: it closes over nothing from
+// *SettingsService, so the caller's own persist closure is the only
+// state it needs.
+func watchGeometry(w *windowing.Window, persist func(windowGeometry)) {
 	var timerMu sync.Mutex
 	var timer *time.Timer
-	persist := func() {
+	doPersist := func() {
 		x, y := w.Position()
 		width, height := w.Size()
-		s.persistWindowGeometry(windowGeometry{X: x, Y: y, Width: width, Height: height, Maximized: w.IsMaximised()})
+		persist(windowGeometry{X: x, Y: y, Width: width, Height: height, Maximized: w.IsMaximised()})
 	}
 	w.OnGeometryChange(func() {
 		timerMu.Lock()
@@ -117,6 +139,6 @@ func (s *SettingsService) WatchWindowGeometry() {
 		if timer != nil {
 			timer.Stop()
 		}
-		timer = time.AfterFunc(windowGeometryDebounce, persist)
+		timer = time.AfterFunc(windowGeometryDebounce, doPersist)
 	})
 }

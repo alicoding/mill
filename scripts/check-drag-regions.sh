@@ -18,6 +18,10 @@ pattern+='|['"'"'"]--wails-draggable['"'"'"][[:space:]]*:[[:space:]]*['"'"'"]dra
 declare -A allowlist=(
   ["frontend/src/app/App.module.css"]=1
   ["frontend/src/app/RunMonitor.module.css"]=1
+  # The Quick Panel's facet-chip row + search-input header (goal 0377):
+  # a frameless window's only drag handle, same RunMonitor.module.css
+  # shape.
+  ["frontend/src/app/QuickPanel.module.css"]=1
 )
 
 violations=0
@@ -42,8 +46,9 @@ done < <(git ls-files -z -- 'frontend/src')
 if [[ "$violations" -gt 0 ]]; then
   echo
   echo "drag-regions: $violations violation(s). Drag regions are opt-in --"
-  echo "only frontend/src/app/App.module.css's titlebar band and"
-  echo "frontend/src/app/RunMonitor.module.css's header may set"
-  echo "--wails-draggable: drag. See goal 0333, .claude/rules/architecture.md."
+  echo "only frontend/src/app/App.module.css's titlebar band,"
+  echo "RunMonitor.module.css's header, and QuickPanel.module.css's"
+  echo "facet-chip/search-input header may set --wails-draggable: drag."
+  echo "See goal 0333, .claude/rules/architecture.md."
   exit 1
 fi

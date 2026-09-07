@@ -7,6 +7,7 @@ import { refreshSecretTitles } from '../shared/secretTitleCache'
 import { refreshDisabledExtensions } from '../shared/extensionEnablementStore'
 import { refreshExtensionSettings } from '../shared/extensionSettingsStore'
 import { refreshPendingReview } from '../review/pendingReviewStore'
+import { refreshHasCustomPanelPosition } from '../shared/quickPanelPositionStore'
 
 // The one mill-data-changed router (docs/adr/0025 + goal 0017), split
 // out of App.tsx (CLAUDE.md's 500-line convention) -- zero behavior
@@ -54,6 +55,10 @@ const ENTITY_REFRESHERS: Record<string, () => Promise<void> | void> = {
   'secret': () => { void refreshVaultStatus(); void refreshSecretTitles() },
   'extension': refreshDisabledExtensions,
   'extension-setting': refreshExtensionSettings,
+  // The Quick Panel's own dragged position (goal 0377) -- a separate
+  // Wails window/JS context announces this over the same door every
+  // other cross-window change already uses.
+  'quickpanel-position': refreshHasCustomPanelPosition,
 }
 
 export function useDataChangedRouter(): void {

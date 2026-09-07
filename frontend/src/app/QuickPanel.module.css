@@ -98,6 +98,30 @@
   gap: var(--base-size-4, 4px);
 }
 
+/* Drag region (goal 0377): the panel is frameless with no native title
+   bar, so the top chrome IS its handle -- the same
+   --wails-draggable: drag / no-drag pair RunMonitor.module.css's own
+   .header already establishes, applied here to the facet-chip row and
+   FilteredActionList's own "Header" wrapper (the div around the search
+   input -- @primer/react's own name for it, confirmed directly against
+   FilteredActionListInput.js's data-component="FilteredActionList.Header").
+   Every interactive descendant opts back out so click/type/scroll keep
+   working; nothing outside these two containers needs a rule at all --
+   --wails-draggable defaults to no-drag everywhere it's unset. */
+.panel [data-testid="facet-chip-row"],
+.panel [data-component="FilteredActionList.Header"] {
+  --wails-draggable: drag;
+}
+.panel [data-testid="facet-chip-row"] button,
+.panel [data-component="FilteredActionList.Header"] input,
+.panel [data-component="FilteredActionList.Header"] button {
+  --wails-draggable: no-drag;
+}
+.panel [role="listbox"],
+.panel [role="option"] {
+  --wails-draggable: no-drag;
+}
+
 /* One row height, always (goal 0303): a long title or description
    truncates with an ellipsis instead of wrapping the row taller than
    its neighbors -- the converged launcher-list convention. Scoped to

@@ -78,7 +78,10 @@ Right-clicking the icon keeps the plain menu: Open Mill, Quit.
 ## Run from the Quick Panel
 
 Summon the Quick Panel with your hotkey, type a workflow's name, and
-the footer shows what the highlighted row can do:
+the footer shows what the highlighted row can do. Drag the panel by
+its top edge; it stays where you leave it. To put it back in the
+middle of the screen, search "Reset Quick Panel position" in the
+command palette (⌘K).
 
 - **↩** runs it. The panel stays open and the footer tells you the
   outcome: done and how long it took, failed and why, or waiting for
