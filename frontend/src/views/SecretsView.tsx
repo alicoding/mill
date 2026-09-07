@@ -471,7 +471,7 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
           onEdit={() => startEdit(detailID)}
           onHistory={() => setHistoryID(detailID)}
           onAccessHistory={() => setAccessHistoryID(detailID)}
-          onDelete={() => requestDelete(sorted.find((s) => s.ID === detailID) ?? { ID: detailID, Title: detailID, Username: '', URL: '', Tags: [], FieldNames: [], Kind: Kind.KindText, SourceRef: '', UpdatedAt: '' })}
+          onDelete={() => requestDelete(sorted.find((s) => s.ID === detailID) ?? { ID: detailID, Title: detailID, Username: '', URL: '', Tags: [], FieldNames: [], Kind: Kind.KindText, SourceRef: '', Origin: '', UpdatedAt: '' })}
         />
       )}
       {importOpen && <SecretsImportDialog onClose={() => setImportOpen(false)} onImported={() => { setImportOpen(false); refresh() }} />}

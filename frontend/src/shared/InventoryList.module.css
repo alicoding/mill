@@ -91,3 +91,9 @@
         min-width: 44px;
     }
 }
+
+/* A row disclosure (goal 0367's dotenv key read-back): optically
+   attached to the row's own text column, never a second row. */
+.disclosure {
+    margin-top: var(--base-size-4);
+}

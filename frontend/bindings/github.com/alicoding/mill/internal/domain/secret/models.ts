@@ -130,5 +130,13 @@ export interface Summary {
     "FieldNames": string[] | null;
     "Kind": Kind;
     "SourceRef": string;
+
+    /**
+     * Origin names where an entry came from when not typed by hand
+     * ("import:<file>") -- provenance, never a value, so the browse
+     * surface may read it the same way it reads the title (goal 0367's
+     * import dedupe matches on title + origin without a reveal).
+     */
+    "Origin": string;
     "UpdatedAt": string;
 }

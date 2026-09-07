@@ -91,6 +91,11 @@ type ConfigureService struct {
 	execEnvs           []execenv.ExecEnv
 	environments       []environment.Environment
 	secretSources      []secretsource.Source
+	// seedAssetsDir is where a file-backed seed asset (goal 0367's
+	// example dotenv file) is written; empty until wiring provides it,
+	// and the asset-backed golden stays unseeded until then (atlas's
+	// SetCapturesDir deferral is the template).
+	seedAssetsDir      string
 	conversionProfiles []conversionprofile.Profile
 	clientCerts        []clientcert.ClientCertificate
 	// clientCertStatuses caches one decoded status per entity revision
@@ -183,6 +188,7 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.reconcileBuiltInConversionProfiles()
 	c.reconcileBuiltInClientCertificates()
 	c.reconcileBuiltInDeclaredStepTypes()
+	c.reconcileBuiltInSecretSources()
 	// Client certificates reach the transport through this one seam
 	// (goal 0306 S1): httpconnector asks per request, this service
 	// answers from the vault. Wired here rather than in main.go for the

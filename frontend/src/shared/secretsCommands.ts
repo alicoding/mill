@@ -1,5 +1,7 @@
 import type { Command } from './commands'
 import { SecretService } from './bindings'
+import { useAppStore } from './store'
+import { useUISignalStore } from './uiSignalStore'
 import { refreshVaultBackupTime, refreshVaultStatus, useVaultStatusStore } from './vaultStatusStore'
 import type { UserError } from './userError'
 import { userErrorFrom } from './userError'
@@ -25,6 +27,21 @@ function record(promise: Promise<unknown>): void {
 }
 
 export const SECRETS_COMMANDS: Command[] = [
+  {
+    // "Find .env files…" (goal 0367): opens the Sources section's scan
+    // dialog from anywhere. Navigation first, the set-then-consume
+    // signal second -- the section may mount fresh on that navigation,
+    // and the signal is what the freshly-mounted view consumes. Quick
+    // Panel's own row overrides run() (panel window ≠ main window).
+    id: 'secrets.findDotenvFiles',
+    label: 'commands.secrets.findDotenvFiles',
+    defaultBinding: null,
+    quickPanel: true,
+    run: () => {
+      useAppStore.getState().setView({ kind: 'secrets', tab: 'sources' })
+      useUISignalStore.getState().requestSecretsDotenvScan()
+    },
+  },
   {
     // The vault seat's anchor (goal 0335): its own `menu` fixes the
     // seat's File-menu position, but shared/menuSpec.ts's seatOverrides

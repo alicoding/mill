@@ -219,6 +219,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `secret.row.delete` | Delete | — | Global | Acts on the selected entity |
 | `secret.row.edit` | Edit | — | Global | Acts on the selected entity |
 | `secret.row.history` | History | — | Global | Acts on the selected entity |
+| `secrets.findDotenvFiles` | Find .env files… | — | Global | Always available |
 | `secrets.lockVault` | Lock vault | — | Global | Conditional — available only in a matching state |
 | `secrets.resetVault` | Start a new vault | — | Global | Conditional — available only in a matching state |
 | `secrets.restoreVaultFromBackup` | Restore the last backup | — | Global | Conditional — available only in a matching state |

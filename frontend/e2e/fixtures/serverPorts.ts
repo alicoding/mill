@@ -475,3 +475,11 @@ export const EXTENSIONS_POLICY_MCP_BASE_PORT = 11980
 // fixture, and the 30-object measurement wants an undisturbed server.
 export const RUNTIME_PLUGIN_FACE_FRAME_SERVER_BASE_PORT = 12000
 export const RUNTIME_PLUGIN_FACE_FRAME_MCP_BASE_PORT = 12020
+
+// secret-references.spec.ts's sourceless-refusal case (goal 0367): the
+// seeded example dotenv source is a source on every server, so the
+// form's true "no sources" refusal needs a server where it has been
+// deleted -- own pair, same shared-vs-dedicated reasoning as
+// SECRETS_SERVER_BASE_PORT above.
+export const SECRET_REFERENCES_SERVER_BASE_PORT = 12040
+export const SECRET_REFERENCES_MCP_BASE_PORT = 12060
