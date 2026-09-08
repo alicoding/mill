@@ -204,6 +204,22 @@ tasks:
     cmds:
       - codesign --force --deep --sign - "{{.BIN_DIR}}/{{.APP_NAME}}.app"
 
+  codesign:dev:
+    summary: Signs the app bundle with the stable local dev identity (macOS only)
+    desc: |
+      Same shape as codesign:adhoc -- only the identity differs, no
+      hardened runtime (codesign:adhoc has none either). `install:app`
+      (root Taskfile.yml) calls this instead of relying on package's
+      own codesign:adhoc step when "Mill Dev Signing" is present, so
+      the installed app keeps a STABLE signing identity across
+      reinstalls: an ad-hoc signature (`--sign -`) has no Team
+      Identifier, so TCC re-keys the Accessibility grant to the
+      binary's own code digest on every rebuild and silently drops it
+      (goal 0381). One-time setup: scripts/setup-dev-signing.sh.
+    internal: true
+    cmds:
+      - codesign --force --deep --sign "Mill Dev Signing" "{{.BIN_DIR}}/{{.APP_NAME}}.app"
+
   codesign:skip:
     summary: Skips codesigning when cross-compiling
     internal: true

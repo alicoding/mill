@@ -86,11 +86,52 @@ tasks:
       Prefer `task dev` for iterating (hot reload, no install). Use this
       only when you need the real installed .app (Accessibility-gated
       hotkeys, the native menu, launch/Spotlight behaviour).
+
+      Stable dev signing (goal 0381): once scripts/setup-dev-signing.sh
+      has run, this re-signs the bundle with the local "Mill Dev
+      Signing" identity instead of leaving package's own ad-hoc
+      signature -- a stable identity keeps ONE Accessibility grant
+      valid across every reinstall (ad-hoc's `--sign -` has no Team
+      Identifier, so TCC re-keys the grant to the binary's own code
+      digest and drops it on every rebuild). Falls back to the ad-hoc
+      signature with a one-line warning when the identity isn't set up
+      yet -- never a hard failure.
+
+      `MILL_DRIVE_BRIDGE=1 EXTRA_TAGS=mcp task install:app`: also builds
+      in Wails' own MCP control bridge and the frontend's driving hook
+      (`window.__millRunCommand`, normally tree-shaken out of every
+      build) -- what `.claude/skills/drive-installed-app/SKILL.md`
+      needs to drive this exact installed app. Both vars are plain
+      exported env vars, not Task template vars: `task package`'s own
+      dependency chain rebuilds the frontend a SECOND time internally
+      (`build/Taskfile.yml`'s `build:frontend`, checksum-fingerprinted,
+      always runs at least once per invocation regardless of an
+      earlier manual build) -- setting MILL_DRIVE_BRIDGE on the
+      invoking shell, not just this task's own explicit frontend build
+      below, is what makes BOTH builds see it (confirmed live: a
+      Task-level conditional only reaching the first build shipped a
+      bundle without the hook). Omit both for the everyday reinstall
+      the everyday plain reinstall; that stays bridge-free.
     cmds:
       - '{{if ne .GOOS "darwin"}}echo "install:app is macOS-only"; exit 1{{end}}'
       - cd frontend && {{.PACKAGE_MANAGER}} run build
       - rm -rf {{.BIN_DIR}}/{{.APP_NAME}}.app
       - task: package
+        vars:
+          EXTRA_TAGS: '{{.EXTRA_TAGS}}'
+      - |
+        # Inlined rather than `task darwin:codesign:dev` (same one
+        # command, build/darwin/Taskfile.yml's own codesign:dev task):
+        # that task is `internal: true`, and this step needs to run
+        # ONLY when the identity exists, printing a warning otherwise
+        # -- a plain task dependency has no such conditional-with-
+        # fallback-message shape.
+        if security find-identity -v -p codesigning 2>/dev/null | grep -q '"Mill Dev Signing"'; then
+          codesign --force --deep --sign "Mill Dev Signing" "{{.BIN_DIR}}/{{.APP_NAME}}.app"
+          echo "🔏 Re-signed with the stable dev identity: Mill Dev Signing"
+        else
+          echo "⚠️  No stable dev signing identity (\"Mill Dev Signing\") found -- this install's Accessibility grant will be dropped on the NEXT reinstall. Run scripts/setup-dev-signing.sh once to fix this."
+        fi
       - pkill -x {{.APP_NAME}} || true
       - rm -rf /Applications/Mill.app
       - ditto {{.BIN_DIR}}/{{.APP_NAME}}.app /Applications/Mill.app

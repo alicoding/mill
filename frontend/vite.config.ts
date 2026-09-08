@@ -76,6 +76,13 @@ function goLivenessPlugin(): Plugin {
 export default defineConfig({
   define: {
     __MILL_REPO_HEAD__: JSON.stringify(repoHead()),
+    // goal 0381: true only when MILL_DRIVE_BRIDGE=1 is set for this
+    // build (internal/webviewbridgesmoke's own buildApp(), and
+    // install:app's EXTRA_TAGS=mcp path) -- gates
+    // shared/driveBridge.ts's window.__millRunCommand registration so
+    // it tree-shakes out of every other build, the everyday `task
+    // install:app` reinstall included.
+    __MILL_DRIVE_BRIDGE__: JSON.stringify(process.env.MILL_DRIVE_BRIDGE === "1"),
   },
   server: {
     host: "127.0.0.1",
