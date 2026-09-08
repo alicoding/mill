@@ -46,20 +46,28 @@ const DRAWIO_EXPORTERS: UnitExporter[] = [
 
 const drawioSvgPageLoader = cachedLoader(() => import('./AtlasUnitMirrorPage').then((m) => m.AtlasUnitMirrorPage))
 const drawioPageLoader = cachedLoader(() => import('./AtlasUnitDrawioPage').then((m) => m.AtlasUnitDrawioPage))
+// A promoted card keeps its face (goal 0410 S1): drawio-svg IS a plain
+// image file (drawio's own SVG export, diagram XML embedded), read
+// through the exact same MirrorContent path mirror-image already
+// uses -- its face reuses that unit's face unchanged rather than a
+// second image-rendering wiring. The bare .drawio unit's face renders
+// through the vendored viewer, same as its Page.
+const drawioSvgFaceLoader = cachedLoader(() => import('./AtlasUnitMirrorImageFace').then((m) => m.AtlasUnitMirrorImageFace))
+const drawioFaceLoader = cachedLoader(() => import('./AtlasUnitDrawioFace').then((m) => m.AtlasUnitDrawioFace))
 
 export const DRAWIO_UNITS: UnitRenderer[] = [
   {
     id: 'drawio-svg',
     detect: (card) => card.MirrorPath.toLowerCase().endsWith(DRAWIO_SVG_SUFFIX),
     tag: () => ({ label: 'DRAWIO', color: 'attention' }),
-    render: { Page: drawioSvgPageLoader },
+    render: { Page: drawioSvgPageLoader, Face: drawioSvgFaceLoader },
     exporters: DRAWIO_SVG_EXPORTERS,
   },
   {
     id: 'drawio',
     detect: (card) => extensionOf(card.MirrorPath) === DRAWIO_EXTENSION,
     tag: () => ({ label: 'DRAWIO', color: 'attention' }),
-    render: { Page: drawioPageLoader },
+    render: { Page: drawioPageLoader, Face: drawioFaceLoader },
     exporters: DRAWIO_EXPORTERS,
   },
 ]

@@ -35,10 +35,42 @@ export interface ContentQuery {
     /** Narrows to one card's direct children. */
     parentId?: string;
 }
+/** One firing of the entity/object lifecycle family:
+ * `event` names which of the six transitions fired
+ * ('entity.created' | 'entity.referenced' | 'entity.dereferenced' |
+ * 'entity.deleted' | 'object.created' | 'object.deleted'). Every other
+ * field is populated only by the event that carries it: entityKind/
+ * entityId on every 'entity.*' event; by on 'entity.referenced'/
+ * 'entity.dereferenced' (which board object added or removed the
+ * reference); remaining on 'entity.dereferenced' only (how many
+ * references survive it — 0 means nothing does anymore); boardId/
+ * objectId on every 'object.*' event; kind and entityRef on
+ * 'object.created' only (the object's own kind, and the Configure
+ * entity kind it references, when it declares one). Ids and kinds
+ * only, never the entity's own content — query for that. */
+export interface LifecycleEventPayload {
+    event: 'entity.created' | 'entity.referenced' | 'entity.dereferenced' | 'entity.deleted' | 'object.created' | 'object.deleted';
+    entityKind?: string;
+    entityId?: string;
+    by?: {
+        boardId?: string;
+        objectId?: string;
+        workflowId?: string;
+    };
+    remaining?: number;
+    boardId?: string;
+    objectId?: string;
+    kind?: string;
+    entityRef?: string;
+}
 /** The events a plugin can subscribe to through api.on.
  * 'contents:changed' fires whenever anything on the board is created,
- * edited, moved, or deleted, carrying the changed entry's id. A closed
- * map: a new event arrives here as a type addition, never a loose
+ * edited, moved, or deleted, carrying the changed entry's id.
+ * 'entity.*' fires on every entity.created/referenced/dereferenced/
+ * deleted; 'object.*' fires on every object.created/deleted — a
+ * filter's `kinds` narrows 'entity.*' by entityKind ('list', say) and
+ * 'object.*' by the object's own kind ('table', say). A closed map: a
+ * new event arrives here as a type addition, never a loose
  * convention. */
 export interface PluginEventMap {
     /** kind names WHICH family changed — 'card', 'note', a board
@@ -49,6 +81,8 @@ export interface PluginEventMap {
         id: string;
         kind?: string;
     };
+    'entity.*': LifecycleEventPayload;
+    'object.*': LifecycleEventPayload;
 }
 /** One field of a card kind's own schema, as api.kinds lists it. */
 export interface KindFieldInfo {

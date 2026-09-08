@@ -179,21 +179,56 @@ function registerFramedCapture(ctx: ActivationFrameContext, api: MillPluginAPI, 
 }
 
 // subscribe is the door behind on('contents:changed') and
-// settings.onChange (contract item 2): the host holds the real
-// subscription, and forwards each firing as an event the frame routes
-// by the subId this answers.
-function subscribe(ctx: ActivationFrameContext, topic: { topic: 'contents:changed'; kinds?: string[] } | { topic: 'settings'; key: string }): { subId: number } {
+// settings.onChange (contract item 2); 'entity.*'/'object.*' answer the
+// lifecycle family the same way (docs/goals/0392 S2): the host holds
+// the real subscription, and forwards each firing as an event the
+// frame routes by the subId this answers.
+function subscribe(ctx: ActivationFrameContext, topic: SubscribeTopic): { subId: number } {
   const subId = ++ctx.nextSubId
-  const teardown = topic.topic === 'contents:changed'
-    ? Events.On('mill-data-changed', (evt) => {
-      const data = evt.data as { entity?: string; id?: string; kind?: string } | undefined
-      if (data?.entity !== 'atlas') return
-      if (topic.kinds && !topic.kinds.includes(data.kind ?? '')) return
-      post(ctx, { mill: 1, kind: 'event', event: 'contents.changed', payload: { subId, id: data.id ?? '', kind: data.kind } })
-    })
-    : subscribeSettingsChange(ctx, subId, topic.key)
+  let teardown: () => void
+  switch (topic.topic) {
+    case 'contents:changed':
+      teardown = subscribeContentsChanged(ctx, subId, topic.kinds)
+      break
+    case 'entity.*':
+    case 'object.*':
+      teardown = subscribeLifecycleEvent(ctx, subId, topic.topic, topic.kinds)
+      break
+    default:
+      teardown = subscribeSettingsChange(ctx, subId, topic.key)
+  }
   ctx.subscriptions.set(subId, { unsubscribe: teardown })
   return { subId }
+}
+
+type SubscribeTopic =
+  | { topic: 'contents:changed'; kinds?: string[] }
+  | { topic: 'entity.*' | 'object.*'; kinds?: string[] }
+  | { topic: 'settings'; key: string }
+
+function subscribeContentsChanged(ctx: ActivationFrameContext, subId: number, kinds: string[] | undefined): () => void {
+  return Events.On('mill-data-changed', (evt) => {
+    const data = evt.data as { entity?: string; id?: string; kind?: string } | undefined
+    if (data?.entity !== 'atlas') return
+    if (kinds && !kinds.includes(data.kind ?? '')) return
+    post(ctx, { mill: 1, kind: 'event', event: 'contents.changed', payload: { subId, id: data.id ?? '', kind: data.kind } })
+  })
+}
+
+// subscribeLifecycleEvent answers 'entity.*'/'object.*' (docs/goals/0392
+// S2): one wire event carries the whole lifecycle family, discriminated
+// by its own `event` field; kinds narrows by entityKind for entity.*
+// and by the object's own kind for object.*, mirroring hostApi.ts's
+// same-DOM implementation of this same topic.
+function subscribeLifecycleEvent(ctx: ActivationFrameContext, subId: number, topic: 'entity.*' | 'object.*', kinds: string[] | undefined): () => void {
+  const prefix = topic === 'entity.*' ? 'entity.' : 'object.'
+  const kindField = topic === 'entity.*' ? 'entityKind' : 'kind'
+  return Events.On('mill-lifecycle-event', (evt) => {
+    const data = evt.data as Record<string, unknown> & { event?: string } | undefined
+    if (!data?.event?.startsWith(prefix)) return
+    if (kinds && !kinds.includes((data[kindField] as string | undefined) ?? '')) return
+    post(ctx, { mill: 1, kind: 'event', event: 'lifecycle.event', payload: { subId, ...data } })
+  })
 }
 
 // subscribeSettingsChange resolves the key against THIS plugin's own
@@ -227,7 +262,7 @@ export async function callActivationMethod(ctx: ActivationFrameContext, api: Mil
     case 'register.capture': registerFramedCapture(ctx, api, first as { id: string; hasMessageHandler: boolean }); return true
     case 'view.postMessage': { const { id, payload } = first as { id: string; payload: unknown }; getPluginView(ctx.pluginId, id)?.post?.(payload); return true }
     case 'capture.postMessage': { const { id, payload } = first as { id: string; payload: unknown }; getPluginCapture(ctx.pluginId, id)?.post?.(payload); return true }
-    case 'subscribe': return subscribe(ctx, first as { topic: 'contents:changed'; kinds?: string[] } | { topic: 'settings'; key: string })
+    case 'subscribe': return subscribe(ctx, first as SubscribeTopic)
     case 'unsubscribe': unsubscribe(ctx, (first as { subId: number }).subId); return true
     // extensions.get/extensions.call (goal 0364): the wire-safe twin
     // of MillPluginAPI['extensions']['get'] -- a live function cannot

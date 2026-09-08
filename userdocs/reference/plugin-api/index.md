@@ -20,6 +20,7 @@
 - [GuardedActionResult](interfaces/GuardedActionResult.md)
 - [KindFieldInfo](interfaces/KindFieldInfo.md)
 - [KindInfo](interfaces/KindInfo.md)
+- [LifecycleEventPayload](interfaces/LifecycleEventPayload.md)
 - [LinkInfo](interfaces/LinkInfo.md)
 - [LinkKindInfo](interfaces/LinkKindInfo.md)
 - [LinkQuery](interfaces/LinkQuery.md)

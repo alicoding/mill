@@ -18,16 +18,21 @@ export function snapshotPluginSettings(manifest: Manifest): Record<string, boole
   return snapshot
 }
 
-// settingDeclsFromManifest -- a plugin's manifest `contributes.settings`
-// (docs/goals/0258 slice 1, VS Code's `default` spelling) restated as
+// settingDeclsFromManifest -- a plugin's declared settings restated as
 // the same ExtensionSettingDecl every compiled-in noun declares, so ONE
-// host control renders both and ONE resolver serves both. The manifest
-// was already validated fail-closed by pluginsvc (type, default-of-
-// type, enum options, min/max) before it reached the frontend, so a
-// declaration here is trusted; the switch below is exhaustive over the
-// validated type set and the shape narrowing is the only work left.
+// host control renders both and ONE resolver serves both. `configuration`
+// (docs/goals/0349 S2, VS Code's own key) is canonical; `settings`
+// (docs/goals/0258 slice 1) is read only when configuration is absent --
+// pluginsvc already refused a manifest declaring both, so this never has
+// to choose between conflicting lists. The manifest was already
+// validated fail-closed by pluginsvc (type, default-of-type, enum
+// options, min/max) before it reached the frontend, so a declaration
+// here is trusted; the switch below is exhaustive over the validated
+// type set and the shape narrowing is the only work left.
 export function settingDeclsFromManifest(manifest: Manifest): ExtensionSettingDecl[] {
-  return (manifest.contributes?.settings ?? []).map(settingDeclFromContribution)
+  const contributes = manifest.contributes
+  const settings = contributes?.configuration ?? contributes?.settings ?? []
+  return settings.map(settingDeclFromContribution)
 }
 
 function settingDeclFromContribution(c: SettingContribution): ExtensionSettingDecl {

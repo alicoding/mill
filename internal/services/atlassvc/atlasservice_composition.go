@@ -22,6 +22,7 @@ import (
 func (a *AtlasService) WireCompositionSeams(cardChangeSink func(cardID, kindID, title, changeType, sourceRunID string)) {
 	composition.SetAtlasCardFinder(a.findCardsForComposition)
 	composition.SetAtlasCardCreator(a.createCardForComposition)
+	composition.SetAtlasFileObjectCreator(a.createFileObjectForComposition)
 	composition.SetAtlasCardUpdater(a.updateCardForComposition)
 	composition.SetAtlasCardLinker(a.linkCardsForComposition)
 	composition.SetAtlasReplyMaterializer(a.materializeReplyItems)
@@ -45,6 +46,14 @@ func (a *AtlasService) createCardForComposition(kindID, title string, fields map
 		return composition.AtlasCard{}, err
 	}
 	return toComposedCard(c), nil
+}
+
+func (a *AtlasService) createFileObjectForComposition(base64Data, filename, sourceRunID string) (composition.AtlasFileObjectResult, error) {
+	r, err := a.CreateFileObjectFromDownload(base64Data, filename, sourceRunID)
+	if err != nil {
+		return composition.AtlasFileObjectResult{}, err
+	}
+	return composition.AtlasFileObjectResult{ObjectID: r.ObjectID, Note: r.Note}, nil
 }
 
 func (a *AtlasService) updateCardForComposition(cardID string, fields map[string]string, sourceRunID string) (composition.AtlasCard, error) {

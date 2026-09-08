@@ -8,14 +8,11 @@ import { describeCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from 
 import { isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from '../composition/hotkeyCapture'
 import KeyboardShortcutsSection from './KeyboardShortcutsSection'
 import { SettingsRow } from './SettingsRow'
+import { mustSetting } from '../shared/settingsRegistry'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './SettingsView.module.css'
 import { background } from '../shared/background'
 import { openExternalUrl } from '../shared/openExternal'
-
-// Where the rest of the two trimmed captions lives (goal 0321): the
-// commands reference names every command and how rebinding works.
-const COMMANDS_DOCS_PAGE = 'reference/commands.md'
 
 // Settings > Shortcuts (goal 0321): the global summon hotkey and the
 // in-window keymap, one pane -- they were two separate sections of the
@@ -98,9 +95,7 @@ export default function SettingsShortcutsPane() {
         </Text>
       )}
       <SettingsRow
-        label={t('settings.globalHotkey.label')}
-        caption={t('settings.globalHotkey.description')}
-        docsPage={COMMANDS_DOCS_PAGE}
+        setting={mustSetting('shortcuts.globalHotkey')}
         control={() => (
           summonRecording ? (
             <Text size="small" className={listStyles.recording}>{t('settings.globalHotkey.recording')}</Text>
