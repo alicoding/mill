@@ -37,7 +37,8 @@ func SetChildWorkflowRunner(fn func(runCtx any, workflowID string, attrValues ma
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "child-workflow", Kind: KindProcess,
-		Label: "Run another workflow",
+		PaletteGroup: PaletteGroupFlow,
+		Label:        "Run another workflow",
 		// Effect is explicitly ClassNone (never left at the zero value) --
 		// docs/adr/0022: "Child workflows carry no class of their own
 		// (none): the child's own steps are gated inside the child's own

@@ -50,13 +50,14 @@ func buildClassifySchema(categories []string) []byte {
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "process-ai-classify", Kind: KindProcess,
-		Effect:      guardrail.ClassExternal, // dynamic downgrade for a loopback provider -- aiprovider.go's aiNodeEffectOverride
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadText},
-		Produces:    PayloadProduce{Passthrough: true},
-		Output:      "unchanged payload; the chosen category is written into the named Attribute below",
-		Label:       "Classify with AI",
-		Description: "Sends the payload, plus an optional instruction, to a configured AI provider and asks it to pick exactly one of this step's declared categories, writing the choice into a named Attribute. Pairs with Branch to route on the result.",
+		PaletteGroup: PaletteGroupAI,
+		Effect:       guardrail.ClassExternal, // dynamic downgrade for a loopback provider -- aiprovider.go's aiNodeEffectOverride
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadText},
+		Produces:     PayloadProduce{Passthrough: true},
+		Output:       "unchanged payload; the chosen category is written into the named Attribute below",
+		Label:        "Classify with AI",
+		Description:  "Sends the payload, plus an optional instruction, to a configured AI provider and asks it to pick exactly one of this step's declared categories, writing the choice into a named Attribute. Pairs with Branch to route on the result.",
 		ConfigFields: []ConfigField{
 			{
 				Key: aiProviderIDConfigKey, Label: "AI provider",

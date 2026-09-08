@@ -1,77 +1,51 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { PALETTE_GROUP_ORDER, paletteGroupFor, shortLabel } from './paletteGroups'
 
-// Every NodeType ID registered server-side (internal/domain/
-// composition/*.go's RegisterNodeType call sites) as of design wave 3
-// -- checked directly against the Go registry when paletteGroups.ts
-// was written, not assumed. If a future PR adds a NodeType without
-// updating composition/paletteGroups.ts's own NODE_TYPE_GROUP map,
-// this list needs a matching update too -- the two are meant to drift
-// together, not silently apart (this test is what makes an omission
-// visible instead of silent).
-const ALL_REGISTERED_NODE_TYPE_IDS = [
-  'trigger-manual', 'trigger-hotkey', 'trigger-schedule', 'trigger-clipboard-watch',
-  'trigger-filesystem-watch', 'trigger-callable', 'trigger-system-event', 'trigger-atlas-card',
-  'capture-clipboard-html', 'capture-clipboard-info', 'capture-file', 'capture-attribute',
-  'process-extract-html', 'process-html-to-markdown', 'process-inject-text',
-  'process-ai-classify', 'process-ai-completion', 'process-ai-extract-structured',
-  'list-lookup', 'list-search', 'process-run-receipt', 'process-atlas-card-find',
-  'integration-http', 'mcp-tool-call', 'code-execution',
-  'child-workflow', 'decision-route',
-  'human-review', 'ruleset', 'decision-outcome',
-  'apply-clipboard-write-html', 'apply-clipboard-write-text', 'apply-file-write', 'apply-file-move',
-  'apply-atlas-card-create', 'apply-atlas-card-update', 'apply-atlas-card-link',
-  'apply-list-row',
-]
+// The committed contract export (`go generate ./internal/contract/...`,
+// goal 0134) is the live registry snapshot -- reading it directly (never
+// a list retyped by hand into this file) is what makes a new NodeType
+// shipping without a PaletteGroup show up here as a real failure instead
+// of silent drift (goal 0389: the previous version of this file kept its
+// own frozen 38-id list, which had already missed 12 registered types).
+interface ContractNodeType {
+  ID: string
+  Kind: string
+  PaletteGroup: string
+}
+const CONTRACT_PATH = path.resolve(__dirname, '../../../internal/contract/contract.json')
+const contractNodeTypes: ContractNodeType[] = JSON.parse(readFileSync(CONTRACT_PATH, 'utf8')).nodeTypes
 
 describe('paletteGroupFor', () => {
-  it('has exactly 38 registered node types accounted for', () => {
-    expect(ALL_REGISTERED_NODE_TYPE_IDS).toHaveLength(38)
+  it('has at least one registered node type to check (the contract file loaded)', () => {
+    expect(contractNodeTypes.length).toBeGreaterThan(0)
   })
 
-  it('maps every registered NodeType ID to one of the 9 display groups, without warning', () => {
+  it('maps every node type in the contract export to one of the declared display groups, without warning', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    for (const id of ALL_REGISTERED_NODE_TYPE_IDS) {
-      const group = paletteGroupFor({ ID: id, Kind: 'process' })
-      expect(PALETTE_GROUP_ORDER).toContain(group)
+    for (const nt of contractNodeTypes) {
+      expect(PALETTE_GROUP_ORDER, `node type ${nt.ID} has PaletteGroup ${JSON.stringify(nt.PaletteGroup)}`).toContain(nt.PaletteGroup)
+      expect(paletteGroupFor(nt)).toBe(nt.PaletteGroup)
     }
     expect(warn).not.toHaveBeenCalled()
     warn.mockRestore()
   })
 
-  it('falls back to the Kind\'s nearest group and warns, for an unknown ID -- never crashes', () => {
+  it('falls back to Actions and warns, for an invalid PaletteGroup -- never crashes', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const group = paletteGroupFor({ ID: 'totally-unregistered-future-node', Kind: 'apply' })
-    expect(group).toBe('apply')
+    const group = paletteGroupFor({ ID: 'totally-unregistered-future-node', Kind: 'apply', PaletteGroup: '' })
+    expect(group).toBe('actions')
     expect(warn).toHaveBeenCalledTimes(1)
     expect(warn.mock.calls[0][0]).toContain('totally-unregistered-future-node')
     warn.mockRestore()
   })
 
-  it('falls back even for an unknown Kind, never throwing', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    expect(() => paletteGroupFor({ ID: 'mystery-node', Kind: 'mystery-kind' })).not.toThrow()
-    warn.mockRestore()
-  })
-
-  // A declared step type (goal 0054 slice B) has no compile-time
-  // NODE_TYPE_GROUP entry -- its own author-chosen PaletteGroup (set on
-  // the synthesized NodeType, composition.NodeType.PaletteGroup) is the
-  // only channel that group reaches the palette through. Without this,
-  // every declared type would silently land in its engine's Kind
-  // fallback ('process' -> 'actions') regardless of what the author
-  // picked.
-  it('honors a declared type\'s own PaletteGroup over the Kind fallback, without warning', () => {
+  it('honors a declared type\'s own PaletteGroup, without warning', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const group = paletteGroupFor({ ID: 'steptype-my-lookup', Kind: 'process', PaletteGroup: 'data' })
     expect(group).toBe('data')
     expect(warn).not.toHaveBeenCalled()
-    warn.mockRestore()
-  })
-
-  it('ignores an empty or unrecognized PaletteGroup and falls back normally', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    expect(paletteGroupFor({ ID: 'integration-http', Kind: 'process', PaletteGroup: '' })).toBe('actions')
     warn.mockRestore()
   })
 })

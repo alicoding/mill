@@ -84,9 +84,10 @@ func TestCreateDeclaredStepType_HTTPEngine_ThenAppearsInNodeTypesAsDeclared(t *t
 		t.Errorf("synthesized NodeType %+v has Declared=false, want true", found)
 	}
 	// PaletteGroup is the only channel a declared type's author-chosen
-	// display group reaches the palette through -- it has no compile-time
-	// entry in the frontend's own NODE_TYPE_GROUP map to fall back on.
-	if found.PaletteGroup != string(declaredsteptype.GroupActions) {
+	// display group reaches the synthesized NodeType through -- a
+	// declared type has no compile-time RegisterNodeType call site of
+	// its own.
+	if found.PaletteGroup != composition.PaletteGroup(declaredsteptype.GroupActions) {
 		t.Errorf("synthesized NodeType PaletteGroup = %q, want %q", found.PaletteGroup, declaredsteptype.GroupActions)
 	}
 	// requestId is the engine's own binding field -- always hidden

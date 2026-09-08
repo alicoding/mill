@@ -34,12 +34,11 @@ var docPageByFamily = map[string]string{
 // gatherCurrency reads git history under repoRoot -- a shallow clone
 // (CI's test-go job checks out at fetch-depth 1) answers `git log --
 // <path>` with the checkout's own single commit for any path that
-// commit's tree carries, not the path's true last-touching commit;
-// GenerateMaturity's committed output is therefore generated from a
-// full local clone, and the freshness test that guards it excludes
-// these fields from its byte comparison (docsgen_maturity_test.go) --
-// they are read here for the rendered page and the control-room
-// dashboard, both meant to run against a real working checkout.
+// commit's tree carries, not the path's true last-touching commit.
+// Its answer never reaches a committed artifact (goal 0397): Report
+// never calls it, so the ledger `go generate` writes to userdocs/ is
+// always a pure function of tracked content. Only GatherAllCurrency
+// below calls it, for a live reader with a real working checkout.
 func gatherCurrency(repoRoot, family string) Currency {
 	codeSHA, code := gitLastTouch(repoRoot, sourcePaths(repoRoot, family))
 	docsSHA, docs := "", time.Time{}
@@ -52,6 +51,28 @@ func gatherCurrency(repoRoot, family string) Currency {
 		DocsCommit:    docsSHA,
 		DocsChangedAt: docs,
 	}
+}
+
+// CurrencyRow pairs a family with its git-derived Currency -- the
+// dashboard's own live-reader shape, one row per Families() entry.
+type CurrencyRow struct {
+	Family   string
+	Currency Currency
+}
+
+// GatherAllCurrency reads every family's Currency from repoRoot's git
+// history, in Families() order. Never call this from a code path that
+// writes a committed artifact -- its answer differs by branch and by
+// checkout depth for the same tracked content; it exists for a live
+// reader with a real working checkout, such as the control room
+// dashboard's `go run ./internal/docsgen/gen -currency` entry point.
+func GatherAllCurrency(repoRoot string) []CurrencyRow {
+	families := Families()
+	rows := make([]CurrencyRow, 0, len(families))
+	for _, family := range families {
+		rows = append(rows, CurrencyRow{Family: family, Currency: gatherCurrency(repoRoot, family)})
+	}
+	return rows
 }
 
 // sourcePaths lists the files (relative to repoRoot) that implement a

@@ -88,12 +88,20 @@ export function useAtlasContainmentMenus({
         ...objectIDs.map((id) => AtlasService.DeleteBoardObject(id)),
       ])
         .then((results) => {
+          // The entity-outcome toast segment (goal 0392 S1) only applies
+          // to a delete that touched exactly one entity-projecting board
+          // object -- a multi-select delete keeps the generic "Deleted
+          // N" copy, same as one that touches no such object at all.
+          const soleObjectResult = cardIDs.length === 0 && noteIDs.length === 0 && objectIDs.length === 1 ? results[0] : undefined
           onDeleted({
             CardIDs: results.flatMap((r) => r.CardIDs ?? []),
             NoteIDs: results.flatMap((r) => r.NoteIDs ?? []),
             ObjectIDs: results.flatMap((r) => r.ObjectIDs ?? []),
             LinksRemoved: results.reduce((sum, r) => sum + (r.LinksRemoved ?? 0), 0),
             ChildrenPromoted: results.reduce((sum, r) => sum + (r.ChildrenPromoted ?? 0), 0),
+            EntityRefKind: soleObjectResult?.EntityRefKind ?? '',
+            ObjectKind: soleObjectResult?.ObjectKind ?? '',
+            EntityStillUsed: soleObjectResult?.EntityStillUsed ?? false,
           })
           void refreshAtlas()
         })
