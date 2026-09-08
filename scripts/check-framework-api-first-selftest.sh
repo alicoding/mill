@@ -3,14 +3,8 @@
 # throwaway git repos, so an edit to the gate cannot silently stop
 # rejecting a cgo/Objective-C file dropped outside internal/adapters/**.
 set -euo pipefail
-
-# A git-commit-invoked pre-commit hook (unlike a bare `lefthook run`)
-# runs with GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE set to the repo being
-# committed; those env vars override `-C <fixturedir>` for every git
-# subcommand below, redirecting `init`/`add` at the REAL repo's worktree
-# instead of the fixture. Clearing them scopes every git call here to
-# its own `-C` target regardless of the calling context.
-unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_CEILING_DIRECTORIES 2>/dev/null || true
+# shellcheck source=lib/git-fixture.sh
+source "$(dirname "$0")/lib/git-fixture.sh"
 
 gate="$(cd "$(dirname "$0")" && pwd)/check-framework-api-first.sh"
 fails=0
@@ -20,8 +14,7 @@ wails_version="v3.0.0-beta.99"
 # $wails_version -- the gate only needs files in the git index, no commit.
 fixture() {
   local dir="$1"
-  mkdir -p "$dir"
-  git -C "$dir" init -q
+  git_fixture_init "$dir"
   printf 'module fixture\n\ngo 1.23\n\nrequire (\n\tgithub.com/wailsapp/wails/v3 %s\n)\n' "$wails_version" >"$dir/go.mod"
 }
 
