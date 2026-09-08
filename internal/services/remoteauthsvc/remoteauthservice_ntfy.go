@@ -233,25 +233,31 @@ type phoneChannel struct{ s *RemoteAuthService }
 
 func (phoneChannel) Name() string { return "phone" }
 
-// ShouldDeliver is true whenever at least one paired device carries a
-// topic -- deliberately NOT consulting evt.Focused: a browser tab's
-// focus on one machine says nothing about a phone in a pocket (docs/
-// goals/0171's event/delivery layering). One Type is excluded outright:
-// browserPairRequestEventType's Accept/Deny decision only ever happens
-// at the desktop Mill the requesting browser is trying to reach, so a
-// phone notification for it would never lead anywhere a person could
-// act (goal 0379 Decision 3; there is no Targets field on
-// notification.Event yet to express this declaratively).
+// ShouldDeliver is true exactly when Deliver would actually reach at
+// least one live phone: a paired device with a topic, and -- when
+// evt.Targets names specific device ids (docs/goals/0372) -- one of
+// THOSE ids specifically. Deliberately NOT consulting evt.Focused: a
+// browser tab's focus on one machine says nothing about a phone in a
+// pocket (docs/goals/0171's event/delivery layering).
+//
+// browserPairRequestEventType (goal 0379 Decision 3) is excluded by
+// this same Targets check, not a Type comparison: RequestPairing
+// publishes it with Targets naming no real device id (Accept/Deny only
+// ever happens at the desktop Mill the requesting browser is trying to
+// reach, so a phone notification for it would never lead anywhere a
+// person could act) -- the general "unmatched Targets never deliver"
+// rule already covers it with no Type-specific branch here.
 func (c phoneChannel) ShouldDeliver(evt notification.Event) bool {
-	if evt.Type == browserPairRequestEventType {
-		return false
-	}
 	c.s.mu.Lock()
 	defer c.s.mu.Unlock()
 	for _, d := range c.s.devices {
-		if d.Topic != "" {
-			return true
+		if d.Topic == "" {
+			continue
 		}
+		if len(evt.Targets) > 0 && !slices.Contains(evt.Targets, d.ID) {
+			continue
+		}
+		return true
 	}
 	return false
 }

@@ -67,6 +67,11 @@ type TokenAuthority interface {
 	// Accept/Deny in Mill, never a code typed out of band.
 	RequestPairing(label, source string) (remoteauthsvc.PairingRequestInfo, error)
 	PairingStatus(requestID string) remoteauthsvc.PairingRequestStatus
+	// RevokeDevice backs the self-revoke door (goal 0379 S2): a paired
+	// browser presenting its own bearer token ends its own pairing
+	// through the SAME door Settings' own revoke uses -- never a
+	// second trust model.
+	RevokeDevice(id string) error
 }
 
 // client is one browser holding a stream open.

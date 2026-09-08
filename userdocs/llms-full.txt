@@ -3460,8 +3460,9 @@ starting up — press **Enter a code instead** in the popup:
    Browsers list.
 
 Once paired, the popup shows **Connected to Mill** with the address kept
-behind a **Show details** disclosure — **Disconnect** clears the popup's
-own credential without revoking the browser in Mill's list.
+behind a **Show details** disclosure — **Disconnect** ends the pairing:
+the browser drops off Mill's Browsers list, and the popup's own
+credential clears right away even if Mill can't be reached.
 
 ## Test it
 
