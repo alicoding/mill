@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -47,6 +48,7 @@ test('browser bridge: pair a browser, see it connect, test the connection, revok
       backupDir: path.join(dir, 'backups'),
     })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await openSettings(page, 'connections')
     await expect(page.getByTestId('settings-section-browsers')).toBeVisible()
@@ -71,6 +73,7 @@ test('browser bridge: pair a browser, see it connect, test the connection, revok
     // 3. The browser opens its stream; Mill shows it paired and
     //    connected, and the test action becomes available.
     const replayPage = await browser.newPage()
+    await applyCpuThrottle(replayPage)
     const client = connectFakeExtension(bridgeURL, token, replayPage)
     extension = client
     await client.ready
@@ -140,6 +143,7 @@ test('browser bridge: a nearby pairing request shows Mill\'s card, Accept and De
       backupDir: path.join(dir, 'backups'),
     })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await openSettings(page, 'connections')
     await expect(page.getByTestId('browser-pair-request-card')).toBeHidden()

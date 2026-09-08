@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { blurSticky, fillSticky, stickyEditor } from './fixtures/codeEditor'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -11,6 +12,7 @@ import {
 } from './fixtures/server'
 import { ATLAS_KIND_TOPIC } from './fixtures/kindPicker'
 import { clickCorner, dragBetween, noteCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
+import { hoverEdgeOffChip } from './fixtures/atlasEdge'
 
 // Atlas linking interaction overhaul (goal 0124 slice 2): drop-anywhere
 // targeting (a release anywhere on a highlighted candidate's own
@@ -38,6 +40,7 @@ test('atlas linking: drop-anywhere targeting, hover chip, refusal hint, anchored
   try {
     server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await page.getByRole('link', { name: 'Atlas' }).click()
     const board = page.getByTestId('atlas-board')
@@ -118,7 +121,7 @@ test('atlas linking: drop-anywhere targeting, hover chip, refusal hint, anchored
     const edge = page.locator('.react-flow__edge').last()
     const chip = page.locator('.atlas-link-chip[data-visible="true"]')
     await expect(chip).toHaveCount(0)
-    await edge.hover()
+    await hoverEdgeOffChip(page, edge)
     await expect(chip).toHaveCount(1)
     await chip.getByTestId('edge-delete').click()
     await expect(page.locator('.react-flow__edge')).toHaveCount(seededEdgeCount)
