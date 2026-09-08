@@ -11,5 +11,5 @@
     "strict": false,
     "skipLibCheck": true
   },
-  "include": ["../examples/plugins/*/main.js"]
+  "include": ["../examples/plugins/*/*.js"]
 }

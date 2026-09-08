@@ -254,3 +254,84 @@ func TestValidateRequired_ChecksFieldsInDeclaredOrder(t *testing.T) {
 		t.Fatalf("expected the first blank field's message to win, got %v", err)
 	}
 }
+
+func TestValidate_RejectsOptionsSourceOnNonOptionsField(t *testing.T) {
+	err := Validate(Field{Key: "targets", Type: TypeText, OptionsSource: "devices"})
+	if err == nil {
+		t.Fatal("expected an error for OptionsSource on a non-TypeOptions field, got nil")
+	}
+}
+
+func TestValidate_RejectsNeedsWithoutOptionsSource(t *testing.T) {
+	err := Validate(Field{Key: "targets", Type: TypeOptions, Needs: []string{"notification"}})
+	if err == nil {
+		t.Fatal("expected an error for Needs with no OptionsSource, got nil")
+	}
+}
+
+func TestValidate_RejectsItemsOnNonArrayField(t *testing.T) {
+	err := Validate(Field{Key: "targets", Type: TypeText, Items: &Field{Type: TypeOptions}})
+	if err == nil {
+		t.Fatal("expected an error for Items on a non-TypeArray field, got nil")
+	}
+}
+
+func TestValidate_AcceptsArrayFieldWithOptionsSourceItems(t *testing.T) {
+	// The exact shape apply-notify's "targets" field declares (docs/
+	// goals/0372): an unkeyed Items sub-field naming a runtime source.
+	f := Field{
+		Key: "targets", Type: TypeArray,
+		Items: &Field{Type: TypeOptions, OptionsSource: "devices", Needs: []string{"notification"}},
+	}
+	if err := Validate(f); err != nil {
+		t.Fatalf("expected the targets field shape to validate, got %v", err)
+	}
+}
+
+func TestValidate_RejectsItemsWithInvalidType(t *testing.T) {
+	err := Validate(Field{Key: "targets", Type: TypeArray, Items: &Field{Type: Type("nonsense")}})
+	if err == nil {
+		t.Fatal("expected an error for an Items field with an invalid Type, got nil")
+	}
+}
+
+func TestValidateValue_ArrayAcceptsAWellFormedJSONArray(t *testing.T) {
+	f := Field{Key: "targets", Type: TypeArray, Items: &Field{Type: TypeOptions}}
+	if err := ValidateValue(f, `["dev-1","dev-2"]`); err != nil {
+		t.Fatalf("expected a well-formed JSON array to validate, got %v", err)
+	}
+}
+
+func TestValidateValue_ArrayAcceptsEmpty(t *testing.T) {
+	f := Field{Key: "targets", Type: TypeArray, Items: &Field{Type: TypeOptions}}
+	if err := ValidateValue(f, ""); err != nil {
+		t.Fatalf("expected an empty raw value to validate (unset), got %v", err)
+	}
+	if err := ValidateValue(f, "[]"); err != nil {
+		t.Fatalf("expected an empty JSON array to validate, got %v", err)
+	}
+}
+
+func TestValidateValue_ArrayRejectsNonJSON(t *testing.T) {
+	f := Field{Key: "targets", Type: TypeArray, Items: &Field{Type: TypeOptions}}
+	if err := ValidateValue(f, "not-json"); err == nil {
+		t.Fatal("expected an error for a non-JSON array value, got nil")
+	}
+}
+
+func TestValidateValue_ArrayRejectsAnItemFailingItsOwnItemsType(t *testing.T) {
+	f := Field{Key: "amounts", Type: TypeArray, Items: &Field{Type: TypeNumber}}
+	if err := ValidateValue(f, `["12", "not-a-number"]`); err == nil {
+		t.Fatal("expected an error for an item failing its declared Items type, got nil")
+	}
+}
+
+func TestValidateValue_ArrayWithOptionsSourceItemsAcceptsAnyString(t *testing.T) {
+	// An OptionsSource item's own Options stays empty by construction
+	// (docs/goals/0372): only the live source, never this package,
+	// knows the legal set, so any string passes here.
+	f := Field{Key: "targets", Type: TypeArray, Items: &Field{Type: TypeOptions, OptionsSource: "devices"}}
+	if err := ValidateValue(f, `["whatever-id"]`); err != nil {
+		t.Fatalf("expected an OptionsSource item to accept any string, got %v", err)
+	}
+}

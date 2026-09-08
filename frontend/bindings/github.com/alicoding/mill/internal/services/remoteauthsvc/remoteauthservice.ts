@@ -16,7 +16,35 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as device$0 from "../../domain/device/models.js";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as $models from "./models.js";
+
+/**
+ * AcceptPairingRequest is the numeric-comparison trust decision itself
+ * (goal 0379): Settings > Connections > Browsers' Accept button,
+ * meant to be called only after a human has read the SAME code in both
+ * the popup and this card. Mints a browser pairing exactly like
+ * PairBrowser (mintDevice, KindBrowser), so a browser's post-pairing
+ * storage write is unchanged whichever path it arrived through.
+ * Rejects a stale/wrong/already-resolved id server-side -- Accept
+ * after expiry is refused, never silently minting a token for a
+ * request the popup has already given up on.
+ */
+export function AcceptPairingRequest(requestID: string): $CancellablePromise<$models.BrowserPairing> {
+    return $Call.ByID(2479429157, requestID);
+}
+
+/**
+ * DenyPairingRequest is Settings > Connections > Browsers' Deny
+ * button: marks the pending request denied so a browser's next poll
+ * fails closed, without touching the paired-device list at all.
+ */
+export function DenyPairingRequest(requestID: string): $CancellablePromise<void> {
+    return $Call.ByID(4095290179, requestID);
+}
 
 /**
  * GeneratePairingCode mints a new single-use enrollment code on
@@ -47,6 +75,18 @@ export function ListBrowsers(): $CancellablePromise<$models.DeviceInfo[] | null>
 }
 
 /**
+ * ListDeviceRefs is composition's "devices" OptionsSource resolver
+ * (docs/goals/0372): every paired phone, browser, and webhook token as
+ * one directory, filtered to only the refs that accept at least one of
+ * needs (empty needs returns every ref unfiltered) -- the frontend
+ * picker calls this with a config field's own declared Needs so the
+ * offered list never includes a device the event could never reach.
+ */
+export function ListDeviceRefs(needs: string[] | null): $CancellablePromise<device$0.Ref[] | null> {
+    return $Call.ByID(3248665176, needs);
+}
+
+/**
  * ListDevices returns every currently paired phone or computer, oldest
  * first, so Settings renders a stable order across renders. Paired
  * browsers are deliberately absent -- they have their own section and
@@ -57,24 +97,37 @@ export function ListDevices(): $CancellablePromise<$models.DeviceInfo[] | null> 
 }
 
 /**
- * ListHooks returns every live hook token's read model, same order and
- * shape as ListBrowsers -- hook tokens appear in their own Settings
- * section, never mixed into the device or browser lists.
+ * ListWebhookTokens returns every live webhook token's read model,
+ * same order and shape as ListBrowsers -- webhook tokens appear in
+ * their own Settings section, never mixed into the device or browser
+ * lists.
  */
-export function ListHooks(): $CancellablePromise<$models.DeviceInfo[] | null> {
-    return $Call.ByID(2622304556);
+export function ListWebhookTokens(): $CancellablePromise<$models.DeviceInfo[] | null> {
+    return $Call.ByID(2647435175);
 }
 
 /**
- * MintHookToken pairs a new hook credential, returning its raw token
- * exactly once for the user to copy into a tool's hook config. There
- * is no pairing code or exchange: the consumer is a shell command in a
- * config file, so the credential itself is the whole ceremony. Minting
- * more than one is legitimate (one per tool, or a rotation) -- each is
- * its own Settings row with its own revoke, like a paired browser.
+ * MintWebhookToken pairs a new webhook credential, returning its raw
+ * token exactly once for the user to copy into a tool's configuration.
+ * There is no pairing code or exchange: the consumer is a shell
+ * command or an HTTP client in a config file, so the credential itself
+ * is the whole ceremony. Minting more than one is legitimate (one per
+ * tool, or a rotation) -- each is its own Settings row with its own
+ * revoke, like a paired browser.
  */
-export function MintHookToken(label: string): $CancellablePromise<$models.HookToken> {
-    return $Call.ByID(3786229052, label);
+export function MintWebhookToken(label: string): $CancellablePromise<$models.WebhookToken> {
+    return $Call.ByID(393984190, label);
+}
+
+/**
+ * PendingPairingRequest is Settings > Connections > Browsers' own poll
+ * (goal 0379, no server push exists to tell it a request just arrived)
+ * -- the SAME code the popup shows, for the human comparison step
+ * Accept/Deny confirms. A zero-value RequestID means nothing is
+ * pending right now, including a request whose TTL just lapsed.
+ */
+export function PendingPairingRequest(): $CancellablePromise<$models.PendingPairingRequest> {
+    return $Call.ByID(2775362346);
 }
 
 /**

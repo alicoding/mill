@@ -113,6 +113,18 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "Items": {
+              "$ref": "#/$defs/Field"
+            },
+            "OptionsSource": {
+              "type": "string"
+            },
+            "Needs": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
             }
           },
           "additionalProperties": false,
@@ -437,6 +449,18 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "Items": {
+              "$ref": "#/$defs/Field"
+            },
+            "OptionsSource": {
+              "type": "string"
+            },
+            "Needs": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
             }
           },
           "additionalProperties": false,
@@ -674,6 +698,18 @@
               "type": "array"
             },
             "RollupDoneValues": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "Items": {
+              "$ref": "#/$defs/Field"
+            },
+            "OptionsSource": {
+              "type": "string"
+            },
+            "Needs": {
               "items": {
                 "type": "string"
               },
@@ -1298,6 +1334,18 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "Items": {
+              "$ref": "#/$defs/Field"
+            },
+            "OptionsSource": {
+              "type": "string"
+            },
+            "Needs": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
             }
           },
           "additionalProperties": false,
@@ -1724,7 +1772,7 @@
       "ID": "trigger-webhook",
       "Kind": "trigger",
       "Label": "Webhook fired",
-      "Description": "Fires when a tool on this machine posts to Mill's hook endpoint, so a workflow can react to what an agent or script just did, like showing a notification on every channel including a paired phone. Any fields the tool posts become attributes the workflow declares by name. Point the tool at the hook endpoint with a token from Settings.",
+      "Description": "Runs when a request arrives at Mill's webhook address.",
       "ConfigFields": [
         {
           "Key": "source",
@@ -4055,6 +4103,38 @@
           "RefKind": "",
           "Multiline": false,
           "SystemManaged": false
+        },
+        {
+          "Key": "targets",
+          "Label": "Send to",
+          "Type": "array",
+          "Required": false,
+          "Default": "",
+          "Description": "Leave empty to reach every paired device.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false,
+          "Items": {
+            "Key": "",
+            "Label": "",
+            "Type": "options",
+            "Required": false,
+            "Default": "",
+            "Description": "",
+            "Options": null,
+            "Suggestions": null,
+            "Secret": false,
+            "RefKind": "",
+            "Multiline": false,
+            "SystemManaged": false,
+            "OptionsSource": "devices",
+            "Needs": [
+              "notification"
+            ]
+          }
         }
       ],
       "Output": "payload unchanged; a notification appears on every channel, including a paired phone",
@@ -4457,7 +4537,7 @@
       "ID": "trigger-webhook",
       "Kind": "trigger",
       "Label": "Webhook fired",
-      "Description": "Fires when a tool on this machine posts to Mill's hook endpoint, so a workflow can react to what an agent or script just did, like showing a notification on every channel including a paired phone. Any fields the tool posts become attributes the workflow declares by name. Point the tool at the hook endpoint with a token from Settings.",
+      "Description": "Runs when a request arrives at Mill's webhook address.",
       "ConfigFields": [
         {
           "Key": "source",
@@ -6788,6 +6868,38 @@
           "RefKind": "",
           "Multiline": false,
           "SystemManaged": false
+        },
+        {
+          "Key": "targets",
+          "Label": "Send to",
+          "Type": "array",
+          "Required": false,
+          "Default": "",
+          "Description": "Leave empty to reach every paired device.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false,
+          "Items": {
+            "Key": "",
+            "Label": "",
+            "Type": "options",
+            "Required": false,
+            "Default": "",
+            "Description": "",
+            "Options": null,
+            "Suggestions": null,
+            "Secret": false,
+            "RefKind": "",
+            "Multiline": false,
+            "SystemManaged": false,
+            "OptionsSource": "devices",
+            "Needs": [
+              "notification"
+            ]
+          }
         }
       ],
       "Output": "payload unchanged; a notification appears on every channel, including a paired phone",

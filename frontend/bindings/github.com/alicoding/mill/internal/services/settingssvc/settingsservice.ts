@@ -218,6 +218,20 @@ export function GetAttentionIdleThreshold(): $CancellablePromise<number> {
 }
 
 /**
+ * GetAuditRetentionEntries returns the persisted cap, defaulting to
+ * AuditRetentionEntriesDefault when unset or set to a non-positive
+ * value (a cap of zero or less would prune the trail to nothing). A
+ * value set THIS run reads back as the int SetAuditRetentionEntries
+ * stored (kvstore.Set keeps it as-is in memory); a value loaded from a
+ * PRIOR run's settings.json reads back as float64 (JSON numbers decode
+ * to float64 into an `any` -- kvstore.Load's own json.Unmarshal target)
+ * -- both are handled so the setting survives a restart unchanged.
+ */
+export function GetAuditRetentionEntries(): $CancellablePromise<number> {
+    return $Call.ByID(1291345361);
+}
+
+/**
  * GetBuildInfo reports which commit this running instance was actually
  * built from (settingsservice_buildinfo.go) -- surfaced in the footer
  * so a stale, still-running process (e.g. a desktop app left open
@@ -389,6 +403,20 @@ export function GetSystemAccent(): $CancellablePromise<string> {
  */
 export function GetWorkflowMinutesSaved(workflowID: string): $CancellablePromise<number> {
     return $Call.ByID(1967529281, workflowID);
+}
+
+/**
+ * HasCustomPanelPosition reports whether a dragged position is
+ * currently saved -- panel.resetPosition's own enabled() predicate
+ * (shared/settingsCommands.ts): the command only offers to reset a
+ * position that differs from the default centered one. Bound so the
+ * MAIN window's command palette (a separate JS context from the panel
+ * that did the dragging) can read it; kept current there via the
+ * mill-data-changed announcement persistPanelGeometry/
+ * ResetPanelPosition below both emit.
+ */
+export function HasCustomPanelPosition(): $CancellablePromise<boolean> {
+    return $Call.ByID(3816406024);
 }
 
 /**
@@ -607,6 +635,19 @@ export function ReportIssue(): $CancellablePromise<void> {
 }
 
 /**
+ * ResetPanelPosition recenters the Quick Panel and clears its saved
+ * position -- panel.resetPosition's run() (shared/settingsCommands.ts).
+ * Center() (internal/adapters/windowing) issues its own WindowDidMove,
+ * which WatchPanelGeometry's debounced listener re-persists moments
+ * later with the recentered coordinate -- clearing the key here makes
+ * a re-summon inside that debounce window read as centered too, rather
+ * than depending on the debounce alone.
+ */
+export function ResetPanelPosition(): $CancellablePromise<void> {
+    return $Call.ByID(2346052452);
+}
+
+/**
  * ResolveMCPWrite delivers the human's decision to a parked MCP write.
  */
 export function ResolveMCPWrite(id: string, approve: boolean): $CancellablePromise<void> {
@@ -691,6 +732,18 @@ export function SaveTextFile(suggestedName: string, content: string): $Cancellab
  */
 export function SetAttentionIdleThreshold(seconds: number): $CancellablePromise<void> {
     return $Call.ByID(454955395, seconds);
+}
+
+/**
+ * SetAuditRetentionEntries persists the cap and, once wired
+ * (SetAuditRetentionChanged), prunes the shared trail to it
+ * immediately -- the setting's own caption promises entries are
+ * "removed automatically", which a restart-only prune would not honor.
+ * Rejects a non-positive value so the trail can never be configured to
+ * prune itself to nothing.
+ */
+export function SetAuditRetentionEntries(n: number): $CancellablePromise<void> {
+    return $Call.ByID(755143933, n);
 }
 
 /**

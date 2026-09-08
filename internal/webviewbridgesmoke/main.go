@@ -168,6 +168,11 @@ func repoRootFrom(startDir string) (string, error) {
 func buildApp(repoRoot, outPath string) error {
 	npmBuild := exec.Command("npm", "run", "build") //nolint:gosec,noctx // static args, one-shot CLI invocation, no cancellation source to plumb through (matches internal/devguard's own precedent)
 	npmBuild.Dir = filepath.Join(repoRoot, "frontend")
+	// MILL_DRIVE_BRIDGE=1 (frontend/vite.config.ts's __MILL_DRIVE_BRIDGE__
+	// define) is what registers window.__millRunCommand -- goal 0381's
+	// checks (checks_drivebridge.go) need it in every build this harness
+	// produces, unlike a plain `task install:app`, which stays bridge-free.
+	npmBuild.Env = append(os.Environ(), "MILL_DRIVE_BRIDGE=1")
 	npmBuild.Stdout = os.Stdout
 	npmBuild.Stderr = os.Stderr
 	if err := npmBuild.Run(); err != nil {

@@ -21,8 +21,11 @@ import { useUISignalStore } from '../shared/uiSignalStore'
 // for an MCP Server), 'atlas:<cardID>' (docs/goals/0061 item 6 --
 // QuickPanel's card-search jump rows land on Atlas with that card's
 // overlay open, AtlasView.tsx's own initialCardID prop resolves it to
-// a viewed space). Empty string ('Open Mill') means "just show the
-// window," no navigation -- OpenMainWindow only emits when non-empty.
+// a viewed space), 'browser:pair-request' (goal 0379 -- an incoming
+// pair-request notification's click lands on Settings > Connections >
+// Browsers with the request card focused). Empty string ('Open Mill')
+// means "just show the window," no navigation -- OpenMainWindow only
+// emits when non-empty.
 export function useMillNavigate(setView: (view: View) => void): void {
   useEffect(() => {
     return Events.On('mill-navigate', (evt) => {
@@ -34,6 +37,15 @@ export function useMillNavigate(setView: (view: View) => void): void {
       if (target === 'secrets:dotenv-scan') {
         setView({ kind: 'secrets', tab: 'sources' })
         useUISignalStore.getState().requestSecretsDotenvScan()
+        return
+      }
+      // browser:pair-request (goal 0379): the incoming pair-request
+      // notification's click -- lands on Settings > Connections >
+      // Browsers with the request card focused for the human
+      // comparison step, rather than whichever view was last open.
+      if (target === 'browser:pair-request') {
+        setView({ kind: 'settings', section: 'connections' })
+        useUISignalStore.getState().requestBrowserPairRequestFocus()
         return
       }
       const action = parseNavigateTarget(target)

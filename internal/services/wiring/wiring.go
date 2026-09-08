@@ -24,6 +24,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/typedfield"
 	"github.com/alicoding/mill/internal/services/atlassvc"
+	"github.com/alicoding/mill/internal/services/auditsvc"
 	"github.com/alicoding/mill/internal/services/backupsvc"
 	"github.com/alicoding/mill/internal/services/bridgesvc"
 	"github.com/alicoding/mill/internal/services/clipboardhistorysvc"
@@ -51,7 +52,7 @@ const shutdownTimeout = 5 * time.Second
 // post-app.Run() sequence needs, in order, logging (never failing
 // loudly) on each step's own error -- a step's failure must never
 // block the rest, since the process is exiting either way.
-func RunShutdown(logger *slog.Logger, executionService *executionsvc.ExecutionService, backupService *backupsvc.BackupService, millMCPService *mcpsvc.MillMCPService, mcpAuditService *mcpauditsvc.MCPAuditService, atlasService *atlassvc.AtlasService, secretService *secretsvc.SecretService) {
+func RunShutdown(logger *slog.Logger, executionService *executionsvc.ExecutionService, backupService *backupsvc.BackupService, millMCPService *mcpsvc.MillMCPService, mcpAuditService *mcpauditsvc.MCPAuditService, atlasService *atlassvc.AtlasService, secretService *secretsvc.SecretService, bridgeService *bridgesvc.BridgeService, auditService *auditsvc.AuditService) {
 	// Flush any in-flight step checkpoints before the process actually
 	// exits.
 	if err := executionService.Shutdown(shutdownTimeout); err != nil {
@@ -75,6 +76,15 @@ func RunShutdown(logger *slog.Logger, executionService *executionsvc.ExecutionSe
 	// same dbPath, so they close together here too.
 	if err := secretService.CloseAudit(); err != nil {
 		logger.Error("secret audit service shutdown", "error", err)
+	}
+	// goal 0351 S2: the bridge's own audit connection, and the shared
+	// export/retention surface's -- both independent connections to the
+	// same execution SQLite file the two above already close.
+	if err := bridgeService.CloseAudit(); err != nil {
+		logger.Error("browser bridge audit shutdown", "error", err)
+	}
+	if err := auditService.Close(); err != nil {
+		logger.Error("audit export service shutdown", "error", err)
 	}
 	// No watcher goroutine outlives the process (goal 0194's live
 	// round-trip slice).
@@ -258,6 +268,20 @@ func WireAuditTrails(secretService *secretsvc.SecretService, dbPath string, logg
 	return svc
 }
 
+// WireAuditExport constructs the shared audit trail's own export/
+// retention surface (goal 0351 Decision 4/5): one connection to the
+// SAME execution SQLite file mcpauditstore/secretauditstore/bridgesvc
+// each already write into through their own independent connections.
+// Called AFTER settingsService exists (its own retention cap setting
+// must already be readable), unlike WireAuditTrails above.
+func WireAuditExport(dbPath string, retentionKeep int, logger *slog.Logger) *auditsvc.AuditService {
+	svc, err := auditsvc.New(dbPath, retentionKeep, logger)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return svc
+}
+
 // WireRemoteAuth constructs docs/goals/0132-remote-access.md SLICE 1's
 // auth gate. Its result feeds two places in main.go: the Services
 // list (so Settings > Remote access can call it) and
@@ -281,9 +305,15 @@ func WireRemoteAuth(store settings.Store, logger *slog.Logger) *remoteauthsvc.Re
 // works identically in both builds.
 //
 // A bind failure is logged, not fatal. The bridge is additive; the
-// rest of Mill runs unchanged with no browser paired.
-func WireBrowserBridge(remoteAuth *remoteauthsvc.RemoteAuthService, logger *slog.Logger, extension fs.FS, extensionParentDir string) *bridgesvc.BridgeService {
+// rest of Mill runs unchanged with no browser paired. dbPath opens the
+// bridge's own connection to the shared audit trail (goal 0351 S2) --
+// the same execution SQLite file mcpauditstore/secretauditstore already
+// connect to independently; a failure there is logged and non-fatal
+// too (BridgeService.OpenAudit's own doc comment), the bridge's
+// existing additive posture extended to its audit trail.
+func WireBrowserBridge(remoteAuth *remoteauthsvc.RemoteAuthService, logger *slog.Logger, extension fs.FS, extensionParentDir, dbPath string) *bridgesvc.BridgeService {
 	svc := bridgesvc.New(remoteAuth, logger)
+	svc.OpenAudit(dbPath, logger)
 	// The extension's files are embedded at the composition root (the
 	// only place that can embed a path outside internal/), and written
 	// to a real folder when someone asks to load it into a browser.

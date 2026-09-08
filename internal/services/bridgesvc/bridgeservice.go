@@ -25,6 +25,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alicoding/mill/internal/adapters/auditstore"
+	"github.com/alicoding/mill/internal/domain/audit"
 	"github.com/alicoding/mill/internal/domain/browserbridge"
 	"github.com/alicoding/mill/internal/services/remoteauthsvc"
 )
@@ -55,11 +57,16 @@ const commandBuffer = 8
 // TokenAuthority is the paired-credential seam: the bridge mints and
 // checks nothing itself, it asks remoteauthsvc, which owns every
 // paired thing Mill knows about -- browser extensions and headless
-// hook tokens alike.
+// webhook tokens alike.
 type TokenAuthority interface {
 	PairBrowser(code, label, source string) (remoteauthsvc.BrowserPairing, error)
 	ValidateBrowserToken(token string) (remoteauthsvc.DeviceInfo, bool)
-	ValidateHookToken(token string) (remoteauthsvc.DeviceInfo, bool)
+	ValidateWebhookToken(token string) (remoteauthsvc.DeviceInfo, bool)
+	// RequestPairing and PairingStatus back the nearby discovery flow
+	// (goal 0379): a popup-minted request, confirmed by a human
+	// Accept/Deny in Mill, never a code typed out of band.
+	RequestPairing(label, source string) (remoteauthsvc.PairingRequestInfo, error)
+	PairingStatus(requestID string) remoteauthsvc.PairingRequestStatus
 }
 
 // client is one browser holding a stream open.
@@ -104,11 +111,21 @@ type BridgeService struct {
 	extensionFiles fs.FS
 	extensionDir   string
 
-	// hookSink dispatches a validated hook post into the trigger
+	// webhookSink dispatches a validated webhook post into the trigger
 	// layer; its own mutex because SetWebhookEventSink runs at startup
-	// while requests arrive concurrently. See bridgeservice_hooks.go.
-	hookMu   sync.Mutex
-	hookSink webhookEventSink
+	// while requests arrive concurrently. See bridgeservice_webhook.go.
+	webhookMu   sync.Mutex
+	webhookSink webhookEventSink
+
+	// auditStore/auditLog are the shared audit trail's own connection
+	// (goal 0351 S2) -- nil until OpenAudit runs, mirroring
+	// secretsvc.SecretService's own auditStore field: a BridgeService
+	// with no audit store opened (every test that doesn't call
+	// OpenAudit) simply doesn't record, the same "audit is
+	// observability, never a correctness gate" posture every other
+	// producer's best-effort record call takes.
+	auditStore *auditstore.Store
+	auditLog   *slog.Logger
 }
 
 // ResolveAddr picks the effective bind address: the env override always
@@ -269,14 +286,18 @@ func (s *BridgeService) Replay(ctx context.Context, flow browserbridge.UserFlow,
 
 	id, r, c, err := s.beginRun()
 	if err != nil {
+		s.recordCommand(ctx, "replay", audit.Target{Kind: "bridge-run"}, "", "rejected", "", 0, "")
 		return Outcome{}, err
 	}
 	defer s.endRun(id)
+	runTarget := audit.Target{Kind: "bridge-run", ID: id}
+	actorSource := "browser:" + c.deviceID
 
 	command := browserbridge.Command{ID: id, Kind: browserbridge.KindReplay, Flow: &flow, Target: opts.Target}
 	select {
 	case c.commands <- command:
 	default:
+		s.recordCommand(ctx, "replay", runTarget, actorSource, "rejected", "", 0, "")
 		return Outcome{}, browserbridge.ErrNoBrowser()
 	}
 	s.logger.Info("browser bridge: replay started", "run", id, "browser", c.deviceID, "steps", len(flow.Steps))
@@ -294,18 +315,22 @@ func (s *BridgeService) Replay(ctx context.Context, flow browserbridge.UserFlow,
 		outcome := s.collect(id, started)
 		if final.Status != browserbridge.StatusDone {
 			s.logger.Info("browser bridge: replay failed", "run", id, "browser", c.deviceID, "error", final.Error)
+			s.recordCommand(ctx, "replay", runTarget, actorSource, "error", "replay-failed", 0, final.Error)
 			return outcome, browserbridge.ErrReplayFailed(final.Error)
 		}
 		s.logger.Info("browser bridge: replay finished", "run", id, "browser", c.deviceID, "steps", outcome.Steps, "ms", outcome.DurationMS)
+		s.recordCommand(ctx, "replay", runTarget, actorSource, "accepted", "", 0, "")
 		return outcome, nil
 	case <-timer.C:
 		s.logger.Info("browser bridge: replay timed out", "run", id, "browser", c.deviceID, "seconds", int(budget.Seconds()))
+		s.recordCommand(ctx, "replay", runTarget, actorSource, "error", "timeout", 0, "")
 		return s.collect(id, started), browserbridge.ErrReplayTimedOutAfter(budget)
 	case <-ctx.Done():
 		// A cancelled run (the workflow run was stopped) is not a
 		// browser fault, and reads as the timeout it effectively is
 		// rather than as a pairing problem.
 		s.logger.Info("browser bridge: replay cancelled", "run", id, "browser", c.deviceID)
+		s.recordCommand(ctx, "replay", runTarget, actorSource, "error", "cancelled", 0, "")
 		return s.collect(id, started), browserbridge.ErrReplayTimedOut()
 	}
 }

@@ -11,11 +11,6 @@ import (
 	"github.com/alicoding/mill/internal/adapters/secretvault"
 )
 
-// AuditRetentionKeep mirrors mcpauditsvc.RetentionKeep's own number and
-// reasoning (goal 0203 S3's contract: "capped retention matching
-// mcpaudit's numbers").
-const AuditRetentionKeep = 10000
-
 // OpenAudit opens the secret-read audit store at dbPath -- the SAME
 // execution SQLite file mcpauditstore/backupsvc already share their own
 // independent connections to, reached through secretauditstore's own
@@ -27,7 +22,9 @@ const AuditRetentionKeep = 10000
 // with no audit store opened (every test that constructs one directly
 // without calling this) simply doesn't record -- recordAccess's own nil
 // guard -- since a secret still needs to resolve correctly whether or
-// not anything is listening for its audit line.
+// not anything is listening for its audit line. Retention is no longer
+// this service's own job (goal 0351 Decision 4): auditsvc prunes the
+// shared table, across every kind, to one kernel-configured cap.
 //
 //wails:ignore
 func (s *SecretService) OpenAudit(dbPath string, logger *slog.Logger) error {
@@ -40,12 +37,6 @@ func (s *SecretService) OpenAudit(dbPath string, logger *slog.Logger) error {
 	}
 	s.auditStore = store
 	s.auditLog = logger
-	if _, err := store.Prune(AuditRetentionKeep); err != nil {
-		// Retention pruning is housekeeping, not correctness -- same
-		// log-and-continue posture mcpauditsvc.New's own prune-at-boot
-		// failure takes.
-		logger.Error("secret audit: prune at boot", "error", err)
-	}
 	return nil
 }
 

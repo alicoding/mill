@@ -96,6 +96,20 @@ func (win *Window) IsMaximised() bool         { return win.w.IsMaximised() }
 func (win *Window) Position() (x, y int)      { return win.w.Position() }
 func (win *Window) Size() (width, height int) { return win.w.Size() }
 
+// SetPosition moves the window to an absolute screen position --
+// InvokeSync internally (confirmed against the pinned SDK source,
+// webview_window.go's SetPosition), the same self-marshaling contract
+// as Position()/Show()/Hide() above, so this calls straight through
+// with no extra dispatch.
+func (win *Window) SetPosition(x, y int) { win.w.SetPosition(x, y) }
+
+// Center recenters the window on its current screen -- InvokeSync
+// internally once the native window exists, else defers into the
+// window's own InitialPosition option (confirmed against the pinned
+// SDK source, webview_window.go's Center), the same self-marshaling
+// contract as every other method here.
+func (win *Window) Center() { win.w.Center() }
+
 // OnLostFocus registers fn against WindowLostFocus -- ordering a key
 // window out resigns its key status on the way, so this fires for
 // every native dismiss path (Escape, an explicit Hide() call, focus

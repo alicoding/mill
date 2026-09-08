@@ -143,7 +143,7 @@ func init() {
 		Output: "JSON payload: the raw body the external tool posted. Every top-level scalar field it " +
 			"carries (a string, number, or true/false) also seeds an Attribute of the same name when " +
 			"this workflow declares one",
-		Description: "Fires when a tool on this machine posts to Mill's hook endpoint, so a workflow can react to what an agent or script just did, like showing a notification on every channel including a paired phone. Any fields the tool posts become attributes the workflow declares by name. Point the tool at the hook endpoint with a token from Settings.",
+		Description: "Runs when a request arrives at Mill's webhook address.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "source", Label: "Source (optional)",

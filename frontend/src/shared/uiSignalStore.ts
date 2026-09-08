@@ -108,6 +108,13 @@ interface UISignalState {
   secretsDotenvScanRequest: boolean
   requestSecretsDotenvScan: () => void
   consumeSecretsDotenvScan: () => void
+  // browser.pairRequest.focus (goal 0379): an incoming pair-request's
+  // desktop-banner click lands on Settings > Connections > Browsers,
+  // which may mount FRESH on that navigation -- same set-then-consume
+  // shape and remount reason as secretsDotenvScanRequest above.
+  browserPairRequestFocus: boolean
+  requestBrowserPairRequestFocus: () => void
+  consumeBrowserPairRequestFocus: () => void
   // review.rules (goal 0078): a monotonic counter, same shape as
   // atlasJumpRequest -- legal because the command is surface-scoped to
   // 'review' (shared/commands.ts), so ReviewView is always already
@@ -342,6 +349,9 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   secretsDotenvScanRequest: false,
   requestSecretsDotenvScan: () => set({ secretsDotenvScanRequest: true }),
   consumeSecretsDotenvScan: () => set({ secretsDotenvScanRequest: false }),
+  browserPairRequestFocus: false,
+  requestBrowserPairRequestFocus: () => set({ browserPairRequestFocus: true }),
+  consumeBrowserPairRequestFocus: () => set({ browserPairRequestFocus: false }),
   extensionUpdateRequest: null,
   requestExtensionUpdate: (id) => set({ extensionUpdateRequest: id }),
   consumeExtensionUpdate: () => set({ extensionUpdateRequest: null }),
