@@ -29,7 +29,7 @@ func (a *revocableAuth) ValidateBrowserToken(token string) (remoteauthsvc.Device
 	return remoteauthsvc.DeviceInfo{ID: "browser-1", Label: "Chrome", Kind: remoteauthsvc.KindBrowser}, true
 }
 
-func (a *revocableAuth) ValidateHookToken(token string) (remoteauthsvc.DeviceInfo, bool) {
+func (a *revocableAuth) ValidateWebhookToken(token string) (remoteauthsvc.DeviceInfo, bool) {
 	return remoteauthsvc.DeviceInfo{}, false
 }
 

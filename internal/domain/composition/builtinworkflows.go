@@ -471,7 +471,7 @@ func BuiltInWorkflows() []Workflow {
 	// goal 0350 S2: the browser-replay step's own seeded proof, same
 	// split-file reasoning.
 	workflows = append(workflows, builtInBrowserReplayWorkflows()...)
-	// goal 0368: the hook door's own seeded proof, same split-file
+	// goal 0368: the webhook door's own seeded proof, same split-file
 	// reasoning.
 	workflows = append(workflows, builtInWebhookWorkflows()...)
 	// goal 0373: the respond-webhook step's own seeded proof, same
