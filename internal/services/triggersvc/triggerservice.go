@@ -141,8 +141,11 @@ type TriggerService struct {
 	// its configured source matcher ("" is the catch-all bucket) --
 	// populated/depopulated by Sync via each entry's start/stop
 	// (triggerwebhook.go), mutated only while s.mu is held, same
-	// shape as sysEvents above.
-	webhookTriggers map[string][]string
+	// shape as sysEvents above. Each binding carries its own
+	// respond-budget/has-a-respond-step facts (goal 0373), computed
+	// once at Sync time from the same armed node list Sync already has
+	// in scope, never re-resolved per dispatch.
+	webhookTriggers map[string][]webhookBinding
 	// fwMu/fileWrites back the filesystem-watch structural cycle guard
 	// (docs/goals/0087, filewriteguard.go) -- its own mutex rather than
 	// reusing s.mu, since a recorder call arrives from a running node
@@ -173,7 +176,7 @@ func NewTriggerService(comp *compositionsvc.CompositionService, logger *slog.Log
 		store:             store,
 		sysEvents:         make(map[string][]systemEventBinding),
 		atlasCardTriggers: make(map[string][]string),
-		webhookTriggers:   make(map[string][]string),
+		webhookTriggers:   make(map[string][]webhookBinding),
 		fileWrites:        make(map[string]fileWriteRecord),
 	}
 	s.loadPersistedHotkeys()
@@ -258,7 +261,7 @@ func (s *TriggerService) Sync(workflows []composition.Workflow) {
 		if !ok {
 			continue
 		}
-		listener, err := s.start(wf.ID, nodeTypeID, config)
+		listener, err := s.start(wf.ID, nodeTypeID, armed.Nodes, config)
 		if err != nil {
 			s.logger.Error("trigger registration failed", "workflow", wf.ID, "type", nodeTypeID, "error", err)
 			continue
@@ -313,12 +316,12 @@ func (s *TriggerService) reportFireOutcome(workflowID, binding string, summary e
 // init() (docs/adr/0006-extension-point-registration.md) -- this is a
 // lookup, not a switch, so a new trigger type never means editing this
 // function.
-func (s *TriggerService) start(workflowID, nodeTypeID string, config map[string]string) (*activeListener, error) {
+func (s *TriggerService) start(workflowID, nodeTypeID string, nodes []composition.Node, config map[string]string) (*activeListener, error) {
 	starter, ok := triggerRegistry[nodeTypeID]
 	if !ok {
 		return nil, fmt.Errorf("unknown trigger node type: %s", nodeTypeID)
 	}
-	return starter(s, workflowID, config)
+	return starter(s, workflowID, nodes, config)
 }
 
 // ArmedWorkflows returns the workflow IDs that currently have a live

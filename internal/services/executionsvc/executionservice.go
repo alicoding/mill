@@ -276,6 +276,10 @@ type ExecutionService struct {
 	// test relaunching one database under two versions gets honest
 	// answers from both services.
 	appVersion string
+	// responders holds the live webhook responder for a run the
+	// ingress started (goal 0373) -- see
+	// executionservice_webhookresponder.go's own doc comment.
+	responders sync.Map
 }
 
 // runWorkflow is the one DBOS-registered durable workflow function --
@@ -288,6 +292,11 @@ type ExecutionService struct {
 func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (string, error) {
 	stepRunner := func(stepID string, fn func() (composition.ExecContext, error)) (composition.ExecContext, error) {
 		return e.runStep(ctx, in, stepID, fn)
+	}
+	runID, _ := ctx.GetWorkflowID()
+	responder, hasResponder := e.loadResponder(runID)
+	if hasResponder {
+		defer e.responders.Delete(runID)
 	}
 	output, err := composition.ExecuteWorkflowWithStepRunner(in.Nodes, in.Edges, in.Attributes, stepRunner,
 		composition.ExecuteOptions{
@@ -306,6 +315,7 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 			WorkflowID:   in.WorkflowID,
 			Stepped:      in.Stepped,
 			SecretsToken: in.SecretsToken,
+			Responder:    responder,
 		})
 
 	// run-completed/run-failed (docs/adr/0035 item 4): emitted HERE, not
@@ -325,7 +335,6 @@ func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (stri
 	// executionservice_getrun.go already uses to tell "cancelled" apart
 	// from "failed" at the step level) so a cancelled run isn't ALSO
 	// reported as failed.
-	runID, _ := ctx.GetWorkflowID()
 	switch {
 	case err == nil:
 		e.emitSystemEvent(SystemEventRunCompleted, runID, "")
@@ -371,6 +380,7 @@ func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, opt
 	}
 
 	runID := uuid.NewString()
+	e.storeResponder(runID, opts.Responder)
 	handle, err := execution.RunWorkflow(e.ctx, e.runWorkflow, runInput{
 		WorkflowID:        wf.ID,
 		Nodes:             nodes,
@@ -386,6 +396,7 @@ func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, opt
 		EnvironmentID:     environmentID,
 	}, execution.WithWorkflowID(runID))
 	if err != nil {
+		e.responders.Delete(runID)
 		return RunSummary{}, fmt.Errorf("start run: %w", err)
 	}
 

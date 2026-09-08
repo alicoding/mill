@@ -1,6 +1,10 @@
 package triggersvc
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/alicoding/mill/internal/domain/composition"
+)
 
 // AtlasCardEvent is the JSON payload a trigger-atlas-card fire carries
 // as its InitialPayload -- documented on the NodeType's own Output
@@ -17,7 +21,7 @@ type AtlasCardEvent struct {
 // file's doc comment. This dispatch half needs real *TriggerService
 // state (s.atlasCardTriggers), so it can't live in the domain package.
 func init() {
-	RegisterTrigger("trigger-atlas-card", func(s *TriggerService, workflowID string, config map[string]string) (*activeListener, error) {
+	RegisterTrigger("trigger-atlas-card", func(s *TriggerService, workflowID string, _ []composition.Node, config map[string]string) (*activeListener, error) {
 		kindID := config["kindId"]
 		if kindID == "" {
 			return nil, nil

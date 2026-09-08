@@ -49,3 +49,4 @@
 - [Edit a diagram with an agent](agents/diagrams.md): reading a diagram's shapes by id and adding, changing, deleting and importing them in place
 - [What plugins expose to agents](agents/plugins.md): listing installed plugins, calling a plugin's declared tools, and how a plugin write parks
 - [Fire a workflow from an agent's hook](agents/agent-hooks.md): minting a hook token and posting to the hook endpoint so a tool's hook fires a workflow
+- [Reply to a webhook](agents/webhook-reply.md): the Answer the webhook step, reading the reply from a native http hook or curl, and why step order decides what a run answers with
