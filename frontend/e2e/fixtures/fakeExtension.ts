@@ -99,7 +99,8 @@ export function connectFakeExtension(bridgeURL: string, token: string, page: Pag
         // replayRunner.js); a step that extracts nothing here would
         // make an extraction look broken when it is the stand-in that
         // is incomplete.
-        await post({ id: command.id, stepIndex: i, status: 'ok', extracted: await extractedFrom(page, selector) })
+        const download = await downloadFrom(page, selector)
+        await post({ id: command.id, stepIndex: i, status: 'ok', extracted: await extractedFrom(page, selector), download })
       }
       await post({ id: command.id, status: 'done' })
     } catch (err) {
@@ -146,6 +147,27 @@ async function readSSE(
       }
     }
   }
+}
+
+// downloadFrom stands in for chrome.downloads: a real extension
+// observes the browser's own completed download and re-fetches its
+// source address for the bytes (examples/browser-extension/
+// background.js); this fake has no such event, so it asks the clicked
+// element directly whether it names one (an `<a download>`, same as
+// the bridge's own test-page fixture) and, if so, fetches that address
+// itself -- proving the SAME wire shape (path/filename/bytes/data)
+// process-browser-replay and apply-atlas-file-object actually consume,
+// without a real unpacked extension in the suite's Chromium.
+async function downloadFrom(page: Page, selector: string): Promise<{ path: string; filename: string; bytes: number; data?: string } | undefined> {
+  const href = await page.locator(selector).evaluate((el) => (el instanceof HTMLAnchorElement && el.hasAttribute('download') ? el.href : null))
+  if (!href) return undefined
+  const response = await page.request.get(href)
+  if (!response.ok()) return undefined
+  const body = await response.body()
+  const disposition = response.headers()['content-disposition'] ?? ''
+  const named = /filename="?([^";]+)"?/.exec(disposition)?.[1]
+  const filename = named ?? href.split('/').pop() ?? 'download'
+  return { path: `/fake-downloads/${filename}`, filename, bytes: body.byteLength, data: body.toString('base64') }
 }
 
 // The element's own value if it has one, else its trimmed text --

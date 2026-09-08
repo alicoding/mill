@@ -280,8 +280,8 @@
     "fingerprint": "cc3e5338fab823d9ff76f94415fdd51d8f6b686f82a3f72b866edf8422173036"
   },
   "workflow:example-browser-replay-workflow": {
-    "seedRevision": 1,
-    "fingerprint": "0738f3c0f3f39a3e5bb08e4b4e9c319fdcd5beba28cdfcbebf15aaab8005bd4b"
+    "seedRevision": 2,
+    "fingerprint": "2ee263e137f20ec08c98ce75fbc52473c81305f0aaff2baebb0284a29c2415f1"
   },
   "workflow:example-bruno-run-workflow": {
     "seedRevision": 2,

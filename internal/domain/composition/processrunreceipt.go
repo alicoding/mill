@@ -60,6 +60,11 @@ type RunEvidenceStep struct {
 	// a vault wait reads "parked: vault-locked" with when it parked and
 	// when the unlock let it continue.
 	Waits []RunEvidenceWait `json:"waits,omitempty"`
+	// CompletedAt is when this step finished (goal 0350 S3) -- a
+	// receipt composed from an output an apply step wrote (a download
+	// landed as a board object, say) can answer "when did THIS step
+	// happen" per step, not only the run's own overall StartedAt.
+	CompletedAt time.Time `json:"completedAt,omitzero"`
 }
 
 // RunEvidenceWait is one wait on a step's way to running.

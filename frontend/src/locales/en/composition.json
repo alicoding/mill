@@ -460,7 +460,8 @@
     "approveAndRun": "Approve and run",
     "breakpointBadge": "breakpoint",
     "guardrailLabel": "Guardrail: {{effect}}{{ruleSuffix}}",
-    "retryFromThisStep": "Retry from this step"
+    "retryFromThisStep": "Retry from this step",
+    "stepCompletedAt": "Finished {{when}}"
   },
   "canvas": {
     "contextMenu": {

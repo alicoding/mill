@@ -205,6 +205,25 @@ export interface FileDropRoute {
 }
 
 /**
+ * FileObjectResult is what landing (or matching) one downloaded file
+ * as a board object reports back to the apply step that asked.
+ */
+export interface FileObjectResult {
+    /**
+     * ObjectID is empty when Mill could not place the download at all
+     * (no Kind resolved for its extension).
+     */
+    "ObjectID": string;
+
+    /**
+     * Note is set whenever the run should hear something beyond "it
+     * landed": a duplicate match (names the run and time it first
+     * landed), or an unresolvable Kind.
+     */
+    "Note": string;
+}
+
+/**
  * FolderImportSummary counts what ImportFolderSuggestions actually
  * created (never what it merely reused/refreshed on a re-import).
  */

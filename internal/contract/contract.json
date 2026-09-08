@@ -878,6 +878,10 @@
                 "$ref": "#/$defs/RunEvidenceWait"
               },
               "type": "array"
+            },
+            "completedAt": {
+              "type": "string",
+              "format": "date-time"
             }
           },
           "additionalProperties": false,
@@ -3435,6 +3439,24 @@
       "Output": "payload unchanged; a sync-summary JSON -\u003e the output attribute, if named",
       "Consumes": [
         "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
+      "ID": "apply-atlas-file-object",
+      "Kind": "apply",
+      "Label": "Land downloads on the board",
+      "Description": "Turns every download a browser-replay step brought back into a file-backed board object, mirror-checksummed so a file already landed before is matched, never duplicated.",
+      "ConfigFields": null,
+      "Output": "the same steps/extracted/downloads document, each download's own landing outcome added",
+      "Consumes": [
+        "json"
       ],
       "Produces": {
         "passthrough": true
@@ -6168,6 +6190,24 @@
       "Output": "payload unchanged; a sync-summary JSON -\u003e the output attribute, if named",
       "Consumes": [
         "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
+      "ID": "apply-atlas-file-object",
+      "Kind": "apply",
+      "Label": "Land downloads on the board",
+      "Description": "Turns every download a browser-replay step brought back into a file-backed board object, mirror-checksummed so a file already landed before is matched, never duplicated.",
+      "ConfigFields": null,
+      "Output": "the same steps/extracted/downloads document, each download's own landing outcome added",
+      "Consumes": [
+        "json"
       ],
       "Produces": {
         "passthrough": true
