@@ -106,6 +106,12 @@ test('Duplicating a request pre-fills a new form naming the same secret, never t
   await expect(page.locator('body')).not.toContainText('shh-original-secret')
 
   await page.getByRole('button', { name: 'Save integration' }).click()
+
+  // Saving closes the duplicate tab and returns to the summary tab it
+  // was opened from (goal 0407's MRU rule), not the list -- the
+  // Configure link is clicked explicitly to reach the list and see the
+  // new row.
+  await page.getByRole('link', { name: 'Configure' }).click()
   await expect(requestRow(page, 'Original Request copy')).toBeVisible()
 
   await deleteRequest(page, 'Original Request')
