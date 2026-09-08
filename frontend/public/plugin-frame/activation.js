@@ -11,7 +11,7 @@
 // to the parent is the only channel that exists.
 (function () {
 	var initMeta = document.querySelector('meta[name="mill-frame-init"]')
-	var init = { pluginId: '', millVersion: '', version: '', settings: {}, storage: {} }
+	var init = { pluginId: '', millVersion: '', version: '', settings: {}, storage: {}, exports: [] }
 	try {
 		if (initMeta) init = JSON.parse(initMeta.getAttribute('content') || '{}')
 	} catch (err) {
@@ -21,6 +21,13 @@
 	var pluginId = init.pluginId
 	var settingsSnapshot = init.settings || {}
 	var storageSnapshot = init.storage || {}
+	// exportAllowlist/exportedObject are extension interop's own state
+	// (goal 0364): the manifest's own exports allowlist, and what
+	// activate() actually returned -- kept so a LATER 'extension.call'
+	// from the host (another extension calling one of THIS plugin's
+	// own exported methods) has something to invoke.
+	var exportAllowlist = init.exports || []
+	var exportedObject = null
 
 	var pending = new Map() // call id -> {resolve, reject}, this frame's own outbound calls
 	var seq = 0
@@ -68,6 +75,24 @@
 			.catch(function (err) { send({ kind: 'command.result', callId: data.callId, ok: false, error: err && err.message ? err.message : String(err) }) })
 	}
 
+	// onExtensionCall answers the host's own reverse call (goal 0364):
+	// another extension is calling one of THIS plugin's own exported
+	// methods. Re-checks the allowlist here too, never trusting that
+	// the host's own gate was the only one -- a method the manifest
+	// never listed, or a name not actually a function on the object
+	// activate() returned, both refuse the same way.
+	function onExtensionCall(data) {
+		var fn = exportedObject && typeof exportedObject === 'object' ? exportedObject[data.method] : undefined
+		if (exportAllowlist.indexOf(data.method) === -1 || typeof fn !== 'function') {
+			send({ kind: 'extension.result', callId: data.callId, ok: false, error: 'Method ' + data.method + ' is not exported by ' + pluginId + '.' })
+			return
+		}
+		Promise.resolve()
+			.then(function () { return fn.apply(exportedObject, data.args || []) })
+			.then(function (result) { send({ kind: 'extension.result', callId: data.callId, ok: true, result: result }) })
+			.catch(function (err) { send({ kind: 'extension.result', callId: data.callId, ok: false, error: err && err.message ? err.message : String(err) }) })
+	}
+
 	function onEvent(data) {
 		if (data.event === 'view.message') {
 			var vh = viewMessageHandlers.get(data.payload.id)
@@ -90,6 +115,7 @@
 		if (!data || data.mill !== 1) return
 		if (data.kind === 'event') onEvent(data)
 		else if (data.kind === 'command.run') onCommandRun(data)
+		else if (data.kind === 'extension.call') onExtensionCall(data)
 		else if (data.id !== undefined) onReply(data)
 	})
 
@@ -164,6 +190,29 @@
 			return { postMessage: function (message) { void call('capture.postMessage', { id: decl.id, payload: message }) } }
 		},
 		ui: Object.freeze({ renderOutput: notAvailable('ui.renderOutput') }),
+		// The extension-interop door (goal 0364): the host answers
+		// {data, methods} (a live function cannot cross postMessage),
+		// wrapped here into callable stubs that call 'extensions.call'
+		// for each method name -- the same shape a same-DOM caller's
+		// api.extensions.get gets directly.
+		extensions: Object.freeze({
+			get: function (id) {
+				return call('extensions.get', id).then(function (descriptor) {
+					if (!descriptor) return undefined
+					var view = {}
+					var data = descriptor.data || {}
+					for (var key in data) if (Object.prototype.hasOwnProperty.call(data, key)) view[key] = data[key]
+					var methods = descriptor.methods || []
+					methods.forEach(function (m) {
+						view[m] = function () {
+							var callArgs = Array.prototype.slice.call(arguments)
+							return call('extensions.call', id, m, callArgs)
+						}
+					})
+					return view
+				})
+			},
+		}),
 	})
 
 	// resolveActivate mirrors loader.ts's own function of the same name:
@@ -190,6 +239,26 @@
 			if (!activate) throw new Error('main.js exports no activate() function')
 			return activate(api)
 		})
-		.then(function () { send({ kind: 'activation-done' }) })
+		.then(function (result) {
+			// exportedObject is kept for onExtensionCall above; the
+			// activation-done payload splits it into wire-safe data
+			// (every non-function own property, ungated -- only a
+			// callable method is "reach") plus just the ALLOWLISTED
+			// method names (goal 0364).
+			exportedObject = result
+			var methods = []
+			var data = {}
+			if (result && typeof result === 'object') {
+				for (var key in result) {
+					if (!Object.prototype.hasOwnProperty.call(result, key)) continue
+					if (typeof result[key] === 'function') {
+						if (exportAllowlist.indexOf(key) !== -1) methods.push(key)
+					} else {
+						data[key] = result[key]
+					}
+				}
+			}
+			send({ kind: 'activation-done', exports: { data: data, methods: methods } })
+		})
 		.catch(function (err) { send({ kind: 'activation-error', error: err && err.message ? err.message : String(err) }) })
 })()

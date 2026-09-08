@@ -1,0 +1,12 @@
+{
+  "id": "mill-interop-provider",
+  "name": "Interop provider",
+  "version": "1.0.0",
+  "description": "Exports one method another extension can call -- the extension-interop reference pair's dependency side.",
+  "author": "Mill examples",
+  "minMillVersion": "0.9.0",
+  "icon": "icon.png",
+  "capabilities": [],
+  "exports": ["greet"],
+  "contributes": {}
+}

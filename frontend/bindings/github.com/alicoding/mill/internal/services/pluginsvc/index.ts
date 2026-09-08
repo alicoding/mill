@@ -13,6 +13,7 @@ export type {
     CommandContribution,
     CommandMenuContribution,
     ContentWriter,
+    DependencyContribution,
     GuardedActionDecision,
     InstallPreview,
     InstallRecord,
