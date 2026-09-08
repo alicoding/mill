@@ -5,6 +5,7 @@ import { SettingsService } from '../shared/bindings'
 import { setSaveMode, useSaveMode } from '../shared/saveMode'
 import { setCanvasNavigationMode, useCanvasNavigationMode } from '../shared/canvasNavigation'
 import { SettingsRow } from './SettingsRow'
+import { mustSetting } from '../shared/settingsRegistry'
 import listStyles from '../shared/ListCard.module.css'
 import { background } from '../shared/background'
 import { openExternalUrl } from '../shared/openExternal'
@@ -53,8 +54,7 @@ export default function SettingsGeneralPane() {
   return (
     <>
       <SettingsRow
-        label={t('settings.general.launchAtLoginLabel')}
-        caption={t('settings.general.launchAtLoginCaption')}
+        setting={mustSetting('general.launchAtLogin')}
         // Disabled whenever the real OS registration state is
         // unreadable (server mode, a bare dev binary): a switch that
         // cannot reflect the state it controls would show a confident
@@ -91,7 +91,7 @@ export default function SettingsGeneralPane() {
       )}
 
       <SettingsRow
-        label={t('settings.general.saveModeLabel')}
+        setting={mustSetting('general.saveMode')}
         caption={saveMode === 'explicit'
           ? t('settings.general.saveModeExplicitCaption')
           : t('settings.general.saveModeAutomaticCaption')}
@@ -113,7 +113,7 @@ export default function SettingsGeneralPane() {
       />
 
       <SettingsRow
-        label={t('settings.general.canvasNavigationLabel')}
+        setting={mustSetting('general.canvasNavigation')}
         caption={canvasMode === 'mouse'
           ? t('settings.general.canvasNavigationMouseCaption')
           : t('settings.general.canvasNavigationTrackpadCaption')}

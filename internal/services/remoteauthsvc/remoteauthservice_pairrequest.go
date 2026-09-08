@@ -37,13 +37,19 @@ const (
 )
 
 // browserPairRequestEventType is the notification spine's Event.Type
-// for an incoming pairing request (goal 0379 Decision 3) -- excluded
-// from the phone channel (remoteauthservice_ntfy.go's ShouldDeliver)
-// since Accept only ever happens at the desktop Mill the browser is
-// trying to reach, never from a phone notification. No Targets field
-// exists on notification.Event yet to express this declaratively, so
-// the exclusion is by Type comparison until one does.
+// for an incoming pairing request (goal 0379 Decision 3).
 const browserPairRequestEventType = "browser-pair-request"
+
+// browserPairRequestTargets is what RequestPairing publishes as
+// Event.Targets (goal 0379 S2), reusing docs/goals/0372's addressing
+// convention rather than a Type-specific branch in the phone channel:
+// "desktop-only" is not, and will never be, a real paired device id
+// (every real one is a deviceIDBytes-byte hex string), so the phone
+// channel's own Targets filter (remoteauthservice_ntfy.go's
+// ShouldDeliver/Deliver) excludes every phone from it -- Accept only
+// ever happens at the desktop Mill the requesting browser is trying to
+// reach, never from a phone notification.
+var browserPairRequestTargets = []string{"desktop-only"}
 
 // CodePairingRequestNotFound is the handle Accept/Deny answer with
 // when requestID names no live pending request -- expired, already
@@ -177,6 +183,7 @@ func (s *RemoteAuthService) RequestPairing(label, source string) (PairingRequest
 			Body:      "Code " + code,
 			DedupeKey: id,
 			SourceRef: id,
+			Targets:   browserPairRequestTargets,
 		}); err != nil {
 			s.logger.Warn("publish browser pair-request notification", "request", id, "error", err)
 		}

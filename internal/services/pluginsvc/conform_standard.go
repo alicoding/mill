@@ -57,7 +57,7 @@ func conformVersion(m Manifest) []string {
 // validateSettingContribution).
 func conformSettingDescriptions(m Manifest) []string {
 	var problems []string
-	for _, s := range m.Contributes.Settings {
+	for _, s := range m.Contributes.EffectiveSettings() {
 		if strings.TrimSpace(s.Description) == "" {
 			problems = append(problems, fmt.Sprintf("standard rule 1: contributed setting %q needs a description", s.Key))
 		}
@@ -285,7 +285,7 @@ func conformLabelCase(m Manifest, scripts map[string]string) []string {
 		}
 	}
 	check("name", m.Name)
-	for _, s := range m.Contributes.Settings {
+	for _, s := range m.Contributes.EffectiveSettings() {
 		check(fmt.Sprintf("setting %q label", s.Key), s.Label)
 		for _, o := range s.Options {
 			check(fmt.Sprintf("setting %q option %q label", s.Key, o.Value), o.Label)

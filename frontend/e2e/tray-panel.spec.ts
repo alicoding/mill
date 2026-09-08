@@ -1,4 +1,5 @@
 import { chromium, expect, test, type Browser, type Page } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -32,6 +33,7 @@ async function openDedicated(offset: number, idx: number): Promise<SpawnedPage> 
     backupDir: path.join(dir, 'backups'),
   })
   const page = await browser.newPage({ baseURL: server.baseURL })
+  await applyCpuThrottle(page)
   return { server, browser, page, dir }
 }
 
@@ -97,6 +99,7 @@ test('a parked run surfaces as a Needs-you row naming its workflow', async ({}, 
     // the parked run under Needs you -- and NOT under Running (the
     // sections partition).
     const panelPage = await s.browser.newPage({ baseURL: s.server.baseURL })
+    await applyCpuThrottle(panelPage)
     await panelPage.goto(`${s.server.baseURL}/#/traypanel`)
     const needsRow = panelPage.getByTestId('tray-needs-row').filter({ hasText: seed })
     await expect(needsRow).toBeVisible({ timeout: 10_000 })
@@ -137,6 +140,7 @@ test('a run started from the Quick Panel shows under Recent as done', async ({},
     await expect(page.getByTestId('quick-panel-status')).toHaveText(`"${parkedLabel}" is waiting for your approval`, { timeout: 15_000 })
 
     const panelPage = await s.browser.newPage({ baseURL: s.server.baseURL })
+    await applyCpuThrottle(panelPage)
     await panelPage.goto(`${s.server.baseURL}/#/traypanel`)
     const recentRow = panelPage.getByTestId('tray-recent-row').filter({ hasText: label })
     await expect(recentRow).toBeVisible({ timeout: 15_000 }) // the panel refreshes every 5s

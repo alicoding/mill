@@ -6,12 +6,16 @@ kind: reference
 
 Every plugin that ships with Mill follows these rules, and the
 conformance check enforces the ones a machine can. Follow them and
-your plugin feels like part of Mill.
+your plugin feels like part of Mill. Bringing a plugin over from
+another platform? Start with [Port an extension from another
+platform](port-a-vscode-extension.md).
 
 ## Configuration
 
-1. Declare every setting in the manifest with a type, a default and a
-   one-sentence description. (checked)
+1. Declare every setting in the manifest's `configuration` key, with a
+   type, a default and a one-sentence description. (checked) `settings`
+   still loads as a deprecated alias; renaming to `configuration` clears
+   the warning.
 2. Settings render in Mill's Settings; a plugin never builds its own
    settings page. (review)
 3. Request only the capabilities and hosts you use. (checked: an
@@ -24,7 +28,11 @@ your plugin feels like part of Mill.
    reference declared commands. (checked) A command may also seat
    itself in Mill's menu bar with `menu: { path, group?, order? }` --
    `path` is `"workflow"`, `"atlas"` or `"help"` only, never one of
-   Mill's own menus. (checked)
+   Mill's own menus. (checked) A ported manifest's own
+   `contributes.menus` is accepted too, mapped onto whichever of
+   Mill's seats it names; see [the porting
+   guide](port-a-vscode-extension.md#menu-ids-and-mills-seats).
+   (checked)
 5. Ship no default hotkey; people bind their own in Settings ›
    Shortcuts. (checked: the SDK has no hotkey field; this rule
    documents why)

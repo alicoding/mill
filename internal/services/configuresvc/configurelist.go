@@ -162,6 +162,7 @@ func (c *ConfigureService) createListWithID(id, label, description string, colum
 		return list.List{}, err
 	}
 	dataevent.Emit("list", l.ID) // goal 0017: live-sync every open surface
+	dataevent.EmitEntityCreated("list", l.ID)
 	return l, nil
 }
 
@@ -200,11 +201,25 @@ func (c *ConfigureService) UpdateList(id, label, description string, columns []t
 	return updated, nil
 }
 
+// DeleteList emits entity.deleted (goal 0392 S2) only on this call's OWN
+// success -- never from the shared announce closure below, since
+// deleteEntity's undo/registerEntityDelete also calls announce on
+// RESTORE (a ⌘Z bringing the list back), and "deleted" must never fire
+// for that. A redo-of-this-delete (entityDeleteRedo, driven from the
+// undo journal directly) does not currently refire entity.deleted --
+// deleteEntity is shared by every Configure entity kind, and wiring a
+// second emission point into its generic body is left for the kind's
+// own next touch, same deferral shape goal 0392 S1 already used for
+// usage/orphans beyond List.
 func (c *ConfigureService) DeleteList(id string) error {
 	announce := func(id string) { dataevent.Emit("list", id) }
-	return deleteEntity(c, "list", &c.lists, c.persistLists, listDescriptor,
+	if err := deleteEntity(c, "list", &c.lists, c.persistLists, listDescriptor,
 		func(id string) error { return c.refIntegrityError("list", "list", id) },
-		func(l list.List) string { return l.Label }, announce, id)
+		func(l list.List) string { return l.Label }, announce, id); err != nil {
+		return err
+	}
+	dataevent.EmitEntityDeleted("list", id)
+	return nil
 }
 
 // --- persistence ---
