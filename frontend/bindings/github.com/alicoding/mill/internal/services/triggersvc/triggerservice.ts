@@ -27,6 +27,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as trigger$0 from "../../domain/trigger/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as time$0 from "../../../../../../time/models.js";
 
 /**
  * ArmedWorkflows returns the workflow IDs that currently have a live
@@ -73,6 +76,19 @@ export function AssignHotkey(workflowID: string, mods: string[] | null, key: str
  */
 export function ClaimedCombos(): $CancellablePromise<trigger$0.HotkeyBinding[] | null> {
     return $Call.ByID(2202519334);
+}
+
+/**
+ * Drain blocks until every fire goroutine started through goFire has
+ * returned, or until timeout elapses -- the completion handshake a
+ * caller uses to know it's safe to shut down ExecutionService without
+ * racing a fire still inside a RunWorkflow* call on the same durable
+ * context. Returns false if the timeout elapsed with fires still
+ * outstanding (never blocks forever: a caller with a bounded teardown
+ * budget needs a bounded answer, not a hang).
+ */
+export function Drain(timeout: time$0.Duration): $CancellablePromise<boolean> {
+    return $Call.ByID(1195611610, timeout);
 }
 
 /**
