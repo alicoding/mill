@@ -1,23 +1,23 @@
 import type { Rectangle } from '@glideapps/glide-data-grid'
 import type { GridColumn } from './listGridTypes'
 
-// A fresh column opens its rename once BOTH signals the grid reports
-// independently have landed: `columns` includes the new key (the
-// insert round-tripped) and `getColumnBounds` returns a rectangle for
-// it (only true once the grid has painted a region since -- a column
-// it has not yet measured reports a zero-width rectangle). Neither
-// landing is assumed from the other; a caller re-evaluates this on
-// every columns change and on every grid region report, never on a
-// timer.
+// A fresh column opens its rename once the grid's own
+// onVisibleRegionChanged reports the column inside its visible range
+// -- the grid's own readiness signal, never a bounds probe (getBounds
+// can report a zero-width rectangle before the grid's first layout
+// pass, so its validity is not what this checks). `visibleRange` is
+// the range from the MOST RECENT such report, which may be null (none
+// reported yet) or stale relative to `pendingKey` in either direction
+// -- the insert's own round trip and the grid's local resize settle
+// independently, so a caller re-evaluates this on every region report
+// AND on every pendingKey change, never on a timer.
 export function resolvePendingRename(
   columns: GridColumn[],
   pendingKey: string | null,
-  getColumnBounds: (col: number) => Rectangle | undefined,
-): { col: number; bounds: Rectangle } | null {
-  if (pendingKey === null) return null
+  visibleRange: Rectangle | null,
+): number | null {
+  if (pendingKey === null || visibleRange === null) return null
   const col = columns.findIndex((c) => c.Key === pendingKey)
   if (col === -1) return null
-  const bounds = getColumnBounds(col)
-  if (!bounds) return null
-  return { col, bounds }
+  return col >= visibleRange.x && col < visibleRange.x + visibleRange.width ? col : null
 }
