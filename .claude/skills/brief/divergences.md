@@ -137,7 +137,11 @@ this file is the record, a brief is a projection of it.
   agent reported a PR that was never created.
 - Never: `pkill -f` / `killall` (kill only your own PIDs — a pkill
   once took down the production server), force-push, history
-  rewrites.
+  rewrites, `git stash`, `git checkout <ref> -- <path>`, `go clean
+  -cache`/`-testcache -cache`, `git add -A`/`--all`, `git commit
+  --amend`, `git rebase` — every one of these is now also mechanically
+  denied by `scripts/hook-command-guard.sh` (goal 0403 S2), so a
+  builder hitting one gets a hook block, not a silent success.
 - Lefthook Go gates can fail transiently while `task dev` rebuilds —
   rerun once before diagnosing.
 - Obvious: open the PR when the gates are green. Here: the builder first
