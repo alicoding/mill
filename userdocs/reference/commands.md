@@ -90,6 +90,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.space.rename` | Rename space… | — | atlas | Acts on the board's current selection |
 | `atlas.undo` | Undo | — | atlas | Always available |
 | `atlas.up` | Go up one level | `⌘↑` | atlas | Always available |
+| `audit.export` | Export audit trail | — | Global | Always available |
 | `backup.export` | Export everything | — | Global | Always available |
 | `backup.now` | Back up now | — | Global | Always available |
 | `browser.pair` | Pair a browser | — | Global | Always available |

@@ -12,6 +12,12 @@ HTTP server instead of a native window. Service bindings (`RunbookService`,
 identically to desktop mode — same Go code, no mocking, no stubs. This is
 the fastest way to confirm a change actually works, not just that it builds.
 
+When the change needs the REAL installed `/Applications/Mill.app` instead
+(a real global hotkey, real window/tray behavior, anything Accessibility-
+gated), use `.claude/skills/drive-installed-app/SKILL.md` — the setup and
+per-run procedure that keeps a `task install:app` reinstall from silently
+dropping Mill's own Accessibility grant (goal 0381).
+
 ## Steps
 
 1. Build the frontend if you touched anything under `frontend/`:

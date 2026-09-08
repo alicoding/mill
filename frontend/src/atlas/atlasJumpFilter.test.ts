@@ -157,4 +157,27 @@ describe('filterJumpObjects / objectJumpLabel (goal 0265)', () => {
     expect(filterJumpObjects(objects, [], '')).toEqual([])
     expect(filterJumpObjects(objects, [], 'network', 'k1')).toEqual([])
   })
+
+  it('matches a typo\'d query a substring test would miss (goal 0366)', () => {
+    const objects = [obj('d1', 'diagram', { title: 'Network map' })]
+    expect('network map'.includes('netwrk')).toBe(false)
+    const results = filterJumpObjects(objects, [], 'netwrk')
+    expect(results.map((r) => r.object.ID)).toEqual(['d1'])
+  })
+})
+
+// goal 0366 Class B: the shared fuzzysort fallback ranks a typo'd
+// query above a substring test's miss.
+describe('filterJumpCards fuzzy fallback', () => {
+  it('finds a title with a dropped letter that a substring test would miss', () => {
+    const cards = [card('a', 'Jordan Reyes', '')]
+    expect('jordan reyes'.includes('jordn')).toBe(false)
+    const results = filterJumpCards(cards, [], 'jordn')
+    expect(results.map((r) => r.card.ID)).toEqual(['a'])
+  })
+
+  it('still rejects a query unrelated to the title or note', () => {
+    const cards = [card('a', 'Alpha', '')]
+    expect(filterJumpCards(cards, [], 'zzz-not-a-match')).toEqual([])
+  })
 })

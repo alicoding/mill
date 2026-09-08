@@ -640,6 +640,14 @@
     "needs": null
   },
   {
+    "id": "audit.export",
+    "label": "Export audit trail",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
     "id": "backup.export",
     "label": "Export everything",
     "binding": null,

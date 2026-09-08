@@ -16,6 +16,10 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as device$0 from "../../domain/device/models.js";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
 /**
@@ -47,6 +51,18 @@ export function ListBrowsers(): $CancellablePromise<$models.DeviceInfo[] | null>
 }
 
 /**
+ * ListDeviceRefs is composition's "devices" OptionsSource resolver
+ * (docs/goals/0372): every paired phone, browser, and webhook token as
+ * one directory, filtered to only the refs that accept at least one of
+ * needs (empty needs returns every ref unfiltered) -- the frontend
+ * picker calls this with a config field's own declared Needs so the
+ * offered list never includes a device the event could never reach.
+ */
+export function ListDeviceRefs(needs: string[] | null): $CancellablePromise<device$0.Ref[] | null> {
+    return $Call.ByID(3248665176, needs);
+}
+
+/**
  * ListDevices returns every currently paired phone or computer, oldest
  * first, so Settings renders a stable order across renders. Paired
  * browsers are deliberately absent -- they have their own section and
@@ -57,24 +73,26 @@ export function ListDevices(): $CancellablePromise<$models.DeviceInfo[] | null> 
 }
 
 /**
- * ListHooks returns every live hook token's read model, same order and
- * shape as ListBrowsers -- hook tokens appear in their own Settings
- * section, never mixed into the device or browser lists.
+ * ListWebhookTokens returns every live webhook token's read model,
+ * same order and shape as ListBrowsers -- webhook tokens appear in
+ * their own Settings section, never mixed into the device or browser
+ * lists.
  */
-export function ListHooks(): $CancellablePromise<$models.DeviceInfo[] | null> {
-    return $Call.ByID(2622304556);
+export function ListWebhookTokens(): $CancellablePromise<$models.DeviceInfo[] | null> {
+    return $Call.ByID(2647435175);
 }
 
 /**
- * MintHookToken pairs a new hook credential, returning its raw token
- * exactly once for the user to copy into a tool's hook config. There
- * is no pairing code or exchange: the consumer is a shell command in a
- * config file, so the credential itself is the whole ceremony. Minting
- * more than one is legitimate (one per tool, or a rotation) -- each is
- * its own Settings row with its own revoke, like a paired browser.
+ * MintWebhookToken pairs a new webhook credential, returning its raw
+ * token exactly once for the user to copy into a tool's configuration.
+ * There is no pairing code or exchange: the consumer is a shell
+ * command or an HTTP client in a config file, so the credential itself
+ * is the whole ceremony. Minting more than one is legitimate (one per
+ * tool, or a rotation) -- each is its own Settings row with its own
+ * revoke, like a paired browser.
  */
-export function MintHookToken(label: string): $CancellablePromise<$models.HookToken> {
-    return $Call.ByID(3786229052, label);
+export function MintWebhookToken(label: string): $CancellablePromise<$models.WebhookToken> {
+    return $Call.ByID(393984190, label);
 }
 
 /**

@@ -72,6 +72,7 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Save | ⌘S | `workflow.save` |
 | Export everything | — | `backup.export` |
 | Export plugin audit | — | `extensions.exportAudit` |
+| Export audit trail | — | `audit.export` |
 | Lock vault | — | `secrets.lockVault` |
 
 ### Edit

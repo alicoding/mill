@@ -16,9 +16,9 @@ import (
 // systemevent_seed_test.go's own SetNotifier swap already establishes.
 func stubNotifier(t *testing.T) {
 	t.Helper()
-	composition.SetNotifier(func(string, string, string) error { return nil })
+	composition.SetNotifier(func(string, string, string, []string) error { return nil })
 	t.Cleanup(func() {
-		composition.SetNotifier(func(string, string, string) error { return fmt.Errorf("no notifier registered (yet)") })
+		composition.SetNotifier(func(string, string, string, []string) error { return fmt.Errorf("no notifier registered (yet)") })
 	})
 }
 

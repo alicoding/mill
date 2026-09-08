@@ -7,6 +7,7 @@ import { buildPluginAPI, collectFrameSurfaces } from './hostApi'
 import type { MillPluginAPI, PluginModule } from './sdk'
 import { pluginRunState, type PluginRunPolicy } from './pluginTrust'
 import { collectPluginCommand } from './pluginCommands'
+import { activateFramed, isFramedActivation } from './activation'
 
 // The runtime plugin loader (docs/goals/0249). Runs BEFORE the app
 // module graph evaluates (main.tsx awaits it and only then
@@ -160,6 +161,22 @@ export function collectReloadCommand(info: PluginInfo): void {
 	})
 }
 
+// activateOne runs exactly one plugin's activate(): framed inside a
+// sandboxed activation frame, or same-DOM, per isFramedActivation.
+// Split out of loadPlugins() so the per-plugin branch reads as one
+// step, not nested inside the scan loop's own state machine.
+async function activateOne(info: PluginInfo, millVersion: string, storageSnapshot: Record<string, string>): Promise<void> {
+	if (isFramedActivation(!!info.Builtin, info.Manifest)) {
+		await activateFramed(info, millVersion, storageSnapshot)
+		return
+	}
+	const url = `/plugins/${info.Manifest.id}/main.js?v=${encodeURIComponent(info.Manifest.version)}`
+	const mod = (await import(/* @vite-ignore */ url)) as PluginModule
+	const activate = resolveActivate(mod)
+	if (!activate) throw new Error('main.js exports no activate() function')
+	await Promise.resolve(activate(buildPluginAPI(info.Manifest, millVersion, storageSnapshot)))
+}
+
 // loadPlugins scans, filters to enabled+valid, and activates each
 // plugin's main.js. Every failure is PER-PLUGIN -- recorded on its own
 // row, never thrown upward -- and the whole pass is raced against a
@@ -209,11 +226,7 @@ export async function loadPlugins(): Promise<void> {
 		// throws still opens the pages its manifest promised.
 		collectFrameSurfaces(info.Manifest)
 		try {
-			const url = `/plugins/${id}/main.js?v=${encodeURIComponent(info.Manifest.version)}`
-			const mod = (await import(/* @vite-ignore */ url)) as PluginModule
-			const activate = resolveActivate(mod)
-			if (!activate) throw new Error('main.js exports no activate() function')
-			await Promise.resolve(activate(buildPluginAPI(info.Manifest, millVersion, storage[id] ?? {})))
+			await activateOne(info, millVersion, storage[id] ?? {})
 			loadStates.set(id, { status: 'loaded', info })
 		} catch (err) {
 			loadStates.set(id, { status: 'error', error: err instanceof Error ? err.message : String(err), info })
