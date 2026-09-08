@@ -19,6 +19,29 @@
      already its ancestor, so the override reaches the same rows either
      way. */
   --control-medium-paddingBlock: var(--mill-density-row-pad-y);
+  /* Drag region (goal 0377, amended after an installed-build check
+     found the first cut's two-header approach left only a ~4px
+     ungrabbable sliver): the panel's OWN outer container is the drag
+     region -- the converged Raycast/Alfred shape for a frameless
+     launcher window, not a single handpicked row. Every interactive
+     descendant below opts back out; --wails-draggable inherits down
+     the tree, so no-drag set once on FilteredActionList's own root
+     covers its input/buttons/listbox/options without repeating the
+     rule per element. padding-top guarantees a grab strip exists even
+     when the facet-chip row (its own conditional render) is absent --
+     empty chrome, no grip glyph, at least 12px so it's a real target. */
+  --wails-draggable: drag;
+  padding-top: 12px;
+}
+
+.panel input,
+.panel button,
+.panel a,
+.panel [role="button"],
+.panel [role="listbox"],
+.panel [role="option"],
+.panel [data-component="FilteredActionList"] {
+  --wails-draggable: no-drag;
 }
 
 .status {

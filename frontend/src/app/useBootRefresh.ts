@@ -3,6 +3,7 @@ import { refreshKeybindings, refreshNodeTypes, refreshRequests, refreshWorkflows
 import { refreshVaultStatus } from '../shared/vaultStatusStore'
 import { refreshDisabledExtensions } from '../shared/extensionEnablementStore'
 import { refreshExtensionSettings } from '../shared/extensionSettingsStore'
+import { refreshHasCustomPanelPosition } from '../shared/quickPanelPositionStore'
 
 // The one boot-time fetch of every store-owned server dataset -- split
 // out of App.tsx at CLAUDE.md's 500-line convention, zero behavior
@@ -11,9 +12,10 @@ import { refreshExtensionSettings } from '../shared/extensionSettingsStore'
 // by the data-changed router); this hook only makes first render
 // honest: sidebar workflows, work-tab editors' nodeTypes/requests,
 // keybindings, the vault-lock door, disabled-extension ids for the
-// tray/palette, and per-extension declared-setting values (goal 0258
-// -- a canvas surface reads extensionSetting() synchronously at
-// mount).
+// tray/palette, per-extension declared-setting values (goal 0258 -- a
+// canvas surface reads extensionSetting() synchronously at mount), and
+// whether the Quick Panel currently has a dragged position saved (goal
+// 0377 -- panel.resetPosition's own enabled() predicate).
 export function useBootRefresh(): void {
   useEffect(() => {
     void refreshWorkflows()
@@ -23,5 +25,6 @@ export function useBootRefresh(): void {
     void refreshVaultStatus()
     void refreshDisabledExtensions()
     void refreshExtensionSettings()
+    void refreshHasCustomPanelPosition()
   }, [])
 }

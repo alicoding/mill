@@ -62,6 +62,11 @@ type TokenAuthority interface {
 	PairBrowser(code, label, source string) (remoteauthsvc.BrowserPairing, error)
 	ValidateBrowserToken(token string) (remoteauthsvc.DeviceInfo, bool)
 	ValidateWebhookToken(token string) (remoteauthsvc.DeviceInfo, bool)
+	// RequestPairing and PairingStatus back the nearby discovery flow
+	// (goal 0379): a popup-minted request, confirmed by a human
+	// Accept/Deny in Mill, never a code typed out of band.
+	RequestPairing(label, source string) (remoteauthsvc.PairingRequestInfo, error)
+	PairingStatus(requestID string) remoteauthsvc.PairingRequestStatus
 }
 
 // client is one browser holding a stream open.

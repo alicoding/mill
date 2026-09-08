@@ -78,6 +78,19 @@ type SettingsService struct {
 	// always-alive floating window the summon hotkey toggles, distinct
 	// from window (the main window) above. See settingsservice_panel.go.
 	panel *windowing.Window
+	// panelPositionClamp re-clamps a saved Quick Panel position into the
+	// live screen layout immediately before every show (goal 0377's
+	// regression fix) -- wired from auxwindows.go, the one place with
+	// access to Wails' Screen API (this package's own ports/adapters
+	// boundary keeps wails/v3/pkg/application out, goal 0168). nil in a
+	// headless test process, where presentPanel's own nil-check makes
+	// that safe. See settingsservice_panelgeometry.go.
+	panelPositionClamp func(x, y int) (int, int)
+	// panelShownAt is the last time presentPanel actually showed the
+	// panel -- WatchPanelGeometry's own placement-grace guard reads it
+	// to tell the window manager's post-show settling move from a real
+	// user drag (goal 0377's regression).
+	panelShownAt time.Time
 	// trayCountFn mirrors the dock badge's pending count onto the
 	// menu-bar label (docs/goals/0189) -- see SetTrayCount.
 	trayCountFn func(count int)
