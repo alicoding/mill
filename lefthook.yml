@@ -60,6 +60,24 @@ pre-commit:
     - name: vendor-names-selftest
       glob: "{semgrep/**,scripts/check-vendor-names-selftest.sh}"
       run: ./scripts/check-vendor-names-selftest.sh
+    - name: no-raf-retry-loop
+      # Goal 0366 Class A: semgrep/no-raf-retry-loop.yml's own header
+      # comment carries the shape and the ListGridGlide.tsx exclusion's
+      # reason (goal 0390 / PR #793).
+      glob: "{frontend/src/**/*.{ts,tsx},semgrep/no-raf-retry-loop.yml}"
+      run: semgrep --config semgrep/no-raf-retry-loop.yml --error --quiet .
+    - name: no-raf-retry-loop-selftest
+      glob: "{semgrep/no-raf-retry-loop.yml,semgrep/fixtures/no-raf-retry-loop/**,scripts/check-no-raf-retry-loop-selftest.sh}"
+      run: ./scripts/check-no-raf-retry-loop-selftest.sh
+    - name: fuzzy-search-surfaces
+      # Goal 0366 Class B: flags a new picker/search-shaped file
+      # (*Palette*/*Picker*/*Browse* under frontend/src) filtering with
+      # a plain substring test instead of shared/fuzzyFilter.ts.
+      glob: "{frontend/src/**/*.{ts,tsx},semgrep/fuzzy-search-surfaces.yml}"
+      run: semgrep --config semgrep/fuzzy-search-surfaces.yml --error --quiet .
+    - name: fuzzy-search-surfaces-selftest
+      glob: "{semgrep/fuzzy-search-surfaces.yml,semgrep/fixtures/fuzzy-search-surfaces/**,scripts/check-fuzzy-search-surfaces-selftest.sh}"
+      run: ./scripts/check-fuzzy-search-surfaces-selftest.sh
     - name: toolbar-action-testids
       glob: "{frontend/src/atlas/AtlasToolbar.tsx,frontend/e2e/*.spec.ts,frontend/e2e/fixtures/toolbarActions.ts}"
       run: ./scripts/check-toolbar-action-testids.sh

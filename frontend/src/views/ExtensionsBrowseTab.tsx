@@ -10,6 +10,7 @@ import { useListState } from '../shared/useListState'
 import { pushNotice } from '../shared/noticeStore'
 import { appTranslate, messageFor, userErrorFrom } from '../shared/userError'
 import { notifyPluginRemoved } from '../shared/pluginRemoveSignal'
+import { filterBrowseEntries } from './extensionsBrowseFilter'
 import { ExtensionsInstallDialog } from './ExtensionsInstallDialog'
 import { ExtensionsSourcesDialog } from './ExtensionsSourcesDialog'
 import { ExtensionsKindChips } from './ExtensionsKindChips'
@@ -85,13 +86,8 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
       .finally(() => setBusy(false))
   }
 
-  const q = query.trim().toLowerCase()
   const available = (entries ?? []).filter((e) => !e.Installed)
-  const filtered = available.filter((e) => {
-    const matchesQuery = q === '' || (e.Name || e.ID).toLowerCase().includes(q) || (e.Description ?? '').toLowerCase().includes(q)
-    const matchesKind = kinds.length === 0 || kinds.some((kind) => (e.Kinds ?? []).includes(kind))
-    return matchesQuery && matchesKind
-  })
+  const filtered = filterBrowseEntries(available, query, kinds)
   const pageCount = pageCountFor(filtered.length)
   const page = clampPage(state.page, pageCount)
   const rows = pageItems(filtered, page)
