@@ -12,6 +12,7 @@ import { SETTINGS_COMMANDS } from './settingsCommands'
 import { CANVAS_COMMANDS } from './canvasCommands'
 import { WORKFLOW_MODE_COMMANDS } from './workflowModeCommands'
 import { SAVE_COMMANDS } from './saveCommands'
+import { REQUEST_FORM_COMMANDS } from './requestFormCommands'
 import { SECRETS_COMMANDS } from './secretsCommands'
 import { EXTENSIONS_COMMANDS } from './extensionsCommands'
 import { CLIPBOARD_HISTORY_COMMANDS } from './clipboardHistoryCommands'
@@ -402,13 +403,12 @@ export const COMMANDS: Command[] = lazyArray(() => [
   // edit.save / edit.saveAll over the flush registry (goal 0295 S2b) --
   // split out to shared/saveCommands.ts.
   ...withMenuGroup('workflow', 1, SAVE_COMMANDS),
-  // Vault lock/unlock -- split out to shared/secretsCommands.ts.
+  ...REQUEST_FORM_COMMANDS,
+  // Vault lock/unlock (shared/secretsCommands.ts); clipboard.history.open (shared/clipboardHistoryCommands.ts).
   ...SECRETS_COMMANDS,
-  // clipboard.history.open -- split out to shared/clipboardHistoryCommands.ts.
   ...CLIPBOARD_HISTORY_COMMANDS,
-  // codingLoop.run -- split out to shared/codingLoopCommands.ts.
+  // codingLoop.run (shared/codingLoopCommands.ts); docs.search (shared/docsSearchCommands.ts).
   ...CODING_LOOP_COMMANDS,
-  // docs.search -- split out to shared/docsSearchCommands.ts.
   ...withMenuGroup('help', 0, DOCS_SEARCH_COMMANDS),
   ...HELP_COMMANDS,
   // Commands that act on a target the invoker supplies (goal 0343) --

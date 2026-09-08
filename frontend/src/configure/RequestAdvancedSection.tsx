@@ -74,7 +74,7 @@ export function RequestAdvancedSection({ draft, setDraft }: {
       <FormControl>
         <FormControl.Label>{t('requestForm.fallbackBody')}</FormControl.Label>
         <FormControl.Caption>{t('requestForm.fallbackBodyCaption')}</FormControl.Caption>
-        <Textarea value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} rows={2} block data-testid="request-body" />
+        <Textarea value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} rows={4} block data-testid="request-body" />
       </FormControl>
     </AdvancedDisclosure>
   )

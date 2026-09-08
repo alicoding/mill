@@ -10,6 +10,7 @@ import type { Profile as ConversionProfile } from '../../bindings/github.com/ali
 import type { AIProvider } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 import type { ClientCertificate, Status as ClientCertStatus } from '../../bindings/github.com/alicoding/mill/internal/domain/clientcert/models'
 import type { DeclaredStepType } from '../../bindings/github.com/alicoding/mill/internal/domain/declaredsteptype/models'
+import type { ListUsage } from '../../bindings/github.com/alicoding/mill/internal/services/configuresvc/models'
 import { background } from './background'
 
 // The other half of store.ts's "one fetch, many consumers" server-data
@@ -38,6 +39,9 @@ interface ConfigureEntityState {
   clientCerts: ClientCertificate[] | null
   clientCertStatuses: Record<string, ClientCertStatus>
   declaredStepTypes: DeclaredStepType[] | null
+  // listUsage (goal 0392 S1): keyed by List.ID, read by ConfigureLists'
+  // own per-row "Used on N boards, M workflows" line and Unused filter.
+  listUsage: Record<string, ListUsage>
   setLists: (lists: List[]) => void
   setDecisions: (decisions: Decision[]) => void
   setMCPServers: (mcpServers: MCPServer[]) => void
@@ -48,6 +52,7 @@ interface ConfigureEntityState {
   setAIProviders: (aiProviders: AIProvider[]) => void
   setClientCerts: (clientCerts: ClientCertificate[], statuses: ClientCertStatus[]) => void
   setDeclaredStepTypes: (declaredStepTypes: DeclaredStepType[]) => void
+  setListUsage: (listUsage: ListUsage[]) => void
 }
 
 export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => ({
@@ -62,6 +67,7 @@ export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => (
   clientCerts: null,
   clientCertStatuses: {},
   declaredStepTypes: null,
+  listUsage: {},
   setLists: (lists) => set({ lists }),
   setDecisions: (decisions) => set({ decisions }),
   setMCPServers: (mcpServers) => set({ mcpServers }),
@@ -72,6 +78,7 @@ export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => (
   setAIProviders: (aiProviders) => set({ aiProviders }),
   setClientCerts: (clientCerts, statuses) => set({ clientCerts, clientCertStatuses: Object.fromEntries(statuses.map((s) => [s.id, s])) }),
   setDeclaredStepTypes: (declaredStepTypes) => set({ declaredStepTypes }),
+  setListUsage: (listUsage) => set({ listUsage: Object.fromEntries(listUsage.map((u) => [u.ListID, u])) }),
 }))
 
 // refreshLists/refreshDecisions/refreshMCPServers/refreshExecEnvs mirror
@@ -130,4 +137,15 @@ export function refreshClientCerts(): Promise<void> {
 export function refreshDeclaredStepTypes(): Promise<void> {
   return background(ConfigureService.DeclaredStepTypes()
     .then((list) => useConfigureEntityStore.getState().setDeclaredStepTypes(list ?? [])), 'configureEntity.declaredStepTypes')
+}
+
+// refreshListUsage (goal 0392 S1): the combined board+workflow
+// reference index, one call for every List rather than one per row --
+// app/useDataChangedRouter.ts calls this alongside refreshLists on
+// 'list', and on 'atlas'/'workflow' too, since a table's own creation/
+// deletion and a workflow node's config edit both move these counts
+// without a 'list' event of their own.
+export function refreshListUsage(): Promise<void> {
+  return background(ConfigureService.ListUsageSummary()
+    .then((usage) => useConfigureEntityStore.getState().setListUsage(usage ?? [])), 'configureEntity.listUsage')
 }

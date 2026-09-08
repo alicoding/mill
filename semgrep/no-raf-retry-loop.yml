@@ -3,9 +3,8 @@
 # bounded counter is polling for a library's layout to settle instead
 # of using the library's own readiness signal (glide-data-grid's
 # DataEditorRef.onVisibleRegionChanged, an @xyflow/react ref's own
-# settled-viewport event) -- the exact shape goal 0390 / PR #793
-# replaces in ListGridGlide.tsx's openRename. This rule stops a NEW
-# instance from shipping; it does not require that fix to land first.
+# settled-viewport event) -- the shape goal 0390 migrated out of
+# ListGridGlide.tsx's openRename.
 #
 # A single one-shot requestAnimationFrame (deferring focus/paint to
 # the next frame, or a continuous per-frame tick during an active
@@ -39,7 +38,3 @@ rules:
       exclude:
         - '**/*.test.ts'
         - '**/*.test.tsx'
-        # The one confirmed pre-existing instance (goal 0366 inventory
-        # #1): migrated by goal 0390 / PR #793, not yet merged as of
-        # this rule landing. Remove this exclusion once that PR merges.
-        - '**/frontend/src/shared/ListGridGlide.tsx'

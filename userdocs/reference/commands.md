@@ -134,9 +134,11 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.execenv.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.execenv.export` | Export | — | Global | Acts on the selected entity |
 | `configure.execenv.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.integration.testDraft` | Test | — | Global | Conditional — available only in a matching state |
 | `configure.list.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.list.export` | Export | — | Global | Acts on the selected entity |
 | `configure.list.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.lists.deleteUnused` | Delete {{count}} lists | — | Global | Acts on the selected entitySelection |
 | `configure.mcpserver.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.mcpserver.export` | Export | — | Global | Acts on the selected entity |
 | `configure.mcpserver.listTools` | List tools | — | Global | Acts on the selected entity |
