@@ -334,6 +334,7 @@ func (m *MillMCPService) registerAtlasBoardObjectTools() {
 			"file-backed object (image/ink/diagram) reports its mirrored file's path and MIME type; a List-backed " +
 			"object (table) reports the List's id and label; a board-local object (shape) reports a short summary " +
 			"of its own payload. Optionally scoped to one parent card's direct children. Read-only.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasReadBoardObjectsArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireAtlas(); err != nil {
 			return nil, nil, err
@@ -350,6 +351,7 @@ func (m *MillMCPService) registerAtlasBoardObjectTools() {
 			"size only, never inline bytes. A List-backed object (table) returns the projected List's id, label, " +
 			"columns and rows -- the same live data the table's own board face renders. A board-local object " +
 			"(shape) returns its full payload. Read-only.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasReadBoardObjectArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireAtlas(); err != nil {
 			return nil, nil, err

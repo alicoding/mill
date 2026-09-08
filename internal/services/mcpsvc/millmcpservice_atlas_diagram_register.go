@@ -28,6 +28,7 @@ func (m *MillMCPService) registerAtlasDiagramAddTool() {
 			"cell may carry its own id (unique on the page) or let Mill mint one; a connector names the " +
 			"source and target cell ids it joins, which must already exist. Returns the ids the new cells " +
 			"landed under, in the order given. " + approvalPollNote,
+		Annotations: createAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasDiagramAddArgs) (*mcp.CallToolResult, any, error) {
 		r, err := m.requireDiagramWrite(in.ObjectID)
 		if err != nil {
@@ -53,6 +54,7 @@ func (m *MillMCPService) registerAtlasDiagramEditTool() {
 			"re-home it into another layer, or reconnect a connector's ends. Only the parts you name change; " +
 			"geometry merges coordinate by coordinate. An id that isn't on the page fails the whole call " +
 			"before anything is written. " + approvalPollNote,
+		Annotations: editAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasDiagramEditArgs) (*mcp.CallToolResult, any, error) {
 		r, err := m.requireDiagramWrite(in.ObjectID)
 		if err != nil {
@@ -78,6 +80,7 @@ func (m *MillMCPService) registerAtlasDiagramDeleteTool() {
 		Description: "Remove cells from a diagram by id. Any connector left dangling by the removal goes " +
 			"with them and is reported separately, so nothing is deleted silently. The diagram's own " +
 			"structural cells (\"0\" and \"1\") can never be deleted. " + approvalPollNote,
+		Annotations: deleteAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasDiagramDeleteArgs) (*mcp.CallToolResult, any, error) {
 		r, err := m.requireDiagramWrite(in.ObjectID)
 		if err != nil {
@@ -104,6 +107,7 @@ func (m *MillMCPService) registerAtlasDiagramImportTool() {
 			"re-mints any id that collides (reporting the map), \"new-page\" files it as its own page, and " +
 			"\"replace\" overwrites the file outright. Prefer add or new-page -- replace discards every id, " +
 			"layer and page already there. A Mermaid diagram accepts only replace. " + approvalPollNote,
+		Annotations: mixedAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasDiagramImportArgs) (*mcp.CallToolResult, any, error) {
 		title, err := m.checkDiagramImport(in)
 		if err != nil {
