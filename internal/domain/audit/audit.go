@@ -30,7 +30,7 @@ const (
 // inside a workflow run, AgentSession for the agent loop's own session,
 // Source for an external identity (an MCP client's ClientInfo name/
 // version, or the browser bridge's "browser:<deviceId>"/
-// "hook:<tokenId>"). Exactly one of StepID/AgentSession/Source is
+// "webhook:<tokenId>"). Exactly one of StepID/AgentSession/Source is
 // populated for a non-run actor; RunID/WorkflowID/StepID travel
 // together when the action happened inside a workflow run.
 type Actor struct {
