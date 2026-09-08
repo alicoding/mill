@@ -512,8 +512,7 @@
     "label": "Label",
     "method": "Method",
     "url": "URL",
-    "urlCaption": "The complete URL this integration calls, path included. Use {{brace}}param{{closeBrace}} templates, bound via the Schema's path parameters.",
-    "variablesHint": "Write {{example}} anywhere here, in a header, or in the body, and a run replaces it with the value from the environment it selected.",
+    "urlCaption": "The full URL, including its path, supporting {param} and {{example}}-style environment variables.",
     "urlPlaceholder": "https://api.example.com/v1/widgets/{id}",
     "description": "Description",
     "descriptionCaption": "Optional: what this request is for, or any caveat worth noting.",
@@ -540,7 +539,10 @@
     "decryptResponseAriaLabel": "Decrypt response",
     "decryptResponseLabel": "Decrypt response (this request's replies are also JWE-encrypted)",
     "millsPrivateKey": "Mill's private key (PEM)",
-    "millsPrivateKeyCaption": "Mill's own private key, used to decrypt what comes back."
+    "millsPrivateKeyCaption": "Mill's own private key, used to decrypt what comes back.",
+    "test": "Test",
+    "testing": "Testing…",
+    "testCaption": "Runs this draft for real and shows what comes back."
   },
   "openapiSynth": {
     "csvRowError": "Row {{row}}: {{message}}",

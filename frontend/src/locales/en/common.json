@@ -322,6 +322,9 @@
         "certificates": "New client certificate"
       },
       "openKind": "Configure › {{label}}",
+      "integration": {
+        "testDraft": "Test"
+      },
       "request": {
         "delete": "Delete",
         "edit": "Edit",
