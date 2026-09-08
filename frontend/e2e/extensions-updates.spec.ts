@@ -1,4 +1,5 @@
 import { chromium, expect, test, type Browser, type Page } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -59,6 +60,7 @@ test.beforeAll(async () => {
 	browser = await chromium.launch()
 	const context = await browser.newContext({ baseURL: `http://127.0.0.1:${EXTENSIONS_UPDATES_SERVER_BASE_PORT}` })
 	page = await context.newPage()
+	await applyCpuThrottle(page)
 })
 
 test.afterAll(async () => {

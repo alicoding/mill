@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { openSettings } from './fixtures/settingsNav'
 import { rmSync } from 'node:fs'
 import {
@@ -44,6 +45,7 @@ test('Enabling auto-download starts a background download live, with no click on
       MILL_TEST_UPDATE_DOWNLOAD_DELAY_MS: '2000',
     }))
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await openSettings(page, 'updates')
 
@@ -88,6 +90,7 @@ test("Clicking the pill's available notice starts the download directly, never n
       MILL_TEST_UPDATE_DOWNLOAD_DELAY_MS: '2000',
     }))
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     // Settings' own mount-time check (goal 0205 S4) is what actually
     // populates server state -- the pill itself never initiates a

@@ -25,11 +25,15 @@ import (
 // nearby flow: a browser's popup finds Mill and requests pairing
 // without typing anything, confirmed by a matching code Accept/Deny in
 // Mill resolves -- PairPath's typed exchange stays as the Passkey-
-// Entry-equivalent fallback.
+// Entry-equivalent fallback. DisconnectPath (goal 0379 S2) lets a
+// paired browser end its OWN pairing by presenting its own bearer
+// token -- kept beside PairPath as the mint/revoke pair for the same
+// credential.
 const (
 	EventsPath      = "/__mill/bridge/events"
 	ResultPath      = "/__mill/bridge/result"
 	PairPath        = "/__mill/bridge/pair"
+	DisconnectPath  = "/__mill/bridge/disconnect"
 	DiscoverPath    = "/__mill/bridge/discover"
 	PairRequestPath = "/__mill/bridge/pair-request"
 	PairStatusPath  = "/__mill/bridge/pair-status"
@@ -62,6 +66,7 @@ func (s *BridgeService) Handler() http.Handler {
 	mux.HandleFunc(EventsPath, s.handleEvents)
 	mux.HandleFunc(ResultPath, s.handleResult)
 	mux.HandleFunc(PairPath, s.handlePair)
+	mux.HandleFunc(DisconnectPath, s.handleDisconnect)
 	mux.HandleFunc(DiscoverPath, s.handleDiscover)
 	mux.HandleFunc(PairRequestPath, s.handlePairRequest)
 	mux.HandleFunc(PairStatusPath, s.handlePairStatus)
@@ -114,6 +119,36 @@ func pairFailureKind(err error) string {
 		return "rate-limited"
 	}
 	return "unauthorized"
+}
+
+// handleDisconnect ends the CALLER's own pairing (goal 0379 S2): the
+// bearer token is the only proof of identity accepted -- a request body
+// naming a different device id is decoded for nothing, never read, so a
+// browser can only ever revoke itself. Unlike handlePair/handleDiscover
+// it carries no isLoopback gate: the token IS the credential, valid the
+// same way over loopback or a remote connection, mirroring
+// handleEvents/handleResult's own bearer-only posture rather than the
+// no-token-yet pairing doors.
+func (s *BridgeService) handleDisconnect(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	device, ok := s.auth.ValidateBrowserToken(bearerToken(r))
+	if !ok {
+		s.recordCommand(r.Context(), "revoke", audit.Target{}, "browser:"+sourceKey(r), "rejected", "unauthorized", http.StatusUnauthorized, "")
+		writeUserError(w, http.StatusUnauthorized, browserbridge.ErrNoBrowser())
+		return
+	}
+	if err := s.auth.RevokeDevice(device.ID); err != nil {
+		// Already gone -- a concurrent duplicate Disconnect, or the
+		// same device revoked from Settings a moment earlier. The
+		// caller's desired end state (unpaired) already holds, so this
+		// still answers 204 rather than surfacing a race as a failure.
+		s.logger.Info("browser bridge: disconnect for an already-revoked device", "browser", device.ID)
+	}
+	s.recordCommand(r.Context(), "revoke", audit.Target{Kind: "browser", ID: device.ID, Label: device.Label}, "browser:"+device.ID, "accepted", "", http.StatusNoContent, "")
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // discoverResponse is what a browser's popup learns before typing
@@ -211,7 +246,7 @@ const rootPageHTML = `<!doctype html>
 <body>
 <h1>Mill's connection endpoint</h1>
 <p>This is Mill's local connection endpoint. It only answers requests from this computer.</p>
-<p>The browser extension's discovery check, its pairing, and webhook recipes all talk to it here.</p>
+<p>The browser extension's discovery check, its pairing, its disconnect, and webhook recipes all talk to it here.</p>
 <p>Open Mill, then go to Settings &gt; Connections.</p>
 </body>
 </html>
