@@ -12,7 +12,7 @@ import { ExtensionsLinkPasteControl } from './ExtensionsLinkPasteControl'
 import { ExtensionsTrustBar } from './ExtensionsTrustBar'
 import { ExtensionRowMenu } from './ExtensionRowMenu'
 import { ExtensionsKindChips } from './ExtensionsKindChips'
-import { tierLabelKey, tierVariant } from './extensionTrust'
+import { hasCanvasHostGrant, tierLabelKey, tierVariant } from './extensionTrust'
 import { refreshDisabledExtensions, useExtensionEnablementStore } from '../shared/extensionEnablementStore'
 import { LIST_PAGE_SIZE, clampPage, listCountLabel, pageCountFor, pageItems } from '../shared/listStandard'
 import { useListState } from '../shared/useListState'
@@ -115,6 +115,7 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
     const error = p.Error || (runtime?.status === 'error' ? runtime.error : '')
     const badgeKey = tierLabelKey(p.Tier ?? '')
     const policyBlocked = runtime?.status === 'policy'
+    const canvasHost = hasCanvasHostGrant(p)
     // A blocked row's trailing cluster is already the widest the list
     // carries (the policy label replaces the toggle); repeating the
     // author and version alongside it overflows onto the name in the
@@ -133,6 +134,7 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
               {showOrigin && p.Manifest.author && <Text size="small" className={listStyles.muted}>{p.Manifest.author}</Text>}
               {showOrigin && p.Manifest.version && <Text size="small" className={listStyles.muted}>{t('extensions.versionLabel', { version: p.Manifest.version })}</Text>}
               {badgeKey && <Label variant={tierVariant(p.Tier ?? '')} data-testid="extensions-row-tier">{t(badgeKey)}</Label>}
+              {canvasHost && <Label data-testid="extensions-row-canvas-host">{t('settings.extensions.canvasHostLabel')}</Label>}
               {policyBlocked && (
                 <Label variant="attention" data-testid="extensions-row-policy">{t('extensions.policy.blockedStatus')}</Label>
               )}
