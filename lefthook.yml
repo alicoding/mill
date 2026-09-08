@@ -166,6 +166,14 @@ pre-commit:
     - name: selftest-git-isolation-selftest
       glob: "scripts/check-selftest-git-isolation*.sh"
       run: ./scripts/check-selftest-git-isolation-selftest.sh
+    - name: install-lock-selftest
+      # Goal 0403 S2c: two concurrent installed-app passes clobber the
+      # same /Applications/Mill.app bundle mid-install and each other's
+      # launched process -- scripts/with-install-lock.sh serializes
+      # them; this probes serialization, stale-holder reclaim, the
+      # bounded-wait exit code and --acquire/--release reentrancy.
+      glob: "{scripts/with-install-lock.sh,scripts/check-install-lock-selftest.sh,Taskfile.yml}"
+      run: ./scripts/check-install-lock-selftest.sh
     - name: review-report-selftest
       # Fixture-tests the pre-PR review gate itself (goal 0383) --
       # mirrors hook-command-guard's own probe-on-touch shape; the live

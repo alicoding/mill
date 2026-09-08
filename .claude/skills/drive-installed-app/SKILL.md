@@ -58,6 +58,22 @@ regenerated (a new machine, or the keychain item was deleted).
 
 ## Per-run procedure
 
+Two concurrent installed-app passes clobber the same bundle mid-install
+and can kill each other's launched process (goal 0403 S2c) -- this
+whole procedure runs under ONE machine-wide lock, held from the quit
+step through the final relaunch:
+
+```
+scripts/with-install-lock.sh --acquire
+```
+
+A bounded wait (default 20 min, `MILL_INSTALL_LOCK_WAIT`) exits 75 with
+a one-line message when another pass is already running -- report
+"installed pass pending", never retry in a loop. `task install:app`
+(step 3 below) acquires this SAME lock internally; that inner acquire
+detects the outer hold and no-ops through rather than deadlocking on
+itself.
+
 1. **Preflight**: the repo root's `scripts/check-drive-setup.sh` (<10s). Fix whatever
    it names before continuing -- never guess past a failing line.
 2. **Quit the running Mill through the bridge door**, not an AppleEvent
@@ -71,10 +87,14 @@ regenerated (a new machine, or the keychain item was deleted).
    down") or never arrive -- both are the expected shape of a clean
    quit racing its own HTTP response, not a failure to react to.
    **Fallback** (no bridge running, e.g. the last install predates
-   this goal): `pgrep -x mill` then `kill -TERM <pid>` -- never a
-   broader `pkill`/`killall`. A `kill -TERM` skips the leave handshake
-   entirely; any unsaved state the durable execution engine tracks
-   reconciles on the next start, same as an OS-forced quit today.
+   this goal): resolve the PID from the installed app's own path --
+   `pgrep -f '/Applications/Mill\.app/Contents/MacOS/mill'` -- then
+   `kill -TERM <pid>`, never a broader `pkill`/`killall` and never
+   `pgrep -x mill` (matches by bare process name, so it can just as
+   easily hit an unrelated dev build). A `kill -TERM` skips the leave
+   handshake entirely; any unsaved state the durable execution engine
+   tracks reconciles on the next start, same as an OS-forced quit
+   today.
 3. **Reinstall with the bridge**, from this goal's own worktree or
    whichever checkout you're verifying:
    ```
@@ -152,6 +172,12 @@ regenerated (a new machine, or the keychain item was deleted).
    running (a plain relaunch, real data, no throwaway env vars) --
    verification traffic is allowed to leave the app open per project
    convention; quitting a running Mill is not itself destructive.
+8. **Release the lock** acquired at the top of this procedure, now that
+   the pass -- including the confirmation relaunch -- has genuinely
+   finished:
+   ```
+   scripts/with-install-lock.sh --release
+   ```
 
 ## What stays manual-only
 
