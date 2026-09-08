@@ -43,7 +43,10 @@ sleep 0.05
 pid_b=$!
 wait "$pid_a" "$pid_b"
 
-mapfile -t lines < "$log"
+lines=()
+while IFS= read -r line; do
+  lines+=("$line")
+done < "$log"
 if [ "${#lines[@]}" -ne 4 ]; then
   fail "serialize: expected 4 log lines, got ${#lines[@]}: ${lines[*]-}"
 else
