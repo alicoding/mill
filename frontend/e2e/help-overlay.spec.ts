@@ -75,19 +75,24 @@ test('the command palette on Atlas lists "Jump to a card" with its ⌘K chip und
   await page.keyboard.press('Escape')
 })
 
-test('"Open coverage" from the palette on Atlas switches to the coverage view', async ({ page }) => {
+// Coverage is the bundled mill-coverage plugin (goal 0357 S2): its
+// board-switcher palette entry carries the manifest's own view title
+// ("Coverage"), not the old core command's "Open coverage" label, and
+// its pane content is a sandboxed iframe (PluginFrame) rather than a
+// `data-component` marker on the page's own document.
+test('"Coverage" from the palette on Atlas switches to the coverage view', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
   await page.keyboard.press('Meta+/')
   const palette = page.getByRole('dialog', { name: 'Command palette' })
-  await palette.getByRole('combobox').fill('Open coverage')
-  const option = page.getByRole('option', { name: 'Open coverage' })
+  await palette.getByRole('combobox').fill('Coverage')
+  const option = page.getByRole('option', { name: 'Coverage', exact: true })
   await expect(option).toBeVisible()
   await option.click()
 
-  await expect(page.locator('[data-component="atlas-coverage-pane"]')).toBeVisible()
+  await expect(page.getByTestId('plugin-view-mill-coverage-coverage')).toBeVisible()
 })
 
 test('"Rebind in Settings" in the overlay footer navigates to Settings and closes the overlay', async ({ page }) => {
@@ -110,7 +115,8 @@ test('"Rebind in Settings" in the overlay footer navigates to Settings and close
 // atlas.delete.selection's ⌫, atlas.group.selection's G); palette-only
 // commands with no default binding (atlas.arrange, atlas.import) are
 // deliberately absent -- same "unbound stays out of the overlay"
-// behavior atlas.matrix/atlas.coverage already have.
+// behavior every plugin-contributed board-switcher view's own open
+// command already has.
 test('the overlay shows hint chips for the new Atlas commands, and omits unbound palette-only ones', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
