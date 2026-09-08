@@ -1036,6 +1036,14 @@
     "needs": "entity"
   },
   {
+    "id": "configure.lists.deleteUnused",
+    "label": "Delete {{count}} lists",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entitySelection"
+  },
+  {
     "id": "configure.mcpserver.delete",
     "label": "Delete",
     "binding": null,
