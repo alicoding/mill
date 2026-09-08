@@ -47,7 +47,7 @@ test('the approval prompt carries a visible close control', async ({ page }) => 
   await expect(page.getByTestId('approval-prompt')).toBeVisible()
 })
 
-test('a parked MCP write shows in the approval prompt, and Approve resolves it', async ({ page }, testInfo) => {
+test('a parked MCP write shows in the approval prompt, and Approve resolves it', async ({ page, workerServer }) => {
   await enableMCPWritesWithApprovalRequired(page)
 
   // A source workflow to export/re-import (import always mints a new
@@ -58,7 +58,7 @@ test('a parked MCP write shows in the approval prompt, and Approve resolves it',
   await page.locator('[role="tabpanel"]:not([hidden])').last().getByTestId('save-workflow').click()
   await expect(workflowRow(page, 'E2E approval prompt source')).toBeVisible()
 
-  const client = await connectMCPClient(testInfo.parallelIndex)
+  const client = await connectMCPClient(workerServer.mcpPort)
   let importResultPromise: ReturnType<Client['callTool']>
   try {
     const sourceId = await findWorkflowIdByLabel(client, 'E2E approval prompt source')

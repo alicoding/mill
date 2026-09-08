@@ -106,7 +106,7 @@ test('a request naming a variable runs in the environment the dialog picked, and
   // Built through the same bound methods the forms call: this test is
   // about the RUN, and authoring an integration and a graph by hand
   // would make it about the canvas instead.
-  const environment = await callBindingViaRPC<Entity>(page, CONFIGURE + 'CreateEnvironment', ['ZzE2eRunStage', [{ Key: 'API_BASE', Value: 'http://127.0.0.1:9', Secret: false }]])
+  const environment = await callBindingViaRPC<Entity>(page, CONFIGURE + 'CreateEnvironment', ['ZzE2eRunStage', [{ Key: 'API_BASE', Value: 'http://127.0.0.1:9', Secret: false }]]) // port-literal: placeholder API_BASE value; this test only asserts refusal states, nothing ever dials it
   const request = await callBindingViaRPC<Entity>(page, CONFIGURE + 'CreateHTTPRequest', ['ZzE2eStagedRequest', '{{API_BASE}}/echo', 'GET', '', 'none', '', null, '', null, null, ''])
   const workflow = await callBindingViaRPC<Entity>(page, COMPOSITION + 'CreateWorkflow', ['ZzE2eStagedWorkflow', '', [
     { ID: 't', NodeTypeID: 'trigger-manual', Position: { X: 0, Y: 0 } },

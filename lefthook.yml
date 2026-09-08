@@ -50,6 +50,17 @@ pre-commit:
       # hand-kept: a literal goes stale on the next member and fails
       # the PR that added it. Grep-only, same shape as comment-hygiene.
       run: ./scripts/check-e2e-seed-literals.sh
+    - name: e2e-fixed-ports
+      glob: "frontend/e2e/**/*.ts"
+      # goal 0358 S6: an e2e server binds an OS-assigned port, read back
+      # off main.go's MILL_READY line -- never a literal one, the class
+      # that let two worktrees' own worker pools collide on one machine.
+      run: ./scripts/check-e2e-fixed-ports.sh
+    - name: e2e-fixed-ports-selftest
+      # Fixture-tests the gate above -- same probe-on-touch shape as
+      # framework-api-first-selftest.
+      glob: "scripts/check-e2e-fixed-ports*.sh"
+      run: ./scripts/check-e2e-fixed-ports-selftest.sh
     - name: e2e-edge-hover
       glob: "frontend/e2e/**/*.ts"
       # A .react-flow__edge locator hovered/clicked directly (not

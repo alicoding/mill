@@ -17,7 +17,7 @@ import { workflowRow } from './fixtures/canvas'
 // store the MCPWriteApprovals.tsx banner reads -- and approving it
 // there must execute the write, minting the new workflow.
 
-test('a parked MCP write appears as a Review row and approving it there executes the write', async ({ page }, testInfo) => {
+test('a parked MCP write appears as a Review row and approving it there executes the write', async ({ page, workerServer }) => {
   await enableMCPWritesWithApprovalRequired(page)
 
   // A source workflow to export/re-import (import always mints a new
@@ -28,7 +28,7 @@ test('a parked MCP write appears as a Review row and approving it there executes
   await page.locator('[role="tabpanel"]:not([hidden])').last().getByTestId('save-workflow').click()
   await expect(workflowRow(page, 'E2E MCP write approval source')).toBeVisible()
 
-  const client = await connectMCPClient(testInfo.parallelIndex)
+  const client = await connectMCPClient(workerServer.mcpPort)
   let importResultPromise: ReturnType<Client['callTool']>
   try {
     const sourceId = await findWorkflowIdByLabel(client, 'E2E MCP write approval source')
