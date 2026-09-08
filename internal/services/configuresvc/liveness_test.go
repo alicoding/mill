@@ -35,6 +35,9 @@ func TestSeededHTTPRequests_LiveEndpointsRespond(t *testing.T) {
 			if r.ID == httprequest.ExampleConfluencePageReadID || r.ID == httprequest.ExampleJiraSearchID {
 				t.Skip("ships with the RFC 2606 reserved, guaranteed-non-resolving example.invalid host by design (bring-your-own on-prem host) -- no single public host exists to check liveness against")
 			}
+			if r.ID == httprequest.ExampleEnvironmentID {
+				t.Skip("BaseURL carries an unresolved {{API_BASE}} placeholder by design -- environment-variable substitution happens on a real workflow run (internal/domain/composition), not on TestHTTPRequestOperation's draft-check path, so this seed isn't independently live-checkable through it")
+			}
 
 			doc, err := openapispec.Parse([]byte(r.OpenAPISpec))
 			if err != nil {
@@ -46,15 +49,25 @@ func TestSeededHTTPRequests_LiveEndpointsRespond(t *testing.T) {
 			}
 			op := ops[0]
 
-			secret := builtInSecrets[r.ID]
+			// TestHTTPRequestOperation resolves a secret only through a
+			// SecretRef into a wired store (goal 0306's secrets-are-
+			// references model) -- it never accepts a raw value, so the
+			// demo credential goes in via the same store/ref helpers the
+			// package's other TestHTTPRequestOperation tests use.
+			c, _ := newTestConfigureService(t)
+			auth := r.Auth
+			var secretRef string
 			if r.ID == httprequest.ExampleOAuth1ID {
-				secret = builtInOAuth1ConsumerSecret
+				oauth1 := *auth.OAuth1
+				oauth1.ConsumerSecretRef = secretStoreOf(t, c).Put(r.Label+": consumer secret", builtInOAuth1ConsumerSecret)
+				auth = &httprequest.AuthConfig{OAuth1: &oauth1}
+			} else if secret, ok := builtInSecrets[r.ID]; ok {
+				secretRef = secretStoreOf(t, c).Put(r.Label+": secret", secret)
 			}
 
-			c := &ConfigureService{}
 			result, err := c.TestHTTPRequestOperation(TestHTTPRequestInput{
-				BaseURL: r.BaseURL, AuthType: r.AuthType, Auth: r.Auth, JOSE: r.JOSE,
-				Headers: r.Headers, Secret: secret, OpenAPISpec: r.OpenAPISpec,
+				BaseURL: r.BaseURL, AuthType: r.AuthType, Auth: auth, JOSE: r.JOSE,
+				Headers: r.Headers, SecretRef: secretRef, OpenAPISpec: r.OpenAPISpec,
 				Path: op.Path, Method: op.Method,
 			})
 			if err != nil {
