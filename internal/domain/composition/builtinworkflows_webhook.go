@@ -48,11 +48,14 @@ func builtInWebhookWorkflows() []Workflow {
 				{ID: "example-webhook-notify-e0", Source: triggerID, Target: notifyID},
 			},
 			BuiltIn: true,
-			// SeedRevision 7: goal 0387 renamed the title/body
+			// SeedRevision 8: goal 0372 added apply-notify's targets
+			// ConfigField, whose default-filled "" now lands in this
+			// seed's own persisted Config (ResolveNodeDefaults fills
+			// every declared field); goal 0387 renamed the title/body
 			// fallbacks and description off the retired vendor-tool
 			// wording (docs/goals/0037 item 7 -- a content change
 			// bumps the revision).
-			Seed: seedorigin.Stamp(7),
+			Seed: seedorigin.Stamp(8),
 		},
 	}
 }

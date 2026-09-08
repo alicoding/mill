@@ -196,6 +196,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
           <RequestForm
             editingRequest={editing}
             duplicateFrom={duplicateFrom}
+            tabKey={tab.key}
             onSaved={() => { void refreshRequests(); closeWorkTab(tab.key) }}
             onCancel={() => closeWorkTab(tab.key)}
           />

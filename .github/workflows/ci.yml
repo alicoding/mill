@@ -584,6 +584,138 @@ jobs:
       - run: go build ${{ matrix.tags && format('-tags {0}', matrix.tags) || '' }} .
       - run: go vet ${{ matrix.tags && format('-tags {0}', matrix.tags) || '' }} . ./internal/...
 
+  # New (goal 0384): a macOS-hosted runner already carries a real window
+  # server (confirmed empirically by webview-smoke.yml booting a real
+  # -tags mcp desktop build there daily) -- launching the PACKAGED .app
+  # and asserting it stays alive and renders needs no TCC/Accessibility
+  # grant at all, since neither is gated behind one. This closes the one
+  # confirmed gap goal 0384's research found: no job anywhere caught a
+  # crash-on-launch regression (the SIGSEGV class, goal 0037/#534) before
+  # it reached the owner's own Mac.
+  #
+  # Builds the raw binary directly against the frontend-dist artifact the
+  # `frontend` job already built and linted (bypassing Taskfile's own
+  # build:frontend/generate:bindings chain, which has no cross-job
+  # fingerprint cache and would otherwise redo that build inside this
+  # job) then packages it with the existing, dependency-free
+  # `darwin:create:app:bundle` task -- one build, reused for both launch
+  # checks below, never a second one.
+  #
+  # ## Promotion
+  # Runs on every PR today but is deliberately NOT in ci-gate's `needs:`
+  # list below -- it joins the required set only after 5 consecutive
+  # green runs on main, the same objective gate
+  # docs/goals/0134-pipeline-reliability.md already applies to
+  # webview-smoke.yml, never promoted on a hunch.
+  desktop-launch:
+    needs: [changes, frontend]
+    if: success() && needs.changes.outputs.code == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26'
+          cache: true
+      # Only the dependency-free build/darwin/Taskfile.yml:create:app:bundle
+      # task is used below (packaging only, no frontend/bindings deps) --
+      # the same version beta-release already pins.
+      - run: go install github.com/go-task/task/v3/cmd/task@v3.52.0
+      # Mirrors build/darwin/Taskfile.yml's build:native cmds/env exactly
+      # (production tags, trimpath, stripped ldflags, the same
+      # deployment-target flags) but invoked directly rather than via
+      # `task build`, whose own dependency chain would rebuild the
+      # frontend a second time from source with no way to short-circuit
+      # it from a downloaded artifact (Task's skip is a local fingerprint
+      # cache a fresh checkout never has).
+      - name: Build the raw binary from the already-built frontend/dist
+        env:
+          CGO_ENABLED: '1'
+          CGO_CFLAGS: '-mmacosx-version-min=12.0'
+          CGO_LDFLAGS: '-mmacosx-version-min=12.0'
+          MACOSX_DEPLOYMENT_TARGET: '12.0'
+        run: |
+          set -euo pipefail
+          mkdir -p bin
+          go build -tags production -trimpath -ldflags="-w -s" -o bin/mill .
+      - run: task darwin:create:app:bundle
+      - run: mkdir -p /tmp/desktop-launch-artifacts
+      # First launch path: Launch Services, the same door a person
+      # double-clicking the app in Finder goes through. No custom env is
+      # passed (open has no portable way to set one) -- a fresh runner
+      # has no prior Mill profile, so this never touches real data.
+      - name: Launch via 'open' and verify it stays alive
+        run: |
+          set -euo pipefail
+          open "$PWD/bin/mill.app"
+          sleep 10
+          pid="$(pgrep -f 'Contents/MacOS/mill' | head -n1 || true)"
+          if [ -z "$pid" ]; then
+            echo "::error::mill was not running 10s after the 'open' launch"
+            exit 1
+          fi
+          screencapture -x /tmp/desktop-launch-artifacts/open-launch.png
+          kill -TERM "$pid" 2>/dev/null || true
+          for _ in 1 2 3 4 5; do
+            kill -0 "$pid" 2>/dev/null || break
+            sleep 1
+          done
+          kill -9 "$pid" 2>/dev/null || true
+      # Second launch path: the binary invoked directly, the way a
+      # script (or this very job) would -- with a throwaway profile so
+      # it never touches real data, same isolation convention
+      # frontend/e2e/fixtures/server.ts and internal/webviewbridgesmoke
+      # already use for exactly this reason.
+      - name: Launch the binary directly with an isolated profile and verify it stays alive
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          mkdir -p "$tmp/plugins"
+          MILL_SETTINGS_PATH="$tmp/settings.json" \
+          MILL_EXECUTION_DATABASE_URL="sqlite:$tmp/execution.db" \
+          MILL_PLUGINS_DIR="$tmp/plugins" \
+          "$PWD/bin/mill.app/Contents/MacOS/mill" &
+          sleep 10
+          pid="$(pgrep -f 'Contents/MacOS/mill' | head -n1 || true)"
+          if [ -z "$pid" ]; then
+            echo "::error::mill was not running 10s after the direct-binary launch"
+            exit 1
+          fi
+          screencapture -x /tmp/desktop-launch-artifacts/direct-launch.png
+          kill -TERM "$pid" 2>/dev/null || true
+          for _ in 1 2 3 4 5; do
+            kill -0 "$pid" 2>/dev/null || break
+            sleep 1
+          done
+          kill -9 "$pid" 2>/dev/null || true
+      # A launch-time SIGSEGV (the goal 0037/#534 class) lands here, not
+      # in the liveness check above -- a crashed process can still leave
+      # the parent PID briefly visible, so the report is checked
+      # independently and unconditionally (always()).
+      - name: Check for crash logs
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/desktop-launch-artifacts
+          shopt -s nullglob
+          logs=(~/Library/Logs/DiagnosticReports/mill*)
+          if [ ${#logs[@]} -gt 0 ]; then
+            cp "${logs[@]}" /tmp/desktop-launch-artifacts/
+            echo "::error::crash log(s) found: ${logs[*]}"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: desktop-launch-evidence
+          path: /tmp/desktop-launch-artifacts
+          retention-days: 7
+
   test-go:
     needs: [changes, frontend]
     if: success() && needs.changes.outputs.code == 'true'

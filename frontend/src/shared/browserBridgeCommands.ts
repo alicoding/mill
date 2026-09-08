@@ -1,7 +1,7 @@
 import type { Command } from './commands'
 import { useBrowserBridgeStore } from './browserBridgeStore'
 
-// The three actions Settings > Connections > Browsers offers, registered
+// The actions Settings > Connections > Browsers offers, registered
 // rather than wired inline, so the palette, a keybinding and the button
 // all reach the same effect with the same enablement.
 export const BROWSER_BRIDGE_COMMANDS: Command[] = [
@@ -32,5 +32,21 @@ export const BROWSER_BRIDGE_COMMANDS: Command[] = [
     defaultBinding: null,
     keywords: ['browser', 'extension', 'install', 'folder'],
     run: () => useBrowserBridgeStore.getState().revealExtension(),
+  },
+  {
+    id: 'browser.pairRequest.accept',
+    label: 'commands.browser.pairRequest.accept',
+    defaultBinding: null,
+    keywords: ['browser', 'pair', 'accept', 'request'],
+    enabled: () => useBrowserBridgeStore.getState().incomingRequest !== null,
+    run: () => useBrowserBridgeStore.getState().acceptPairRequest(),
+  },
+  {
+    id: 'browser.pairRequest.deny',
+    label: 'commands.browser.pairRequest.deny',
+    defaultBinding: null,
+    keywords: ['browser', 'pair', 'deny', 'request'],
+    enabled: () => useBrowserBridgeStore.getState().incomingRequest !== null,
+    run: () => useBrowserBridgeStore.getState().denyPairRequest(),
   },
 ]

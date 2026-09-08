@@ -23,6 +23,19 @@ export interface Event {
      * presence gate should err toward delivering for, not suppressing.
      */
     "focused": boolean;
+
+    /**
+     * Targets names the paired device ids (device.Ref.ID) this event
+     * should reach, docs/goals/0372's addressing half -- empty means
+     * every paired device, the pre-existing broadcast behavior. Only a
+     * device-shaped Channel (the phone channel) ever reads this; a
+     * channel with no device concept (the desktop banner, dock bounce,
+     * browser tab) ignores it and always delivers. A target id unknown
+     * to the reading channel is silently skipped, never an error -- the
+     * same "unknown ref is picker staleness, not a failure" posture
+     * RefKind fields already take.
+     */
+    "targets"?: string[] | null;
 }
 
 /**

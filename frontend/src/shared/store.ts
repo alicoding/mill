@@ -20,6 +20,7 @@ import {
 } from './workTabs'
 import { redirectRetiredView } from './viewRedirects'
 import { normalizeAtlasBoardView, viewFor, viewsEqual, type AtlasBoardView, type View } from './viewKinds'
+import { createRequestFormTabState, type RequestFormTabState } from './requestFormTabState'
 
 // Re-exported so every existing `from '../shared/store'` import of
 // WorkTab/WorkTabSpec (app/WorkTabShell.tsx, composition/
@@ -87,7 +88,7 @@ export type CanvasCommandRequest =
   | { kind: 'toggleAddSteps' }
   | { kind: 'addNote'; pos: { x: number; y: number } }
 
-interface AppState {
+export interface AppState extends RequestFormTabState {
   workflows: Workflow[] | null
   // nodeTypes/requests join workflows as store-shared server data (one
   // fetch, many consumers) now that the global work-tab shell renders
@@ -339,26 +340,31 @@ export const useAppStore = create<AppState>()(
           delete workTabDirty[key]
           const workTabRestored = { ...state.workTabRestored }
           delete workTabRestored[key]
+          const requestFormTestReady = { ...state.requestFormTestReady }
+          delete requestFormTestReady[key]
           return {
             workTabs: state.workTabs.filter((t) => t.key !== key),
             activeWorkTabKey: state.activeWorkTabKey === key ? null : state.activeWorkTabKey,
             workTabDirty,
             workTabRestored,
+            requestFormTestReady,
           }
         }),
       closeAllWorkTabs: () =>
-        set({ workTabs: [], activeWorkTabKey: null, workTabDirty: {}, workTabRestored: {} }),
+        set({ workTabs: [], activeWorkTabKey: null, workTabDirty: {}, workTabRestored: {}, requestFormTestReady: {} }),
       closeOtherWorkTabs: (keepKey) =>
         set((state) => {
           const kept = state.workTabs.filter((t) => t.key === keepKey)
           if (kept.length === state.workTabs.length) return {}
           const workTabDirty = keepKey in state.workTabDirty ? { [keepKey]: state.workTabDirty[keepKey] } : {}
           const workTabRestored = keepKey in state.workTabRestored ? { [keepKey]: state.workTabRestored[keepKey] } : {}
+          const requestFormTestReady = keepKey in state.requestFormTestReady ? { [keepKey]: state.requestFormTestReady[keepKey] } : {}
           return {
             workTabs: kept,
             activeWorkTabKey: kept.length > 0 ? keepKey : null,
             workTabDirty,
             workTabRestored,
+            requestFormTestReady,
           }
         }),
       activateWorkTab: (key) => set({ activeWorkTabKey: key }),
@@ -405,6 +411,7 @@ export const useAppStore = create<AppState>()(
       setKeybindingOverrides: (overrides) => set({ keybindingOverrides: overrides }),
       canvasCommandRequest: null,
       requestCanvasCommand: (command) => set({ canvasCommandRequest: command }),
+      ...createRequestFormTabState(set),
       atlasUpRequest: 0,
       requestAtlasUp: () => set((s) => ({ atlasUpRequest: s.atlasUpRequest + 1 })),
       // Writes nothing while Atlas isn't the current view: a stray

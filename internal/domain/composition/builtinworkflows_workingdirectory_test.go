@@ -30,7 +30,7 @@ func findBuiltInWorkflow(t *testing.T, id string) Workflow {
 func TestSeededRunInCapturedFolder_UsesTheFolderAttributeAsCwd(t *testing.T) {
 	restore := notifierFn
 	t.Cleanup(func() { notifierFn = restore })
-	notifierFn = func(string, string, string) error { return nil }
+	notifierFn = func(string, string, string, []string) error { return nil }
 
 	wf := findBuiltInWorkflow(t, "example-run-in-captured-folder-workflow")
 

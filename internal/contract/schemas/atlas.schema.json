@@ -75,6 +75,18 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "Items": {
+          "$ref": "#/$defs/Field"
+        },
+        "OptionsSource": {
+          "type": "string"
+        },
+        "Needs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "additionalProperties": false,

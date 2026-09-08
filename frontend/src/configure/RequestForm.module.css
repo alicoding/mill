@@ -1,0 +1,15 @@
+/* Method Select's width fix (goal 0370): Select's own minWidth/width/
+   maxWidth props are NOT wired to its wrapper by Primer's own compiled
+   Select.js (confirmed directly against the installed source -- they
+   land as invalid attributes on the native <select> instead, spread
+   from its own `rest`), so this reaches the wrapper the one way
+   Select's implementation actually supports -- its own className prop,
+   which IS merged onto the TextInputWrapper Select renders into. Sized
+   in ch units to contain "OPTIONS", METHOD_SUGGESTIONS' longest entry
+   (RequestForm.tsx), so the control can never shrink back down to the
+   clipped "GE" defect this fixes. flex-shrink:0 stops the horizontal
+   Method+URL row's own flex layout from shrinking it below that floor. */
+.methodSelect {
+    min-width: 12ch;
+    flex-shrink: 0;
+}
