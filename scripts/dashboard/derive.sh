@@ -99,7 +99,7 @@ else
 fi
 
 # --- repo: current main sha + open PRs (gh optional, never fatal) ---
-main_sha="$(git -C "$repo_root" rev-parse origin/main 2>/dev/null || git -C "$repo_root" rev-parse HEAD)"
+main_sha="$(git -C "$repo_root" rev-parse origin/main 2>/dev/null || git -C "$repo_root" rev-parse HEAD)"  # git-isolation:allow -- reads the real checkout's own sha, not a fixture
 prs_json="[]"
 gh_unavailable="true"
 if command -v gh >/dev/null 2>&1; then

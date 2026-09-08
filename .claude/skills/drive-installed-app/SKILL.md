@@ -32,7 +32,7 @@ screenshots on exactly the two failures below.
 
 ## One-time machine setup
 
-1. `scripts/setup-dev-signing.sh` -- creates and imports "Mill Dev
+1. the repo root's `scripts/setup-dev-signing.sh` -- creates and imports "Mill Dev
    Signing", a local self-signed code-signing certificate, then tries
    to trust it for code signing. If that needs an interactive
    confirmation it can't give non-interactively, it prints the exact
@@ -58,7 +58,7 @@ regenerated (a new machine, or the keychain item was deleted).
 
 ## Per-run procedure
 
-1. **Preflight**: `scripts/check-drive-setup.sh` (<10s). Fix whatever
+1. **Preflight**: the repo root's `scripts/check-drive-setup.sh` (<10s). Fix whatever
    it names before continuing -- never guess past a failing line.
 2. **Quit the running Mill through the bridge door**, not an AppleEvent
    (see "Why this exists" #2). If a bridge is already listening on the
