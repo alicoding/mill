@@ -56,6 +56,13 @@ test('a managed Mac says who manages it, lists a blocked extension with its reas
 		const bookmarkDetail = await openPluginDetail(page, 'mill-bookmark')
 		await expect(bookmarkDetail.getByTestId('extensions-plugin-policy-reason')).toHaveText('Your organisation blocks extensions that can open links.')
 
+		// A manifest-alias warning (goal 0349 S2) grows this pane's chrome
+		// past its max-height: the tab strip must stay a clickable row,
+		// never get crushed to a sliver by the scrolling column beside it.
+		await expect(bookmarkDetail.getByTestId('extensions-plugin-warning')).toBeVisible()
+		const tabStripBox = await bookmarkDetail.getByTestId('extensions-detail-tabs').boundingBox()
+		expect(tabStripBox?.height ?? 0).toBeGreaterThanOrEqual(24)
+
 		// An allowed extension says so on its Verification tab.
 		const indexDetail = await openPluginDetail(page, 'mill-index', 'verification')
 		await expect(indexDetail.getByTestId('extensions-verification-policy')).toHaveText("Allowed by Example Bank's policy.")
