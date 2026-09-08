@@ -84,7 +84,7 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 	const settingDecls = settingDeclsFromManifest(manifest)
 	const declFor = (key: string) => {
 		const decl = settingDecls.find((d) => d.key === key)
-		if (!decl) throw new Error(`plugin ${pluginId}: setting "${key}" is not declared in the manifest's contributes.settings`)
+		if (!decl) throw new Error(`plugin ${pluginId}: setting "${key}" is not declared in the manifest's contributes.configuration`)
 		return decl
 	}
 	const settings = Object.freeze({

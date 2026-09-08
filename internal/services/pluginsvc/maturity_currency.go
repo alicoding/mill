@@ -21,6 +21,8 @@ var docPageByFamily = map[string]string{
 	"steps":         "steps.md",
 	"captures":      "install-a-plugin.md",
 	"settings":      "settings.md",
+	"configuration": "port-a-vscode-extension.md",
+	"menus":         "port-a-vscode-extension.md",
 	"network":       "install-a-plugin.md",
 	"views":         "install-a-plugin.md",
 	"commands":      "commands.md",
