@@ -181,13 +181,14 @@ func resolveDecisionOutputs(bindingsRaw string, outputs []decision.OutputField, 
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "decision-outcome", Kind: KindTerminal,
-		Effect:      guardrail.ClassLocal,
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadAny},
-		Produces:    PayloadProduce{Kind: PayloadNone},
-		Output:      "the typed decision outcome",
-		Label:       "Record decision",
-		Description: "Ends the workflow with a typed, configured outcome: an outcome category (approve/deny/manual-review/action-needed/uncategorized) plus this Decision's own typed result fields. A manual-review outcome parks the run in Review first. Approve continues to the outcome; deny or timeout stops the run. A Decision with a configured webhook fires it on completion.",
+		PaletteGroup: PaletteGroupGuardrails,
+		Effect:       guardrail.ClassLocal,
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadAny},
+		Produces:     PayloadProduce{Kind: PayloadNone},
+		Output:       "the typed decision outcome",
+		Label:        "Record decision",
+		Description:  "Ends the workflow with a typed, configured outcome: an outcome category (approve/deny/manual-review/action-needed/uncategorized) plus this Decision's own typed result fields. A manual-review outcome parks the run in Review first. Approve continues to the outcome; deny or timeout stops the run. A Decision with a configured webhook fires it on completion.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "decisionId", Label: "Decision",

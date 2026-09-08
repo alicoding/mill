@@ -147,6 +147,16 @@ func TestNodeTypes(t *testing.T) {
 				"in its RegisterNodeType call", nt.ID, nt.Complexity)
 		}
 
+		// PaletteGroup is one of the 10 declared display groups, for
+		// every NodeType, no exceptions -- goal 0389: the palette derives
+		// its grouping from this field directly, so an unset/invalid
+		// value would silently drop a node type out of every group.
+		if !ValidPaletteGroup(nt.PaletteGroup) {
+			t.Errorf("node type %q has an invalid PaletteGroup %q (goal 0389): "+
+				"declare PaletteGroup explicitly in its RegisterNodeType call, "+
+				"one of the values PaletteGroup's own doc comment lists", nt.ID, nt.PaletteGroup)
+		}
+
 		// (f) The step I/O contract (ADR-0042, node-standard item 10):
 		// every NodeType declares Consumes and Produces explicitly --
 		// no allow-list, like Complexity. A step that reads nothing
@@ -217,6 +227,36 @@ func TestValidComplexity(t *testing.T) {
 	for _, tc := range cases {
 		if got := ValidComplexity(tc.c); got != tc.want {
 			t.Errorf("ValidComplexity(%q) = %v, want %v", tc.c, got, tc.want)
+		}
+	}
+}
+
+// TestValidPaletteGroup exercises ValidPaletteGroup directly against
+// every declared group plus the invalid values TestNodeTypes' own
+// PaletteGroup check relies on it to catch -- the zero value (a
+// NodeType that omitted PaletteGroup entirely) and an arbitrary
+// unrecognized string.
+func TestValidPaletteGroup(t *testing.T) {
+	cases := []struct {
+		g    PaletteGroup
+		want bool
+	}{
+		{PaletteGroupTriggers, true},
+		{PaletteGroupCapture, true},
+		{PaletteGroupTransform, true},
+		{PaletteGroupAI, true},
+		{PaletteGroupData, true},
+		{PaletteGroupActions, true},
+		{PaletteGroupBrowser, true},
+		{PaletteGroupFlow, true},
+		{PaletteGroupGuardrails, true},
+		{PaletteGroupApply, true},
+		{"", false},
+		{"nonexistent-group", false},
+	}
+	for _, tc := range cases {
+		if got := ValidPaletteGroup(tc.g); got != tc.want {
+			t.Errorf("ValidPaletteGroup(%q) = %v, want %v", tc.g, got, tc.want)
 		}
 	}
 }

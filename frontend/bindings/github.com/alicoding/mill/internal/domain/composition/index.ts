@@ -6,6 +6,7 @@ export {
     Complexity,
     NodeKind,
     NoteColor,
+    PaletteGroup,
     PayloadKind,
     Severity
 } from "./models.js";
