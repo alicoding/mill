@@ -28,3 +28,66 @@ export interface Changed {
     "id": string;
     "kind"?: string;
 }
+
+/**
+ * LifecycleBy names what added or removed one reference to an entity:
+ * a board object (BoardID+ObjectID) or a workflow (WorkflowID) -- the
+ * two sources reference.Refs already distinguishes. Exactly one side
+ * populated per event; a pointer field on LifecycleEvent so an event
+ * with no By (entity.created/entity.deleted) carries neither.
+ */
+export interface LifecycleBy {
+    "boardId"?: string;
+    "objectId"?: string;
+    "workflowId"?: string;
+}
+
+/**
+ * LifecycleEvent is the one entity/object lifecycle event family (docs/
+ * goals/0392 Decision 4). Event discriminates which of the six
+ * transitions fired; every other field is populated only by the
+ * Emit* function that produces that event (see each one's own doc
+ * comment below) -- ids and kinds only, never the entity's own
+ * content, so a subscriber queries what it needs instead of trusting a
+ * payload that could go stale.
+ */
+export interface LifecycleEvent {
+    "event": string;
+
+    /**
+     * EntityKind/EntityID: every entity.* event.
+     */
+    "entityKind"?: string;
+    "entityId"?: string;
+
+    /**
+     * By: entity.referenced/entity.dereferenced only -- which board
+     * object added or removed the reference.
+     */
+    "by"?: LifecycleBy | null;
+
+    /**
+     * Remaining: entity.dereferenced only -- how many live references
+     * (board objects plus workflow nodes) survive this one's removal;
+     * 0 means the entity is now unused anywhere.
+     */
+    "remaining"?: number | null;
+
+    /**
+     * BoardID/ObjectID: object.created/object.deleted only.
+     */
+    "boardId"?: string;
+    "objectId"?: string;
+
+    /**
+     * Kind: object.created only -- the board object's own kind.
+     */
+    "kind"?: string;
+
+    /**
+     * EntityRef: object.created only -- the Configure entity kind this
+     * object's kind declares a reference to ("list" for table), empty
+     * for a kind with none declared.
+     */
+    "entityRef"?: string;
+}

@@ -42,19 +42,14 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
-// millChannel/millVersion/millUpdateVersion are the build-stamp trio
-// release.yml (channel=release) and ci.yml's beta job (channel=beta)
-// override via ldflags -X; every other build keeps the defaults below.
-// millChannel gates settingssvc's install-and-restart path. millVersion
-// feeds run receipts/the backup manifest/the release updater's
-// CurrentVersion, and must agree with the git tag and build/config.yml
-// (release.yml's verify step enforces this) -- a beta build never
-// touches it. millUpdateVersion is what the updater compares the beta
-// feed's rolling tag against and AppVersion shows in Settings: a SemVer
-// prerelease compares strictly below its release, so a beta based on
-// the already-shipped millVersion (e.g. "0.5.0-beta.N" once v0.5.0
-// exists) would rank below that release forever -- ci.yml's beta job
-// stamps a per-build id based on the NEXT release instead.
+// millChannel/millVersion/millUpdateVersion are the build-stamp trio release.yml (channel=release) and ci.yml's
+// beta job (channel=beta) override via ldflags -X; every other build keeps the defaults below. millChannel gates
+// settingssvc's install-and-restart path. millVersion feeds run receipts/the backup manifest/the release updater's
+// CurrentVersion, and must agree with the git tag and build/config.yml (release.yml's verify step enforces this) --
+// a beta build never touches it. millUpdateVersion is what the updater compares the beta feed's rolling tag against
+// and AppVersion shows in Settings: a SemVer prerelease compares strictly below its release, so a beta based on the
+// already-shipped millVersion (e.g. "0.5.0-beta.N" once v0.5.0 exists) would rank below that release forever --
+// ci.yml's beta job stamps a per-build id based on the NEXT release instead.
 var millChannel = "source"
 
 const millVersion = "0.5.0"
@@ -94,6 +89,7 @@ func init() {
 	application.RegisterEvent[mcpsvc.MCPWriteRequest]("mcp-write-approval")
 	application.RegisterEvent[mcpsvc.MCPWriteActivity]("mcp-write-activity")
 	application.RegisterEvent[dataevent.Changed](dataevent.EventName)
+	application.RegisterEvent[dataevent.LifecycleEvent](dataevent.LifecycleEventName)
 	application.RegisterEvent[atlassvc.MirrorChanged](atlassvc.MirrorChangedEvent)
 	application.RegisterEvent[executionsvc.GuardrailPendingChanged]("guardrail-pending-changed")
 	application.RegisterEvent[companionsvc.CompanionDelta](companionsvc.DeltaEventName)
@@ -107,10 +103,12 @@ func init() {
 // main initializes the application, creates the window, and wires every
 // bounded-context service together.
 func main() {
-	// Reuses Wails3's own default logger (colorized to stderr in dev mode via isatty detection, silently discarded in
-	// production builds — see application.DefaultLogger's per-build-tag implementations) instead of wiring up a second,
-	// parallel slog handler. Passed to both Mill's own services and application.Options.Logger so app-level events (a
-	// hotkey firing) and Wails3's own system messages share one stream.
+	// Reuses Wails3's own default logger: colorized to stderr in dev mode
+	// via isatty detection, silently discarded in production builds (see
+	// application.DefaultLogger's per-build-tag implementations), instead
+	// of a second parallel slog handler. Passed to Mill's own services and
+	// application.Options.Logger so app events (a hotkey firing) and
+	// Wails3's own system messages share one stream.
 	logger := application.DefaultLogger(slog.LevelInfo)
 
 	// application.Path resolves the OS-appropriate app-support directory

@@ -541,3 +541,19 @@ This registry stays the ONLY list of checks that need this Mac specifically.
   and hold, then drag before releasing -- it does NOT enter selection
   mode (the same move-tolerance the pointer-based e2e case never
   exercises with a real finger's jitter).
+- **The Accessibility grant survives a beta update** (goal 0363 S1b,
+  `.github/workflows/ci.yml`'s beta-release job +
+  `scripts/import-beta-signing-cert.sh`) — whether a real beta
+  install's designated requirement stays constant across a rebuild is
+  a real TCC grant on this Mac's own permission database, invisible to
+  any headless harness; CI's own "Verify beta signing identity" step
+  only proves the SIGNED BUNDLE's own designated requirement, not that
+  macOS actually preserves the grant across it. Verify on an installed
+  build: install one published beta `.zip`
+  (`https://github.com/millhq/mill/releases`), launch it, grant
+  Accessibility when prompted (or add it in System Settings › Privacy
+  & Security › Accessibility), and confirm the global summon hotkey
+  works. Quit, install a LATER published beta over it the same way,
+  relaunch, and confirm the hotkey still works with no new
+  Accessibility prompt and no new row added under Accessibility for
+  Mill.

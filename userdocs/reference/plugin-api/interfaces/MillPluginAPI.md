@@ -123,7 +123,7 @@ view re-querying on every change pays only for its own.
 
 ##### K
 
-`K` *extends* `"contents:changed"`
+`K` *extends* keyof [`PluginEventMap`](PluginEventMap.md)
 
 #### Parameters
 

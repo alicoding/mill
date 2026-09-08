@@ -21,6 +21,12 @@ var fileExtensionPattern = regexp.MustCompile(`^\.[a-z0-9]+$`)
 // unknown capability does: a malformed claim blocks the load with a
 // human-readable reason, never routes half-right.
 func validateContributes(pluginID string, capabilities []string, c ManifestContributes) string {
+	if problem := settingsAliasProblem(c); problem != "" {
+		return problem
+	}
+	if problem := validateMenus(c.Menus); problem != "" {
+		return problem
+	}
 	if problem := validateCanvasObjectContributions(c.CanvasObjects); problem != "" {
 		return problem
 	}
@@ -48,10 +54,10 @@ func validateContributes(pluginID string, capabilities []string, c ManifestContr
 	if problem := validateSecretSources(capabilities, c.SecretSources); problem != "" {
 		return problem
 	}
-	if problem := validateMCPServers(c.Settings, c.MCPServers); problem != "" {
+	if problem := validateMCPServers(c.EffectiveSettings(), c.MCPServers); problem != "" {
 		return problem
 	}
-	return validateSettingContributions(c.Settings)
+	return validateSettingContributions(c.EffectiveSettings())
 }
 
 func validateCanvasObjectContributions(objects []CanvasObjectContribution) string {

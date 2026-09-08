@@ -213,9 +213,22 @@
 
 /* The detail's own tab strip, above the tab's body. It scrolls
    horizontally rather than widening the pane: the pane's width is set
-   by the list beside it, never by how many tabs an extension has. */
+   by the list beside it, never by how many tabs an extension has.
+   flex-shrink: 0 because overflow-x: auto forces this item's
+   automatic flex-basis to 0 in the column's main axis -- without it,
+   .detail's own long content (a warnings paragraph, a long
+   permission list) squeezes the tab strip to a sliver instead of
+   scrolling inside .detail's overflow-y: auto. */
 .detailTabs {
     margin-block-end: var(--base-size-8);
     max-width: 100%;
     overflow-x: auto;
+    flex-shrink: 0;
+}
+
+/* The header row (icon/name/actions) and the status line above the
+   tab body: fixed-height chrome that must never lose space to a
+   sibling growing past the pane's max-height. */
+.detailChrome {
+    flex-shrink: 0;
 }

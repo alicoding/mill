@@ -15,6 +15,7 @@
 - [Fire a workflow from a webhook](how-to/webhooks.md): minting a webhook token and posting to Mill's webhook address so a tool or service fires a workflow
 - [Reply to a webhook](how-to/reply-to-a-webhook.md): the Answer the webhook step, reading the reply from a plain HTTP request or curl, and why step order decides what a run answers with
 - [Install a plugin](reference/install-a-plugin.md): installing from a marketplace, a repository, or a folder, and what the badge means
+- [Port an extension from another platform](reference/port-a-vscode-extension.md): a field-by-field mapping table, which parts need no rewrite, and which ones a compatible port always reauthors
 
 ## Concepts
 
