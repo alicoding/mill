@@ -10,9 +10,10 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "yes",
+      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
       "codeChangedAt": "2026-09-07",
+      "docsCommit": "4b4a49a39be404a10238a84fd6d806a10653af58",
       "docsChangedAt": "2026-09-06",
-      "daysBehindCode": 1,
       "flags": []
     },
     {
@@ -24,9 +25,10 @@
       "docs": true,
       "sdkTypes": false,
       "mcp": "yes",
+      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
       "codeChangedAt": "2026-09-07",
-      "docsChangedAt": "2026-09-07",
-      "daysBehindCode": 0,
+      "docsCommit": "11d84ae8462757d10c7e1f91df685bdba5731826",
+      "docsChangedAt": "2026-09-08",
       "flags": []
     },
     {
@@ -38,9 +40,10 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
+      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
       "codeChangedAt": "2026-09-07",
+      "docsCommit": "651439a2b863c2664659ee4cd95a6e6919fe246e",
       "docsChangedAt": "2026-09-07",
-      "daysBehindCode": 0,
       "flags": []
     },
     {
@@ -52,9 +55,10 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
+      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
       "codeChangedAt": "2026-09-07",
+      "docsCommit": "bcb30504255ade3865d23fea322c68b2571525f9",
       "docsChangedAt": "2026-09-08",
-      "daysBehindCode": 0,
       "flags": []
     },
     {
@@ -66,9 +70,10 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
+      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
       "codeChangedAt": "2026-09-07",
+      "docsCommit": "651439a2b863c2664659ee4cd95a6e6919fe246e",
       "docsChangedAt": "2026-09-07",
-      "daysBehindCode": 0,
       "flags": []
     },
     {
@@ -80,9 +85,10 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
+      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
       "codeChangedAt": "2026-09-07",
+      "docsCommit": "651439a2b863c2664659ee4cd95a6e6919fe246e",
       "docsChangedAt": "2026-09-07",
-      "daysBehindCode": 0,
       "flags": []
     },
     {
@@ -94,9 +100,10 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "yes",
+      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
       "codeChangedAt": "2026-09-07",
-      "docsChangedAt": "2026-09-07",
-      "daysBehindCode": 0,
+      "docsCommit": "358055ce7e227eec05917543f4bb7c27de8159a4",
+      "docsChangedAt": "2026-09-08",
       "flags": []
     },
     {
@@ -108,9 +115,10 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
+      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
       "codeChangedAt": "2026-09-07",
+      "docsCommit": "648c1a1d7ff17526ba3016276515c246b60ecdee",
       "docsChangedAt": "2026-09-05",
-      "daysBehindCode": 1,
       "flags": []
     },
     {
@@ -122,9 +130,10 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
+      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
       "codeChangedAt": "2026-09-07",
+      "docsCommit": "651439a2b863c2664659ee4cd95a6e6919fe246e",
       "docsChangedAt": "2026-09-07",
-      "daysBehindCode": 0,
       "flags": []
     },
     {
@@ -136,9 +145,10 @@
       "docs": true,
       "sdkTypes": false,
       "mcp": "yes",
+      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
       "codeChangedAt": "2026-09-07",
+      "docsCommit": "651439a2b863c2664659ee4cd95a6e6919fe246e",
       "docsChangedAt": "2026-09-07",
-      "daysBehindCode": 0,
       "flags": []
     },
     {
@@ -150,8 +160,8 @@
       "docs": true,
       "sdkTypes": false,
       "mcp": "no",
+      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
       "codeChangedAt": "2026-09-07",
-      "daysBehindCode": 0,
       "flags": []
     }
   ]

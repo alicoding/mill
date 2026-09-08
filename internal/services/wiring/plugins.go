@@ -42,8 +42,10 @@ func NewPluginService(settingsPath string, guardrail *guardrailsvc.GuardrailServ
 func ComposedAssetMiddleware(remoteAuth *remoteauthsvc.RemoteAuthService, plugins *pluginsvc.PluginService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		// The document policy (cspmiddleware.go) wraps everything so every
-		// served document carries it, the remote-auth gate included.
-		return CSPMiddleware()(AssetMiddleware(remoteAuth)(plugins.AssetMiddleware()(next)))
+		// served document carries it, the remote-auth gate included; the
+		// plugin-frame CORS header (cspmiddleware.go) rides the same
+		// static-asset path the embedded bundle falls through to.
+		return CSPMiddleware()(PluginFrameCORSMiddleware()(AssetMiddleware(remoteAuth)(plugins.AssetMiddleware()(next))))
 	}
 }
 
@@ -55,6 +57,7 @@ func ComposedAssetMiddleware(remoteAuth *remoteauthsvc.RemoteAuthService, plugin
 func WireSettingsEraSeams(settings *settingssvc.SettingsService, notif *notificationsvc.NotificationService, remoteAuth *remoteauthsvc.RemoteAuthService, triggers *triggersvc.TriggerService, atlas *atlassvc.AtlasService, plugins *pluginsvc.PluginService, secrets *secretsvc.SecretService) {
 	WireNotificationChannels(settings, notif) // docs/goals/0171-notification-spine.md
 	WirePhoneChannel(remoteAuth, notif)       // docs/goals/0132-remote-access.md SLICE B
+	remoteAuth.SetNotificationService(notif)  // goal 0379: an incoming browser pair-request publishes through the spine
 	WireUpdateEvents(settings, triggers)
 	WirePluginTrust(plugins, settings, secrets)      // docs/adr/0051-platform-contract.md §4
 	WirePluginIngestion(atlas, plugins, settings)    // docs/goals/0251-plugin-ingestion-claims.md

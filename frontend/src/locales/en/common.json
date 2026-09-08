@@ -396,7 +396,8 @@
     "panel": {
       "openMill": "Open Mill",
       "applyClipboard": "Apply from clipboard",
-      "open": "Open Quick Panel"
+      "open": "Open Quick Panel",
+      "resetPosition": "Reset Quick Panel position"
     },
     "backup": {
       "now": "Back up now",
@@ -405,7 +406,11 @@
     "browser": {
       "pair": "Pair a browser",
       "test": "Test the browser connection",
-      "revealExtension": "Reveal the extension folder"
+      "revealExtension": "Reveal the extension folder",
+      "pairRequest": {
+        "accept": "Accept the browser's pairing request",
+        "deny": "Deny the browser's pairing request"
+      }
     },
     "webhook": {
       "mint": "Add webhook token"
@@ -419,6 +424,9 @@
       "sources": "Extensions: marketplace sources",
       "checkUpdates": "Extensions: check for updates",
       "updateAll": "Extensions: update all"
+    },
+    "audit": {
+      "export": "Export audit trail"
     },
     "runMonitor": {
       "open": "Run monitor"

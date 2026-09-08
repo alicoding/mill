@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionList, Button, Label, Link, Stack, Text } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
@@ -13,6 +13,7 @@ import { useBrowserBridgeStore, refreshBrowserBridge } from '../shared/browserBr
 import { PAIRING_POLL_MS, gainedMember, usePairingCountdown, formatCountdown } from '../shared/pairingCountdown'
 import { background } from '../shared/background'
 import { useAppStore } from '../shared/store'
+import { useUISignalStore } from '../shared/uiSignalStore'
 import listStyles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
 
@@ -38,11 +39,14 @@ function BrowsersSection() {
   const testDurationMS = useBrowserBridgeStore((s) => s.testDurationMS)
   const pairingBaselineCount = useBrowserBridgeStore((s) => s.pairingBaselineCount)
   const clearPairing = useBrowserBridgeStore((s) => s.clearPairing)
+  const incomingRequest = useBrowserBridgeStore((s) => s.incomingRequest)
   const error = useBrowserBridgeStore((s) => s.error)
   const revoke = useBrowserBridgeStore((s) => s.revoke)
   const [revoking, setRevoking] = useState<DeviceInfo | null>(null)
   const [copied, setCopied] = useState(false)
   const [codeCopied, setCodeCopied] = useState(false)
+  const [requestCodeCopied, setRequestCodeCopied] = useState(false)
+  const acceptButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => { void refreshBrowserBridge() }, [])
 
@@ -52,6 +56,7 @@ function BrowsersSection() {
   const list = browsers ?? []
 
   const remainingMS = usePairingCountdown(pairing?.expiresAt)
+  const requestRemainingMS = usePairingCountdown(incomingRequest?.expiresAt)
 
   // The card clears itself once the server's own TTL elapses -- a dead
   // code must never keep showing as if it still worked.
@@ -65,14 +70,32 @@ function BrowsersSection() {
     if (pairing && gainedMember(pairingBaselineCount, list.length)) clearPairing()
   }, [pairing, pairingBaselineCount, list.length, clearPairing])
 
-  // Mill has no server push for "a browser just paired" -- while a
-  // code is showing, re-poll the list on the same cadence the countdown
-  // ticks so a completed pairing clears the card without a reload.
+  // Mill has no server push for "a browser just paired" or "a browser
+  // wants to pair" -- poll on the same cadence the countdown ticks for
+  // as long as this section is mounted, unconditionally: an incoming
+  // request can appear with no local action to trigger a re-fetch (a
+  // popup's own "Pair with Mill" click, on a different process), so
+  // gating this on an already-known pairing/request would never notice
+  // a brand new one. A live code or request resolving (a completed
+  // pairing, an expired request) also clears its own card via this
+  // same poll.
   useEffect(() => {
-    if (!pairing) return
     const id = setInterval(() => { void refreshBrowserBridge() }, PAIRING_POLL_MS)
     return () => clearInterval(id)
-  }, [pairing])
+  }, [])
+
+  // The desktop banner's click lands here with the request card not
+  // necessarily built yet (a fresh navigation can mount this section
+  // after the signal was already set) -- move focus once BOTH the
+  // signal and the card's own data have arrived, then consume it so a
+  // later, unrelated visit never replays it.
+  const browserPairRequestFocus = useUISignalStore((s) => s.browserPairRequestFocus)
+  const consumeBrowserPairRequestFocus = useUISignalStore((s) => s.consumeBrowserPairRequestFocus)
+  useEffect(() => {
+    if (!browserPairRequestFocus || !incomingRequest) return
+    acceptButtonRef.current?.focus()
+    consumeBrowserPairRequestFocus()
+  }, [browserPairRequestFocus, incomingRequest, consumeBrowserPairRequestFocus])
 
   const copyAddress = () => {
     if (!status?.address) return
@@ -90,6 +113,14 @@ function BrowsersSection() {
     }), 'browsers.copyCode')
   }
 
+  const copyRequestCode = () => {
+    if (!incomingRequest) return
+    void background(writeClipboardText(incomingRequest.code).then(() => {
+      setRequestCodeCopied(true)
+      setTimeout(() => setRequestCodeCopied(false), 1500)
+    }), 'browsers.copyRequestCode')
+  }
+
   const confirmRevoke = () => {
     if (!revoking) return
     const target = revoking
@@ -99,6 +130,10 @@ function BrowsersSection() {
 
   const testCommand = findCommand('browser.test')
   const canTest = testCommand ? (!testCommand.enabled || testCommand.enabled()) : false
+  const acceptCommand = findCommand('browser.pairRequest.accept')
+  const canAccept = acceptCommand ? (!acceptCommand.enabled || acceptCommand.enabled()) : false
+  const denyCommand = findCommand('browser.pairRequest.deny')
+  const canDeny = denyCommand ? (!denyCommand.enabled || denyCommand.enabled()) : false
 
   return (
     <>
@@ -176,6 +211,54 @@ function BrowsersSection() {
           {test === 'running' ? t('settings.browsers.testing') : t('settings.browsers.test')}
         </Button>
       </Stack>
+
+      {incomingRequest && (
+        <Stack direction="vertical" gap="condensed" style={{ marginTop: 'var(--base-size-8)' }} data-testid="browser-pair-request-card">
+          <Text as="p" weight="semibold" data-testid="browser-pair-request-title">
+            {t('settings.browsers.pairRequestTitle', { label: incomingRequest.label })}
+          </Text>
+          <Stack direction="horizontal" gap="condensed" align="center">
+            <Text size="large" weight="semibold" className={monoStyles.mono} data-testid="browser-pair-request-code">
+              {incomingRequest.code}
+            </Text>
+            <Button
+              size="small"
+              leadingVisual={requestCodeCopied ? CheckIcon : CopyIcon}
+              onClick={copyRequestCode}
+              data-testid="browser-pair-request-code-copy"
+            >
+              {requestCodeCopied ? t('settings.browsers.codeCopiedButton') : t('settings.browsers.codeCopyButton')}
+            </Button>
+          </Stack>
+          <Text as="p" size="small" className={listStyles.muted}>
+            {t('settings.browsers.pairRequestCaption')}
+          </Text>
+          <Text as="p" size="small" className={listStyles.muted} data-testid="browser-pair-request-countdown">
+            {t('settings.browsers.codeCountdown', { time: formatCountdown(requestRemainingMS) })}
+          </Text>
+          <Stack direction="horizontal" gap="condensed">
+            <Button
+              ref={acceptButtonRef}
+              size="small"
+              variant="primary"
+              disabled={!canAccept}
+              onClick={() => { void runCommand('browser.pairRequest.accept') }}
+              data-testid="browser-pair-request-accept"
+            >
+              {t('settings.browsers.pairRequestAccept')}
+            </Button>
+            <Button
+              size="small"
+              variant="danger"
+              disabled={!canDeny}
+              onClick={() => { void runCommand('browser.pairRequest.deny') }}
+              data-testid="browser-pair-request-deny"
+            >
+              {t('settings.browsers.pairRequestDeny')}
+            </Button>
+          </Stack>
+        </Stack>
+      )}
 
       {pairing && (
         <Stack direction="vertical" gap="condensed" style={{ marginTop: 'var(--base-size-8)' }} data-testid="browser-pairing-code-panel">

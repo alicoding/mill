@@ -116,13 +116,13 @@ func TestWebhookDispatch_SourceMatching(t *testing.T) {
 	}
 }
 
-// TestSeededWebhookNotifyExample_HookPost_NotifiesFromPostedFields is
-// the goal's own seeded proof: the shipped "Notify when an agent hook
+// TestSeededWebhookNotifyExample_WebhookPost_NotifiesFromPostedFields
+// is the goal's own seeded proof: the shipped "Notify when a webhook
 // fires" workflow (ENABLED -- its only effect is notifications on the
-// user's own channels) arms at boot, and a hook post carrying
+// user's own channels) arms at boot, and a webhook post carrying
 // source/title/body fills the declared Attributes of those names --
 // the notification says what the tool posted, not the fixed fallback.
-func TestSeededWebhookNotifyExample_HookPost_NotifiesFromPostedFields(t *testing.T) {
+func TestSeededWebhookNotifyExample_WebhookPost_NotifiesFromPostedFields(t *testing.T) {
 	comp, trig, exec, _ := newSystemEventHarness(t)
 
 	// apply-notify's seam, wired the way main.go wires the real
@@ -130,14 +130,14 @@ func TestSeededWebhookNotifyExample_HookPost_NotifiesFromPostedFields(t *testing
 	// text itself, not just run success.
 	var notified int32
 	var gotTitle, gotBody atomic.Value
-	composition.SetNotifier(func(title, body, _ string) error {
+	composition.SetNotifier(func(title, body, _ string, _ []string) error {
 		gotTitle.Store(title)
 		gotBody.Store(body)
 		atomic.AddInt32(&notified, 1)
 		return nil
 	})
 	t.Cleanup(func() {
-		composition.SetNotifier(func(title, body, _ string) error { return fmt.Errorf("no notifier registered (yet)") })
+		composition.SetNotifier(func(title, body, _ string, _ []string) error { return fmt.Errorf("no notifier registered (yet)") })
 	})
 
 	wf := findWorkflowByLabel(t, comp, "Notify when a webhook fires")
@@ -163,7 +163,7 @@ func TestSeededWebhookNotifyExample_HookPost_NotifiesFromPostedFields(t *testing
 				t.Logf("run %s: kind=%s error=%q", run.RunID, run.Kind, run.Error)
 			}
 		}
-		t.Fatal("the seeded workflow never notified on a matching hook post")
+		t.Fatal("the seeded workflow never notified on a matching webhook post")
 	}
 	if title, _ := gotTitle.Load().(string); title != "build done" {
 		t.Errorf("notification title = %q, want the posted titleAttribute's value %q", title, "build done")
@@ -182,14 +182,14 @@ func TestSeededWebhookNotifyExample_PostWithoutFields_UsesFallbacks(t *testing.T
 
 	var notified int32
 	var gotTitle, gotBody atomic.Value
-	composition.SetNotifier(func(title, body, _ string) error {
+	composition.SetNotifier(func(title, body, _ string, _ []string) error {
 		gotTitle.Store(title)
 		gotBody.Store(body)
 		atomic.AddInt32(&notified, 1)
 		return nil
 	})
 	t.Cleanup(func() {
-		composition.SetNotifier(func(title, body, _ string) error { return fmt.Errorf("no notifier registered (yet)") })
+		composition.SetNotifier(func(title, body, _ string, _ []string) error { return fmt.Errorf("no notifier registered (yet)") })
 	})
 
 	wfDisabled := findWorkflowByLabel(t, comp, "Notify when a webhook fires").Disabled
@@ -207,10 +207,10 @@ func TestSeededWebhookNotifyExample_PostWithoutFields_UsesFallbacks(t *testing.T
 	if atomic.LoadInt32(&notified) == 0 {
 		t.Fatal("the seeded workflow never notified on a post without title/body fields")
 	}
-	if title, _ := gotTitle.Load().(string); title != "Agent event" {
-		t.Errorf("notification title = %q, want the seed's fixed fallback %q", title, "Agent event")
+	if title, _ := gotTitle.Load().(string); title != "Webhook event" {
+		t.Errorf("notification title = %q, want the seed's fixed fallback %q", title, "Webhook event")
 	}
-	if body, _ := gotBody.Load().(string); body != "An agent tool fired a hook event." {
+	if body, _ := gotBody.Load().(string); body != "A tool posted a webhook event." {
 		t.Errorf("notification body = %q, want the seed's fixed fallback", body)
 	}
 }

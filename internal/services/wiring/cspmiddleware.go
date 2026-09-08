@@ -42,3 +42,25 @@ func CSPMiddleware() func(http.Handler) http.Handler {
 		})
 	}
 }
+
+// PluginFrameCORSMiddleware answers /plugin-frame/*.js (the frame
+// bootstrap and activation scripts, served from the embedded bundle)
+// with a permissive CORS header (docs/goals/0375 S1b): a sandboxed
+// frame with no allow-same-origin has an OPAQUE origin, so loading
+// EITHER script is a cross-origin fetch from the frame's own
+// perspective, and an activation frame's dynamic import() of its
+// plugin's main.js only resolves relative specifiers (rather than
+// falling back to about:blank) when the script that calls it was
+// itself fetched as a verified CORS resource. Not a new exposure:
+// both files are the SAME bytes this server already answers,
+// unauthenticated, to every same-origin caller.
+func PluginFrameCORSMiddleware() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/plugin-frame/") {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}

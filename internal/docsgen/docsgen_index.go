@@ -67,6 +67,8 @@ func PageIndex() []DocPage {
 		{"start-here/first-workflow.md", "Your first workflow", "run the seeded example, then rebuild it", KindTutorial},
 		{"start-here/first-board.md", "Your first board", "place a card, a table and a diagram on a board, line them up, undo", KindTutorial},
 		{"how-to/store-and-reference-a-secret.md", "Store and reference a secret", "put a value in the vault and pick it wherever a step needs it", KindHowTo},
+		{"how-to/webhooks.md", "Fire a workflow from a webhook", "minting a webhook token and posting to Mill's webhook address so a tool or service fires a workflow", KindHowTo},
+		{"how-to/reply-to-a-webhook.md", "Reply to a webhook", "the Answer the webhook step, reading the reply from a plain HTTP request or curl, and why step order decides what a run answers with", KindHowTo},
 		{"reference/install-a-plugin.md", "Install a plugin", "installing from a marketplace, a repository, or a folder, and what the badge means", KindHowTo},
 		{"concepts/workflows-and-steps.md", "Workflows and steps", "triggers, the typed step contract, payload vs attributes, versions", KindExplanation},
 		{"concepts/guardrails.md", "Guardrails and effect classes", "what asks for approval and how rules scope it", KindExplanation},
@@ -93,9 +95,9 @@ func PageIndex() []DocPage {
 		{"reference/plugin-api-maturity.md", "Plugin API maturity", "each contribution family's level and its proof, generated from the repository", KindReference},
 		{"agents/connect-mcp.md", "Automate with agents", "connecting over MCP and what agents can do", KindHowTo},
 		{"agents/diagrams.md", "Edit a diagram with an agent", "reading a diagram's shapes by id and adding, changing, deleting and importing them in place", KindHowTo},
+		{"agents/sheets.md", "Edit a sheet with an agent", "reading a sheet's cells by range and changing named cells in place", KindHowTo},
+		{"agents/lists.md", "Add a row with an agent", "reading a List's columns and rows and appending a new row to an existing one", KindHowTo},
 		{"agents/plugins.md", "What plugins expose to agents", "listing installed plugins, calling a plugin's declared tools, and how a plugin write parks", KindHowTo},
-		{"agents/agent-hooks.md", "Fire a workflow from an agent's hook", "minting a hook token and posting to the hook endpoint so a tool's hook fires a workflow", KindHowTo},
-		{"agents/webhook-reply.md", "Reply to a webhook", "the Answer the webhook step, reading the reply from a native http hook or curl, and why step order decides what a run answers with", KindHowTo},
 	}
 }
 

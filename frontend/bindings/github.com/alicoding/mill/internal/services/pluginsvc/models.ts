@@ -514,6 +514,16 @@ export interface PluginInfo {
      * refused plugin stays listed and never runs.
      */
     "PolicyBlocked": string;
+
+    /**
+     * Grants names what this plugin was given outside the sandboxed
+     * activation frame every other non-built-in plugin runs inside
+     * (docs/goals/0375 S1b): "canvas-host" for a non-built-in plugin
+     * that declares a canvas object, since the framed canvas API does
+     * not exist yet and its own tools still need board input the way a
+     * built-in's do. Always empty for a built-in.
+     */
+    "Grants": string[] | null;
 }
 
 /**

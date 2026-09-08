@@ -29,8 +29,16 @@ func (a *revocableAuth) ValidateBrowserToken(token string) (remoteauthsvc.Device
 	return remoteauthsvc.DeviceInfo{ID: "browser-1", Label: "Chrome", Kind: remoteauthsvc.KindBrowser}, true
 }
 
-func (a *revocableAuth) ValidateHookToken(token string) (remoteauthsvc.DeviceInfo, bool) {
+func (a *revocableAuth) ValidateWebhookToken(token string) (remoteauthsvc.DeviceInfo, bool) {
 	return remoteauthsvc.DeviceInfo{}, false
+}
+
+func (a *revocableAuth) RequestPairing(label, source string) (remoteauthsvc.PairingRequestInfo, error) {
+	return remoteauthsvc.PairingRequestInfo{}, nil
+}
+
+func (a *revocableAuth) PairingStatus(requestID string) remoteauthsvc.PairingRequestStatus {
+	return remoteauthsvc.PairingRequestStatus{Status: "expired"}
 }
 
 // TestEvents_KeepalivePingsAndClosesOnRevoke pins both jobs the

@@ -26,13 +26,23 @@ import (
 // own behavior rather than re-testing the pairing store.
 type stubAuth struct {
 	token string
-	// hookToken is the hook door's own credential -- a separate field
-	// because the two kinds must never validate on each other's routes.
-	hookToken string
+	// webhookToken is the webhook door's own credential -- a separate
+	// field because the two kinds must never validate on each other's
+	// routes.
+	webhookToken string
 	// Atomic: a test flips it while the stream's own goroutine may be
 	// re-checking the token on its keepalive tick.
 	revoked atomic.Bool
 	pairErr error
+
+	// The nearby-flow seam (goal 0379): a test sets these to control
+	// what RequestPairing/PairingStatus answer, and reads the *Calls
+	// slices back to pin what the HTTP layer forwarded.
+	pairRequestInfo  remoteauthsvc.PairingRequestInfo
+	pairRequestErr   error
+	pairRequestCalls []string // one "label|source" entry per call
+	pairStatus       remoteauthsvc.PairingRequestStatus
+	pairStatusCalls  []string // one requestID per call
 }
 
 func (a *stubAuth) PairBrowser(code, label, source string) (remoteauthsvc.BrowserPairing, error) {
@@ -42,6 +52,19 @@ func (a *stubAuth) PairBrowser(code, label, source string) (remoteauthsvc.Browse
 	return remoteauthsvc.BrowserPairing{Token: a.token, DeviceID: "browser-1", Label: label}, nil
 }
 
+func (a *stubAuth) RequestPairing(label, source string) (remoteauthsvc.PairingRequestInfo, error) {
+	a.pairRequestCalls = append(a.pairRequestCalls, label+"|"+source)
+	if a.pairRequestErr != nil {
+		return remoteauthsvc.PairingRequestInfo{}, a.pairRequestErr
+	}
+	return a.pairRequestInfo, nil
+}
+
+func (a *stubAuth) PairingStatus(requestID string) remoteauthsvc.PairingRequestStatus {
+	a.pairStatusCalls = append(a.pairStatusCalls, requestID)
+	return a.pairStatus
+}
+
 func (a *stubAuth) ValidateBrowserToken(token string) (remoteauthsvc.DeviceInfo, bool) {
 	if a.revoked.Load() || token == "" || token != a.token {
 		return remoteauthsvc.DeviceInfo{}, false
@@ -49,11 +72,11 @@ func (a *stubAuth) ValidateBrowserToken(token string) (remoteauthsvc.DeviceInfo,
 	return remoteauthsvc.DeviceInfo{ID: "browser-1", Label: "Chrome", Kind: remoteauthsvc.KindBrowser}, true
 }
 
-func (a *stubAuth) ValidateHookToken(token string) (remoteauthsvc.DeviceInfo, bool) {
-	if a.revoked.Load() || token == "" || token != a.hookToken {
+func (a *stubAuth) ValidateWebhookToken(token string) (remoteauthsvc.DeviceInfo, bool) {
+	if a.revoked.Load() || token == "" || token != a.webhookToken {
 		return remoteauthsvc.DeviceInfo{}, false
 	}
-	return remoteauthsvc.DeviceInfo{ID: "hook-1", Label: "CI", Kind: remoteauthsvc.KindHook}, true
+	return remoteauthsvc.DeviceInfo{ID: "webhook-1", Label: "CI", Kind: remoteauthsvc.KindWebhookToken}, true
 }
 
 func newService(t *testing.T, auth *stubAuth) (*bridgesvc.BridgeService, *httptest.Server) {

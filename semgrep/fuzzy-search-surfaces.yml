@@ -1,0 +1,36 @@
+# Goal 0366 (Class B of the reimplementation audit): a picker/search
+# surface -- a file named like a Palette, Picker, or Browse tab under
+# frontend/src -- filtering a list with a plain
+# `.toLowerCase().includes(...)` substring test skips the typo
+# tolerance the command palette already established (app/paletteFilter.ts,
+# goal 0272) and every other picker converged onto (goal 0366 Class B:
+# NodePalette.tsx, ExtensionsBrowseTab.tsx, atlas/atlasJumpFilter.ts).
+#
+# Deliberately scoped by FILENAME, not "every list filter in the app":
+# an exact/short-list search box (keyboard shortcuts, installed
+# extensions, activity/runs tables) is correctly a plain substring
+# match, and 13 such sites stay unflagged by living outside this glob
+# (goal 0366's inventory item #13 names them). A picker/search-shaped
+# file is exactly where the palette's own precedent argues for
+# convergence.
+rules:
+  - id: fuzzy-search-surfaces
+    languages: [typescript]
+    severity: ERROR
+    message: >-
+      A picker/search surface filtering with .toLowerCase().includes(...)
+      should rank through the shared fuzzysort helper instead
+      (shared/fuzzyFilter.ts's fuzzyMatches/fuzzyScore) -- the typo
+      tolerance the command palette and every other picker surface
+      already have (goal 0366 Class B). See
+      .claude/rules/adopt-converged-patterns.md.
+    patterns:
+      - pattern: $X.toLowerCase().includes($Y)
+    paths:
+      include:
+        - '**/frontend/src/**/*Palette*'
+        - '**/frontend/src/**/*Picker*'
+        - '**/frontend/src/**/*Browse*'
+      exclude:
+        - '**/*.test.ts'
+        - '**/*.test.tsx'

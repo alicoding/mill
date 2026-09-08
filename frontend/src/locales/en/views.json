@@ -135,6 +135,7 @@
       "secretRefUnavailable": "Unlock the vault in Secrets to pick one.",
       "secretRefGroupVault": "Vault",
       "secretRefGroupSources": "Secret sources",
+      "canvasHostLabel": "Draws in Mill's window",
       "meta": {
         "groupObjects": "Object",
         "groupMedia": "Media",
@@ -184,7 +185,7 @@
       "devicesCaption": "Pair a device to reach Mill from your phone or another computer.",
       "contractTitle": "Contract",
       "browsersTitle": "Browsers",
-      "hooksTitle": "Webhooks",
+      "webhooksTitle": "Webhooks",
       "credentialsTitle": "Credentials",
       "credentialsCaption": "Credentials other tools use to reach Mill."
     },
@@ -194,8 +195,8 @@
       "addressSave": "Save",
       "addressSaved": "Saved. Restart Mill to use the new address.",
       "addressEnvOverrideCaption": "The MILL_MCP_ADDR environment variable sets this address, overriding anything saved here.",
-      "allowImportLabel": "Allow MCP clients to import data",
-      "allowImportCaption": "Lets a connected client create workflows, integrations, lists and servers.",
+      "allowImportLabel": "Allow MCP clients to change content",
+      "allowImportCaption": "Diagrams, sheets, lists and imports; each change waits for your approval when asked.",
       "askBeforeImportLabel": "Ask me before each MCP import",
       "askBeforeImportCaption": "Each import waits for your approval, then times out after 2 minutes."
     },
@@ -244,6 +245,10 @@
       "codeCountdown": "Expires in {{time}}",
       "codeCopyButton": "Copy code",
       "codeCopiedButton": "Copied",
+      "pairRequestTitle": "{{label}} wants to pair",
+      "pairRequestCaption": "Check the same code shows in the browser, then accept.",
+      "pairRequestAccept": "Accept",
+      "pairRequestDeny": "Deny",
       "emptyHeading": "No browsers paired yet",
       "emptyDescription": "Pair a browser to let Mill replay recorded steps in your own tabs.",
       "browserMeta": "Paired {{created}} · last seen {{lastSeen}}",
@@ -266,7 +271,10 @@
       "exportError": "Couldn't export the contract. Try again.",
       "exportSkillDescription": "How to work with Mill, for an agent that can't read it over MCP.",
       "exportSkillButton": "Export skill doc",
-      "exportSkillError": "Couldn't export the skill doc. Try again."
+      "exportSkillError": "Couldn't export the skill doc. Try again.",
+      "exportAuditDescription": "Every MCP call, secret read and browser bridge action Mill recorded, in one file.",
+      "exportAuditButton": "Export audit trail",
+      "exportAuditError": "Couldn't export the audit trail. Try again."
     },
     "notifications": {
       "awayAfterLabel": "Away after (seconds)",
@@ -362,24 +370,24 @@
       "exportEverything": "Export everything",
       "importEverything": "Import everything"
     },
-    "hooks": {
-      "description": "A tool on this Mac fires a workflow by posting to Mill's hook endpoint with one of these tokens.",
-      "docsLink": "How to wire up a tool's hook",
+    "webhooks": {
+      "description": "Any tool or service that can send an HTTP request can start a workflow by posting to Mill's webhook address with one of these tokens.",
+      "docsLink": "How to fire a workflow from a webhook",
       "mintAToken": "Add webhook token",
-      "mintLabelAriaLabel": "Hook token label",
+      "mintLabelAriaLabel": "Webhook token label",
       "mintLabelPlaceholder": "Label, like My build agent",
       "mintLabelCaption": "Name the tool that will send it",
       "mint": "Mint token",
       "mintCancelAriaLabel": "Cancel minting a token",
       "tokenShownOnce": "Copy this token now. Mill never shows it again.",
-      "tokenCopyAriaLabel": "Copy the new hook token",
-      "tokenCopiedAriaLabel": "Hook token copied",
-      "emptyHeading": "No hook tokens yet",
-      "emptyDescription": "Mint a token so a tool's hook config can fire your workflows.",
+      "tokenCopyAriaLabel": "Copy the new webhook token",
+      "tokenCopiedAriaLabel": "Webhook token copied",
+      "emptyHeading": "No webhook tokens yet",
+      "emptyDescription": "Add a token, then paste it into the sending tool's configuration.",
       "tokenMeta": "Minted {{created}}",
       "revoke": "Revoke",
       "revokeConfirmTitle": "Revoke {{label}}?",
-      "revokeConfirmBody": "{{label}} won't be able to post hook events until you mint a new token and update the tool's config."
+      "revokeConfirmBody": "{{label}} won't be able to post to the webhook until you mint a new token and update the tool's configuration."
     }
   },
   "keyboardShortcutsSection": {
