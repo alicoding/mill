@@ -239,10 +239,13 @@ substitute("turns-per-goal", turns_html)
 # --- maturity (goal 0348: userdocs/reference/plugin-api-maturity.json,
 # read straight through -- derive.sh already degrades a missing file to
 # {"generated": false}, no ledger fields to fall back on). The ledger
-# never stores a "days behind" number (goal 0391): it is a live
-# staleness metric -- today vs codeChangedAt -- computed here, at
-# render time, from the committed codeChangedAt/docsChangedAt dates.
-# This script's own output is gitignored (dashboard-data.json,
+# never stores a "days behind" number, nor codeChangedAt/docsChangedAt
+# themselves (goal 0397): both are live facts derive.sh merges in from
+# a fresh git read at derive time, never from the committed file, so
+# "days behind" is computed here, at render time, from whatever those
+# merged-in dates happen to be -- an absent pair (an ungenerated
+# currency read) degrades to 0 rather than a rendering error. This
+# script's own output is gitignored (dashboard-data.json,
 # mill-control-room.html), so a figure that grows with real time
 # belongs here, never in the committed userdocs ledger it reads.
 def maturity_level_chip(level):
