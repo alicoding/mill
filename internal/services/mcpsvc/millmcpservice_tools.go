@@ -101,6 +101,7 @@ func (m *MillMCPService) contentContractRegisterers() map[string]func() {
 	return map[string]func(){
 		"diagram": m.registerAtlasDiagramTools,
 		"sheet":   m.registerAtlasSheetTools,
+		"xlsx":    m.registerAtlasXlsxTools,
 		"list":    m.registerListContentTools,
 	}
 }

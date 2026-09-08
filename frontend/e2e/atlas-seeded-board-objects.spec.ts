@@ -69,10 +69,25 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
 
     // Sheet (goal 0239 S2): the seeded csv renders as a real grid with
     // its own header row -- the same materialized-bytes signal the
-    // ink/image <img> checks above carry, for the tabular door.
-    const sheet = page.locator('[data-testid="atlas-board-object"][data-object-kind="sheet"]')
+    // ink/image <img> checks above carry, for the tabular door. Two
+    // "sheet"-kind objects now share this board (the csv and the xlsx
+    // below), so both are scoped by their own stable Go id, the same
+    // pattern the seeded/test-created diagrams already use.
+    const sheet = page.locator('.react-flow__node[data-id="atlas-object-example-sheet"]')
     await expect(sheet).toBeVisible()
     await expect(sheet.getByTestId('atlas-object-sheet-grid').locator('thead th').first()).toHaveText('Item')
+
+    // Xlsx (goal 0365 S1): the seeded real .xlsx workbook renders
+    // read-only through the same grid testid, its own header row
+    // proving the binary bytes parsed -- no double-click edit
+    // affordance, unlike the csv sheet above (AtlasSheetObjectContent's
+    // own "an xlsx keeps the read-only preview" rule).
+    const xlsxSheet = page.locator('.react-flow__node[data-id="atlas-object-example-xlsx"]')
+    await expect(xlsxSheet).toBeVisible()
+    const xlsxGrid = xlsxSheet.getByTestId('atlas-object-sheet-grid')
+    await expect(xlsxGrid.locator('thead th').first()).toHaveText('Item')
+    await xlsxGrid.locator('tbody td').first().dblclick()
+    await expect(xlsxSheet.getByTestId('atlas-object-sheet-cell-input')).toHaveCount(0)
 
     // JSON and YAML (goal 0269): the same engagement record in both
     // formats, each a real tree over its own materialized file -- the

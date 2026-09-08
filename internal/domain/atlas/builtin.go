@@ -139,6 +139,7 @@ const (
 	objectInkExampleID     = "atlas-object-example-ink"
 	objectImageExampleID   = "atlas-object-example-image"
 	objectSheetExampleID   = "atlas-object-example-sheet"
+	objectXlsxExampleID    = "atlas-object-example-xlsx"
 	objectPdfExampleID     = "atlas-object-example-pdf"
 	objectDiagramExampleID = "atlas-object-example-diagram"
 	objectJSONExampleID    = "atlas-object-example-json"

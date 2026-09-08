@@ -33,6 +33,7 @@ var readOnlyToolNames = map[string]bool{
 	"atlas_list_kinds": true, "atlas_search_cards": true, "atlas_read_card": true,
 	"atlas_read_board_objects": true, "atlas_read_board_object": true,
 	"atlas_list_contents": true, "atlas_read_diagram": true, "atlas_sheet_read_range": true,
+	"atlas_xlsx_read_range":  true,
 	"atlas_get_write_status": true, "check_write_status": true,
 	"list_step_types": true, "list_node_types": true, "list_runs": true, "get_run": true,
 	"validate_workflow": true, "list_plugins": true,
@@ -98,7 +99,7 @@ func TestBuiltInTools_DestructiveToolsAreMarkedDestructive(t *testing.T) {
 // idempotentEditToolNames names id/address-addressed edit tools whose
 // repeated call (same arguments) must leave the same end state.
 var idempotentEditToolNames = map[string]bool{
-	"atlas_diagram_edit_cells": true, "atlas_sheet_edit_cells": true,
+	"atlas_diagram_edit_cells": true, "atlas_sheet_edit_cells": true, "atlas_xlsx_edit_cells": true,
 }
 
 // nonIdempotentAppendToolNames names tools that add a new row/cell

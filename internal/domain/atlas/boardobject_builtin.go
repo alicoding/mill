@@ -116,6 +116,28 @@ func BuiltInBoardObjects() []BoardObject {
 			BuiltIn: true, Seed: seedorigin.Stamp(1),
 		},
 		{
+			// File-backed real .xlsx (goal 0365 S1): proof that a
+			// 'sheet' BoardObject's binary door has a live subject --
+			// atlas_xlsx_read_range/atlas_xlsx_edit_cells (over MCP)
+			// read and edit this same file's named cells, formulas and
+			// bold header intact either way, the same "only the named
+			// cells change" guarantee objectSheetExampleID's csv proves
+			// for its own door. Positioned/sized to stay INSIDE the
+			// gallery's already-established extent (right edge 1260,
+			// matching the csv sheet's own default TABLE_WIDTH box;
+			// bottom edge 560, matching the pdf/diagram row) rather
+			// than growing it -- every fixed-percentage board point an
+			// existing e2e spec computes off this frame's footprint
+			// depends on that extent not moving.
+			ID: objectXlsxExampleID, Kind: "sheet",
+			Payload:   map[string]string{"title": "Sample workbook (.xlsx)", BoardObjectSeedAssetKey: "xlsx"},
+			Position:  Position{X: 960, Y: 240},
+			Size:      &Dimensions{W: 300, H: 320},
+			ParentID:  cardSketchesID,
+			CreatedAt: now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
+		{
 			// File-backed json (goal 0269): the same engagement record
 			// in both structured formats, side by side, so the tree
 			// face has a permanent live subject for every value kind it
@@ -157,6 +179,8 @@ func BuiltInBoardObjectAsset(key string) (content, ext string, ok bool) {
 		return seedReferenceImageSVG, ".svg", true
 	case "sheet":
 		return seedSampleSheetCSV, ".csv", true
+	case "xlsx":
+		return seedSampleWorkbookXLSX, ".xlsx", true
 	case "pdf":
 		return seedSamplePDF, ".pdf", true
 	case "diagram":
