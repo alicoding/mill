@@ -14,8 +14,8 @@ import { useAppStore } from './store'
 
 const FACTS: AtlasFacts = {
   card: (id) => {
-    if (id === 'c-note') return { id, title: 'A plain note', source: 'mill://c-note', mirrorPath: false, isGroup: false, projection: false, root: false, exporters: [] }
-    if (id === 'c-frame') return { id, title: 'An area with a rather long title indeed', source: '', mirrorPath: true, isGroup: true, projection: false, root: true, exporters: [{ format: 'md', label: 'Markdown' }, { format: 'pdf', label: 'PDF' }] }
+    if (id === 'c-note') return { id, title: 'A plain note', source: 'mill://c-note', mirrorPath: false, isGroup: false, projection: false, root: false, demotable: false, exporters: [] }
+    if (id === 'c-frame') return { id, title: 'An area with a rather long title indeed', source: '', mirrorPath: true, isGroup: true, projection: false, root: true, demotable: false, exporters: [{ format: 'md', label: 'Markdown' }, { format: 'pdf', label: 'PDF' }] }
     return undefined
   },
   note: (id) => id === 'n-1',

@@ -62,6 +62,8 @@ export function useAtlasLinkMenus({ t, allCards, linkKinds, setMenu }: {
         { id: 'copy-link', commandId: 'atlas.card.copyLink', ctx },
         { id: 'd1b', divider: true },
         ...perspectiveMembershipMenuItems({ t, cardIDs: [card.ID] }),
+        { id: 'd1c', divider: true },
+        { id: 'demote', commandId: 'atlas.card.demote', ctx },
         { id: 'd2', divider: true },
         { id: 'delete', commandId: 'atlas.delete.selection', ctx, danger: true },
       ],

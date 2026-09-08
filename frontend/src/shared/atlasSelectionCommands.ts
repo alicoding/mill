@@ -93,6 +93,9 @@ export const ATLAS_CARD_COMMANDS: Command[] = [
   command('atlas.card.dissolve', 'commands.atlas.card.dissolve', 'atlas:contextMenu.dissolveArea',
     (ctx) => soleCard(ctx)?.isGroup === true,
     (ctx) => { const card = soleCard(ctx); if (card) requestAtlasSelectionAction({ action: 'dissolve', card: card.id }) }),
+  command('atlas.card.demote', 'commands.atlas.card.demote', 'atlas:contextMenu.demote',
+    (ctx) => soleCard(ctx)?.demotable === true,
+    (ctx) => { const card = soleCard(ctx); if (card) requestAtlasSelectionAction({ action: 'demote', card: card.id }) }),
   // "Add card"/"Add note" at a point: inside the sole selected frame,
   // or on the board itself when nothing is selected. The frame is
   // always named once it is the destination (goal 0081 A2).

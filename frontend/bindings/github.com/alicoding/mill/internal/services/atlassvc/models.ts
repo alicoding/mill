@@ -453,7 +453,7 @@ export interface TableProjectionExportResult {
  * CardIDs, DeleteNote only NoteIDs, DeleteBoardObject only ObjectIDs,
  * so the frontend's undo toast can pass this straight back to
  * UndoDelete without re-deriving what it touched. LinksRemoved and
- * ChildrenPromoted are the delete's blast radius, counted against the
+ * ChildrenReparented are the delete's blast radius, counted against the
  * state immediately BEFORE this call's own tombstone lands: links that
  * were visible and now touch a tombstoned endpoint, and direct live
  * children (cards + notes) whose effective parent is about to shift
@@ -465,7 +465,7 @@ export interface TombstoneResult {
     "NoteIDs": string[] | null;
     "ObjectIDs": string[] | null;
     "LinksRemoved": number;
-    "ChildrenPromoted": number;
+    "ChildrenReparented": number;
 
     /**
      * EntityRefKind (goal 0392 S1) is the deleted board object's own
