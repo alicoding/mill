@@ -47,9 +47,12 @@ type Manifest struct {
 	// checks it decodes to exactly that size). A sibling file with
 	// "@dark" inserted before the extension, when present, is the
 	// dark-appearance variant.
-	Icon         string              `json:"icon"`
-	Capabilities []string            `json:"capabilities"`
-	Contributes  ManifestContributes `json:"contributes"`
+	Icon         string   `json:"icon"`
+	Capabilities []string `json:"capabilities"`
+	// Dependencies/Exports: see DependencyContribution's doc (pluginservice_dependencies.go).
+	Dependencies []DependencyContribution `json:"dependencies"`
+	Exports      []string                 `json:"exports"`
+	Contributes  ManifestContributes      `json:"contributes"`
 }
 
 // ManifestContributes is the manifest's declarative contribution
@@ -366,6 +369,12 @@ func manifestProblem(m Manifest, folder string, mainJSExists bool, appVersion st
 		}
 	}
 	if problem := validateContributes(m.ID, m.Capabilities, m.Contributes); problem != "" {
+		return problem
+	}
+	if problem := validateDependencyShape(m.ID, m.Dependencies); problem != "" {
+		return problem
+	}
+	if problem := validateExportsShape(m.Exports); problem != "" {
 		return problem
 	}
 	return checkMinMillVersion(m.MinMillVersion, appVersion)

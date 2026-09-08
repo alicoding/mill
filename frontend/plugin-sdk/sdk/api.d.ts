@@ -56,12 +56,32 @@ export interface MillPluginAPI {
     registerView: (decl: PluginViewDecl) => PluginViewHandle;
     registerCapture: (decl: PluginCaptureDecl) => PluginCaptureHandle;
     ui: PluginUIAPI;
+    extensions: PluginExtensionsAPI;
 }
+/** A bounded, declared-dependency-only door onto another installed
+ * extension's own activate() return value, gated by the callee's own
+ * manifest `exports` allowlist. Never a live handle into another
+ * extension's internals. */
+export interface PluginExtensionsAPI {
+    /** Resolves the declared dependency's export surface: its plain
+     * (non-function) properties, plus one callable async function per
+     * allowlisted method name — framed or not, calling one always
+     * returns a Promise. Resolves to `undefined` when `id` is not in
+     * THIS plugin's own manifest `dependencies`, or the dependency has
+     * not activated (not installed, disabled, or still loading).
+     * Calling a method the dependency does not list in its own manifest
+     * `exports` rejects with "Method {m} is not exported by {id}." */
+    get: (id: string) => Promise<Record<string, unknown> | undefined>;
+}
+/** A plugin's activate() may return a plain object — its EXPORT
+ * surface, captured by the loader and reachable by a declared
+ * dependant through api.extensions.get(id). */
+export type PluginExports = Record<string, unknown> | void;
 /** A plugin's main.js default-exports (or named-exports) activate:
  * export function activate(api) { api.registerCanvasObject({...}) } */
 export interface PluginModule {
-    activate?: (api: MillPluginAPI) => void | Promise<void>;
+    activate?: (api: MillPluginAPI) => PluginExports | Promise<PluginExports>;
     default?: {
-        activate?: (api: MillPluginAPI) => void | Promise<void>;
-    } | ((api: MillPluginAPI) => void | Promise<void>);
+        activate?: (api: MillPluginAPI) => PluginExports | Promise<PluginExports>;
+    } | ((api: MillPluginAPI) => PluginExports | Promise<PluginExports>);
 }

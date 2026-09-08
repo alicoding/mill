@@ -86,6 +86,14 @@ confirmation banner for the kinds this powers.
 
 ***
 
+### extensions
+
+```ts
+extensions: PluginExtensionsAPI;
+```
+
+***
+
 ### fetch
 
 ```ts

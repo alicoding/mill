@@ -1,4 +1,5 @@
 import { chromium, expect, test, type Browser, type Page } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import http, { type IncomingMessage, type ServerResponse } from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -97,6 +98,7 @@ function serveBridge(port: number, state: BridgeState): Promise<http.Server> {
 // context in a plain page.
 async function withPopup(browser: Browser, popupURL: string, seedStorage: Record<string, unknown> = {}): Promise<Page> {
   const page = await browser.newPage()
+  await applyCpuThrottle(page)
   await page.addInitScript((seed) => {
     const store: Record<string, unknown> = { millBridge: seed }
     ;(window as unknown as { chrome: unknown }).chrome = {
