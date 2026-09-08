@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnMillServer, type SpawnedServer } from './server'
 import { RUNTIME_PLUGINS_SERVER_BASE_PORT, RUNTIME_PLUGINS_MCP_BASE_PORT } from './serverPorts'
+import { applyCpuThrottle } from './throttle'
 
 // The runtime-plugin e2e harness (docs/goals/0249), promoted from
 // runtime-plugins.spec.ts once a second spec (runtime-plugin-doors)
@@ -90,6 +91,7 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 	const browser = await chromium.launch()
 	const context = await browser.newContext({ baseURL: `http://127.0.0.1:${serverPort}` })
 	const page = await context.newPage()
+	await applyCpuThrottle(page)
 	return {
 		page,
 		pluginsDir,

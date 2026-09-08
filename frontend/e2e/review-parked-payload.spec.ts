@@ -1,4 +1,5 @@
 import { chromium, expect, test, type Browser, type Page } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -39,6 +40,7 @@ async function openDedicatedServer(idx: number): Promise<SpawnedPage> {
     backupDir: path.join(dir, 'backups'),
   })
   const page = await browser.newPage({ baseURL: server.baseURL })
+  await applyCpuThrottle(page)
   return { server, browser, page, dir }
 }
 
