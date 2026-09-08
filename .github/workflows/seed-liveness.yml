@@ -28,11 +28,6 @@ concurrency:
 jobs:
   seed-liveness:
     runs-on: ubuntu-latest
-    # Advisory only -- a real third party's uptime/response shape is
-    # outside this repo's control, so a failure here is worth seeing
-    # (it names exactly which seed and endpoint), never worth blocking
-    # a merge that has nothing to do with it.
-    continue-on-error: true
     # issues: write is the one elevated permission this job needs (the
     # failure-tracking step below) -- least-privilege default otherwise
     # (ci.yml's own workflow-level `contents: read` doesn't apply here,
@@ -42,7 +37,7 @@ jobs:
       contents: read
       issues: write
     env:
-      # Same reasoning as ci.yml's test-go job: this package
+      # Same reasoning as ci.yml's build-go ubuntu leg: this package
       # transitively imports Wails3 packages that are cgo-gated onto
       # GTK4/webkitgtk-6.0 on Linux regardless of build tags, unless
       # cgo itself is disabled.
@@ -53,9 +48,82 @@ jobs:
         with:
           go-version: '1.26'
           cache: true
+      # `server` alongside `liveness`: Wails' own linux-only files
+      # (menu_linux.go etc.) declare `!server` in their own build
+      # constraint, so this excludes them from compilation the exact
+      # way ci.yml's build-go ubuntu leg already does with
+      # CGO_ENABLED=0 -- without it this package needs GTK4/
+      # webkitgtk-6.0 pkg-config the runner doesn't install, and every
+      # run fails to BUILD (never reaching a real endpoint at all).
+      # continue-on-error here, not at job level: a step that fails
+      # loudly (build error) must still fail the job for real -- only
+      # THIS step's own failure (test/assertion, i.e. a live endpoint
+      # not responding as documented) is advisory. -json makes the
+      # classify step below tell the two apart instead of only ever
+      # seeing "go test exited nonzero".
       - name: Run the seed-liveness test
-        id: liveness
-        run: go test -tags liveness ./internal/services/configuresvc/... -run TestSeededHTTPRequests_LiveEndpointsRespond -v
+        id: run
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          go test -tags "liveness server" -json ./internal/services/configuresvc/... \
+            -run TestSeededHTTPRequests_LiveEndpointsRespond -v > liveness.json
+      # Reads liveness.json's `go test -json` stream to tell apart the
+      # three outcomes a naive `if failure()` on the step above
+      # couldn't: a build failure (Action "build-fail", from
+      # `go test -json`'s own compile-error reporting) never produced a
+      # single real HTTP call, so it's never a seed problem; a test
+      # failure names which seeded request(s) failed and why (each
+      # subtest's own t.Fatalf, from the first "error"-typed output
+      # line -- the run log carries the rest); a pass means every
+      # non-skipped seed round-tripped live.
+      - name: Classify the run
+        id: classify
+        if: always()
+        run: |
+          set -euo pipefail
+          if jq -e 'select(.Action=="build-fail")' liveness.json >/dev/null 2>&1; then
+            first_error=$(jq -r 'select(.Action=="build-output") | .Output' liveness.json | grep -m1 -E '\.go:[0-9]+:' || true)
+            {
+              echo "## Seed liveness: build failure"
+              echo
+              echo "The liveness test package did not compile -- not an endpoint failure, no issue filed."
+              echo
+              echo '```'
+              echo "${first_error:-see the full job log for the compiler output}"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "kind=build-fail" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          failing_tests=$(jq -r 'select(.Action=="fail" and .Test != null and (.Test | contains("/"))) | .Test' liveness.json | sort -u)
+          if [ -n "$failing_tests" ]; then
+            {
+              echo "## Seed liveness: endpoint failure"
+              echo
+            } >> "$GITHUB_STEP_SUMMARY"
+            : > failure_body.md
+            while IFS= read -r test; do
+              label="${test#*/}"
+              label="${label//_/ }"
+              msg=$(jq -r --arg t "$test" 'select(.Test==$t and .OutputType=="error") | .Output' liveness.json | head -1 | sed 's/^[[:space:]]*//')
+              echo "- **${label}**: ${msg}" | tee -a "$GITHUB_STEP_SUMMARY" >> failure_body.md
+            done <<< "$failing_tests"
+            echo "kind=test-fail" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "## Seed liveness: all seeds responded live" >> "$GITHUB_STEP_SUMMARY"
+          echo "kind=pass" >> "$GITHUB_OUTPUT"
+      # No continue-on-error: a build failure is a real defect in this
+      # repo's own test code or workflow setup, not an external
+      # service's uptime -- it fails the job for real (docs/goals/0402:
+      # "the ci-gate-style red"), distinct from the advisory test-fail
+      # path below.
+      - name: Fail the job on a build failure
+        if: steps.classify.outputs.kind == 'build-fail'
+        run: exit 1
       # docs/goals/0037 item 8: a rotted seed (an endpoint that changed
       # shape or went away) previously surfaced only in this job's own
       # log, which nobody watches for an advisory, non-blocking check --
@@ -65,8 +133,8 @@ jobs:
       # reopening/closing automatically isn't attempted, since only a
       # human confirming the seed itself was fixed (not just that this
       # week's run happened to pass) should close it.
-      - name: Open or update the tracking issue on failure
-        if: failure() && steps.liveness.outcome == 'failure'
+      - name: Open or update the tracking issue on a real endpoint failure
+        if: steps.classify.outputs.kind == 'test-fail'
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -78,14 +146,34 @@ jobs:
           # of band first.
           gh label create seed-liveness --repo "$GITHUB_REPOSITORY" --color D93F0B --description "A seeded example's real external endpoint stopped responding as documented" --force
           existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --label seed-liveness --state open --json number --jq '.[0].number // empty')
-          body="The weekly seed-liveness check failed: $RUN_URL
-
-          One of httprequest.BuiltIn()'s seeded example requests no longer round-trips against its real external endpoint (httpbin.org/postman-echo.com) as its own Description claims -- see the run log for which one and how. This is advisory only (an external service's own uptime/shape, not a Mill regression) but the seed's claim is now false until it's fixed or the example's Description is corrected."
+          {
+            echo "The weekly seed-liveness check failed: $RUN_URL"
+            echo
+            echo "The following seeded request(s) no longer round-trip against their real external endpoint as their own Description claims:"
+            echo
+            cat failure_body.md
+            echo
+            echo "This is advisory only (an external service's own uptime/shape, not a Mill regression) but the seed's claim is now false until it's fixed or the example's Description is corrected."
+          } > issue_body.md
           if [ -n "$existing" ]; then
-            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body-file issue_body.md
           else
             gh issue create --repo "$GITHUB_REPOSITORY" \
               --title "Seed liveness: a seeded example's external endpoint is failing" \
               --label seed-liveness \
-              --body "$body"
+              --body-file issue_body.md
+          fi
+      # The intended behaviour the old comment here already described,
+      # now real: a green run closes out the open tracking issue
+      # instead of leaving it for a human to notice the check recovered.
+      - name: Close the tracking issue on a green run
+        if: steps.classify.outputs.kind == 'pass'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --label seed-liveness --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" --comment "Green run: $RUN_URL"
           fi
