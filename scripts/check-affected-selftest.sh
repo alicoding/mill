@@ -104,9 +104,18 @@ fails=0
 # the target script via the literal /bin/bash path, dry-run (no `go
 # test -race`), and prints its stdout.
 run() {
+  # -u GITHUB_STEP_SUMMARY: a REAL CI job always sets this (every step
+  # gets one), and if left inherited the target script's own summary()
+  # writes to that file instead of returning it on stdout -- the actual
+  # CI failure this reproduced (job 102248351460: all four probes saw
+  # empty output only under a genuine Actions job, never locally, where
+  # the var is unset). -u GITHUB_BASE_REF/MERGE_GROUP_BASE_SHA: cleared
+  # so only the explicit per-probe env below can set them, never an
+  # ambient value this job's own step happens to carry.
   local event="$1"
   shift
-  env GITHUB_EVENT_NAME="$event" LIST_AFFECTED_HEAD_REF="$HEAD_COMMIT" LIST_AFFECTED_DRY_RUN=1 \
+  env -u GITHUB_STEP_SUMMARY -u GITHUB_BASE_REF -u MERGE_GROUP_BASE_SHA \
+    GITHUB_EVENT_NAME="$event" LIST_AFFECTED_HEAD_REF="$HEAD_COMMIT" LIST_AFFECTED_DRY_RUN=1 \
     "$@" /bin/bash "$fixture/scripts/list-affected-go-packages.sh"
 }
 
