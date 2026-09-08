@@ -5045,8 +5045,8 @@ reply Mill sends.
 ## The sender reads the response body
 
 Some tools' hook config posts an event and reads the decision straight
-from the response, no script in between. For example, a Claude Code
-`type: "http"` hook posts and reads back this way:
+from the response, no script in between. For example, a coding agent's
+own `type: "http"` hook posts and reads back this way:
 
 ```json
 {
