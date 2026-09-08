@@ -5,7 +5,7 @@ import { SettingsService } from '../shared/bindings'
 import McpAddressField from './McpAddressField'
 import RemoteAccessSection from './RemoteAccessSection'
 import BrowsersSection from './BrowsersSection'
-import AgentHooksSection from './AgentHooksSection'
+import WebhooksSection from './WebhooksSection'
 import ContractSection from './ContractSection'
 import { SettingsRow } from './SettingsRow'
 import listStyles from '../shared/ListCard.module.css'
@@ -117,9 +117,9 @@ export default function SettingsConnectionsPane() {
 
         <div data-testid="settings-section-webhooks">
           <Text as="h3" size="small" weight="semibold" className={listStyles.muted} style={{ marginTop: 'var(--base-size-16)' }} data-testid="settings-subsection-heading">
-            {t('settings.connections.hooksTitle')}
+            {t('settings.connections.webhooksTitle')}
           </Text>
-          <AgentHooksSection />
+          <WebhooksSection />
         </div>
       </div>
 
