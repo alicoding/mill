@@ -46,6 +46,10 @@
             "$ref": "#/$defs/RunEvidenceWait"
           },
           "type": "array"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time"
         }
       },
       "additionalProperties": false,

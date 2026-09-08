@@ -22,6 +22,18 @@ pre-commit:
       # same probe-on-touch shape as review-report-selftest.
       glob: "scripts/check-framework-api-first*.sh"
       run: ./scripts/check-framework-api-first-selftest.sh
+    - name: bash-portability
+      # Goal 0403 S2e: a scripts/**/*.sh or build/**/*.sh file using a
+      # bash-4-only construct is a latent exit 127/2 on GitHub's macOS
+      # runner (/bin/bash 3.2) -- grep-only, so like comment-hygiene it
+      # needs no build setup.
+      glob: "{scripts/**/*.sh,build/**/*.sh}"
+      run: ./scripts/check-bash-portability.sh
+    - name: bash-portability-selftest
+      # Fixture-tests the gate above -- same probe-on-touch shape as
+      # framework-api-first-selftest.
+      glob: "scripts/check-bash-portability*.sh"
+      run: ./scripts/check-bash-portability-selftest.sh
     - name: test-side-effects
       # Goal 0356: a _test.go file constructing the real clipboard Host
       # adapter without the MILL_CLIPBOARD_HOST_OK opt-in in the same
@@ -38,6 +50,17 @@ pre-commit:
       # hand-kept: a literal goes stale on the next member and fails
       # the PR that added it. Grep-only, same shape as comment-hygiene.
       run: ./scripts/check-e2e-seed-literals.sh
+    - name: e2e-fixed-ports
+      glob: "frontend/e2e/**/*.ts"
+      # goal 0358 S6: an e2e server binds an OS-assigned port, read back
+      # off main.go's MILL_READY line -- never a literal one, the class
+      # that let two worktrees' own worker pools collide on one machine.
+      run: ./scripts/check-e2e-fixed-ports.sh
+    - name: e2e-fixed-ports-selftest
+      # Fixture-tests the gate above -- same probe-on-touch shape as
+      # framework-api-first-selftest.
+      glob: "scripts/check-e2e-fixed-ports*.sh"
+      run: ./scripts/check-e2e-fixed-ports-selftest.sh
     - name: e2e-edge-hover
       glob: "frontend/e2e/**/*.ts"
       # A .react-flow__edge locator hovered/clicked directly (not

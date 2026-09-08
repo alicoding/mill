@@ -25,7 +25,7 @@ function firstText(result: Awaited<ReturnType<Client['callTool']>>): string {
 
 test('list_plugins reports the installed plugins and their declared tools become callable', async () => {
 	const { page, close } = await launchWithPlugins(0, { ports: PORTS, extraExamples: ['mill-textcase'] })
-	const client = await connectMCPClient(0, PORTS.mcp)
+	const client = await connectMCPClient(PORTS.mcp)
 	try {
 		await page.goto('/')
 
@@ -53,7 +53,7 @@ test('list_plugins reports the installed plugins and their declared tools become
 
 test('turning a plugin off in Settings removes its tool from the MCP tool list, with no restart', async () => {
 	const { page, close } = await launchWithPlugins(2, { ports: PORTS, extraExamples: ['mill-textcase'] })
-	const client = await connectMCPClient(0, PORTS.mcp + 2)
+	const client = await connectMCPClient(PORTS.mcp + 2)
 	try {
 		await page.goto('/')
 		expect(await toolNames(client)).toContain('plugin_mill-textcase_change_text_case')
@@ -76,7 +76,7 @@ test('turning a plugin off in Settings removes its tool from the MCP tool list, 
 
 test('a command-kind tool runs the plugin\'s own registered command in the open window', async () => {
 	const { page, close } = await launchWithPlugins(4, { ports: PORTS })
-	const client = await connectMCPClient(0, PORTS.mcp + 4)
+	const client = await connectMCPClient(PORTS.mcp + 4)
 	try {
 		// The bridge only answers from a loaded main window -- that is
 		// the point of a command tool: it runs what the person's own

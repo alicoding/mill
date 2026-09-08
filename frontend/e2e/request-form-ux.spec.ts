@@ -85,7 +85,7 @@ test('Test on a draft is disabled until the URL is filled, then returns a result
   // Port 1 is reserved and essentially never bound -- a deterministic
   // connection-refused, not a real remote host (same fixture
   // request-test-panel.spec.ts's own equivalent test uses).
-  await page.getByLabel('URL', { exact: true }).fill('http://127.0.0.1:1/widgets')
+  await page.getByLabel('URL', { exact: true }).fill('http://127.0.0.1:1/widgets') // port-literal: reserved port, a deterministic connection-refused, never a real listener
   await expect(testButton).toBeEnabled()
 
   const editor = page.getByTestId('manual-schema-editor')
@@ -117,7 +117,7 @@ test('Test with only a method and URL shows the result pane', async ({ page }) =
   // Port 1 is reserved and essentially never bound -- a deterministic
   // connection-refused, not a real remote host (same fixture
   // request-test-panel.spec.ts's own equivalent test uses).
-  await page.getByLabel('URL', { exact: true }).fill('http://127.0.0.1:1/widgets')
+  await page.getByLabel('URL', { exact: true }).fill('http://127.0.0.1:1/widgets') // port-literal: reserved port, a deterministic connection-refused, never a real listener
 
   // No schema authored -- the Schema tab's editor is left at its
   // default blank operation, never given a path or a field.

@@ -8,8 +8,10 @@
 
 Pure transforms Mill already implements, offered to a plugin as-is.
 htmlToMarkdown is the exact conversion every paste and every
-workflow convert step uses. No capability required — a transform
-reaches nothing outside the input you pass it.
+workflow convert step uses; markdownToHtml is its reverse, the same
+sanitized renderer a mirrored file's markdown preview uses. No
+capability required — a transform reaches nothing outside the input
+you pass it.
 
 ## Properties
 
@@ -22,6 +24,24 @@ htmlToMarkdown: (html) => Promise<string>;
 #### Parameters
 
 ##### html
+
+`string`
+
+#### Returns
+
+`Promise`\<`string`\>
+
+***
+
+### markdownToHtml
+
+```ts
+markdownToHtml: (markdown) => Promise<string>;
+```
+
+#### Parameters
+
+##### markdown
 
 `string`
 

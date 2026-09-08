@@ -397,6 +397,13 @@ Creates Atlas records from an accepted clipboard reply's items: an item with a "
   - **Landing space attribute (optional)** — Which Attributes field carries the target space's card id. New cards land there instead of the board root.
   - **Output attribute (optional)** — Which Attributes field receives a summary of what was created.
 
+### Land downloads on the board
+
+Turns every download a browser-replay step brought back into a file-backed board object, mirror-checksummed so a file already landed before is matched, never duplicated.
+
+- Takes: JSON — Produces: its input, unchanged
+- Effect: changes something on this machine
+
 ### Link Atlas cards
 
 Creates a typed relation between two existing Atlas cards. "From"/"To" are each a literal card id or attr:<name>.
@@ -451,10 +458,10 @@ Shows a notification when the workflow reaches this step. "Title attribute" and 
 - Takes: nothing — Produces: its input, unchanged
 - Effect: changes something on this machine
 - Settings:
-  - **Title** — The notification's first line.
-  - **Title attribute (optional)** — Which Attributes field replaces the fixed title, when set.
-  - **Message** — What the notification says.
-  - **Body attribute (optional)** — Which Attributes field replaces the fixed message, when set.
+  - **Title** — The notification's first line. Use {{attribute}} to include a value.
+  - **Title attribute (optional)** — Which Attributes field replaces the fixed title, when set. Prefer {{attribute}} in the text.
+  - **Message** — What the notification says. Use {{attribute}} to include a value.
+  - **Body attribute (optional)** — Which Attributes field replaces the fixed message, when set. Prefer {{attribute}} in the text.
   - **Send to** — Leave empty to reach every paired device.
 
 ### Save list row
