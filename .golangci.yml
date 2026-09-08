@@ -34,6 +34,15 @@ linters:
     # removed once goal 0165's generic entity store collapsed the
     # duplication it covered, rather than raised or left in place.
     - dupl
+    # Fourth pass (goal 0385): gomodguard_v2's blocked-module list starts
+    # non-empty from day one -- each entry is a module a real goal
+    # already researched and rejected (never speculative), so the NEXT
+    # AI-SDK/messaging-envelope/notifier import is a config diff away
+    # from a caught PR instead of landing unnoticed. Safe to enable
+    # repo-wide (unlike depguard/gocognit above): none of these modules
+    # are imported anywhere today, so there is no legacy burn-down.
+    # gomodguard_v2, not the deprecated gomodguard (golangci-lint 2.12+).
+    - gomodguard_v2
   exclusions:
     paths:
       - frontend
@@ -106,6 +115,41 @@ linters:
                 internal/adapters/windowing (docs/goals/0168) -- every
                 other package calls the toolkit through that port
                 instead of importing it directly.
+    # Each entry names the goal that researched it and rejected it --
+    # never a speculative ban (architecture.md/adopt-converged-patterns.md's
+    # dispatch-lock discipline applies to bans too, not just adoptions).
+    gomodguard_v2:
+      blocked:
+        - module: github.com/svix/svix-webhooks
+          reason: >-
+            full Svix platform API client; Mill's inbound-webhook
+            verify-only need doesn't justify the surface -- the
+            standalone Standard Webhooks spec library is the right
+            abstraction level (goal 0368).
+        - module: github.com/cloudevents/sdk-go
+          reason: >-
+            cross-process messaging envelope + wire-protocol
+            transport; Mill's audit trail is single-binary,
+            in-process, local-SQLite only -- no wire protocol to
+            bind to (goal 0351).
+        - module: github.com/hashicorp/go-eventlogger
+          reason: >-
+            the right conceptual shape but ships no SQLite sink or
+            filtered-read API; adopting it buys pipeline plumbing
+            Mill doesn't need for one producer to one sink and
+            still leaves the actual gap unbuilt (goal 0351).
+        - module: github.com/nikoksr/notify
+          reason: >-
+            Mill's own NotificationService.Publish already owns
+            this exact multi-channel fan-out job; adopting a
+            third-party notifier here duplicates an already-correct
+            abstraction at the wrong layer (goal 0372).
+        - module: github.com/tidwall/gjson
+          reason: >-
+            dotted-path JSON querying; Mill's actual need is
+            top-level-scalar harvest only, already covered by
+            stdlib encoding/json -- adopting gjson here is below
+            the abstraction level the feature needs (goal 0368).
     revive:
       rules:
         # This repo has never doc-commented every exported symbol --
