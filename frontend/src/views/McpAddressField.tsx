@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, Stack, Text, TextInput } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
 import { SettingsRow } from './SettingsRow'
+import { mustSetting } from '../shared/settingsRegistry'
 import styles from '../shared/ListCard.module.css'
 import { background } from '../shared/background'
 
@@ -11,7 +12,6 @@ import { background } from '../shared/background'
 // wins over this stored setting, which is why the field goes read-only
 // whenever envOverride is true -- editing it here would have no effect
 // until the env var itself is unset.
-const MCP_DOCS_PAGE = 'agents/connect-mcp.md'
 
 function McpAddressField() {
   const { t } = useTranslation('views')
@@ -45,9 +45,9 @@ function McpAddressField() {
   return (
     <>
       <SettingsRow
-        label={t('settings.mcp.addressLabel')}
+        setting={mustSetting('connections.mcpAddress')}
         caption={envOverride ? t('settings.mcp.addressEnvOverrideCaption') : t('settings.mcp.addressCaption')}
-        docsPage={envOverride ? undefined : MCP_DOCS_PAGE}
+        docsPage={envOverride ? false : undefined}
         control={(labelId) => (
           <Stack direction="horizontal" gap="condensed" align="center">
             <TextInput
