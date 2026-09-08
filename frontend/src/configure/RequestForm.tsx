@@ -1,18 +1,23 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, Heading, IconButton, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
-import { PlusIcon, TrashIcon } from '@primer/octicons-react'
+import { PlayIcon, PlusIcon, TrashIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../shared/bindings'
+import { findCommand } from '../shared/commands'
+import { useAppStore } from '../shared/store'
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 
 import { ManualSchemaEditor } from './ManualSchemaEditor'
 import { SchemaIntake, type IntakeResult } from './SchemaIntake'
 import { RequestAuthSections } from './RequestAuthSections'
 import { RequestAdvancedSection } from './RequestAdvancedSection'
+import { RequestTestPanel, type RequestTestPanelHandle } from './RequestTestPanel'
+import { useRequestFormTestDispatch } from './useRequestFormTestDispatch'
 import { headersToRows, rowsToHeaders } from './requestHeaders'
 import { parseOpenAPIToOperations, synthesizeOpenAPISpec, type ManualOperation } from './openapiSynth'
 import { EMPTY_DRAFT, authConfigFrom, draftFrom, joseConfigFrom, type HeaderRow, type RequestDraft } from './requestDraft'
 import styles from '../shared/ListCard.module.css'
+import formStyles from './RequestForm.module.css'
 import PageContainer from '../shared/PageContainer'
 
 // Kept as re-exports for existing importers (requestHeaders.ts's own
@@ -52,7 +57,7 @@ function emptyOperation(): ManualOperation {
 // once more than one request tab can be open at once, not just a
 // style preference. Renamed from ConnectorForm by ADR-0016.
 export function RequestForm({
-  editingRequest, duplicateFrom, onSaved, onCancel,
+  editingRequest, duplicateFrom, tabKey, onSaved, onCancel,
 }: {
   // Non-null => Save calls UpdateHTTPRequest against this request's ID.
   // Null (whether brand-new or a Duplicate) => Save calls CreateHTTPRequest.
@@ -60,6 +65,11 @@ export function RequestForm({
   // Set only for the Duplicate case -- seeds the initial draft/headers
   // from an existing request without editing it (docs/adr/0013 §7).
   duplicateFrom: HTTPRequest | null
+  // This mounted form's own WorkTab.key (goal 0370) -- lets the Test
+  // command's store signal (useRequestFormTestDispatch) and the
+  // requestFormTestReady mirror address THIS tab specifically, since
+  // every open request-edit/request-new tab stays mounted-hidden.
+  tabKey: string
   onSaved: () => void
   onCancel: () => void
 }) {
@@ -89,6 +99,25 @@ export function RequestForm({
   })
   const [schemaDirty, setSchemaDirty] = useState(false)
   const [rawSpecOpen, setRawSpecOpen] = useState(false)
+
+  // The primary Test action (goal 0370, ADR-0014's on-form-Test
+  // amendment): testPanelRef reuses RequestTestPanel's own runTest
+  // exactly as the saved record's Testing tab does, never a second
+  // request-test code path. testing mirrors the panel's own running
+  // state so the outer button can show "Testing..." without lifting
+  // the rest of the panel's state out of it.
+  const testPanelRef = useRef<RequestTestPanelHandle>(null)
+  const [testing, setTesting] = useState(false)
+  useRequestFormTestDispatch(tabKey, testPanelRef)
+
+  // Mirrored into the store (shared/requestFormTabState.ts) so
+  // configure.integration.testDraft's enabled() can read whether THIS
+  // tab's draft has a URL without importing configure/ (dependency-
+  // cruiser boundary) -- the same hot-exit-signal shape workTabDirty
+  // already uses.
+  useEffect(() => {
+    useAppStore.getState().setRequestFormTestReady(tabKey, draft.baseURL.trim() !== '')
+  }, [tabKey, draft.baseURL])
 
   const updateHeaderRow = (i: number, field: 'key' | 'value', value: string) => {
     setHeaderRows(headerRows.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)))
@@ -147,6 +176,20 @@ export function RequestForm({
     ? (opsHaveContent ? synthesizeOpenAPISpec(toSchemaOps(manualOperations)) : '')
     : draft.openAPISpec
 
+  // Shared by Save and the Test section below -- computed once from the
+  // authoritative draft/headerRows state, same "compute once, pass
+  // down" discipline as effectiveSpec above, so a test call and a real
+  // save never diverge on how they derive these from the same draft.
+  const headers = rowsToHeaders(headerRows)
+  const auth = authConfigFrom(draft)
+  const jose = joseConfigFrom(draft)
+  // Reparsed from effectiveSpec directly (not manualOperations' own
+  // possibly-untransformed path/method) -- RequestTestPanel's Path/Method
+  // must match exactly what TestHTTPRequestOperation parses out of the
+  // OpenAPISpec string it's actually sent, the same discipline
+  // RequestSummary.tsx's own testOperations already follows.
+  const testOperations = effectiveSpec.trim() !== '' ? parseOpenAPIToOperations(t, effectiveSpec).operations : []
+
   // Direct raw-spec editing (the disclosure textarea below) makes the
   // raw text authoritative again and re-seeds the editor from it.
   const editRawSpec = (specText: string) => {
@@ -160,9 +203,6 @@ export function RequestForm({
     const finalDraft = { ...draft, openAPISpec: effectiveSpec }
     setError('')
     try {
-      const headers = rowsToHeaders(headerRows)
-      const auth = authConfigFrom(finalDraft)
-      const jose = joseConfigFrom(finalDraft)
       await (editingRequest
         ? ConfigureService.UpdateHTTPRequest(editingRequest.ID, finalDraft.label, finalDraft.baseURL, finalDraft.method, finalDraft.body, finalDraft.authType, finalDraft.secretRef, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description)
         : ConfigureService.CreateHTTPRequest(finalDraft.label, finalDraft.baseURL, finalDraft.method, finalDraft.body, finalDraft.authType, finalDraft.secretRef, headers, finalDraft.openAPISpec, auth, jose, finalDraft.description))
@@ -193,13 +233,34 @@ export function RequestForm({
                 decision ("METHOD should not be free form text") -- the
                 wire format stays open (any persisted value renders as
                 an extra option rather than breaking), only the UI
-                presents a typed choice. */}
-            <Stack direction="horizontal" gap="condensed" align="end">
+                presents a typed choice. Stacks vertically below Primer's
+                own "narrow" breakpoint (<768px, Stack's own
+                ResponsiveValue direction) rather than a hand-rolled
+                media query -- a narrower row than that has no space for
+                both controls side by side regardless of Method's own
+                fixed width. align is responsive too (goal 0370
+                amendment 2026-09-08): "end"/"start" are cross-axis
+                values, so at regular width "start" top-aligns the row
+                -- both Label lines share one line and both controls
+                share the line below, rather than "end"'s bottom-align,
+                which floated the shorter Method FormControl mid-height
+                beside URL's taller one (its own Caption pushes it
+                lower). At narrow width the cross-axis is horizontal, so
+                "start" there would only left-align each FormControl at
+                its OWN width rather than filling the row -- "stretch"
+                (Stack's own unset default) keeps every stacked field
+                the same full width the rest of the form's fields use,
+                and also avoids "end"'s worse narrow-width bug: RIGHT-
+                aligning the stacked Method control against the row's
+                far edge instead of a natural left-aligned column. */}
+            <Stack direction={{ narrow: 'vertical', regular: 'horizontal' }} gap="condensed" align={{ narrow: 'stretch', regular: 'start' }}>
               <FormControl>
                 <FormControl.Label>{t('requestForm.method')}</FormControl.Label>
                 <Select
                   value={draft.method || 'GET'}
                   onChange={(e) => setDraft({ ...draft, method: e.target.value })}
+                  block={false}
+                  className={formStyles.methodSelect}
                   data-testid="request-method"
                 >
                   {(METHOD_SUGGESTIONS.includes(draft.method || 'GET')
@@ -210,21 +271,14 @@ export function RequestForm({
               </FormControl>
               <FormControl style={{ flexGrow: 1 }}>
                 <FormControl.Label>{t('requestForm.url')}</FormControl.Label>
-                <FormControl.Caption>
-                  {t('requestForm.urlCaption', { brace: '{', closeBrace: '}' })}
-                  {' '}
-                  {/* goal 0306 S5: the environment substitution is
-                      invisible from this form otherwise -- the syntax
-                      lives in the caption of the field it applies to. */}
-                  <span data-testid="request-variables-hint">{t('requestForm.variablesHint', { example: VARIABLE_EXAMPLE })}</span>
-                </FormControl.Caption>
+                <FormControl.Caption>{t('requestForm.urlCaption', { example: VARIABLE_EXAMPLE })}</FormControl.Caption>
                 <TextInput value={draft.baseURL} onChange={(e) => setDraft({ ...draft, baseURL: e.target.value })} placeholder={t('requestForm.urlPlaceholder')} block />
               </FormControl>
             </Stack>
             <FormControl>
               <FormControl.Label>{t('requestForm.description')}</FormControl.Label>
               <FormControl.Caption>{t('requestForm.descriptionCaption')}</FormControl.Caption>
-              <Textarea value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} rows={2} block data-testid="request-description" />
+              <Textarea value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} rows={4} block data-testid="request-description" />
             </FormControl>
           </Stack>
         </section>
@@ -284,11 +338,54 @@ export function RequestForm({
         </section>
 
         <RequestAdvancedSection draft={draft} setDraft={setDraft} />
+
+        {/* Test is the form's one primary action (goal 0370, every
+            precedent's own Send/Run) -- Save below is deliberately
+            demoted off variant="primary" so the two don't compete on
+            one screen (.claude/rules/frontend.md's one-primary-per-
+            region rule), the same resolution CanvasMetaHeader.tsx
+            already applies to Save + Run. Drives the registry command
+            (never the ref directly) so the palette and a future
+            keyboard binding reach the identical path a click does;
+            testPanelRef.current?.trigger() is what actually runs it,
+            reusing RequestTestPanel's own runTest rather than a second
+            test-call path. */}
+        <section>
+          <Heading as="h3" variant="small" className={styles.sectionHeading}>{t('requestForm.test')}</Heading>
+          <Stack direction="vertical" gap="condensed">
+            <Text as="p" size="small" className={styles.muted}>{t('requestForm.testCaption')}</Text>
+            <Button
+              variant="primary"
+              size="small"
+              leadingVisual={PlayIcon}
+              onClick={() => { void findCommand('configure.integration.testDraft')?.run() }}
+              disabled={testing || draft.baseURL.trim() === ''}
+              data-testid="request-test-draft"
+            >
+              {testing ? t('requestForm.testing') : t('requestForm.test')}
+            </Button>
+            <RequestTestPanel
+              ref={testPanelRef}
+              operations={testOperations}
+              effectiveSpec={effectiveSpec}
+              label={draft.label}
+              baseURL={draft.baseURL}
+              authType={draft.authType}
+              auth={auth}
+              jose={jose}
+              headers={headers}
+              secretRef={draft.secretRef}
+              requestID={editingRequest?.ID ?? null}
+              hideRunButton
+              onRunningChange={setTesting}
+            />
+          </Stack>
+        </section>
       </Stack>
 
       {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
       <Stack direction="horizontal" gap="condensed" style={{ marginTop: 'var(--base-size-12)' }}>
-        <Button variant="primary" size="small" onClick={handleSave}>{t('requestForm.saveRequest')}</Button>
+        <Button size="small" onClick={handleSave}>{t('requestForm.saveRequest')}</Button>
         <Button size="small" variant="invisible" onClick={onCancel}>{t('requestForm.cancel')}</Button>
       </Stack>
     </div>

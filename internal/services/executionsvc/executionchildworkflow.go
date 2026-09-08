@@ -56,6 +56,10 @@ func (e *ExecutionService) runChildWorkflow(runCtx any, workflowID string, attrV
 	if runID == "" {
 		runID = uuid.NewString()
 	}
+	// runStartMu: see its own doc comment (executionservice.go) -- a
+	// child run is a second "genesis" call into the same shared durable
+	// context every other run launches through.
+	e.runStartMu.Lock()
 	handle, err := execution.RunWorkflow(dbosCtx, e.runWorkflow, runInput{
 		WorkflowID: wf.ID,
 		Nodes:      nodes,
@@ -69,6 +73,7 @@ func (e *ExecutionService) runChildWorkflow(runCtx any, workflowID string, attrV
 		// triggered run follows (Workflow.DefaultEnvironmentID).
 		EnvironmentID: wf.DefaultEnvironmentID,
 	}, execution.WithWorkflowID(runID))
+	e.runStartMu.Unlock()
 	if err != nil {
 		return "", fmt.Errorf("start child workflow %q: %w", wf.Label, err)
 	}

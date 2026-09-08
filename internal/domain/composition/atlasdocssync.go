@@ -26,7 +26,8 @@ func SetAtlasDocsSync(fn func(folderPath, parentTitle, kindLabel, sourceRunID st
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-atlas-docs-sync", Kind: KindApply,
-		Label: "Mirror docs folder into Atlas",
+		PaletteGroup: PaletteGroupApply,
+		Label:        "Mirror docs folder into Atlas",
 		// ClassLocal: writes to Atlas's own persisted store, same
 		// classification as the other apply-atlas-* nodes.
 		Effect:     guardrail.ClassLocal,

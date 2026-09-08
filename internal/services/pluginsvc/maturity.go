@@ -198,11 +198,15 @@ func (e Evidence) complete() bool {
 // Currency never carries a derived "days behind" figure: that number
 // is a live staleness metric (today vs CodeChangedAt), not a repo
 // fact pinned to a commit, so it belongs to a reader computing it at
-// display time (docsgen's committed artifacts, goal 0391) -- never to
-// a struct this package regenerates and commits. A family with no
-// canonical docs page (a new family before docPageByFamily names one)
-// has a zero DocsCommit/DocsChangedAt -- there is no docs evidence to
-// report yet.
+// display time. Currency is never part of Row/Report's output either
+// (goal 0397): a git-log fact differs by branch/checkout for the same
+// tracked content, so it can never sit in a struct this package's
+// generated artifacts commit byte-for-byte. GatherAllCurrency
+// (maturity_currency.go) is the entry point for a live reader with a
+// real working checkout -- the control room dashboard. A family with
+// no canonical docs page (a new family before docPageByFamily names
+// one) has a zero DocsCommit/DocsChangedAt -- there is no docs
+// evidence to report yet.
 type Currency struct {
 	CodeCommit    string
 	CodeChangedAt time.Time
@@ -231,12 +235,15 @@ func Flags(level Stability, e Evidence) []string {
 	return flags
 }
 
-// Row is one family's full ledger entry.
+// Row is one family's full ledger entry -- every field a pure
+// function of tracked content, never of git history or the wall
+// clock, so the committed markdown/JSON regenerate byte-identical on
+// any branch or checkout (goal 0397). A live reader wanting
+// git-derived currency calls GatherAllCurrency separately.
 type Row struct {
 	Family   string
 	Level    Stability
 	Evidence Evidence
-	Currency Currency
 	Flags    []string
 }
 
@@ -279,6 +286,8 @@ func headline(rows []Row) string {
 // Ledger.GeneratedAt -- production callers pass time.Now; a test
 // passes a fixed clock to prove the rest of the ledger (every field
 // that ends up in the committed markdown/JSON) never varies with it.
+// Report never touches git (see Row) -- GatherAllCurrency is the
+// separate, git-backed entry point a live reader calls instead.
 func Report(repoRoot string, now func() time.Time) Ledger {
 	families := Families()
 	rows := make([]Row, 0, len(families))
@@ -290,7 +299,6 @@ func Report(repoRoot string, now func() time.Time) Ledger {
 			Family:   family,
 			Level:    level,
 			Evidence: e,
-			Currency: gatherCurrency(repoRoot, family),
 			Flags:    Flags(level, e),
 		})
 	}

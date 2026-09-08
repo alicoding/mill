@@ -57,3 +57,19 @@ export function faceOwnsInput(state: AtlasActivation): boolean {
 export function shieldUp(input: AtlasInputMode, state: AtlasActivation, preview: boolean): boolean {
   return input === 'interactive' && state === 'idle' && !preview
 }
+
+// contentInert: whether an interactive face's own content must be
+// unreachable by BOTH pointer and keyboard focus right now -- the
+// frame's own pointer-events guard (the `contentInert` CSS class)
+// never removed a grid's real cells from the tab order, which is what
+// let a preview tile's `aria-hidden` ancestor contain focusable
+// descendants (WCAG's aria-hidden-focus rule). The native `inert`
+// attribute is the one primitive that removes both, so it rides the
+// SAME activation fact `shieldUp` already reads: idle whenever the
+// face hasn't been activated -- a preview tile's own state is always
+// idle (goal 0392 S1) -- gone the moment the face goes live. A static
+// face has no shield and no such descendants, so it is never inert
+// here either.
+export function contentInert(input: AtlasInputMode, state: AtlasActivation): boolean {
+  return input === 'interactive' && !faceOwnsInput(state)
+}

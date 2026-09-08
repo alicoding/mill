@@ -39,12 +39,13 @@ func SetApplyListSync(fn func(listID, keyColumn string, rows []map[string]string
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-list-sync", Kind: KindApply,
-		Label:      "Sync rows into a list",
-		Effect:     guardrail.ClassLocal,
-		Complexity: ComplexityAdvanced,
-		Consumes:   []PayloadKind{PayloadJSON, PayloadText, PayloadAny},
-		Produces:   PayloadProduce{Passthrough: true},
-		Output:     "payload unchanged; syncedRows and expiredRows -> Attributes",
+		PaletteGroup: PaletteGroupApply,
+		Label:        "Sync rows into a list",
+		Effect:       guardrail.ClassLocal,
+		Complexity:   ComplexityAdvanced,
+		Consumes:     []PayloadKind{PayloadJSON, PayloadText, PayloadAny},
+		Produces:     PayloadProduce{Passthrough: true},
+		Output:       "payload unchanged; syncedRows and expiredRows -> Attributes",
 		Description: "Turns a JSON payload's array of items into rows of a Configure-authored List, one " +
 			"row per item, matched by \"Key column\": an existing row with the same key is updated in the " +
 			"mapped columns, a new key appends a row, and with \"Expire missing rows\" on, rows whose key is " +

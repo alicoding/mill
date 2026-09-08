@@ -30,13 +30,14 @@ func SetAICompleteFn(fn func(aiclient.Request) (aiclient.Result, error)) {
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "process-ai-completion", Kind: KindProcess,
-		Effect:      guardrail.ClassExternal, // dynamic downgrade for a loopback provider -- aiprovider.go's aiNodeEffectOverride, dispatched via EffectForNode
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadText, PayloadNone},
-		Produces:    PayloadProduce{Kind: PayloadText},
-		Output:      "the AI completion text, replacing the payload",
-		Label:       "Generate with AI",
-		Description: "Sends a prompt plus the payload to a configured AI provider (local Ollama, or your own OpenAI-compatible or Anthropic endpoint) and replaces the payload with the completion. The system prompt is this step's System prompt field; the user message is the Prompt followed by the payload when one exists. One call per run, never a loop.",
+		PaletteGroup: PaletteGroupAI,
+		Effect:       guardrail.ClassExternal, // dynamic downgrade for a loopback provider -- aiprovider.go's aiNodeEffectOverride, dispatched via EffectForNode
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadText, PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadText},
+		Output:       "the AI completion text, replacing the payload",
+		Label:        "Generate with AI",
+		Description:  "Sends a prompt plus the payload to a configured AI provider (local Ollama, or your own OpenAI-compatible or Anthropic endpoint) and replaces the payload with the completion. The system prompt is this step's System prompt field; the user message is the Prompt followed by the payload when one exists. One call per run, never a loop.",
 		ConfigFields: []ConfigField{
 			{
 				Key: aiProviderIDConfigKey, Label: "AI provider",
