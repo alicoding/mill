@@ -1,5 +1,5 @@
 {
-  "headline": "3 of 11 contribution families are stable; 0 ready to promote; 0 regressed.",
+  "headline": "3 of 13 contribution families are stable; 0 ready to promote; 0 regressed.",
   "rows": [
     {
       "family": "canvasObjects",
@@ -43,6 +43,28 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
+      "flags": []
+    },
+    {
+      "family": "configuration",
+      "level": "experimental",
+      "conformance": false,
+      "example": true,
+      "e2e": false,
+      "docs": true,
+      "sdkTypes": false,
+      "mcp": "no",
+      "flags": []
+    },
+    {
+      "family": "menus",
+      "level": "experimental",
+      "conformance": false,
+      "example": false,
+      "e2e": false,
+      "docs": true,
+      "sdkTypes": false,
+      "mcp": "no",
       "flags": []
     },
     {

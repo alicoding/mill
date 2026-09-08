@@ -304,6 +304,7 @@ func (a *AtlasService) DeleteBoardObject(id string) (TombstoneResult, error) {
 		return TombstoneResult{}, fmt.Errorf("save board object deletion: %w", perr)
 	}
 	dataevent.Emit("atlas", id)
+	dataevent.EmitObjectDeleted(previous.ParentID, id) // goal 0392 S2: every kind, not only entityRef ones
 	a.disarmMirrorWatch(id)
 	a.recordUndo(actorUI, "object", id, previous.Kind,
 		func(a *AtlasService) error { return a.UndoDelete(nil, nil, []string{id}) },
@@ -312,11 +313,16 @@ func (a *AtlasService) DeleteBoardObject(id string) (TombstoneResult, error) {
 	result := TombstoneResult{ObjectIDs: []string{id}, ObjectKind: previous.Kind}
 	// The board half is tombstoned above BEFORE this reads the index, so
 	// a sole reference correctly reports "no longer used" -- no explicit
-	// self-exclusion needed (goal 0392 S1).
+	// self-exclusion needed (goal 0392 S1). remaining (goal 0392 S2) is
+	// the same index's own live count immediately after this removal --
+	// the entity.dereferenced payload's derived "now unused" flag when 0.
 	if decl, ok := atlas.BoardObjectKindDeclFor(previous.Kind); ok && decl.EntityRef != nil {
 		result.EntityRefKind = decl.EntityRef.EntityKind
 		if entityID := previous.Payload[decl.EntityRef.PayloadKey]; entityID != "" && a.entityReferences != nil {
-			result.EntityStillUsed = !a.entityReferences(decl.EntityRef.EntityKind, entityID).Empty()
+			refs := a.entityReferences(decl.EntityRef.EntityKind, entityID)
+			result.EntityStillUsed = !refs.Empty()
+			dataevent.EmitEntityDereferenced(decl.EntityRef.EntityKind, entityID,
+				dataevent.LifecycleBy{BoardID: previous.ParentID, ObjectID: id}, len(refs.Boards)+len(refs.Workflows))
 		}
 	}
 	return result, nil

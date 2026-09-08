@@ -6,7 +6,7 @@ function manifestWith(commands: Manifest['contributes']['commands']): Manifest {
   return {
     id: 'mill-index', name: 'Board index', version: '1.0.0', description: '', author: '', minMillVersion: '0.9.0', icon: 'icon.png',
     capabilities: [], dependencies: [], exports: [],
-    contributes: { canvasObjects: [], steps: [], captures: [], settings: [], network: [], views: [], commands, tools: [], themes: [], secretSources: [], mcpServers: [] },
+    contributes: { canvasObjects: [], steps: [], captures: [], settings: [], configuration: [], menus: {}, network: [], views: [], commands, tools: [], themes: [], secretSources: [], mcpServers: [] },
   }
 }
 

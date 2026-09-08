@@ -30,7 +30,7 @@
         "entry": "tester.html"
       }
     ],
-    "settings": [
+    "configuration": [
       {
         "key": "defaultMethod",
         "type": "enum",

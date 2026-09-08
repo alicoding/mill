@@ -90,6 +90,7 @@ func PageIndex() []DocPage {
 		{"reference/register-a-canvas-tool.md", "Register a canvas tool", "walks a new AtlasToolShape declaration end to end, quoting a real registered tool", KindReference},
 		{"reference/register-a-command.md", "Register a command", "walks a new Command registry entry end to end, quoting a real registered command", KindReference},
 		{"reference/plugin-standard.md", "The plugin standard", "the rules a shipped plugin follows, and which ones the conformance checker enforces", KindReference},
+		{"reference/port-a-vscode-extension.md", "Port an extension from another platform", "a field-by-field mapping table, which parts need no rewrite, and which ones a compatible port always reauthors", KindHowTo},
 		{"reference/plugin-theming.md", "Plugin theming", "the theme variables a plugin renders with", KindReference},
 		{"reference/managed-extensions.md", "Managed extensions", "the organisation policy file: allow and block lists, required tier, blocked capabilities, allowed sources, and what an install checks", KindReference},
 		{"reference/plugin-api-maturity.md", "Plugin API maturity", "each contribution family's level and its proof, generated from the repository", KindReference},
