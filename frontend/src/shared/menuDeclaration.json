@@ -163,6 +163,12 @@
   },
   {
     "menu": "File",
+    "item": "Export audit trail",
+    "shortcut": "",
+    "command": "audit.export"
+  },
+  {
+    "menu": "File",
     "item": "Lock vault",
     "shortcut": "",
     "command": "secrets.lockVault"

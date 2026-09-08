@@ -256,11 +256,13 @@ func main() {
 	wiring.WireAtlasStorageDirs(atlasService)
 	atlasService.SetGuardedDataPaths(settingsPath, backupsvc.SQLiteDBPath(executionDatabaseURL), backupDir)
 
-	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger)                                                    // docs/goals/0132-remote-access.md SLICE 1
-	bridgeService := wiring.WireBrowserBridge(remoteAuthService, logger, browserExtensionFS, filepath.Dir(settingsPath)) // the browser bridge's own loopback listener (docs/goals/0350)
-	wiring.WireWebhookRespond(bridgeService, triggerService)                                                             // goal 0368: the hook door fires a trigger, never a pipe. goal 0373: it can wait for a reply.
+	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger)                                                                                                  // docs/goals/0132-remote-access.md SLICE 1
+	bridgeService := wiring.WireBrowserBridge(remoteAuthService, logger, browserExtensionFS, filepath.Dir(settingsPath), backupsvc.SQLiteDBPath(executionDatabaseURL)) // the browser bridge's own loopback listener (docs/goals/0350) and audit connection (goal 0351 S2)
+	wiring.WireWebhookRespond(bridgeService, triggerService)                                                                                                          // goal 0368: the hook door fires a trigger, never a pipe. goal 0373: it can wait for a reply.
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
+	auditService := wiring.WireAuditExport(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsService.GetAuditRetentionEntries(), logger) // goal 0351 S2: export/retention over the shared audit trail
+	settingsService.SetAuditRetentionChanged(auditService.PruneNow)                                                                        // a lowered cap takes effect immediately, not only at the next restart
 	wiring.WireSettingsEraSeams(settingsService, notificationService, remoteAuthService, triggerService, atlasService, pluginService, secretService)
 	settingsService.SetAppVersion(millUpdateVersion)
 	// The user's persisted channel opt-in wins over the build stamp --
@@ -339,6 +341,7 @@ func main() {
 			application.NewServiceWithOptions(backupService, boundErrors),
 			application.NewServiceWithOptions(docssvc.New(userdocsFS), boundErrors),
 			application.NewServiceWithOptions(mcpAuditService, boundErrors),
+			application.NewServiceWithOptions(auditService, boundErrors),
 			application.NewServiceWithOptions(remoteAuthService, boundErrors),
 			application.NewServiceWithOptions(bridgeService, boundErrors),
 			application.NewServiceWithOptions(notificationService, boundErrors),
@@ -488,7 +491,7 @@ func main() {
 	// Run the application. This blocks until the application has been exited.
 	err = app.Run()
 
-	wiring.RunShutdown(logger, executionService, backupService, millMCPService, mcpAuditService, atlasService, secretService)
+	wiring.RunShutdown(logger, executionService, backupService, millMCPService, mcpAuditService, atlasService, secretService, bridgeService, auditService)
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {
