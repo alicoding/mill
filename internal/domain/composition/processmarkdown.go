@@ -14,12 +14,13 @@ var htmlToMarkdown = markdown.ToMarkdown
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "process-html-to-markdown", Kind: KindProcess,
-		Label:       "Convert HTML to Markdown",
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadHTML},
-		Produces:    PayloadProduce{Kind: PayloadMarkdown},
-		Output:      "Markdown text",
-		Description: "Converts HTML into Markdown, preserving structure (headings, bold, lists).",
+		PaletteGroup: PaletteGroupTransform,
+		Label:        "Convert HTML to Markdown",
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadHTML},
+		Produces:     PayloadProduce{Kind: PayloadMarkdown},
+		Output:       "Markdown text",
+		Description:  "Converts HTML into Markdown, preserving structure (headings, bold, lists).",
 		ConfigFields: []ConfigField{
 			{
 				Key: "profileId", Label: "Conversion profile", Type: FieldText, RefKind: "conversionprofile", OptionalRef: true,

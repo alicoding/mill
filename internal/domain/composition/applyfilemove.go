@@ -14,13 +14,14 @@ import (
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-file-move", Kind: KindApply,
-		Effect:      guardrail.ClassLocal,
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadText, PayloadNone},
-		Produces:    PayloadProduce{Kind: PayloadText},
-		Output:      "the file's new path",
-		Label:       "Move file",
-		Description: "Moves or renames a local file to a new location.",
+		PaletteGroup: PaletteGroupApply,
+		Effect:       guardrail.ClassLocal,
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadText, PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadText},
+		Output:       "the file's new path",
+		Label:        "Move file",
+		Description:  "Moves or renames a local file to a new location.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "sourcePath", Label: "Source file", Type: FieldText,

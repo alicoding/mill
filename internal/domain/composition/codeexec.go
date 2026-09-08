@@ -291,13 +291,14 @@ func PreviewWorkingDirectory(node Node, ctx ExecContext) (string, bool) {
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "code-execution", Kind: KindProcess,
-		Effect:      guardrail.ClassExternal,
-		Complexity:  ComplexityAdvanced,
-		Consumes:    []PayloadKind{PayloadText, PayloadNone},
-		Produces:    PayloadProduce{Kind: PayloadText},
-		Output:      "combined stdout+stderr from the executed command",
-		Label:       "Run a command",
-		Description: "Runs one command locally, inside a configured execution environment (pinned shell, directory, and environment). External effect: the run asks for approval by default. Source \"payload\" runs the upstream payload as the command; \"literal\" runs a fixed script instead. A running command can be stopped from this workflow's Runs tab.",
+		PaletteGroup: PaletteGroupActions,
+		Effect:       guardrail.ClassExternal,
+		Complexity:   ComplexityAdvanced,
+		Consumes:     []PayloadKind{PayloadText, PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadText},
+		Output:       "combined stdout+stderr from the executed command",
+		Label:        "Run a command",
+		Description:  "Runs one command locally, inside a configured execution environment (pinned shell, directory, and environment). External effect: the run asks for approval by default. Source \"payload\" runs the upstream payload as the command; \"literal\" runs a fixed script instead. A running command can be stopped from this workflow's Runs tab.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "envId", Label: "Execution environment",

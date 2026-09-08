@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { attachActivationBridge, callActivationMethod, createActivationFrameContext, teardownActivationFrameContext } from './pluginActivationBridge'
+import { attachActivationBridge, callActivationMethod, createActivationFrameContext, sendExtensionCall, teardownActivationFrameContext } from './pluginActivationBridge'
 import { collectPluginCapture, getPluginCapture, setPluginCaptureSink, unregisterPluginCaptures } from '../plugins/pluginCaptures'
 import { collectPluginView, getPluginView, setPluginViewSink, unregisterPluginViews } from '../plugins/pluginViews'
 import type { MillPluginAPI } from '../plugins/sdk'
@@ -38,6 +38,7 @@ function fakeApi(overrides: Partial<MillPluginAPI> = {}): MillPluginAPI {
     convert: { htmlToMarkdown: vi.fn() },
     files: { list: vi.fn() },
     ui: { renderOutput: vi.fn(() => () => {}) },
+    extensions: { get: vi.fn(async () => undefined) },
     ...overrides,
   } as unknown as MillPluginAPI
 }
@@ -150,6 +151,51 @@ describe('callActivationMethod', () => {
     const ctx = createActivationFrameContext(frame, 'framed-probe', [])
     const result = await callActivationMethod(ctx, api, 'subscribe', [{ topic: 'settings', key: 'missing' }])
     expect(result).toEqual({ subId: 1 })
+  })
+
+  it('extensions.get/extensions.call (goal 0364) route onto api.extensions', async () => {
+    const get = vi.fn(async (id: string) => (id === 'mill-interop-provider' ? { greet: () => 'hi' } : undefined))
+    const api = fakeApi({ extensions: { get } })
+    const { frame } = fakeFrame()
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    await expect(callActivationMethod(ctx, api, 'extensions.get', ['mill-interop-provider'])).resolves.toEqual({ data: {}, methods: ['greet'] })
+    expect(get).toHaveBeenCalledWith('mill-interop-provider')
+    await expect(callActivationMethod(ctx, api, 'extensions.call', ['mill-other', 'greet', []])).rejects.toThrow('Method greet is not exported by mill-other.')
+  })
+})
+
+describe('sendExtensionCall (goal 0364)', () => {
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
+
+  it('resolves once the frame answers extension.result', async () => {
+    const { frame, contentWindow, post } = fakeFrame()
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const api = fakeApi()
+    const detach = attachActivationBridge({ ctx, api, onDone: () => {}, onError: () => {} })
+    const ran = sendExtensionCall(ctx, 'greet', ['Ada'])
+    expect(post).toHaveBeenCalledWith(expect.objectContaining({ kind: 'extension.call', method: 'greet', args: ['Ada'] }), '*')
+    const callId = (post.mock.calls[0][0] as { callId: number }).callId
+    window.dispatchEvent(new MessageEvent('message', { source: contentWindow, data: { mill: 1, kind: 'extension.result', callId, ok: true, result: 'Hello, Ada' } }))
+    await expect(ran).resolves.toBe('Hello, Ada')
+    detach()
+  })
+
+  it('rejects with the frame-not-running sentence 10 s after no reply arrives', async () => {
+    vi.useFakeTimers()
+    const { frame } = fakeFrame()
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ran = sendExtensionCall(ctx, 'greet', [])
+    const assertion = expect(ran).rejects.toThrow('Extension framed-probe is not running.')
+    await vi.advanceTimersByTimeAsync(10_000)
+    await assertion
+  })
+
+  it('a torn-down frame rejects every pending extension call', async () => {
+    const { frame } = fakeFrame()
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ran = sendExtensionCall(ctx, 'greet', [])
+    teardownActivationFrameContext(ctx)
+    await expect(ran).rejects.toThrow('Extension framed-probe is not running.')
   })
 })
 

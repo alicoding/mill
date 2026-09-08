@@ -1,0 +1,14 @@
+{
+  "id": "mill-interop-consumer",
+  "name": "Interop consumer",
+  "version": "1.0.0",
+  "description": "Depends on mill-interop-provider and calls its exported method -- the extension-interop reference pair's dependant side.",
+  "author": "Mill examples",
+  "minMillVersion": "0.9.0",
+  "icon": "icon.png",
+  "capabilities": [],
+  "dependencies": [
+    { "id": "mill-interop-provider", "version": ">=1.0.0" }
+  ],
+  "contributes": {}
+}
