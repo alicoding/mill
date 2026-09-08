@@ -57,11 +57,11 @@ const commandBuffer = 8
 // TokenAuthority is the paired-credential seam: the bridge mints and
 // checks nothing itself, it asks remoteauthsvc, which owns every
 // paired thing Mill knows about -- browser extensions and headless
-// hook tokens alike.
+// webhook tokens alike.
 type TokenAuthority interface {
 	PairBrowser(code, label, source string) (remoteauthsvc.BrowserPairing, error)
 	ValidateBrowserToken(token string) (remoteauthsvc.DeviceInfo, bool)
-	ValidateHookToken(token string) (remoteauthsvc.DeviceInfo, bool)
+	ValidateWebhookToken(token string) (remoteauthsvc.DeviceInfo, bool)
 	// RequestPairing and PairingStatus back the nearby discovery flow
 	// (goal 0379): a popup-minted request, confirmed by a human
 	// Accept/Deny in Mill, never a code typed out of band.
@@ -111,11 +111,11 @@ type BridgeService struct {
 	extensionFiles fs.FS
 	extensionDir   string
 
-	// hookSink dispatches a validated hook post into the trigger
+	// webhookSink dispatches a validated webhook post into the trigger
 	// layer; its own mutex because SetWebhookEventSink runs at startup
-	// while requests arrive concurrently. See bridgeservice_hooks.go.
-	hookMu   sync.Mutex
-	hookSink webhookEventSink
+	// while requests arrive concurrently. See bridgeservice_webhook.go.
+	webhookMu   sync.Mutex
+	webhookSink webhookEventSink
 
 	// auditStore/auditLog are the shared audit trail's own connection
 	// (goal 0351 S2) -- nil until OpenAudit runs, mirroring

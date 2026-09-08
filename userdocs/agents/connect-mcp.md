@@ -40,6 +40,12 @@ or a workflow calling a connected server — with who called what, when,
 and whether it succeeded. Filter by direction or tool name to find one
 fast; a failed call's error is copyable in one click.
 
+## No MCP connection available
+
+A tool that can't hold an MCP connection open can still start a
+workflow over a plain HTTP request — see [Fire a workflow from a
+webhook](../how-to/webhooks.md).
+
 ## Teach your agent
 
 `skills/mill-use` in the repository is a ready-made agent skill:

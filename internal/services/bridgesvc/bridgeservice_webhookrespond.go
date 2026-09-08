@@ -5,9 +5,9 @@ import (
 	"time"
 )
 
-// WebhookReply is one respond-webhook step's answer, as the hook route
-// writes it back to the caller verbatim -- Status/ContentType/Body are
-// the workflow's own composition, never a Mill-chosen shape.
+// WebhookReply is one respond-webhook step's answer, as the webhook
+// route writes it back to the caller verbatim -- Status/ContentType/
+// Body are the workflow's own composition, never a Mill-chosen shape.
 type WebhookReply struct {
 	Status      int
 	ContentType string
@@ -33,7 +33,7 @@ type WebhookWait struct {
 // never a 4xx, so the fallback never reads as a guardrail's own deny).
 const webhookStandardReplyBody = `{"reply":"none"}`
 
-// answerHookEvent writes wait's outcome to w -- nil (no started run's
+// answerWebhook writes wait's outcome to w -- nil (no started run's
 // graph contains a respond-webhook node) ACKs exactly as before this
 // goal existed, byte-identical (202, empty body). Otherwise it waits up
 // to wait.Budget for the first reply, writing the standard body with a
@@ -41,7 +41,7 @@ const webhookStandardReplyBody = `{"reply":"none"}`
 // (a run finishing without ever answering gets the same standard body,
 // but promptly, with no header -- the caller can tell "nothing
 // answered in time" apart from "nothing was ever going to").
-func (s *BridgeService) answerHookEvent(w http.ResponseWriter, wait *WebhookWait) {
+func (s *BridgeService) answerWebhook(w http.ResponseWriter, wait *WebhookWait) {
 	if wait == nil {
 		w.WriteHeader(http.StatusAccepted)
 		return
@@ -49,17 +49,17 @@ func (s *BridgeService) answerHookEvent(w http.ResponseWriter, wait *WebhookWait
 	select {
 	case reply := <-wait.Reply:
 		if reply.Status == 0 {
-			writeStandardHookReply(w)
+			writeStandardWebhookReply(w)
 			return
 		}
-		writeHookReply(w, reply)
+		writeWebhookReply(w, reply)
 	case <-time.After(wait.Budget):
 		w.Header().Set("Mill-Reply", "none")
-		writeStandardHookReply(w)
+		writeStandardWebhookReply(w)
 	}
 }
 
-func writeHookReply(w http.ResponseWriter, reply WebhookReply) {
+func writeWebhookReply(w http.ResponseWriter, reply WebhookReply) {
 	if reply.ContentType != "" {
 		w.Header().Set("Content-Type", reply.ContentType)
 	}
@@ -73,7 +73,7 @@ func writeHookReply(w http.ResponseWriter, reply WebhookReply) {
 	}
 }
 
-func writeStandardHookReply(w http.ResponseWriter) {
+func writeStandardWebhookReply(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(webhookStandardReplyBody))

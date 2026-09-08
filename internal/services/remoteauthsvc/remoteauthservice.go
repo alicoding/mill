@@ -160,11 +160,36 @@ func (s *RemoteAuthService) loadDevices() {
 	s.devices = devices
 	// A device paired before the phone channel existed has no Topic --
 	// backfill one so it gets the capability with no re-pair required.
-	if s.backfillTopics() {
+	changed := s.backfillTopics()
+	// A token minted before goal 0387 carries the retired Kind "hook" --
+	// migrate it in place so it keeps validating under KindWebhookToken
+	// with no re-mint required.
+	if s.migrateWebhookTokenKind() {
+		changed = true
+	}
+	if changed {
 		if err := s.saveDevices(); err != nil {
-			s.logger.Error("remote access: persisting backfilled phone topics", "error", err)
+			s.logger.Error("remote access: persisting migrated device records", "error", err)
 		}
 	}
+}
+
+// migrateWebhookTokenKind renames every device's Kind from goal
+// 0387's retired "hook" value to KindWebhookToken, so a persisted
+// store written before this goal keeps validating on the new value.
+// Reports whether anything changed, so the caller only persists when
+// needed. Held under mu by callers (loadDevices, at construction,
+// before the service is shared).
+func (s *RemoteAuthService) migrateWebhookTokenKind() bool {
+	const retiredKindValue = "hook"
+	changed := false
+	for i, d := range s.devices {
+		if d.Kind == retiredKindValue {
+			s.devices[i].Kind = KindWebhookToken
+			changed = true
+		}
+	}
+	return changed
 }
 
 // saveDevices persists the current device list. Called with mu held.
