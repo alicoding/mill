@@ -12,16 +12,16 @@ import (
 	"github.com/alicoding/mill/internal/domain/usererror"
 )
 
-// HookEventPath is the hook door: the one route an external tool's
-// hook (an agent's hook config, a CI script) POSTs to in order to fire
+// WebhookPath is the webhook door: the one route any tool or service
+// that can send an HTTP request POSTs to in order to fire
 // trigger-webhook workflows. It lives on the bridge mux because the
 // bridge is already Mill's loopback HTTP listener for outside-tool
-// intake; a webhook event is intake of exactly that shape. The door
+// intake; a webhook post is intake of exactly that shape. The door
 // requires its bearer credential even over loopback -- the same design
 // rule the Handler doc comment states for the browser routes.
-const HookEventPath = "/__mill/hooks/event"
+const WebhookPath = "/__mill/webhook"
 
-// webhookEventSink is what a validated hook post becomes: a trigger
+// webhookEventSink is what a validated webhook post becomes: a trigger
 // dispatch, never a direct notification (the door fires a trigger; the
 // workflow it arms decides what happens next). values is the posted
 // object's scalar top-level fields stringified; raw is the body
@@ -30,7 +30,7 @@ const HookEventPath = "/__mill/hooks/event"
 // contract item 3); otherwise a WebhookWait the caller waits on.
 type webhookEventSink func(values map[string]string, raw []byte) *WebhookWait
 
-// SetWebhookEventSink wires the dispatch seam the hook route calls
+// SetWebhookEventSink wires the dispatch seam the webhook route calls
 // after a request passes its token and shape checks. A late-bound
 // setter, not a constructor parameter: bridgesvc never imports
 // triggersvc (the dependency runs the other way), and main.go
@@ -38,39 +38,39 @@ type webhookEventSink func(values map[string]string, raw []byte) *WebhookWait
 //
 //wails:ignore
 func (s *BridgeService) SetWebhookEventSink(sink webhookEventSink) {
-	s.hookMu.Lock()
-	s.hookSink = sink
-	s.hookMu.Unlock()
+	s.webhookMu.Lock()
+	s.webhookSink = sink
+	s.webhookMu.Unlock()
 }
 
-// handleHookEvent is the hook door's handler. The posted body is any
+// handleWebhook is the webhook door's handler. The posted body is any
 // JSON object: its top-level scalar fields become a workflow run's
 // Attribute values by name, and the raw body is the run's payload.
-func (s *BridgeService) handleHookEvent(w http.ResponseWriter, r *http.Request) {
+func (s *BridgeService) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	device, ok := s.auth.ValidateHookToken(bearerToken(r))
+	device, ok := s.auth.ValidateWebhookToken(bearerToken(r))
 	if !ok {
-		s.recordCommand(r.Context(), "hook-event", audit.Target{}, "hook:"+sourceKey(r), "rejected", "unauthorized", http.StatusUnauthorized, "")
-		writeUserError(w, http.StatusUnauthorized, usererror.New("bad-hook-token", "That hook token didn't work. Mint a new one in Settings and try again."))
+		s.recordCommand(r.Context(), "webhook", audit.Target{}, "webhook:"+sourceKey(r), "rejected", "unauthorized", http.StatusUnauthorized, "")
+		writeUserError(w, http.StatusUnauthorized, usererror.New("bad-webhook-token", "That webhook token didn't work. Mint a new one in Settings and try again."))
 		return
 	}
-	actorSource := "hook:" + device.ID
+	actorSource := "webhook:" + device.ID
 
 	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxResultBytes))
 	if err != nil {
-		s.recordCommand(r.Context(), "hook-event", audit.Target{}, actorSource, "rejected", "", http.StatusBadRequest, "")
-		writeUserError(w, http.StatusBadRequest, usererror.New("bad-hook-event", "That hook event wasn't readable. Post a JSON object."))
+		s.recordCommand(r.Context(), "webhook", audit.Target{}, actorSource, "rejected", "", http.StatusBadRequest, "")
+		writeUserError(w, http.StatusBadRequest, usererror.New("bad-webhook-body", "That request wasn't readable. Post a JSON object."))
 		return
 	}
 	var fields map[string]any
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
 	if err := decoder.Decode(&fields); err != nil {
-		s.recordCommand(r.Context(), "hook-event", audit.Target{}, actorSource, "rejected", "", http.StatusBadRequest, "")
-		writeUserError(w, http.StatusBadRequest, usererror.New("bad-hook-event", "That hook event wasn't readable. Post a JSON object."))
+		s.recordCommand(r.Context(), "webhook", audit.Target{}, actorSource, "rejected", "", http.StatusBadRequest, "")
+		writeUserError(w, http.StatusBadRequest, usererror.New("bad-webhook-body", "That request wasn't readable. Post a JSON object."))
 		return
 	}
 
@@ -97,15 +97,15 @@ func (s *BridgeService) handleHookEvent(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	s.hookMu.Lock()
-	sink := s.hookSink
-	s.hookMu.Unlock()
+	s.webhookMu.Lock()
+	sink := s.webhookSink
+	s.webhookMu.Unlock()
 	if sink == nil {
 		// Unreachable in a wired app -- main.go sets the sink at
 		// startup -- so this reads as the wiring fault it is rather
 		// than as a client error.
-		s.recordCommand(r.Context(), "hook-event", audit.Target{}, actorSource, "error", "", http.StatusInternalServerError, "")
-		writeUserError(w, http.StatusInternalServerError, usererror.New("hook-not-wired", "The hook door isn't wired up. Restart Mill and try again."))
+		s.recordCommand(r.Context(), "webhook", audit.Target{}, actorSource, "error", "", http.StatusInternalServerError, "")
+		writeUserError(w, http.StatusInternalServerError, usererror.New("webhook-not-wired", "The webhook door isn't wired up. Restart Mill and try again."))
 		return
 	}
 
@@ -117,6 +117,6 @@ func (s *BridgeService) handleHookEvent(w http.ResponseWriter, r *http.Request) 
 	// checks passed, dispatched into the trigger layer) -- independent
 	// of what a respond-webhook step later replies with, the same way
 	// the pre-goal-0373 always-202 response never varied on that either.
-	s.recordCommand(r.Context(), "hook-event", target, actorSource, "accepted", "", http.StatusAccepted, "")
-	s.answerHookEvent(w, sink(values, raw))
+	s.recordCommand(r.Context(), "webhook", target, actorSource, "accepted", "", http.StatusAccepted, "")
+	s.answerWebhook(w, sink(values, raw))
 }
