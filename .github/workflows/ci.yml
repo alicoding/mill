@@ -138,6 +138,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-framework-api-first.sh
 
+  # Fixture-tests the location half of the gate above (goal 0385), same
+  # shape as review-report-selftest below.
+  framework-api-first-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-framework-api-first-selftest.sh
+
   # Mirrors lefthook.yml's own test-side-effects job -- same script
   # (goal 0356: tests and e2e servers never touch the host pasteboard).
   # Grep-only, so like comment-hygiene it needs no build setup.
@@ -177,6 +186,50 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-drag-regions.sh
+
+  # Fixture-tests the frameless-window cross-check above (goal 0385),
+  # same shape as review-report-selftest.
+  drag-regions-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-drag-regions-selftest.sh
+
+  # Goal 0385: semgrep/vendor-names.yml denies a product/vendor name
+  # used as a platform CONCEPT (a trigger/node id, a route, a device
+  # kind, view/locale copy, userdocs prose) -- see the rule file's own
+  # header for the value-vs-concept line and the case-sensitivity
+  # split. semgrep/semgrep-action is deprecated/archived upstream
+  # (confirmed against its own repo before use, not assumed); the CLI
+  # needs no account/token for local rule files, so it runs directly,
+  # version-pinned the same way a pip/brew tool would be anywhere else
+  # in this repo. Pinned to 1.176.0 (Homebrew's current stable, what
+  # this rule file was verified against locally) rather than the
+  # earlier-researched 1.160.0 -- Homebrew keeps only the latest
+  # formula version, so `brew install semgrep` (CLAUDE.md's task
+  # setup:hooks) always resolves to the same release this pin names.
+  vendor-names:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install semgrep==1.176.0
+      - run: semgrep --config semgrep/ --error --quiet
+
+  vendor-names-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install semgrep==1.176.0
+      - run: ./scripts/check-vendor-names-selftest.sh
 
   # Mirrors lefthook.yml's own sdk-comments job -- same script (the
   # plugin standard's rule 18). Grep-only over the committed generated
@@ -347,6 +400,11 @@ jobs:
         working-directory: frontend
       - run: npm run lint
         working-directory: frontend
+      # Fixture-tests the NoticeAction inline-onClick ban (goal 0385) --
+      # reuses the npm ci above's installed eslint; see the script's own
+      # header for why the fixture is a real, transient file.
+      - run: ../scripts/check-notice-action-eslint-selftest.sh
+        working-directory: frontend
       - run: npm run boundaries
         working-directory: frontend
       - run: npm run test
@@ -403,6 +461,11 @@ jobs:
       # mirrors the gocognit-new invocation immediately above exactly,
       # see lefthook.yml's depguard-new job for the full reasoning.
       - run: golangci-lint run . ./internal/... --build-tags=server --enable-only depguard --new-from-merge-base=origin/main --tests=false
+      # Fixture-tests the gomodguard_v2 wiring in .golangci.yml (goal
+      # 0385) -- reuses the golangci-lint binary the action above
+      # installed onto PATH, same shape as the gocognit/depguard checks
+      # just above.
+      - run: ./scripts/check-gomodguard-selftest.sh
 
   build-go:
     needs: [changes, frontend]
@@ -722,11 +785,15 @@ jobs:
       - workflow-lint
       - comment-hygiene
       - framework-api-first
+      - framework-api-first-selftest
       - test-side-effects
       - e2e-seed-literals
       - sdk-comments
       - ui-copy
       - drag-regions
+      - drag-regions-selftest
+      - vendor-names
+      - vendor-names-selftest
       - toolbar-action-testids
       - rules-frontmatter
       - standing-context

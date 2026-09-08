@@ -182,7 +182,7 @@ Product-level, always in effect. Coding conventions live in
   Accessibility-gated hotkeys, the native menu, launch/Spotlight
   behaviour. Never while `task dev` is running.
 - `task setup:hooks` — once after cloning: installs Lefthook's hooks
-  (`brew install lefthook golangci-lint`, `go install
+  (`brew install lefthook golangci-lint semgrep`, `go install
   github.com/loeffel-io/ls-lint/v2/cmd/ls_lint@v2.3.1` first).
 - `task build` / `task package` — production binary / `.app` bundle to
   `bin/`. `wails3 dev` / `wails3 build` — the underlying CLI these wrap
