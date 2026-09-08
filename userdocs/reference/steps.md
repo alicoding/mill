@@ -83,7 +83,7 @@ Fires when Mill's own engine emits an internal event (a run finishing, failing, 
 
 ### Webhook fired
 
-Fires when a tool on this machine posts to Mill's hook endpoint, so a workflow can react to what an agent or script just did, like showing a notification on every channel including a paired phone. Any fields the tool posts become attributes the workflow declares by name. Point the tool at the hook endpoint with a token from Settings.
+Runs when a request arrives at Mill's webhook address.
 
 - Takes: nothing — Produces: JSON
 - Effect: none — pure computation

@@ -11,7 +11,7 @@ export const WEBHOOK_COMMANDS: Command[] = [
     id: 'webhook.mint',
     label: 'commands.webhook.mint',
     defaultBinding: null,
-    keywords: ['webhook', 'hook', 'token'],
+    keywords: ['webhook', 'token'],
     run: () => useWebhookTokensStore.getState().startMint(),
   },
 ]

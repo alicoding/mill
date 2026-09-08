@@ -12,6 +12,8 @@
 ## How-to
 
 - [Store and reference a secret](how-to/store-and-reference-a-secret.md): put a value in the vault and pick it wherever a step needs it
+- [Fire a workflow from a webhook](how-to/webhooks.md): minting a webhook token and posting to Mill's webhook address so a tool or service fires a workflow
+- [Reply to a webhook](how-to/reply-to-a-webhook.md): the Answer the webhook step, reading the reply from a plain HTTP request or curl, and why step order decides what a run answers with
 - [Install a plugin](reference/install-a-plugin.md): installing from a marketplace, a repository, or a folder, and what the badge means
 
 ## Concepts
@@ -50,5 +52,3 @@
 - [Edit a sheet with an agent](agents/sheets.md): reading a sheet's cells by range and changing named cells in place
 - [Add a row with an agent](agents/lists.md): reading a List's columns and rows and appending a new row to an existing one
 - [What plugins expose to agents](agents/plugins.md): listing installed plugins, calling a plugin's declared tools, and how a plugin write parks
-- [Fire a workflow from an agent's hook](agents/agent-hooks.md): minting a hook token and posting to the hook endpoint so a tool's hook fires a workflow
-- [Reply to a webhook](agents/webhook-reply.md): the Answer the webhook step, reading the reply from a native http hook or curl, and why step order decides what a run answers with

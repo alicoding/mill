@@ -14,13 +14,13 @@ import devicedir "github.com/alicoding/mill/internal/domain/device"
 // delivery path for that event first -- never just adding a string
 // here.
 var deviceAccepts = map[string][]string{
-	KindDevice:  {"notification"},
-	KindBrowser: {"browser-replay"},
-	KindHook:    {},
+	KindDevice:       {"notification"},
+	KindBrowser:      {"browser-replay"},
+	KindWebhookToken: {},
 }
 
 // deviceDirectoryAdapter adapts this service's three paired-credential
-// lists (ListDevices/ListBrowsers/ListHooks) into devicedir.Directory --
+// lists (ListDevices/ListBrowsers/ListWebhookTokens) into devicedir.Directory --
 // composition's "devices" OptionsSource resolves through this, never
 // through remoteauthsvc's own storage-level Kind strings directly.
 type deviceDirectoryAdapter struct{ s *RemoteAuthService }
@@ -44,7 +44,7 @@ func (a deviceDirectoryAdapter) List() []devicedir.Ref {
 	sources := []source{
 		{KindDevice, a.s.ListDevices, devicedir.KindPhone},
 		{KindBrowser, a.s.ListBrowsers, devicedir.KindBrowser},
-		{KindHook, a.s.ListHooks, devicedir.KindWebhookToken},
+		{KindWebhookToken, a.s.ListWebhookTokens, devicedir.KindWebhookToken},
 	}
 
 	refs := make([]devicedir.Ref, 0)

@@ -41,8 +41,8 @@ func TestExecNotify(t *testing.T) {
 		var gotTitle, gotBody string
 		notifierFn = func(title, body, _ string, _ []string) error { gotTitle, gotBody = title, body; return nil }
 		node := Node{Config: map[string]string{
-			"title": "Agent event", "titleAttribute": "title",
-			"body": "An agent tool fired a hook event.", "bodyAttribute": "body",
+			"title": "Webhook event", "titleAttribute": "title",
+			"body": "A tool posted a webhook event.", "bodyAttribute": "body",
 		}}
 		if _, err := execNotify(node, ExecContext{Attributes: map[string]any{"title": "Build finished", "body": "make test passed"}}); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -57,11 +57,11 @@ func TestExecNotify(t *testing.T) {
 		defer func() { notifierFn = restore }()
 		var gotTitle string
 		notifierFn = func(title, _, _ string, _ []string) error { gotTitle = title; return nil }
-		node := Node{Config: map[string]string{"title": "Agent event", "titleAttribute": "missing"}}
+		node := Node{Config: map[string]string{"title": "Webhook event", "titleAttribute": "missing"}}
 		if _, err := execNotify(node, ExecContext{}); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if gotTitle != "Agent event" {
+		if gotTitle != "Webhook event" {
 			t.Errorf("title = %q, want the fixed fallback", gotTitle)
 		}
 	})

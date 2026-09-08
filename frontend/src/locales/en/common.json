@@ -420,6 +420,9 @@
       "checkUpdates": "Extensions: check for updates",
       "updateAll": "Extensions: update all"
     },
+    "audit": {
+      "export": "Export audit trail"
+    },
     "runMonitor": {
       "open": "Run monitor"
     },

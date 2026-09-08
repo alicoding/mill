@@ -15,8 +15,8 @@ func TestListDeviceRefs_ListsAllThreeKindsWithAccepts(t *testing.T) {
 	if _, err := s.mintDevice("Chrome", "", KindBrowser); err != nil {
 		t.Fatalf("mintDevice(browser) = %v, want nil error", err)
 	}
-	if _, err := s.MintHookToken("CI"); err != nil {
-		t.Fatalf("MintHookToken() = %v, want nil error", err)
+	if _, err := s.MintWebhookToken("CI"); err != nil {
+		t.Fatalf("MintWebhookToken() = %v, want nil error", err)
 	}
 
 	refs := s.ListDeviceRefs(nil)
@@ -47,8 +47,8 @@ func TestListDeviceRefs_FiltersByNeeds(t *testing.T) {
 	if _, err := s.mintDevice("Phone", "", KindDevice); err != nil {
 		t.Fatalf("mintDevice(phone) = %v, want nil error", err)
 	}
-	if _, err := s.MintHookToken("CI"); err != nil {
-		t.Fatalf("MintHookToken() = %v, want nil error", err)
+	if _, err := s.MintWebhookToken("CI"); err != nil {
+		t.Fatalf("MintWebhookToken() = %v, want nil error", err)
 	}
 
 	refs := s.ListDeviceRefs([]string{"notification"})

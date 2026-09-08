@@ -17,6 +17,7 @@ export type {
   FolderScanResult,
   ImportFolderSuggestionsRequest,
 } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc'
+export { AuditService } from '../../bindings/github.com/alicoding/mill/internal/services/auditsvc'
 export { BackupService } from '../../bindings/github.com/alicoding/mill/internal/services/backupsvc'
 export type {
   BackupStatus,
@@ -98,7 +99,7 @@ export { RemoteAuthService } from '../../bindings/github.com/alicoding/mill/inte
 export type { Kind as DeviceRefKind, Ref as DeviceRef } from '../../bindings/github.com/alicoding/mill/internal/domain/device/models'
 export type {
   DeviceInfo,
-  HookToken,
+  WebhookToken,
   PairingCodeInfo,
 } from '../../bindings/github.com/alicoding/mill/internal/services/remoteauthsvc'
 export { SecretService } from '../../bindings/github.com/alicoding/mill/internal/services/secretsvc'

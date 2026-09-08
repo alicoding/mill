@@ -1,4 +1,4 @@
-import fuzzysort from 'fuzzysort'
+import { fuzzyScore } from '../shared/fuzzyFilter'
 
 // Query-matching for the ⌘K command palette
 // (docs/goals/0015-summon-quick-invoke.md; goal 0272 supersedes its
@@ -16,10 +16,13 @@ import fuzzysort from 'fuzzysort'
 //    ties, and always AFTER every substring hit -- fuzzy never
 //    shadows an exact fragment.
 //
-// Kept as a standalone pure function, co-located with its only caller
-// (app/CommandPalette.tsx) rather than promoted to shared/ --
-// .claude/rules/frontend.md's own placement rule. Exported +
-// unit-tested per .claude/rules/testing.md.
+// This tiering (prefix/contains partition + keyword aliases) is the
+// palette's own and stays co-located with its only caller
+// (app/CommandPalette.tsx) -- .claude/rules/frontend.md's own
+// placement rule. The underlying `fuzzysort` call + scoring floor it
+// falls back to is shared/fuzzyFilter.ts (goal 0366 Class B), reused
+// by every other picker/search surface so none re-implements it.
+// Exported + unit-tested per .claude/rules/testing.md.
 
 export interface PaletteSearchable {
   // Precomputed, already-lowercased haystack (e.g. `${label} ${id}`)
@@ -29,12 +32,6 @@ export interface PaletteSearchable {
   // Aliases that rank as prefix matches (Command.keywords).
   keywords?: string[]
 }
-
-// Below this normalized fuzzysort score (0..1, 1 = exact) a
-// subsequence hit is noise, not a match -- admits word-initial
-// abbreviations ("ows") while rejecting scattered-letter coincidences.
-// Tuned against the unit tests' own pinned cases.
-const FUZZY_THRESHOLD = 0.3
 
 // Empty/whitespace-only query returns every entry, unranked (the
 // palette's own "browse everything" state before typing anything).
@@ -54,9 +51,9 @@ export function filterPaletteEntries<T extends PaletteSearchable>(entries: T[], 
       containsMatches.push(entry)
       return
     }
-    const result = fuzzysort.single(q, entry.searchText)
-    if (result && result.score >= FUZZY_THRESHOLD) {
-      fuzzyCandidates.push({ entry, score: result.score, index })
+    const score = fuzzyScore(q, entry.searchText)
+    if (score !== undefined) {
+      fuzzyCandidates.push({ entry, score, index })
     }
   })
   fuzzyCandidates.sort((a, b) => b.score - a.score || a.index - b.index)
