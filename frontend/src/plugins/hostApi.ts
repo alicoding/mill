@@ -16,7 +16,7 @@ import { secretTitleOf } from '../shared/secretTitleCache'
 import { buildPluginStorage } from './pluginStorage'
 import { pushNotice } from '../shared/noticeStore'
 import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/extensionSettingsStore'
-import type { CanvasObjectDecl, ContentQuery, MillPluginAPI, PluginFetchInit, PluginOutputOptions } from './sdk'
+import type { CanvasObjectDecl, ContentQuery, LinkQuery, MillPluginAPI, PluginFetchInit, PluginOutputOptions } from './sdk'
 import type { MenuPath } from '../shared/menuSkeleton'
 import type { Command } from '../shared/commands'
 
@@ -129,6 +129,17 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			icon: k.Icon || undefined,
 			fields: (k.Fields ?? []).map((f) => ({ key: f.Key, label: f.Label, type: String(f.Type), options: f.Options ?? undefined })),
 		})),
+		// The links door (goal 0357 S2): an adapter over the same Links()
+		// edge list the board's own Matrix/Coverage panes read, filtered
+		// here rather than by a new query engine -- q narrows an
+		// already-fetched list exactly as query's own kind/parentId do.
+		links: async (q: LinkQuery = {}) => ((await AtlasService.Links()) ?? [])
+			.filter((l) => (!q.kind || l.LinkKindID === q.kind) && (!q.source || l.FromCardID === q.source) && (!q.target || l.ToCardID === q.target))
+			.map((l) => ({ id: l.ID, kind: l.LinkKindID, source: l.FromCardID, target: l.ToCardID })),
+		// The link-kinds door (goal 0357 S2): the same LinkKinds() index
+		// the board's own panes read, restated like kinds above -- a read
+		// needs no capability, exactly as query/kinds do.
+		linkKinds: async () => ((await AtlasService.LinkKinds()) ?? []).map((lk) => ({ id: lk.ID, label: lk.Label })),
 		// The open door (goal 0357): the store write a projection's own
 		// chip click performs (goal 0064's openCardFromProjection) --
 		// board view, then the card's page. The store is imported lazily

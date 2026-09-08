@@ -8,8 +8,8 @@ import type { ContentEntry } from './sdk'
 export function contentEntryFromWire(e: WireEntry): ContentEntry {
 	const payload: Record<string, string> = {}
 	for (const [k, v] of Object.entries(e.Payload ?? {})) if (v !== undefined) payload[k] = v
-	// fields/kindId ride the card entries only (goal 0357) — absent on
-	// notes and objects, never an empty-but-meaningful value.
+	// fields/kindId/mirrorPath ride the card entries only (goal 0357) —
+	// absent on notes and objects, never an empty-but-meaningful value.
 	const fields = e.Fields === undefined || e.Fields === null ? undefined : mapStrings(e.Fields)
 	return {
 		id: e.ID,
@@ -21,6 +21,7 @@ export function contentEntryFromWire(e: WireEntry): ContentEntry {
 		size: e.Size ? { w: e.Size.W, h: e.Size.H } : undefined,
 		fields,
 		kindId: e.KindID || undefined,
+		mirrorPath: e.MirrorPath || undefined,
 		payload,
 	}
 }

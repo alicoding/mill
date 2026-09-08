@@ -176,8 +176,6 @@
       "jump": "Jump to a card or object",
       "undo": "Undo",
       "redo": "Redo",
-      "matrix": "Open traceability matrix",
-      "coverage": "Open coverage",
       "boardHome": "Back to the board",
       "arrange": "Auto-arrange",
       "contents": {

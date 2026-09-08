@@ -15,7 +15,8 @@ note's first line, an object's payload title or kind.
 `fields` — a card's own typed field values (kind 'card' only);
 the schema they read against stays with the kind, from api.kinds.
 `kindId` — a card's own kind id (kind 'card' only), repeating
-subkind.
+subkind. `mirrorPath` — the local file this card's content is
+synced from (kind 'card' only), absent when it has none.
 
 ## Properties
 
@@ -47,6 +48,14 @@ kind: string;
 
 ```ts
 optional kindId?: string;
+```
+
+***
+
+### mirrorPath?
+
+```ts
+optional mirrorPath?: string;
 ```
 
 ***

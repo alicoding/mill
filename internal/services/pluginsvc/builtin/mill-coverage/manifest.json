@@ -1,0 +1,15 @@
+{
+  "id": "mill-coverage",
+  "name": "Coverage",
+  "version": "1.0.0",
+  "description": "See which of a space's cards are missing a link or a mirror.",
+  "author": "Mill",
+  "minMillVersion": "0.14.1",
+  "icon": "icon.png",
+  "capabilities": [],
+  "contributes": {
+    "views": [
+      { "id": "coverage", "title": "Coverage", "entry": "view.html", "placement": "board-switcher" }
+    ]
+  }
+}

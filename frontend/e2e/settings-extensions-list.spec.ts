@@ -6,6 +6,7 @@ import { spawnMillServer } from './fixtures/server'
 import { SETTINGS_EXTENSIONS_LIST_MCP_BASE_PORT, SETTINGS_EXTENSIONS_LIST_SERVER_BASE_PORT } from './fixtures/serverPorts'
 import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { openExtensions, pluginRow } from './fixtures/settingsNav'
+import { builtInPluginCount } from './fixtures/registryCounts'
 
 // The Installed plugins list on the one list standard (goal 0337 S2):
 // its own toolbar (search, an own-item count) and the compiled-in
@@ -32,9 +33,11 @@ test('the installed list wears the toolbar and collapses Built in once real plug
     await expect(page.getByTestId('extensions-plugin-row')).toHaveCount(installedIds.length)
 
     // Built in starts collapsed: the row is not rendered at all, not
-    // merely hidden.
+    // merely hidden. Read off the same ListPlugins scan the row itself
+    // counts (goal 0357 S2), so a future bundled plugin never needs a
+    // matching edit here.
     const toggle = page.getByTestId('extensions-built-in-toggle')
-    await expect(toggle).toHaveText('Built in (2)') // count: mill-drawing + mill-roadmap (goal 0357)
+    await expect(toggle).toHaveText(`Built in (${await builtInPluginCount(page)})`)
     await expect(toggle).toHaveAttribute('aria-expanded', 'false')
     await expect(pluginRow(page, 'mill-drawing')).toHaveCount(0)
 

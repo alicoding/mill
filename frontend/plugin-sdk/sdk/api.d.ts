@@ -4,7 +4,7 @@ import type { PluginCommandDecl } from './commands';
 import type { PluginSettingsAPI } from './settings';
 import type { PluginNoticeInput } from './notify';
 import type { PluginStorageAPI } from './storage';
-import type { ContentQuery, ContentEntry, KindInfo, PluginEventMap, PluginFetchInit, PluginFetchResult, PluginContentAPI, PluginFilesAPI, PluginConvertAPI } from './content';
+import type { ContentQuery, ContentEntry, KindInfo, LinkInfo, LinkKindInfo, LinkQuery, PluginEventMap, PluginFetchInit, PluginFetchResult, PluginContentAPI, PluginFilesAPI, PluginConvertAPI } from './content';
 import type { PluginViewDecl, PluginViewHandle } from './views';
 import type { PluginCaptureDecl, PluginCaptureHandle } from './captures';
 import type { PluginUIAPI } from './ui';
@@ -27,6 +27,12 @@ export interface MillPluginAPI {
     /** Lists the board's card kinds: the schema each card's own `fields`
      * values read against. */
     kinds: () => Promise<KindInfo[]>;
+    /** Lists the board's typed relations between cards — always the
+     * current state, never a cache. */
+    links: (q?: LinkQuery) => Promise<LinkInfo[]>;
+    /** Lists the board's relation kinds: the labels a link's own `kind`
+     * id reads against. */
+    linkKinds: () => Promise<LinkKindInfo[]>;
     /** Opens one card the way a projection's own card click does: the
      * board view, with that card's page on top of it. */
     open: (cardId: string) => void;

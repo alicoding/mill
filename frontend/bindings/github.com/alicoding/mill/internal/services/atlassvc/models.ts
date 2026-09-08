@@ -133,7 +133,10 @@ export interface ClipbridgeReplyPreview {
  * note. For cards, KindID repeats Subkind and Fields carries the
  * card's own typed field values (docs/goals/0357): the schema those
  * values read against stays with the Kind itself (ListKinds/
- * api.kinds), never folded into the entry.
+ * api.kinds), never folded into the entry. MirrorPath rides cards
+ * only (docs/goals/0357 S2): "" for a card with none, never
+ * distinguished from "not a card" -- a reader that cares checks Kind
+ * first, the same rule Fields/KindID already carry.
  */
 export interface ContentEntry {
     "ID": string;
@@ -146,6 +149,7 @@ export interface ContentEntry {
     "Size": atlas$0.Dimensions | null;
     "Payload": { [_ in string]?: string } | null;
     "Fields": { [_ in string]?: string } | null;
+    "MirrorPath": string;
 }
 
 /**

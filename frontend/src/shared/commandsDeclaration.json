@@ -190,16 +190,6 @@
     "needs": null
   },
   {
-    "id": "atlas.coverage",
-    "label": "Open coverage",
-    "binding": null,
-    "surface": [
-      "atlas"
-    ],
-    "enabled": false,
-    "needs": null
-  },
-  {
     "id": "atlas.create.area",
     "label": "Draw an area",
     "binding": null,
@@ -418,16 +408,6 @@
     ],
     "enabled": true,
     "needs": "selection"
-  },
-  {
-    "id": "atlas.matrix",
-    "label": "Open traceability matrix",
-    "binding": null,
-    "surface": [
-      "atlas"
-    ],
-    "enabled": false,
-    "needs": null
   },
   {
     "id": "atlas.minimap.toggle",
