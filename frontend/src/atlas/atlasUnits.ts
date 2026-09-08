@@ -32,6 +32,21 @@ export function resolveUnit(card: DetectableCard): UnitRenderer | null {
   return resolveUnitFrom(UNIT_REGISTRY, card)
 }
 
+// The mirror units "Turn back into object" (goal 0410 Decision 3) can
+// hand back unchanged -- a fresh BoardObject reconstructed from the
+// SAME mirrorPath renders through the identical unit again. Every
+// other unit (icon-fallback's own markdown/PDF/text catch-all) has no
+// BoardObject Kind to demote to. Table's own projection is checked
+// separately (ProjectionListID, not a unit id) since a List-projected
+// card's own Kind config decides its unit label, not detection order.
+const DEMOTABLE_MIRROR_UNIT_IDS = new Set(['mirror-image', 'drawio', 'drawio-svg', 'mermaid'])
+
+export function isDemotableCard(card: DetectableCard): boolean {
+  if (card.ProjectionListID) return true
+  const unit = resolveUnit(card)
+  return unit !== null && DEMOTABLE_MIRROR_UNIT_IDS.has(unit.id)
+}
+
 // The Export-as menu's own entry point (ADR-0043 §3, goal 0133 slice
 // E1): the registry-level "Original file" default plus the resolved
 // unit's own declared exporters, over THIS assembly's priority order.

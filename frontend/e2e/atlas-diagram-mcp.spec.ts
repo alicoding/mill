@@ -50,7 +50,7 @@ async function approveInReview(page: import('@playwright/test').Page, descriptio
   await expect(page.getByTestId('review-mcp-write-item')).toHaveCount(0, { timeout: 10_000 })
 }
 
-test('an agent reads a diagram\'s cells by id, adds one through the approval gate, and the board and the open editor both show it', async ({ page }, testInfo) => {
+test('an agent reads a diagram\'s cells by id, adds one through the approval gate, and the board and the open editor both show it', async ({ page, workerServer }) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mill-e2e-atlas-diagram-mcp-'))
   const file = path.join(dir, 'ZzE2eMcpDiagram.drawio')
   fs.writeFileSync(file, makeDrawioXML('Origin'))
@@ -69,7 +69,7 @@ test('an agent reads a diagram\'s cells by id, adds one through the approval gat
   await expect(object).toBeVisible()
   await expect(object.locator('svg')).toContainText('Origin')
 
-  const client = await connectMCPClient(testInfo.parallelIndex)
+  const client = await connectMCPClient(workerServer.mcpPort)
   try {
     const objectId = await findDiagramObjectID(client, file)
 

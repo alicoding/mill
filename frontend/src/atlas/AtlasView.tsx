@@ -30,6 +30,7 @@ import { useAtlasTableObjectCreate } from './useAtlasTableObjectCreate'
 import type { FreePlacement } from './atlasFreePlacement'
 import { useAtlasContainmentMenus } from './useAtlasContainmentMenus'
 import { useAtlasDeleteConfirm } from './useAtlasDeleteConfirm'
+import { useAtlasDemoteConfirm } from './useAtlasDemoteConfirm'
 import { useAtlasCommandSignals } from './useAtlasCommandSignals'
 import { useAtlasLinkMenus } from './useAtlasLinkMenus'
 import { useAtlasNoteMenu } from './useAtlasNoteMenu'
@@ -255,6 +256,10 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const editingDiagramObjectID = useAtlasEditDiagramStore((s) => s.openObjectID)
 
   const deleteConfirm = useAtlasDeleteConfirm({ t, allCards, notes: allNotes, allObjects })
+  // "Turn back into object" (goal 0410 Decision 3): its own confirm,
+  // separate from deleteConfirm's -- this is never a delete gate, it
+  // fires directly off the card's own context menu/palette command.
+  const demoteConfirm = useAtlasDemoteConfirm({ t, allCards, onError: setShareError })
 
   const linkMenus = useAtlasLinkMenus({ t, allCards, linkKinds: allLinkKinds, setMenu })
 
@@ -271,7 +276,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
   const objectMenu = useAtlasObjectMenu({ setMenu })
 
   // Frame/multi-select context menus + their dissolve/delete-with-
-  // promotion confirm dialogs (goal 0081 slice A2) -- split into its
+  // reparent confirm dialogs (goal 0081 slice A2) -- split into its
   // own hook (architecture.md's 500-line convention); see its own
   // header comment for why the area-draw/drag-filing half stays in
   // AtlasBoard.tsx instead.
@@ -293,6 +298,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
     requestGroup: creationRequests.requestGroup,
     deleteSelection: containmentMenus.deleteSelection,
     dissolve: containmentMenus.dissolve,
+    demote: demoteConfirm.demote,
     editLinkLabel: linkMenus.editLabel,
     setMenu, onError: setShareError, onToast: quietToast.show,
     onNewSpace: () => setNewSpaceOpen(true),
@@ -460,7 +466,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
           <AtlasUndoToast
             count={undoToast.pending.count}
             linksRemoved={undoToast.pending.linksRemoved}
-            childrenPromoted={undoToast.pending.childrenPromoted}
+            childrenReparented={undoToast.pending.childrenReparented}
             objectKind={undoToast.pending.objectKind}
             entityRefKind={undoToast.pending.entityRefKind}
             entityStillUsed={undoToast.pending.entityStillUsed}
@@ -476,7 +482,7 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
         overlayCard={overlayCard} onCloseOverlay={() => setOverlayCardID(null)} undoToast={undoToast} openGroupEntry={openGroupEntry} guardDelete={deleteConfirm.guardDelete}
         importConfirmDialog={importConfirmDialog}
         tableFromListOpen={tableFromListOpen} onCloseTableFromList={() => setTableFromListOpen(false)} newSpaceOpen={newSpaceOpen} onCloseNewSpace={() => setNewSpaceOpen(false)} onCreateTable={async (listID) => { await createTableFromList(listID) }} onCreateSpace={(kindID, title) => createCard('sibling', kindID, title)}
-        menu={menu} onCloseMenu={() => setMenu(null)} linkMenus={linkMenus} containmentMenus={containmentMenus} deleteConfirm={deleteConfirm}
+        menu={menu} onCloseMenu={() => setMenu(null)} linkMenus={linkMenus} containmentMenus={containmentMenus} deleteConfirm={deleteConfirm} demoteDialog={demoteConfirm.demoteDialog}
         openNote={openNoteID ? allNotes.find((n) => n.ID === openNoteID) ?? null : null} onCloseNote={() => setOpenNoteID(null)}
         editingDiagramObject={editingDiagramObjectID ? allObjects.find((o) => o.ID === editingDiagramObjectID) ?? null : null}
         onCloseEditDiagram={closeAtlasEditDiagram}

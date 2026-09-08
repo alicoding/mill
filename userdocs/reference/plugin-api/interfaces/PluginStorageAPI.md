@@ -46,6 +46,27 @@ Synchronous: reads from a cache loaded before activate() ran.
 
 ***
 
+### getList
+
+```ts
+getList: (key) => Promise<unknown[]>;
+```
+
+Reads the array stored at key, or [] when nothing is stored there
+yet or the stored value is not an array.
+
+#### Parameters
+
+##### key
+
+`string`
+
+#### Returns
+
+`Promise`\<`unknown`[]\>
+
+***
+
 ### keys
 
 ```ts
@@ -55,6 +76,43 @@ keys: () => string[];
 #### Returns
 
 `string`[]
+
+***
+
+### pushList
+
+```ts
+pushList: (key, item, opts?) => Promise<void>;
+```
+
+Adds item to the front of the list stored at key (creating it
+empty first). dedupeBy, when given, first removes any earlier
+item it resolves to the same key as item; max, when given, then
+trims the list to that many entries, oldest dropped first.
+
+#### Parameters
+
+##### key
+
+`string`
+
+##### item
+
+`unknown`
+
+##### opts?
+
+###### dedupeBy?
+
+(`item`) => `unknown`
+
+###### max?
+
+`number`
+
+#### Returns
+
+`Promise`\<`void`\>
 
 ***
 

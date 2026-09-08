@@ -52,7 +52,7 @@ export function AddToPerspective(perspectiveID: string, cardID: string): $Cancel
  * AtlasSession returns the persisted state, DEGRADED to what still
  * exists: a fully-gone viewed card falls back to root; a tombstoned
  * one (goal 0093) resolves to its own effective parent -- the same
- * virtual-promotion walk every other read surface applies
+ * virtual-re-parent walk every other read surface applies
  * (atlas.EffectiveParentID) -- so a session parked inside a container
  * deleted just before restart lands one level up, not all the way to
  * root. A deleted (gone or tombstoned) open card is dropped. The
@@ -349,6 +349,26 @@ export function DeleteNote(id: string): $CancellablePromise<$models.TombstoneRes
  */
 export function DeletePerspective(id: string): $CancellablePromise<void> {
     return $Call.ByID(2541135077, id);
+}
+
+/**
+ * DemoteCard is "Turn back into object" (goal 0410 Decision 3): the
+ * user-initiated inverse of PromoteBoardObject/PromoteNote for a card
+ * whose Kind is backed by a mirror file (image, drawio/mermaid
+ * diagram) or a projected List (table) -- it creates a BoardObject
+ * carrying the SAME mirror path/listID, position and size the card
+ * held, in the card's own parent, then removes the card and every link
+ * touching it (the confirm this rides behind names both losses); the
+ * diagram/image/table content itself survives because the object
+ * keeps the same mirrorPath/listID. ONE undo mark restores the EXACT
+ * demoted card AND its links (demoteCardAndLinks/repromoteObjectAndLinks
+ * below are a pure struct-swap the same way
+ * demoteCardToObject/repromoteObjectToCard are for a fresh promotion's
+ * own undo (atlasundo_promote.go) -- no new id is ever minted on either
+ * side, so undo/redo can alternate any number of times without drift).
+ */
+export function DemoteCard(cardID: string): $CancellablePromise<atlas$0.BoardObject> {
+    return $Call.ByID(2837363536, cardID);
 }
 
 /**

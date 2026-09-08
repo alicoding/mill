@@ -109,8 +109,8 @@ func TestDeleteCard_TombstoneResultCounts_LeafWithLinks(t *testing.T) {
 	if result.LinksRemoved != 1 {
 		t.Errorf("LinksRemoved = %d, want 1", result.LinksRemoved)
 	}
-	if result.ChildrenPromoted != 0 {
-		t.Errorf("ChildrenPromoted = %d, want 0", result.ChildrenPromoted)
+	if result.ChildrenReparented != 0 {
+		t.Errorf("ChildrenReparented = %d, want 0", result.ChildrenReparented)
 	}
 }
 
@@ -154,13 +154,13 @@ func TestDeleteCard_TombstoneResultCounts_ContainerWithChildrenAndLinks(t *testi
 	if result.LinksRemoved != 1 {
 		t.Errorf("LinksRemoved = %d, want 1", result.LinksRemoved)
 	}
-	if result.ChildrenPromoted != 2 {
-		t.Errorf("ChildrenPromoted = %d, want 2 (one card + one note)", result.ChildrenPromoted)
+	if result.ChildrenReparented != 2 {
+		t.Errorf("ChildrenReparented = %d, want 2 (one card + one note)", result.ChildrenReparented)
 	}
 
 	gotChild, ok := findCardTestByID(a.Cards(), child.ID)
 	if !ok || gotChild.ParentID != "" {
-		t.Errorf("child not virtually promoted to top level, got %+v ok=%v", gotChild, ok)
+		t.Errorf("child not virtually re-parented to top level, got %+v ok=%v", gotChild, ok)
 	}
 }
 
@@ -208,12 +208,12 @@ func TestDeleteCard_TombstoneResultCounts_MixedSelection(t *testing.T) {
 	}
 
 	totalLinksRemoved := leafResult.LinksRemoved + containerResult.LinksRemoved
-	totalChildrenPromoted := leafResult.ChildrenPromoted + containerResult.ChildrenPromoted
+	totalChildrenReparented := leafResult.ChildrenReparented + containerResult.ChildrenReparented
 	if totalLinksRemoved != 1 {
 		t.Errorf("summed LinksRemoved = %d, want 1", totalLinksRemoved)
 	}
-	if totalChildrenPromoted != 1 {
-		t.Errorf("summed ChildrenPromoted = %d, want 1", totalChildrenPromoted)
+	if totalChildrenReparented != 1 {
+		t.Errorf("summed ChildrenReparented = %d, want 1", totalChildrenReparented)
 	}
 }
 
@@ -290,14 +290,14 @@ func TestDeleteCard_ContainerTombstone_ChildrenResolveToEffectiveParent(t *testi
 		t.Fatalf("child card vanished after DeleteCard(parent)")
 	}
 	if gotChild.ParentID != grandparent.ID {
-		t.Errorf("child.ParentID = %q, want virtually promoted to grandparent %q", gotChild.ParentID, grandparent.ID)
+		t.Errorf("child.ParentID = %q, want virtually re-parented to grandparent %q", gotChild.ParentID, grandparent.ID)
 	}
 	gotNote, ok := findNoteTestByID(a.Notes(), note.ID)
 	if !ok {
 		t.Fatalf("note vanished after DeleteCard(parent)")
 	}
 	if gotNote.ParentID != grandparent.ID {
-		t.Errorf("note.ParentID = %q, want virtually promoted to grandparent %q", gotNote.ParentID, grandparent.ID)
+		t.Errorf("note.ParentID = %q, want virtually re-parented to grandparent %q", gotNote.ParentID, grandparent.ID)
 	}
 
 	// The stored ParentID must be untouched -- no data rewrite until
@@ -307,7 +307,7 @@ func TestDeleteCard_ContainerTombstone_ChildrenResolveToEffectiveParent(t *testi
 	rawParentID := a.cards[rawIdx].ParentID
 	a.mu.RUnlock()
 	if rawParentID != parent.ID {
-		t.Errorf("child's STORED ParentID = %q, want unchanged %q (virtual promotion only)", rawParentID, parent.ID)
+		t.Errorf("child's STORED ParentID = %q, want unchanged %q (virtual re-parent only)", rawParentID, parent.ID)
 	}
 
 	if err := a.UndoDelete(result.CardIDs, nil, nil); err != nil {
@@ -363,7 +363,7 @@ func TestPurgeTombstonesLocked_WindowEdge(t *testing.T) {
 }
 
 // TestPurgeTombstonesLocked_RepaentsSurvivingChildrenForReal is the
-// counterpart to the virtual-promotion test above: once the grace
+// counterpart to the virtual-re-parent test above: once the grace
 // window actually elapses, purge performs the REAL reparent so the
 // tree stays connected once the bridging tombstone disappears.
 func TestPurgeTombstonesLocked_RepaentsSurvivingChildrenForReal(t *testing.T) {

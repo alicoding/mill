@@ -21,14 +21,31 @@ pattern='--wails-draggable[[:space:]]*:[[:space:]]*drag[[:space:]]*;'
 pattern+='|setProperty\([[:space:]]*['"'"'"]--wails-draggable['"'"'"][[:space:]]*,[[:space:]]*['"'"'"]drag['"'"'"]'
 pattern+='|['"'"'"]--wails-draggable['"'"'"][[:space:]]*:[[:space:]]*['"'"'"]drag['"'"'"]'
 
-declare -A allowlist=(
-  ["frontend/src/app/App.module.css"]=1
-  ["frontend/src/app/RunMonitor.module.css"]=1
+# Parallel indexed arrays, not an associative array (bash 3.2 --
+# GitHub's macOS runner's own /bin/bash -- has none): allowlist_files[i]
+# pairs with allowlist_limits[i], looked up by allowlist_limit_for below.
+allowlist_files=(
+  "frontend/src/app/App.module.css"
+  "frontend/src/app/RunMonitor.module.css"
   # The Quick Panel's facet-chip row + search-input header (goal 0377):
   # a frameless window's only drag handle, same RunMonitor.module.css
   # shape.
-  ["frontend/src/app/QuickPanel.module.css"]=1
+  "frontend/src/app/QuickPanel.module.css"
 )
+allowlist_limits=(1 1 1)
+
+# allowlist_limit_for <file>: prints the allowed --wails-draggable: drag
+# occurrence count for <file>, or 0 when it's not in allowlist_files.
+allowlist_limit_for() {
+  local needle="$1" i
+  for i in "${!allowlist_files[@]}"; do
+    if [[ "${allowlist_files[$i]}" == "$needle" ]]; then
+      echo "${allowlist_limits[$i]}"
+      return
+    fi
+  done
+  echo 0
+}
 
 violations=0
 while IFS= read -r -d '' file; do
@@ -40,7 +57,7 @@ while IFS= read -r -d '' file; do
   [[ -z "$hits" ]] && continue
 
   count="$(grep -cE -- "$pattern" "$file")"
-  limit="${allowlist[$file]:-0}"
+  limit="$(allowlist_limit_for "$file")"
   if (( limit == 0 )) || (( count > limit )); then
     while IFS= read -r hit; do
       echo "drag-regions: $file:$hit"
@@ -52,11 +69,26 @@ done < <(git ls-files -z -- 'frontend/src')
 # Every frameless window's own disposition, decided once and recorded
 # here -- a new Frameless: true window absent from this table fails
 # instead of silently shipping unconsidered (goal 0385).
-declare -A frameless_disposition=(
-  ["quickpanel"]="no-drag:centered via WindowCentered and dismissed by losing focus/Escape, never dragged today"
-  ["approvalprompt"]="no-drag:a transient decision prompt, centered and dismissed by an explicit answer or Escape, never repositioned"
-  ["traypanel"]="no-drag:anchored to the tray icon's own PositionWindow; dragging it away would misplace its anchor"
+# Same parallel-indexed-array shape as allowlist_files/allowlist_limits
+# above, for the same bash-3.2 reason.
+frameless_disposition_names=(quickpanel approvalprompt traypanel)
+frameless_disposition_values=(
+  "no-drag:centered via WindowCentered and dismissed by losing focus/Escape, never dragged today"
+  "no-drag:a transient decision prompt, centered and dismissed by an explicit answer or Escape, never repositioned"
+  "no-drag:anchored to the tray icon's own PositionWindow; dragging it away would misplace its anchor"
 )
+
+# frameless_disposition_for <window>: prints the recorded disposition
+# for <window>, or nothing when it has none yet.
+frameless_disposition_for() {
+  local needle="$1" i
+  for i in "${!frameless_disposition_names[@]}"; do
+    if [[ "${frameless_disposition_names[$i]}" == "$needle" ]]; then
+      echo "${frameless_disposition_values[$i]}"
+      return
+    fi
+  done
+}
 
 # extract_frameless_window_names <go-file>: prints the Name of every
 # application.WebviewWindowOptions{...} literal in the file that also
@@ -100,7 +132,7 @@ while IFS= read -r -d '' file; do
   esac
   while IFS= read -r window; do
     [[ -z "$window" ]] && continue
-    disposition="${frameless_disposition[$window]:-}"
+    disposition="$(frameless_disposition_for "$window")"
     if [[ -z "$disposition" ]]; then
       echo "drag-regions: $file: Frameless window \"$window\" has no drag disposition -- add it to frameless_disposition in scripts/check-drag-regions.sh (drag:<css file> or no-drag:<reason>)"
       violations=$((violations + 1))
@@ -109,7 +141,7 @@ while IFS= read -r -d '' file; do
     case "$disposition" in
       drag:*)
         css_file="${disposition#drag:}"
-        if [[ "${allowlist[$css_file]:-0}" -lt 1 ]]; then
+        if [[ "$(allowlist_limit_for "$css_file")" -lt 1 ]]; then
           echo "drag-regions: $file: window \"$window\" names $css_file but it is not in the drag-region allowlist"
           violations=$((violations + 1))
         elif ! grep -qE -- "$pattern" "$css_file"; then

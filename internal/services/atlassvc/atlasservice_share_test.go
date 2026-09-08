@@ -173,7 +173,7 @@ func newBlankAtlasService(t *testing.T) *AtlasService {
 }
 
 // deleteCardTree removes id and every descendant, deepest first -- a
-// plain DeleteCard(id) would now promote id's children instead of
+// plain DeleteCard(id) would now re-parent id's children instead of
 // removing them (goal 0081 A2), so this walks the tree explicitly to
 // actually clear it in these fixture-reset helpers.
 func deleteCardTree(a *AtlasService, id string) error {

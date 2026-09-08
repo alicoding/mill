@@ -90,6 +90,16 @@
     "needs": "selection"
   },
   {
+    "id": "atlas.card.demote",
+    "label": "Turn back into object",
+    "binding": null,
+    "surface": [
+      "atlas"
+    ],
+    "enabled": true,
+    "needs": "selection"
+  },
+  {
     "id": "atlas.card.dissolve",
     "label": "Dissolve area",
     "binding": null,

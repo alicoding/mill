@@ -15,8 +15,8 @@ import { fileURLToPath } from 'node:url'
 // tests and browser-bridge.spec.ts's real-server round trip). Neither
 // port is a spawnMillServer pair, so it lives outside serverPorts.ts;
 // STATIC_PORT_BASE/BRIDGE_PORT_BASE just need to sit above every
-// other spec's range (testing.md: worker ranges 9400+/9500+, the
-// highest dedicated pair committed today is 12040/12060).
+// other spec's own dedicated range (testing.md documents where the
+// worker pool and every dedicated pair live).
 const STATIC_PORT_BASE = 12100
 const BRIDGE_PORT_BASE = 12120
 
