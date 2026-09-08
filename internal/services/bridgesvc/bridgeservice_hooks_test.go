@@ -15,7 +15,10 @@ import (
 )
 
 // hooksFixture wires the hook door with a captured sink, the same half
-// of main.go's assembly these ingress tests pin.
+// of main.go's assembly these ingress tests pin. wait, when set, is
+// what the sink returns to the next post -- nil (the default) matches
+// every listener with no respond-webhook node, byte-identical to
+// before goal 0373.
 type hooksFixture struct {
 	srv *httptest.Server
 
@@ -23,6 +26,7 @@ type hooksFixture struct {
 	values map[string]string
 	raw    []byte
 	calls  int
+	wait   *bridgesvc.WebhookWait
 }
 
 func newHooksFixture(t *testing.T) *hooksFixture {
@@ -30,16 +34,25 @@ func newHooksFixture(t *testing.T) *hooksFixture {
 	auth := &stubAuth{token: "good", hookToken: "hook-good"}
 	fixture := &hooksFixture{}
 	svc := bridgesvc.New(auth, slog.New(slog.DiscardHandler))
-	svc.SetWebhookEventSink(func(values map[string]string, raw []byte) {
+	svc.SetWebhookEventSink(func(values map[string]string, raw []byte) *bridgesvc.WebhookWait {
 		fixture.mu.Lock()
 		fixture.values, fixture.raw = values, raw
 		fixture.calls++
+		wait := fixture.wait
 		fixture.mu.Unlock()
+		return wait
 	})
 	srv := httptest.NewServer(svc.Handler())
 	t.Cleanup(srv.Close)
 	fixture.srv = srv
 	return fixture
+}
+
+// setWait arms the sink to return wait on the NEXT post.
+func (f *hooksFixture) setWait(wait *bridgesvc.WebhookWait) {
+	f.mu.Lock()
+	f.wait = wait
+	f.mu.Unlock()
 }
 
 func (f *hooksFixture) post(t *testing.T, token, body string) (int, []byte) {
@@ -61,6 +74,31 @@ func (f *hooksFixture) post(t *testing.T, token, body string) (int, []byte) {
 		t.Fatalf("read body = %v, want nil error", err)
 	}
 	return resp.StatusCode, respBody
+}
+
+// postFull is post plus the response headers, for a case that needs to
+// assert Content-Type or Mill-Reply -- always the same valid, minimal
+// post, since every caller is exercising the WAIT/REPLY behavior past
+// dispatch, never what gets posted (TestHookEvent_RequiresAHookToken
+// and TestHookEvent_ValidPost_DispatchesValuesAndRawBody already own
+// the token gate and the values/raw parsing respectively).
+func (f *hooksFixture) postFull(t *testing.T) (int, http.Header, []byte) {
+	t.Helper()
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, f.srv.URL+bridgesvc.HookEventPath, strings.NewReader(`{"source":"ci"}`))
+	if err != nil {
+		t.Fatalf("NewRequest() = %v, want nil error", err)
+	}
+	req.Header.Set("Authorization", "Bearer hook-good")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST = %v, want nil error", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body = %v, want nil error", err)
+	}
+	return resp.StatusCode, resp.Header, respBody
 }
 
 func (f *hooksFixture) captured() (map[string]string, []byte, int) {

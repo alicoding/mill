@@ -425,6 +425,10 @@
   },
   "workflow:webhook-notify-workflow": {
     "seedRevision": 7,
-    "fingerprint": "846e35de4b270a0e93c73bd4df2f747e22575354a7cba010c9d89f2c6c083c16"
+    "fingerprint": "c65194d077bdd5ca4351a01f5828d1638ab5804eec973a8e1cd0f33edd3458f3"
+  },
+  "workflow:webhook-respond-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "8b174af772e3a34a3ea94c1409e310a02e7dfcf9573071f5c571f98f613110b2"
   }
 }

@@ -1,11 +1,14 @@
 package triggersvc
 
-import "github.com/alicoding/mill/internal/adapters/hotkey"
+import (
+	"github.com/alicoding/mill/internal/adapters/hotkey"
+	"github.com/alicoding/mill/internal/domain/composition"
+)
 
 // Schema registers from internal/domain/composition/triggers.go, not
 // here -- see that file's doc comment.
 func init() {
-	RegisterTrigger("trigger-hotkey", func(s *TriggerService, workflowID string, _ map[string]string) (*activeListener, error) {
+	RegisterTrigger("trigger-hotkey", func(s *TriggerService, workflowID string, _ []composition.Node, _ map[string]string) (*activeListener, error) {
 		hk, ok := s.hkRaw[workflowID]
 		if !ok {
 			return nil, nil // no combo assigned yet

@@ -1,11 +1,14 @@
 package triggersvc
 
-import "github.com/alicoding/mill/internal/adapters/filewatch"
+import (
+	"github.com/alicoding/mill/internal/adapters/filewatch"
+	"github.com/alicoding/mill/internal/domain/composition"
+)
 
 // Schema registers from internal/domain/composition/triggers.go, not
 // here -- see that file's doc comment.
 func init() {
-	RegisterTrigger("trigger-filesystem-watch", func(s *TriggerService, workflowID string, config map[string]string) (*activeListener, error) {
+	RegisterTrigger("trigger-filesystem-watch", func(s *TriggerService, workflowID string, _ []composition.Node, config map[string]string) (*activeListener, error) {
 		path := config["path"]
 		if path == "" {
 			return nil, nil

@@ -3,6 +3,7 @@ package triggersvc
 import (
 	"encoding/json"
 
+	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/services/executionsvc"
 )
 
@@ -20,7 +21,7 @@ type systemEventBinding struct {
 // file's doc comment. This dispatch half needs real *TriggerService
 // state (s.sysEvents), so it can't live in the domain package.
 func init() {
-	RegisterTrigger("trigger-system-event", func(s *TriggerService, workflowID string, config map[string]string) (*activeListener, error) {
+	RegisterTrigger("trigger-system-event", func(s *TriggerService, workflowID string, _ []composition.Node, config map[string]string) (*activeListener, error) {
 		event := config["event"]
 		if event == "" {
 			return nil, nil

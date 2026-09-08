@@ -443,6 +443,24 @@ type ExecContext struct {
 	// for ExecuteNodeAlone's step-test door and every unit test that
 	// builds an ExecContext by hand.
 	CurrentStepID string
+	// Responder is set only for a run the webhook ingress started with
+	// at least one respond-webhook node in its graph (goal 0373) -- nil
+	// for every other run (a manual/hotkey/schedule/system-event fire,
+	// a webhook-started run whose graph has no respond step, and a
+	// durable-execution recovery replay with no live HTTP request
+	// behind it, goal 0329's version gate), so respond-webhook's own
+	// exec function must treat a nil Responder as "no caller to
+	// answer," never as a bug worth panicking over. json:"-": a
+	// checkpointed run's own DBOS-stored Output is decoded back into a
+	// fresh ExecContext for every later read (Runs tab, redrive) --
+	// unlike the empty-interface RunContext field above, WebhookResponder
+	// declares real methods, so decoding a persisted non-null value
+	// back into it fails the WHOLE struct's unmarshal (decodeAny),
+	// silently blanking every later step's OutputAttributes. Excluding
+	// it from the wire is also the semantically correct shape: a live
+	// HTTP-response channel was never persistable in the first place
+	// (goal 0329's recovered-run-has-no-responder rule).
+	Responder WebhookResponder `json:"-"`
 }
 
 // SecretAccessRun is the run/workflow/step identity a node's in-run
