@@ -57,6 +57,7 @@ func ComposedAssetMiddleware(remoteAuth *remoteauthsvc.RemoteAuthService, plugin
 func WireSettingsEraSeams(settings *settingssvc.SettingsService, notif *notificationsvc.NotificationService, remoteAuth *remoteauthsvc.RemoteAuthService, triggers *triggersvc.TriggerService, atlas *atlassvc.AtlasService, plugins *pluginsvc.PluginService, secrets *secretsvc.SecretService) {
 	WireNotificationChannels(settings, notif) // docs/goals/0171-notification-spine.md
 	WirePhoneChannel(remoteAuth, notif)       // docs/goals/0132-remote-access.md SLICE B
+	remoteAuth.SetNotificationService(notif)  // goal 0379: an incoming browser pair-request publishes through the spine
 	WireUpdateEvents(settings, triggers)
 	WirePluginTrust(plugins, settings, secrets)      // docs/adr/0051-platform-contract.md §4
 	WirePluginIngestion(atlas, plugins, settings)    // docs/goals/0251-plugin-ingestion-claims.md
