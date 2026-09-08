@@ -117,6 +117,8 @@
       "signingActive_one": "Only plugins signed by the {{count}} key this Mill trusts can run.",
       "signingActive_other": "Only plugins signed by one of the {{count}} keys this Mill trusts can run.",
       "pluginAwaitingNote": "Not running yet. Check what it can reach above, then allow it.",
+      "pluginWaitsLabel": "Waits for {{id}}",
+      "pluginWaitsNote": "Waits for {{id}} to run first.",
       "pluginAllowedNote": "Allowed. Reload to load it.",
       "pluginAllow": "Allow",
       "awaitingReviewNotice_one": "{{count}} new plugin is waiting for you to allow it",

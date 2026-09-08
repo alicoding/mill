@@ -106,6 +106,23 @@ export interface CommandMenuContribution {
 export type ContentWriter = any;
 
 /**
+ * DependencyContribution is one entry in Manifest.Dependencies: ID
+ * names another installed extension this one needs before it
+ * activates, Version a semver range (Masterminds/semver/v3 syntax,
+ * e.g. ">=1.0.0 <2.0.0") that extension's installed version must
+ * satisfy. The loader activates a dependency before its dependant
+ * (topological order); a dependant whose dependency never reaches
+ * 'loaded' waits rather than activates. A dependency id not installed
+ * or out of range refuses the INSTALL (standard rule 33) -- never a
+ * load-time check, since the registry of what else is installed only
+ * exists at install time.
+ */
+export interface DependencyContribution {
+    "id": string;
+    "version": string;
+}
+
+/**
  * GuardedActionDecision is RequestGuardedAction's wire shape.
  */
 export interface GuardedActionDecision {
@@ -253,6 +270,12 @@ export interface Manifest {
      */
     "icon": string;
     "capabilities": string[] | null;
+
+    /**
+     * Dependencies/Exports: see DependencyContribution's doc (pluginservice_dependencies.go).
+     */
+    "dependencies": DependencyContribution[] | null;
+    "exports": string[] | null;
     "contributes": ManifestContributes;
 }
 
