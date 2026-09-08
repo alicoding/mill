@@ -216,7 +216,7 @@ export async function loadPlugins(): Promise<void> {
 		// "Allowed. Reload to load it." A folder whose manifest is
 		// unreadable never gets here -- it has no id to name.
 		collectReloadCommand(info)
-		const state = pluginRunState(id, !!info.Builtin, policy, { contentHash: info.ContentHash ?? '', signingPolicy: !!info.SigningPolicy, signed: !!info.Signed, policyBlocked: info.PolicyBlocked ?? '' })
+		const state = pluginRunState(id, !!info.Builtin, policy, { contentHash: info.CodeHash ?? '', signingPolicy: !!info.SigningPolicy, signed: !!info.Signed, policyBlocked: info.PolicyBlocked ?? '', widened: !!info.Widened })
 		if (state !== 'run') {
 			loadStates.set(id, { status: state, info })
 			continue

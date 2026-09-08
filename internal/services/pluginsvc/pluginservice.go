@@ -127,46 +127,6 @@ type NetworkContribution struct {
 	Methods []string `json:"methods"`
 }
 
-// PluginInfo is one scanned plugin as the Extensions surface and the
-// loader see it. Error is a load-blocking validation problem stated
-// for the human (the row renders it; the loader skips the plugin) --
-// a plugin is either fully valid or visibly broken, never silently
-// half-loaded. Builtin marks a plugin embedded in the binary
-// (pluginservice_builtin.go): same loader and disable list as any
-// plugin, but nothing on disk to reveal or delete.
-type PluginInfo struct {
-	Manifest Manifest
-	Dir      string
-	Error    string
-	Builtin  bool
-	// ContentHash is the folder's current content hash
-	// (pluginservice_hash.go), "" for a built-in or an invalid plugin
-	// -- what the lock compares against.
-	ContentHash string
-	// SigningPolicy reports whether an administrator pinned signing
-	// keys; Signed whether this folder's signature verified against one
-	// (pluginservice_signing.go). Both false with no policy.
-	SigningPolicy bool
-	Signed        bool
-	// Tier is the install trust tier (trust.go, docs/goals/0349): what
-	// actually checked these bytes when they landed. "" for a built-in.
-	Tier string
-	// Marketplace names the index this folder was installed from, ""
-	// when it arrived some other way.
-	Marketplace string
-	// PolicyBlocked is the organisation policy's refusal sentence
-	// (policy_match.go), "" when no policy refuses this folder. A
-	// refused plugin stays listed and never runs.
-	PolicyBlocked string
-	// Grants names what this plugin was given outside the sandboxed
-	// activation frame every other non-built-in plugin runs inside
-	// (docs/goals/0375 S1b): "canvas-host" for a non-built-in plugin
-	// that declares a canvas object, since the framed canvas API does
-	// not exist yet and its own tools still need board input the way a
-	// built-in's do. Always empty for a built-in.
-	Grants []string
-}
-
 // knownCapabilities is the enumerated capability vocabulary
 // (docs/adr/0047 §2: enumerated, never free-text). It grows per real
 // plugin request, never speculatively -- docs/goals/0249 carries the
@@ -346,6 +306,7 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 	}
 	info.Manifest = m
 	info.Grants = pluginGrants(false, m)
+	info.Widened = widenedInfo(p.trust, m)
 	_, mainErr := os.Stat(filepath.Join(dir, "main.js")) // #nosec G703 -- folder passed pluginIDPattern (no separators, no dots)
 	info.Error = manifestProblem(m, folder, mainErr == nil, p.appVersion)
 	if info.Error == "" {
@@ -363,6 +324,9 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 	if info.Error == "" {
 		if h, err := ContentHash(dir); err == nil {
 			info.ContentHash = h
+		}
+		if h, err := CodeHash(dir); err == nil {
+			info.CodeHash = h
 		}
 	}
 	if keys := p.signingKeySet(); len(keys) > 0 {

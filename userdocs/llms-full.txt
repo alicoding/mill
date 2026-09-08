@@ -581,6 +581,14 @@ at that moment, and if they change later — an update you copied in,
 or an edit — the plugin stops until you look again and allow it once
 more. Its page says "Its files changed since you allowed it."
 
+If an update asks for more than you allowed before — a new capability,
+a new host, or drawing directly in Mill's window — the plugin waits
+for review again even though you already allowed an earlier version.
+Its page shows "Now also asks to" above the full list, naming only
+what is new, and its Allow button reads "Allow the new permissions."
+An update that asks for the same or less keeps running without asking
+again.
+
 An administrator can pin which plugins may run at all by writing an
 allow-list into Mill's settings file — the key
 `settings-plugin-allowlist`, a JSON array of plugin ids, placed the
@@ -4800,17 +4808,17 @@ A refused install leaves nothing on disk.
 
 | Family | Level | Conformance | Example | E2E | Docs | SDK types | MCP | Code changed | Docs changed | Flags |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| canvasObjects | experimental | no | yes | yes | yes | yes | yes | 2026-09-07 | 2026-09-06 | — |
-| steps | experimental | no | yes | yes | yes | no | yes | 2026-09-07 | 2026-09-07 | — |
-| captures | experimental | no | no | yes | yes | yes | n/a | 2026-09-07 | 2026-09-07 | — |
-| settings | stable | yes | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-08 | — |
-| network | experimental | no | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-07 | — |
-| views | experimental | no | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-07 | — |
-| commands | stable | yes | yes | yes | yes | yes | yes | 2026-09-07 | 2026-09-07 | — |
-| themes | stable | yes | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-05 | — |
-| secretSources | experimental | no | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-07 | — |
-| tools | experimental | no | yes | no | yes | no | yes | 2026-09-07 | 2026-09-07 | — |
-| mcpServers | experimental | no | yes | no | yes | no | no | 2026-09-07 | — | — |
+| canvasObjects | experimental | no | yes | yes | yes | yes | yes | 2026-09-08 | 2026-09-06 | — |
+| steps | experimental | no | yes | yes | yes | no | yes | 2026-09-08 | 2026-09-08 | — |
+| captures | experimental | no | no | yes | yes | yes | n/a | 2026-09-08 | 2026-09-07 | — |
+| settings | stable | yes | yes | yes | yes | yes | n/a | 2026-09-08 | 2026-09-08 | — |
+| network | experimental | no | yes | yes | yes | yes | n/a | 2026-09-08 | 2026-09-07 | — |
+| views | experimental | no | yes | yes | yes | yes | n/a | 2026-09-08 | 2026-09-07 | — |
+| commands | stable | yes | yes | yes | yes | yes | yes | 2026-09-08 | 2026-09-08 | — |
+| themes | stable | yes | yes | yes | yes | yes | n/a | 2026-09-08 | 2026-09-05 | — |
+| secretSources | experimental | no | yes | yes | yes | yes | n/a | 2026-09-08 | 2026-09-07 | — |
+| tools | experimental | no | yes | no | yes | no | yes | 2026-09-08 | 2026-09-07 | — |
+| mcpServers | experimental | no | yes | no | yes | no | no | 2026-09-08 | — | — |
 
 ## How a family moves
 

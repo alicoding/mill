@@ -7,9 +7,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alicoding/mill/internal/adapters/credential"
+	"github.com/alicoding/mill/internal/adapters/secretvault"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/pluginsvc"
+	"github.com/alicoding/mill/internal/services/secretsvc"
 	"github.com/alicoding/mill/internal/services/servicetest"
 	"github.com/alicoding/mill/internal/services/settingssvc"
 	"github.com/alicoding/mill/internal/services/triggersvc"
@@ -168,7 +171,9 @@ func setPluginAllowlist(t *testing.T, store *servicetest.FakeStore, raw string) 
 func TestSettingsTrust_LockRevokesChangedPlugins(t *testing.T) {
 	set, _ := newSettingsForTrust(t)
 	current := "sha256-aaa"
-	set.SetPluginHasher(func(id string) (string, string) { return "1.0.0", current })
+	set.SetPluginHasher(func(id string) settingssvc.PluginGrantSnapshot {
+		return settingssvc.PluginGrantSnapshot{Version: "1.0.0", Hash: current}
+	})
 	trust := settingsTrust{settings: set, hashOf: func(string) string { return current }}
 	if err := set.SetPluginAllowed("mill-a", true); err != nil {
 		t.Fatal(err)
@@ -194,5 +199,70 @@ func TestSettingsTrust_LockRevokesChangedPlugins(t *testing.T) {
 	}
 	if _, ok := set.GetPluginLock()["mill-a"]; ok {
 		t.Fatal("withdrawing consent kept the lock entry")
+	}
+}
+
+// WirePluginTrust's real stack keeps MV3's rule end to end, not just
+// at the pure settingsTrust level -- a manifest-only edit (narrowing
+// OR unrelated) never re-gates, even though the whole-folder
+// ContentHash it feeds signing/tiering DOES change; only a widened
+// declared set does (docs/goals/0375 S2).
+func TestWirePluginTrust_NarrowedOrUnrelatedManifestEditKeepsTheGrant(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "plugins", "widen-probe")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(dir, "manifest.json")
+	writeManifest := func(t *testing.T, body string) {
+		t.Helper()
+		if err := os.WriteFile(manifestPath, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeManifest(t, `{"id":"widen-probe","name":"W","version":"1.0.0","capabilities":["open-url","write-content"]}`)
+	if err := os.WriteFile(filepath.Join(dir, "main.js"), []byte("export function activate() {}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	trig := triggersvc.NewTriggerService(comp, slog.Default(), store)
+	settings := settingssvc.NewSettingsService(store, trig, false)
+	plugins := NewPluginService(filepath.Join(root, "settings.json"), nil, "source", "")
+	secrets := secretsvc.NewSecretService(secretvault.New(filepath.Join(root, "secrets.kdbx")), credential.NewInMemory(), store)
+	WirePluginTrust(plugins, settings, secrets)
+
+	if err := settings.SetPluginAllowed("widen-probe", true); err != nil {
+		t.Fatal(err)
+	}
+	trust := settingsTrust{settings: settings, hashOf: plugins.CodeHashOf, widenedOf: plugins.Widened}
+	if !trust.mayRun("widen-probe", false) {
+		t.Fatal("freshly allowed plugin did not run")
+	}
+	contentHashBefore := plugins.ContentHashOf("widen-probe")
+
+	// Narrow: drop write-content. The whole-folder ContentHash changes
+	// (manifest.json is part of it), but the grant did not widen.
+	writeManifest(t, `{"id":"widen-probe","name":"W","version":"1.0.0","capabilities":["open-url"]}`)
+	if plugins.ContentHashOf("widen-probe") == contentHashBefore {
+		t.Fatal("test setup: narrowing must change the folder's ContentHash")
+	}
+	if !trust.mayRun("widen-probe", false) {
+		t.Fatal("a NARROWED manifest re-gated the plugin -- MV3's rule says it must keep running")
+	}
+
+	// Widen: add a capability beyond what was ever granted (fetch was
+	// never allowed). Now it must re-gate.
+	writeManifest(t, `{"id":"widen-probe","name":"W","version":"1.0.0","capabilities":["open-url","fetch"]}`)
+	if trust.mayRun("widen-probe", false) {
+		t.Fatal("a WIDENED manifest kept running -- it must wait for review again")
+	}
+
+	// An unrelated edit -- the name changes, capabilities do not --
+	// also never re-gates.
+	writeManifest(t, `{"id":"widen-probe","name":"Widen Probe Renamed","version":"1.0.0","capabilities":["open-url"]}`)
+	if !trust.mayRun("widen-probe", false) {
+		t.Fatal("an unrelated manifest edit re-gated the plugin")
 	}
 }

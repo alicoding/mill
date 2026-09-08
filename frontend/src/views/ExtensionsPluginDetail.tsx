@@ -74,7 +74,7 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
     extra: (contributes?.mcpServers ?? []).length > 0
       ? <ExtensionsMCPServers pluginId={id} servers={contributes?.mcpServers ?? []} />
       : undefined,
-    status: <PluginStatusNote error={error} status={runtime?.status} policyReason={plugin.PolicyBlocked ?? ''} allowed={allowed} onAllow={onAllow} />,
+    status: <PluginStatusNote error={error} status={runtime?.status} policyReason={plugin.PolicyBlocked ?? ''} allowed={allowed} widened={!!plugin.Widened} onAllow={onAllow} />,
     actions: reloadCommand?.enabled?.() ? (
       <Button
         size="small"
@@ -196,11 +196,16 @@ function pluginClaims(plugin: PluginInfo, t: Translate): string[] {
 
 // What actually happened to this plugin this boot, stated in full --
 // including the two states that ask the user to act.
-function PluginStatusNote({ error, status, policyReason, allowed, onAllow }: {
+function PluginStatusNote({ error, status, policyReason, allowed, widened, onAllow }: {
   error: string | undefined
   status: string | undefined
   policyReason: string
   allowed: boolean
+  // widened (docs/goals/0375 S2): this extension is back in review
+  // because its manifest now declares more than its consent covered,
+  // not because it was never reviewed or its files merely changed --
+  // the note and the allow action both say so.
+  widened: boolean
   onAllow: () => void
 }) {
   const { t } = useTranslation('views')
@@ -232,18 +237,24 @@ function PluginStatusNote({ error, status, policyReason, allowed, onAllow }: {
   if (status === 'unallowed' || status === 'changed') {
     return (
       <Stack direction="horizontal" gap="condensed" align="center" data-testid="extensions-plugin-review">
-        <Text size="small" weight="semibold">
-          {allowed
-            ? t('settings.extensions.pluginAllowedNote')
-            : status === 'changed' ? t('settings.extensions.pluginChangedNote') : t('settings.extensions.pluginAwaitingNote')}
-        </Text>
+        <Text size="small" weight="semibold">{t(reviewNoteKey(status, allowed, widened))}</Text>
         {!allowed && (
           <Button size="small" variant="primary" onClick={onAllow} data-testid="extensions-plugin-allow">
-            {t('settings.extensions.pluginAllow')}
+            {t(widened ? 'extensions.widened.allow' : 'settings.extensions.pluginAllow')}
           </Button>
         )}
       </Stack>
     )
   }
   return null
+}
+
+// reviewNoteKey picks the "unallowed"/"changed" states' one sentence:
+// widened (docs/goals/0375 S2) reads ahead of the plain "files
+// changed" sentence -- it names WHY re-consent is needed instead of
+// just that something is different.
+function reviewNoteKey(status: string, allowed: boolean, widened: boolean): string {
+  if (allowed) return 'settings.extensions.pluginAllowedNote'
+  if (widened) return 'extensions.widened.caption'
+  return status === 'changed' ? 'settings.extensions.pluginChangedNote' : 'settings.extensions.pluginAwaitingNote'
 }

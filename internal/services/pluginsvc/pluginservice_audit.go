@@ -26,6 +26,12 @@ type PluginTrustReader interface {
 	// LockedHash is the content hash the plugin's consent covers ("" when
 	// none recorded).
 	LockedHash(id string) string
+	// GrantOf answers the capability-shaped set id's consent currently
+	// covers, and whether one is recorded at all (docs/goals/0375 S2):
+	// false for a plugin never allowed, or one whose consent predates
+	// this record -- widen detection then has nothing to compare and
+	// reports no widen.
+	GrantOf(id string) (PluginGrant, bool)
 }
 
 // PluginSecretAccess is one secret-read row as the export carries it.
@@ -162,7 +168,10 @@ func (p *PluginService) auditRow(info PluginInfo) PluginAuditPlugin {
 		row.Enabled = p.trust.Enabled(m.ID)
 		row.Allowed = p.trust.Allowed(m.ID)
 		row.LockedHash = p.trust.LockedHash(m.ID)
-		row.Changed = row.LockedHash != "" && row.ContentHash != "" && row.LockedHash != row.ContentHash
+		// Changed compares like for like: LockedHash is a CodeHash
+		// (docs/goals/0375 S2), so the comparison reads info.CodeHash,
+		// never the wider ContentHash the row also reports.
+		row.Changed = row.LockedHash != "" && info.CodeHash != "" && row.LockedHash != info.CodeHash
 	}
 	return row
 }

@@ -168,6 +168,14 @@ export interface InstallPreview {
     "AlreadyInstalled": boolean;
 
     /**
+     * CanvasHost is true when this manifest earns the "canvas-host"
+     * grant (pluginGrants, docs/goals/0375 S1b/S2): it declares a
+     * canvas object and runs same-DOM in Mill's own window rather than
+     * the sandboxed activation frame. Always false for a built-in.
+     */
+    "CanvasHost": boolean;
+
+    /**
      * PolicyRefusal is the organisation policy's sentence when it
      * refuses this install (policy_match.go), "" when it does not or
      * no policy is set; the prompt shows it and disables Install.
@@ -473,7 +481,9 @@ export interface PluginFileEntry {
  * a plugin is either fully valid or visibly broken, never silently
  * half-loaded. Builtin marks a plugin embedded in the binary
  * (pluginservice_builtin.go): same loader and disable list as any
- * plugin, but nothing on disk to reveal or delete.
+ * plugin, but nothing on disk to reveal or delete. Split from
+ * pluginservice.go at the hand-written-file line limit
+ * (.claude/rules/architecture.md).
  */
 export interface PluginInfo {
     "Manifest": Manifest;
@@ -483,10 +493,17 @@ export interface PluginInfo {
 
     /**
      * ContentHash is the folder's current content hash
-     * (pluginservice_hash.go), "" for a built-in or an invalid plugin
-     * -- what the lock compares against.
+     * (pluginservice_hash.go), "" for a built-in/invalid plugin -- the
+     * signing/tier comparison input.
      */
     "ContentHash": string;
+
+    /**
+     * CodeHash excludes manifest.json (docs/goals/0375 S2): the trust
+     * lock's own comparison input, so a manifest-only edit never trips
+     * it -- only Widened does.
+     */
+    "CodeHash": string;
 
     /**
      * SigningPolicy reports whether an administrator pinned signing
@@ -519,11 +536,19 @@ export interface PluginInfo {
      * Grants names what this plugin was given outside the sandboxed
      * activation frame every other non-built-in plugin runs inside
      * (docs/goals/0375 S1b): "canvas-host" for a non-built-in plugin
-     * that declares a canvas object, since the framed canvas API does
-     * not exist yet and its own tools still need board input the way a
-     * built-in's do. Always empty for a built-in.
+     * declaring a canvas object, since the framed canvas API does not
+     * exist yet. Always empty for a built-in.
      */
     "Grants": string[] | null;
+
+    /**
+     * Widened is non-nil for a non-built-in plugin whose manifest
+     * declares MORE than its own consent covered (docs/goals/0375 S2,
+     * MV3's re-consent-on-widen rule): the NEW elements only, in the
+     * shape permissionLines() renders. Nil when narrowed/unchanged,
+     * never allowed, or built-in.
+     */
+    "Widened": InstallPreview | null;
 }
 
 /**

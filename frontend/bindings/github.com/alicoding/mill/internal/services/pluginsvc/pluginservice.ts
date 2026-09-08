@@ -66,8 +66,17 @@ export function CheckForUpdates(): $CancellablePromise<$models.UpdateCheck> {
 }
 
 /**
+ * CodeHashOf answers the current CodeHash of an installed plugin by id
+ * ("" for a built-in or an unreadable folder) -- the trust lock's own
+ * comparison input (docs/goals/0375 S2).
+ */
+export function CodeHashOf(id: string): $CancellablePromise<string> {
+    return $Call.ByID(3603175340, id);
+}
+
+/**
  * ContentHashOf answers the current hash of an installed plugin by id
- * ("" for a built-in or an unreadable folder) -- the run policy's
+ * ("" for a built-in or an unreadable folder) -- the signing/tier
  * comparison input.
  */
 export function ContentHashOf(id: string): $CancellablePromise<string> {
@@ -345,6 +354,17 @@ export function UpdatePlugin(id: string): $CancellablePromise<$models.InstallRec
  */
 export function VersionOf(id: string): $CancellablePromise<string> {
     return $Call.ByID(1443551781, id);
+}
+
+/**
+ * Widened reports whether id's manifest currently declares more than
+ * its recorded consent covers (docs/goals/0375 S2) -- the same signal
+ * scanOne stamps onto PluginInfo, exposed as its own predicate so the
+ * run-policy gate (settingsTrust.mayRun) can ask a plain question.
+ * Always false for a built-in or an invalid manifest.
+ */
+export function Widened(id: string): $CancellablePromise<boolean> {
+    return $Call.ByID(3942961546, id);
 }
 
 /**

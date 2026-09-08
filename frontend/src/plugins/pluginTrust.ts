@@ -6,9 +6,11 @@
 // plugin never reviewed waits for the user to allow it. Built-ins skip
 // the two trust gates, never the user's own switch.
 // 'unsigned': an administrator pinned signing keys and this folder's
-// signature did not verify; 'changed': the folder's content hash no
-// longer matches the one its consent covered (slice 5's lock) -- both
-// stop the plugin until an administrator or the user acts.
+// signature did not verify; 'changed': the folder's CodeHash (every
+// file except manifest.json, docs/goals/0375 S2 -- a manifest edit is
+// 'widened's question, not this one) no longer matches the one its
+// consent covered (slice 5's lock) -- both stop the plugin until an
+// administrator or the user acts.
 // 'policy': the organisation's policy file refuses it (goal 0349 S6)
 // -- judged first, because nothing the user can set on this Mac moves
 // it; the reason rides PluginIntegrity.policyBlocked.
@@ -18,16 +20,25 @@ export interface PluginRunPolicy {
 	disabled: readonly string[]
 	allowed: readonly string[]
 	allowlist: readonly string[]
-	// lock maps a plugin id to the content hash its consent covered.
+	// lock maps a plugin id to the CodeHash its consent covered.
 	lock: Readonly<Record<string, string>>
 }
 
 export interface PluginIntegrity {
+	// contentHash is the plugin's CURRENT CodeHash, compared against
+	// PluginRunPolicy.lock -- named generically since the caller is the
+	// one that knows which hash the lock represents.
 	contentHash: string
 	signingPolicy: boolean
 	signed: boolean
 	// The policy's refusal sentence, '' when it allows the plugin.
 	policyBlocked?: string
+	// widened is true when the manifest currently declares more than
+	// the grant its consent covered (docs/goals/0375 S2, MV3's
+	// re-consent-on-widen rule): the extension returns to 'unallowed',
+	// the same state a fresh install shows, even though it was allowed
+	// before. A narrowed or unchanged set leaves this false.
+	widened?: boolean
 }
 
 export function pluginRunState(id: string, builtin: boolean, policy: PluginRunPolicy, integrity: PluginIntegrity = { contentHash: '', signingPolicy: false, signed: false }): PluginRunState {
@@ -36,6 +47,7 @@ export function pluginRunState(id: string, builtin: boolean, policy: PluginRunPo
 	if (policy.disabled.includes(id)) return 'disabled'
 	if (!builtin && integrity.signingPolicy && !integrity.signed) return 'unsigned'
 	if (!builtin && !policy.allowed.includes(id)) return 'unallowed'
+	if (!builtin && integrity.widened) return 'unallowed'
 	const locked = policy.lock[id]
 	if (!builtin && locked && integrity.contentHash && locked !== integrity.contentHash) return 'changed'
 	return 'run'
