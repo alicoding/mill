@@ -258,19 +258,18 @@ func main() {
 
 	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger)                                                                                                  // docs/goals/0132-remote-access.md SLICE 1
 	bridgeService := wiring.WireBrowserBridge(remoteAuthService, logger, browserExtensionFS, filepath.Dir(settingsPath), backupsvc.SQLiteDBPath(executionDatabaseURL)) // the browser bridge's own loopback listener (docs/goals/0350) and audit connection (goal 0351 S2)
-	wiring.WireWebhookRespond(bridgeService, triggerService)                                                                                                          // goal 0368: the webhook door fires a trigger, never a pipe. goal 0373: it can wait for a reply.
+	wiring.WireWebhookRespond(bridgeService, triggerService)                                                                                                           // goal 0368: the webhook door fires a trigger, never a pipe. goal 0373: it can wait for a reply.
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	auditService := wiring.WireAuditExport(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsService.GetAuditRetentionEntries(), logger) // goal 0351 S2: export/retention over the shared audit trail
-	settingsService.SetAuditRetentionChanged(auditService.PruneNow)                                                                        // a lowered cap takes effect immediately, not only at the next restart
+	settingsService.SetAuditRetentionChanged(auditService.PruneNow)                                                                          // a lowered cap takes effect immediately, not only at the next restart
 	wiring.WireSettingsEraSeams(settingsService, notificationService, remoteAuthService, triggerService, atlasService, pluginService, secretService)
 	settingsService.SetAppVersion(millUpdateVersion)
-	// The user's persisted channel opt-in wins over the build stamp --
-	// a source-built copy can deliberately follow the beta feed
-	// (Settings > Updates). Resolved once here so the guard, label,
-	// and provider feed below all agree for this run.
-	effectiveChannel := settingsService.ResolveUpdateChannel(millChannel)
-	settingsService.SetUpdateChannel(effectiveChannel)
+	// The user's persisted channel opt-in wins over the build stamp for
+	// the resolved channel (a source-built copy can deliberately follow
+	// the beta feed); wiring.ResolveAndWireUpdateChannel also records
+	// the raw stamp for the auto-download policy's local-build guard.
+	effectiveChannel := wiring.ResolveAndWireUpdateChannel(settingsService, millChannel)
 	// goal 0100: DownloadAndInstallUpdate's pre-swap snapshot seam.
 	settingsService.SetBackupRunner(backupService.BackupRunner())
 	// Bidirectional hotkey-conflict check (docs/SPEC.md §3.7): a

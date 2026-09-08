@@ -147,6 +147,26 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-framework-api-first-selftest.sh
 
+  # Mirrors lefthook.yml's own bash-portability job -- same script (goal
+  # 0403 S2e: a scripts/**/*.sh or build/**/*.sh file using a bash-4-only
+  # construct is a latent exit 127/2 on GitHub's own macOS runner).
+  # Grep-only, so like comment-hygiene it needs no build setup.
+  bash-portability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-bash-portability.sh
+
+  # Fixture-tests the gate above, same shape as
+  # framework-api-first-selftest.
+  bash-portability-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-bash-portability-selftest.sh
+
   # Mirrors lefthook.yml's own test-side-effects job -- same script
   # (goal 0356: tests and e2e servers never touch the host pasteboard).
   # Grep-only, so like comment-hygiene it needs no build setup.
@@ -1017,6 +1037,8 @@ jobs:
       - comment-hygiene
       - framework-api-first
       - framework-api-first-selftest
+      - bash-portability
+      - bash-portability-selftest
       - test-side-effects
       - e2e-seed-literals
       - e2e-edge-hover
