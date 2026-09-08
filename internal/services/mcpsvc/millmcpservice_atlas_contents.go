@@ -53,6 +53,7 @@ func (m *MillMCPService) registerAtlasContentsTool() {
 			"field, and this is the only tool that lists them), and board objects (image, ink, shape, table, " +
 			"diagram, sheet, pdf, plugin kinds; titled by their payload title or kind, payload included). " +
 			"Optionally narrowed to one kind and/or one parent card's direct children. Read-only.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasListContentsArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireAtlas(); err != nil {
 			return nil, nil, err
