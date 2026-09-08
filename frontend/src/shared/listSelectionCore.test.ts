@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  EMPTY_SELECTION, LONG_PRESS_MOVE_TOLERANCE_PX, activateRow, clearSelected, extendFocus,
+  EMPTY_SELECTION, LONG_PRESS_MOVE_TOLERANCE_PX, activateCheckbox, activateRow, clearSelected, extendFocus,
   isSelectionMode, longPressStillArmed, pruneSelection, rangeSelected, selectAllSelected, toggleSelected,
 } from './listSelectionCore'
 
@@ -116,6 +116,42 @@ describe('activateRow (a row click, each modifier)', () => {
     const { opensRow, state } = activateRow(anchored, IDS, 'd', { shiftKey: true, toggleModifier: true })
     expect(opensRow).toBe(false)
     expect([...state.selected].sort()).toEqual(['b', 'c', 'd'])
+  })
+})
+
+describe('activateCheckbox (a checkbox click, each modifier -- goal 0404 S1 amendment 2026-09-09)', () => {
+  it('a plain click TOGGLES -- unlike a row click, a checkbox never opens anything', () => {
+    const state = activateCheckbox(EMPTY_SELECTION, IDS, 'b', { shiftKey: false, toggleModifier: false })
+    expect([...state.selected]).toEqual(['b'])
+    const twice = activateCheckbox(state, IDS, 'b', { shiftKey: false, toggleModifier: false })
+    expect(twice.selected.size).toBe(0)
+  })
+
+  it('Cmd/Ctrl-click toggles, same as a plain click on a checkbox', () => {
+    const state = activateCheckbox(EMPTY_SELECTION, IDS, 'b', { shiftKey: false, toggleModifier: true })
+    expect([...state.selected]).toEqual(['b'])
+  })
+
+  it('Shift-click on the checkbox ranges from the anchor, exactly like Shift-click on the row body', () => {
+    const anchored = toggleSelected(EMPTY_SELECTION, 'b')
+    const state = activateCheckbox(anchored, IDS, 'd', { shiftKey: true, toggleModifier: false })
+    expect([...state.selected].sort()).toEqual(['b', 'c', 'd'])
+  })
+
+  it('a second Shift-click on a checkbox re-spans from the SAME anchor, not the previous range end', () => {
+    const anchored = toggleSelected(EMPTY_SELECTION, 'b')
+    const first = activateCheckbox(anchored, IDS, 'c', { shiftKey: true, toggleModifier: false })
+    const second = activateCheckbox(first, IDS, 'e', { shiftKey: true, toggleModifier: false })
+    expect([...second.selected].sort()).toEqual(['b', 'c', 'd', 'e'])
+  })
+
+  it('matches activateRow\'s own state for every modifier combination except a plain click', () => {
+    for (const mods of [{ shiftKey: true, toggleModifier: false }, { shiftKey: false, toggleModifier: true }, { shiftKey: true, toggleModifier: true }]) {
+      const anchored = toggleSelected(EMPTY_SELECTION, 'b')
+      const checkbox = activateCheckbox(anchored, IDS, 'd', mods)
+      const row = activateRow(anchored, IDS, 'd', mods)
+      expect(checkbox).toEqual(row.state)
+    }
   })
 })
 

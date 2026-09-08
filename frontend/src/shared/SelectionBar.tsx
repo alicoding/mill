@@ -3,6 +3,7 @@ import { ActionBar, IconButton, Stack, Text } from '@primer/react'
 import { XIcon } from '@primer/octicons-react'
 import { COMMANDS, commandAvailable, commandLabel, runCommand } from './commands'
 import { useAppStore } from './store'
+import { useListSelectionFocusStore } from './listSelectionFocus'
 import styles from './SelectionBar.module.css'
 
 // Replaces ListToolbar in place while a list is in selection mode
@@ -23,6 +24,16 @@ export function SelectionBar({ count, totalCount, onSelectAllOf, onCancel }: {
 }) {
   const { t } = useTranslation('common')
   const surface = useAppStore((s) => s.view.kind)
+  // list.deleteSelection's own enabled() reads shared/listSelectionFocus.ts's
+  // store (a plain, non-reactive `.getState()` getter -- the same read
+  // the keydown listeners and runCommand use). Subscribing here too is
+  // load-bearing, not decorative: without it this component has no
+  // trigger of its own to re-render when the store updates in a
+  // SEPARATE effect (InventoryList.tsx's focus-publish effects run
+  // AFTER commit), so Delete could render missing right after the
+  // FIRST selection and stay that way until some unrelated re-render
+  // happened to catch it up.
+  useListSelectionFocusStore((s) => s.focused)
   const bulkCommands = COMMANDS.filter((c) => c.bulk && (!c.surface || c.surface.includes(surface)) && commandAvailable(c))
   const partial = count < totalCount
 

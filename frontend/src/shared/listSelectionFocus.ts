@@ -25,6 +25,12 @@ export interface ListSelectionHandle {
   // door and posts the outcome toast -- InventoryList builds this
   // closure, since only it knows which entity/items are selected.
   deleteSelected: () => void | Promise<void>
+  // Space/x and Shift+Space on the row Tab landed on (goal 0404 S1):
+  // act on `useListSelection`'s own
+  // `focusedId` (set by the row's real onFocus, InventoryList.tsx),
+  // a no-op with nothing focused (Tab never reached a row yet).
+  toggleFocusedRow: () => void
+  extendFocusedRow: () => void
 }
 
 interface ListSelectionFocusState {

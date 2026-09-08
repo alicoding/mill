@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  EMPTY_SELECTION, LONG_PRESS_MS, activateRow, clearSelected, extendFocus as extendFocusCore,
-  isSelectionMode, longPressStillArmed, pruneSelection, rangeSelected, selectAllSelected, toggleSelected, withFocusedId,
+  EMPTY_SELECTION, LONG_PRESS_MS, activateCheckbox as activateCheckboxCore, activateRow, clearSelected,
+  extendFocus as extendFocusCore, isSelectionMode, longPressStillArmed, pruneSelection, rangeSelected,
+  selectAllSelected, toggleSelected, withFocusedId,
   type ActivationMods, type ListSelectionState,
 } from './listSelectionCore'
 
@@ -40,6 +41,10 @@ export interface UseListSelectionResult {
   // filter is the proving case).
   pruneTo: (validIds: string[]) => void
   activate: (id: string, mods: ActivationMods) => boolean
+  // The checkbox's own click (goal 0404 S1): same Shift/toggle-modifier
+  // branches as `activate`, but a checkbox never
+  // opens, so a plain click toggles instead of returning "open me."
+  activateCheckbox: (id: string, mods: ActivationMods) => void
   focusedId: string | null
   setFocusedId: (id: string | null) => void
   extendFocus: (direction: 'up' | 'down') => void
@@ -90,6 +95,10 @@ export function useListSelection(ids: string[]): UseListSelectionResult {
     return opensRow
   }, [])
 
+  const activateCheckbox = useCallback((id: string, mods: ActivationMods) => {
+    setState((prev) => activateCheckboxCore(prev, idsRef.current, id, mods))
+  }, [])
+
   const setFocusedId = useCallback((id: string | null) => setState((prev) => withFocusedId(prev, id)), [])
   const extendFocus = useCallback((direction: 'up' | 'down') => setState((prev) => extendFocusCore(prev, idsRef.current, direction)), [])
 
@@ -125,6 +134,7 @@ export function useListSelection(ids: string[]): UseListSelectionResult {
     clear,
     pruneTo,
     activate,
+    activateCheckbox,
     focusedId: state.focusedId,
     setFocusedId,
     extendFocus,

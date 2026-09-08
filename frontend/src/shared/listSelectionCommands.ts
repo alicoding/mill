@@ -48,4 +48,32 @@ export const LIST_SELECTION_COMMANDS: Command[] = [
     enabled: () => focusedListSelection()?.hasSelection() ?? false,
     run: () => focusedListSelection()?.deleteSelected(),
   },
+  // Keyboard selection on the row Tab landed on (goal 0404 S1,
+  // Gmail/Linear shape): the checkbox itself is out of the
+  // tab order (InventoryRow.tsx), so Space/x toggle and Shift+Space
+  // extends the range from the anchor -- Enter still opens (Primer's
+  // own ActionList.Item keyboard handling, untouched). hintOnly: Space
+  // is ALSO how Primer's own Item opens a row on Enter/Space alike, so
+  // the real keydown handling is app/useKeymapDispatch.ts's own
+  // dedicated listener, which preventDefaults the keydown early enough
+  // to suppress the keypress Primer's own onSelect answers to.
+  {
+    id: 'list.toggleSelection',
+    label: 'commands.list.toggleSelection',
+    defaultBinding: { mods: [], key: 'Space' },
+    extraBindings: [{ mods: [], key: 'X' }],
+    hintOnly: true,
+    surface: LIST_SURFACES,
+    enabled: () => focusedListSelection() !== null,
+    run: () => focusedListSelection()?.toggleFocusedRow(),
+  },
+  {
+    id: 'list.extendSelection',
+    label: 'commands.list.extendSelection',
+    defaultBinding: { mods: ['shift'], key: 'Space' },
+    hintOnly: true,
+    surface: LIST_SURFACES,
+    enabled: () => focusedListSelection() !== null,
+    run: () => focusedListSelection()?.extendFocusedRow(),
+  },
 ]

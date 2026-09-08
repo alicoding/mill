@@ -16,6 +16,18 @@ function listRow(page: import('@playwright/test').Page, label: string) {
   return page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText(label, { exact: true }) })
 }
 
+// Real Tab presses only (testing.md: focus via clicking/tabbing, never
+// a programmatic .focus()) -- bounded since a row sits behind however
+// many toolbar controls precede it, which this deliberately doesn't
+// hard-code.
+async function tabUntilFocused(page: import('@playwright/test').Page, locator: import('@playwright/test').Locator, maxPresses = 40) {
+  for (let i = 0; i < maxPresses; i++) {
+    if (await locator.evaluate((el) => el === document.activeElement)) return
+    await page.keyboard.press('Tab')
+  }
+  throw new Error('tabUntilFocused: never reached the target row')
+}
+
 test('deleting a freshly placed table: the toast names the list as unused, and undo restores both the table and its usage', async ({ page }) => {
   await openAtlas(page)
   const object = await placeSizedTable(page, '2x2')
@@ -81,6 +93,10 @@ test('Configure Lists: hover checkbox, click, Shift-click range, ⌘A, and bulk 
   await rowA.getByTestId('inventory-row-select').click()
   await expect(page.getByTestId('selection-bar')).toBeVisible()
   await expect(page.getByTestId('selection-bar-count')).toHaveText('1 selected')
+  // The bar's Delete action must render on the FIRST selection, not
+  // wait for some later, unrelated re-render (goal 0404 S1: SelectionBar
+  // subscribes to the focus store instead of reading a snapshot).
+  await expect(page.getByTestId('selection-bar-action-list.deleteSelection')).toBeVisible()
 
   // Shift-click a range: the label text (never the checkbox) with
   // Shift held extends from the anchor through the clicked row.
@@ -130,4 +146,107 @@ test('Configure Lists: hover checkbox, click, Shift-click range, ⌘A, and bulk 
   await expect(rowA).toHaveCount(0)
   await expect(rowB).toHaveCount(0)
   await expect(rowC).toHaveCount(0)
+})
+
+// goal 0404 S1: the checkbox's own click degrading Shift/⌘ into a
+// bare toggle (the row body's own Shift/⌘-click already worked; the
+// checkbox path did not carry its modifiers into the same activation
+// logic). Six rows so a
+// checkbox Shift-click genuinely proves a multi-row range, not just
+// two adjacent ones.
+test('Configure Lists: Shift-click and ⌘-click on the CHECKBOX itself behave like the row body', async ({ page }) => {
+  const stamp = Date.now()
+  const labels = ['A', 'B', 'C', 'D', 'E', 'F'].map((letter) => `E2E chk ${letter} ${stamp}`)
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await openConfigureKind(page, 'Lists')
+
+  for (const label of labels) await createList(page, label)
+
+  await page.getByTestId('list-usage-filter').selectOption('unused')
+  await page.getByTestId('configure-lists').getByTestId('inventory-search').fill(String(stamp))
+  const rows = labels.map((label) => listRow(page, label))
+  await expect(page.locator('[data-testid="inventory-row"][data-entity="list"]')).toHaveCount(6) // count: fixture-owned -- the search term is this test's own timestamp, matching only these 6
+  const [rowA, rowB, , , , rowF] = rows
+
+  // Click A's checkbox (a plain click still toggles), then Shift-click
+  // F's checkbox: the full A..F range, not a second bare toggle.
+  await rowA.hover()
+  await rowA.getByTestId('inventory-row-select').click()
+  await expect(page.getByTestId('selection-bar-count')).toHaveText('1 selected')
+  await rowF.hover()
+  await rowF.getByTestId('inventory-row-select').click({ modifiers: ['Shift'] })
+  await expect(page.getByTestId('selection-bar-count')).toHaveText('6 selected')
+
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('selection-bar')).toHaveCount(0)
+
+  // ⌘-click on B's checkbox toggles without opening -- B's own editor
+  // (the row's onOpen) never appears.
+  await rowB.hover()
+  await rowB.getByTestId('inventory-row-select').click({ modifiers: ['Meta'] })
+  await expect(page.getByTestId('selection-bar-count')).toHaveText('1 selected')
+  await expect(page.getByTestId('list-rows-editor')).toHaveCount(0)
+
+  // Cleanup: select the whole range again and delete for good.
+  await rowA.hover()
+  await rowA.getByTestId('inventory-row-select').click()
+  await rowF.hover()
+  await rowF.getByTestId('inventory-row-select').click({ modifiers: ['Shift'] })
+  await clickSelectionBarAction(page, 'selection-bar-action-list.deleteSelection', 'Delete')
+  for (const row of rows) await expect(row).toHaveCount(0)
+})
+
+// goal 0404 S1: Tab lands on the row (the checkbox itself is out of
+// the tab order); Space toggles, Shift+Space extends the range from
+// the anchor, Enter still opens.
+test('Configure Lists: keyboard selection on the focused row -- Tab, Space, Shift+Space, Enter', async ({ page }) => {
+  const stamp = Date.now()
+  const labelA = `E2E kbd A ${stamp}`
+  const labelB = `E2E kbd B ${stamp}`
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await openConfigureKind(page, 'Lists')
+
+  await createList(page, labelA)
+  await createList(page, labelB)
+
+  await page.getByTestId('list-usage-filter').selectOption('unused')
+  const search = page.getByTestId('configure-lists').getByTestId('inventory-search')
+  await search.fill(String(stamp))
+  const rowA = listRow(page, labelA)
+  const rowB = listRow(page, labelB)
+  await expect(page.locator('[data-testid="inventory-row"][data-entity="list"]')).toHaveCount(2) // count: fixture-owned -- the search term is this test's own timestamp, matching only A/B
+
+  await search.click()
+  await tabUntilFocused(page, rowA)
+  await expect(rowA).toBeFocused()
+
+  // Space toggles the FOCUSED row's own selection.
+  await page.keyboard.press('Space')
+  await expect(page.getByTestId('selection-bar-count')).toHaveText('1 selected')
+
+  await tabUntilFocused(page, rowB)
+  await expect(rowB).toBeFocused()
+  await page.keyboard.press('Shift+Space')
+  await expect(page.getByTestId('selection-bar-count')).toHaveText('2 selected')
+
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('selection-bar')).toHaveCount(0)
+
+  // Enter still opens the focused row -- Primer's own ActionList.Item
+  // keyboard handling, untouched by the Space/x interception.
+  await tabUntilFocused(page, rowA)
+  await page.keyboard.press('Enter')
+  await expect(page.getByTestId('list-rows-editor')).toBeVisible()
+  await page.getByRole('button', { name: 'Close' }).click()
+
+  // Cleanup.
+  await rowA.hover()
+  await rowA.getByTestId('inventory-row-select').click()
+  await rowB.hover()
+  await rowB.getByTestId('inventory-row-select').click()
+  await clickSelectionBarAction(page, 'selection-bar-action-list.deleteSelection', 'Delete')
+  await expect(rowA).toHaveCount(0)
+  await expect(rowB).toHaveCount(0)
 })

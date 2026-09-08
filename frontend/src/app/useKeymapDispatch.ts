@@ -259,4 +259,32 @@ export function useKeymapDispatch(): void {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
+
+  // Listeners 10-11, list.toggleSelection/extendSelection (goal 0404
+  // S1): Space/x toggle, Shift+Space extends, on
+  // whichever row Tab landed on (`document.activeElement` IS that row
+  // -- InventoryRow.tsx's own real onFocus is what published it as
+  // `focusedId`). preventDefault on the keydown is load-bearing here,
+  // not just Listener 5's usual native-combo guard: Primer's own
+  // ActionList.Item answers Space with its OWN onSelect (opening the
+  // row) via a later `keypress` event, and canceling `keydown` is what
+  // stops the browser from ever dispatching that `keypress` -- Enter
+  // is deliberately left untouched, so Primer's own Enter-opens
+  // behavior still fires normally.
+  const isRowFocused = () => document.activeElement instanceof HTMLElement && document.activeElement.matches('[data-testid="inventory-row"]')
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.key !== ' ' && e.key.toLowerCase() !== 'x') return
+      if (!isListSurface() || !isRowFocused()) return
+      if (document.querySelector('[role="dialog"]')) return
+      const id = e.shiftKey ? 'list.extendSelection' : 'list.toggleSelection'
+      const command = findCommand(id)
+      if (!command?.enabled?.()) return
+      e.preventDefault()
+      void runCommand(id)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 }

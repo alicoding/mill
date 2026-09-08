@@ -95,6 +95,18 @@ export function activateRow(state: ListSelectionState, ids: string[], id: string
   return { state, opensRow: true }
 }
 
+// The checkbox's own click carries the SAME Shift/toggle-modifier
+// branches activateRow's row-body click does (Gmail/Drive: a modifier
+// on the checkbox behaves like the modifier on the row) -- reuses
+// activateRow rather than re-deriving the branches, so the two paths
+// can never drift. The one difference: a checkbox never "opens" the
+// row, so activateRow's plain-click opensRow signal becomes a toggle
+// here instead of being left for a caller to open something with.
+export function activateCheckbox(state: ListSelectionState, ids: string[], id: string, mods: ActivationMods): ListSelectionState {
+  const result = activateRow(state, ids, id, mods)
+  return result.opensRow ? toggleSelected(result.state, id) : result.state
+}
+
 // Shift+↑/↓ (Linear): extends the range toward the next/previous row
 // and moves focus onto it. Starting with nothing focused begins at the
 // first row for either direction, matching a fresh list's own reading

@@ -17,10 +17,22 @@ import styles from './InventoryList.module.css'
 export interface InventoryRowSelection {
   isSelected: boolean
   isSelectionMode: boolean
-  onToggle: () => void
   // A row click's modifiers decide toggle/range/open (the hook's own
   // activate()) -- returns whether the row should still open.
   onActivate: (mods: { shiftKey: boolean; toggleModifier: boolean }) => boolean
+  // The checkbox's own click (goal 0404 S1): the SAME
+  // Shift-ranges/toggle-modifier-toggles branches onActivate
+  // uses, so a modifier on the checkbox behaves exactly like the same
+  // modifier on the row body (Gmail/Drive) -- but a checkbox never
+  // opens the row, so a plain click toggles instead of returning an
+  // "open me" signal (shared/listSelectionCore.ts's activateCheckbox).
+  onActivateCheckbox: (mods: { shiftKey: boolean; toggleModifier: boolean }) => void
+  // The row's own real focus (Tab landing on it, goal 0404 S1) --
+  // publishes this row as the target Space/x/Shift+Space
+  // act on (shared/listSelectionCommands.ts). The checkbox itself
+  // carries tabIndex={-1} below so Tab lands on the ROW, never the
+  // checkbox, matching Gmail/Linear's own keyboard shape.
+  onRowFocus: () => void
   longPress?: {
     onPointerDown: (e: PointerLike) => void
     onPointerMove: (e: PointerLike) => void
@@ -64,6 +76,20 @@ export function InventoryRow({ item, onOpenMenu, selection }: { item: InventoryI
       data-testid="inventory-row"
       data-entity={item.entity}
       data-selection-mode={selection?.isSelectionMode ? 'true' : undefined}
+      onFocus={selection?.onRowFocus}
+      onKeyDown={(e) => {
+        // Enter opens (goal 0404 S1) -- driven here directly rather
+        // than relying on Primer's own onSelect/
+        // onKeyPress wiring for it: onKeyPress is a deprecated DOM
+        // event whose firing on a plain (non-form) element is no
+        // longer reliable across engines, confirmed live (Enter
+        // stopped opening a selection-enabled row). preventDefault on
+        // this keydown also suppresses the keypress Primer's own
+        // handler answers to, so this never double-fires alongside it.
+        if (e.key !== 'Enter' || !selection) return
+        e.preventDefault()
+        item.onOpen()
+      }}
       onContextMenu={(e) => {
         if (actions.length === 0) return
         e.preventDefault()
@@ -91,25 +117,37 @@ export function InventoryRow({ item, onOpenMenu, selection }: { item: InventoryI
           {selection && (
             // Hover/focus-revealed via InventoryList.module.css's
             // [data-testid='inventory-row']:hover/:focus-within rule,
-            // persistent while data-selection-mode is set above --
-            // stopPropagation on click keeps a checkbox toggle from
-            // also firing the row's own onSelect (the same guard the
-            // trailing cluster below carries). onKeyDown stops ONLY
-            // Enter/Space -- the checkbox's own native keyboard
-            // activation, which would otherwise ALSO bubble into the
-            // row's onSelect the same way a click does. Every other
-            // key (⌘A, ⌘Z, Esc, ⌫) must keep bubbling: the checkbox
-            // holds focus right after a click, and those are window-
-            // level shortcuts (app/useKeymapDispatch.ts) that a
-            // blanket stopPropagation here would silently swallow.
+            // persistent while data-selection-mode is set above.
+            // onKeyDown on the wrapper stops ONLY Enter/Space -- the
+            // checkbox's own native keyboard activation, which would
+            // otherwise ALSO bubble into the row's onSelect the same
+            // way a click does. Every other key (⌘A, ⌘Z, Esc, ⌫) must
+            // keep bubbling: the checkbox holds focus right after a
+            // click, and those are window-level shortcuts
+            // (app/useKeymapDispatch.ts) that a blanket stopPropagation
+            // here would silently swallow.
             <span
               className={styles.checkboxSlot}
-              onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation() }}
             >
               <Checkbox
                 checked={selection.isSelected}
-                onChange={selection.onToggle}
+                // Out of the tab order (goal 0404 S1, Gmail/Linear
+                // shape): Tab lands on the
+                // ROW, never the checkbox -- a click still reaches and
+                // focuses it (tabIndex -1 only removes it from Tab's
+                // own traversal, not from focusability).
+                tabIndex={-1}
+                // Fully controlled by onClick below (which reads the
+                // click's own Shift/Cmd/Ctrl modifiers -- a "change"
+                // event carries none) -- this stays a deliberate no-op
+                // only to keep React's controlled-input contract happy.
+                onChange={() => {}}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  selection.onActivateCheckbox({ shiftKey: e.shiftKey, toggleModifier: e.metaKey || e.ctrlKey })
+                }}
                 aria-label={t('inventoryList.selectRowAriaLabel', { label: item.label })}
                 data-testid="inventory-row-select"
               />
