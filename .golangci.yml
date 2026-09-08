@@ -106,6 +106,7 @@ linters:
             - "!**/internal/adapters/**"
             - "!**/main.go"
             - "!**/auxwindows.go"
+            - "!**/events.go"
             - "!**/singleinstance_dev.go"
             - "!**/singleinstance_production.go"
           deny:

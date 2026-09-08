@@ -27,7 +27,6 @@ import (
 	"github.com/alicoding/mill/internal/services/companionsvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
-	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/docssvc"
 	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
@@ -86,23 +85,6 @@ var examplePluginsFS embed.FS
 
 //go:embed build/appicon.png
 var trayIconPNG []byte
-
-func init() {
-	// Each RegisterEvent[T] gives the binding generator a typed JS/TS API.
-	application.RegisterEvent[string]("time")
-	application.RegisterEvent[triggersvc.HotkeyActivity]("hotkey-activity")
-	application.RegisterEvent[mcpsvc.MCPWriteRequest]("mcp-write-approval")
-	application.RegisterEvent[mcpsvc.MCPWriteActivity]("mcp-write-activity")
-	application.RegisterEvent[dataevent.Changed](dataevent.EventName)
-	application.RegisterEvent[atlassvc.MirrorChanged](atlassvc.MirrorChangedEvent)
-	application.RegisterEvent[executionsvc.GuardrailPendingChanged]("guardrail-pending-changed")
-	application.RegisterEvent[companionsvc.CompanionDelta](companionsvc.DeltaEventName)
-	application.RegisterEvent[agentloopsvc.AgentLoopEvent](agentloopsvc.StateEventName)
-	application.RegisterEvent[agentloopsvc.AgentLoopDelta](agentloopsvc.DeltaEventName)
-	// docs/adr/0033: OpenMainWindow emits this so App.tsx can switch views
-	// once the main window is back in front -- broadcast to every window.
-	application.RegisterEvent[string]("mill-navigate")
-}
 
 // main initializes the application, creates the window, and wires every
 // bounded-context service together.
@@ -258,11 +240,11 @@ func main() {
 
 	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger)                                                                                                  // docs/goals/0132-remote-access.md SLICE 1
 	bridgeService := wiring.WireBrowserBridge(remoteAuthService, logger, browserExtensionFS, filepath.Dir(settingsPath), backupsvc.SQLiteDBPath(executionDatabaseURL)) // the browser bridge's own loopback listener (docs/goals/0350) and audit connection (goal 0351 S2)
-	wiring.WireWebhookRespond(bridgeService, triggerService)                                                                                                          // goal 0368: the webhook door fires a trigger, never a pipe. goal 0373: it can wait for a reply.
+	wiring.WireWebhookRespond(bridgeService, triggerService)                                                                                                           // goal 0368: the webhook door fires a trigger, never a pipe. goal 0373: it can wait for a reply.
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	auditService := wiring.WireAuditExport(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsService.GetAuditRetentionEntries(), logger) // goal 0351 S2: export/retention over the shared audit trail
-	settingsService.SetAuditRetentionChanged(auditService.PruneNow)                                                                        // a lowered cap takes effect immediately, not only at the next restart
+	settingsService.SetAuditRetentionChanged(auditService.PruneNow)                                                                          // a lowered cap takes effect immediately, not only at the next restart
 	wiring.WireSettingsEraSeams(settingsService, notificationService, remoteAuthService, triggerService, atlasService, pluginService, secretService)
 	settingsService.SetAppVersion(millUpdateVersion)
 	// The user's persisted channel opt-in wins over the build stamp --

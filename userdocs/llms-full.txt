@@ -253,6 +253,16 @@ Why every such field is a pick, not a text box, is in
 4. Its keys appear in every picker under **Secret sources**. Pick one
    exactly as you would a vault entry; Mill reads the value at run
    time and never copies it into the vault.
+5. Edit the file in place any time — every open picker and the Sources
+   list pick up the change on their own.
+
+## If a picked key is gone
+
+The field says "Unresolved" and names the key and the source: someone
+removed it from the file, or renamed it. The pick still names the
+source, so putting the key back (with the same name) resolves it
+again. Starting a run that needs a key like this refuses before
+anything runs, naming the same key.
 
 ## If the picker is greyed out
 
@@ -1934,6 +1944,13 @@ every secret picker beside the vault's own entries. Mill reads the
 value when something uses it and never stores it. An extension can add
 a source of its own the same way, and never sees another source's
 values.
+
+A `.env` or Bruno source is watched: edit the file and every open
+picker and the Sources list update on their own, no reload. If a
+picked key disappears from the file, the field says so — the pick
+still names it, so putting the key back resolves it again — and
+starting a run that needs it refuses before anything runs, naming the
+missing key.
 
 ## The lock policy
 

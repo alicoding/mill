@@ -231,12 +231,23 @@ func WirePluginSecretRefs(plugins *pluginsvc.PluginService, secrets *secretsvc.S
 
 type pluginSecretResolver struct{ secrets *secretsvc.SecretService }
 
+// TitleOf checks the vault's own entries first, then every enabled
+// secret source's keys (goal 0408 S1) -- a plugin's secretRef setting
+// accepts anything the picker offers, and the picker's own Sources
+// group is exactly ListProviderSecrets.
 func (r pluginSecretResolver) TitleOf(id string) (string, bool) {
-	entries, err := r.secrets.ListSecrets()
+	if entries, err := r.secrets.ListSecrets(); err == nil {
+		for _, e := range entries {
+			if e.ID == id {
+				return e.Title, true
+			}
+		}
+	}
+	providers, err := r.secrets.ListProviderSecrets()
 	if err != nil {
 		return "", false
 	}
-	for _, e := range entries {
+	for _, e := range providers {
 		if e.ID == id {
 			return e.Title, true
 		}

@@ -45,3 +45,54 @@ func requestSecretMissing(r httprequest.HTTPRequest) bool {
 	}
 	return r.SecretRef == ""
 }
+
+// requestOwnSecretRef names the same field requestSecretMissing checks
+// for presence -- the one place both read from, so the two checks can
+// never drift on which field an AuthType's secret lives in.
+func requestOwnSecretRef(r httprequest.HTTPRequest) string {
+	if r.AuthType == httprequest.AuthOAuth1 || r.AuthType == httprequest.AuthOAuth1Vendor {
+		if r.Auth == nil || r.Auth.OAuth1 == nil {
+			return ""
+		}
+		return r.Auth.OAuth1.ConsumerSecretRef
+	}
+	return r.SecretRef
+}
+
+// RequestSecretUnresolved is graph validation's unresolved-secret seam
+// (composition.SetSecretUnresolvedCheck, goal 0408 S1): unresolved=true
+// only when the request EXISTS, names a secret reference, and that
+// reference is a source-backed one whose source no longer has the key
+// -- an unset reference is validateRequiredRefs' territory, and a
+// vault-backed one that no longer exists is a different state
+// (secretRefGone) this check does not claim.
+//
+// The lock is released before calling secretUnresolvedLookup: that
+// seam calls back into this service's own SecretSources() (through
+// secretsvc's sourcesSnapshot), which would deadlock on c.mu if it
+// were still held here.
+//
+//wails:ignore
+func (c *ConfigureService) RequestSecretUnresolved(requestID string) (unresolved bool, key, sourceLabel string) {
+	c.mu.Lock()
+	var (
+		found bool
+		r     httprequest.HTTPRequest
+	)
+	for _, req := range c.requests {
+		if req.ID == requestID {
+			r, found = req, true
+			break
+		}
+	}
+	lookup := c.secretUnresolvedLookup
+	c.mu.Unlock()
+	if !found || lookup == nil {
+		return false, "", ""
+	}
+	ref := strings.TrimSpace(requestOwnSecretRef(r))
+	if ref == "" {
+		return false, "", ""
+	}
+	return lookup(ref)
+}

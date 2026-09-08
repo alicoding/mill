@@ -73,12 +73,12 @@ export interface PluginFetchInit {
     method?: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
     headers?: Record<string, string>;
     body?: string;
-    /** Attaches a vault entry the user picked in one of this plugin's
-     * secretRef settings: Mill resolves it after the request is
-     * approved, sends it as `header` (default Authorization) with
-     * `prefix` (default "Bearer "), and redacts the value from the
-     * response you receive. The value itself never reaches plugin
-     * code. */
+    /** Attaches the secret the user picked in one of this plugin's
+     * secretRef settings (a vault entry, or a key from a configured
+     * source): Mill resolves it after the request is approved, sends it
+     * as `header` (default Authorization) with `prefix` (default
+     * "Bearer "), and redacts the value from the response you receive.
+     * The value itself never reaches plugin code. */
     secret?: {
         settingKey: string;
         header?: string;

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { Events } from '@wailsio/runtime'
 import { SecretService } from './bindings'
 import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
 
@@ -17,6 +18,13 @@ let kinds: Record<string, Kind> = {}
 let loadError = ''
 let loaded = false
 const listeners = new Set<() => void>()
+
+// A source's file changing on disk (goal 0408 S1) re-reads live at
+// every resolve already; what this refetches is the LIST -- a key
+// added or removed has to reach every open picker without a reload.
+// Subscribed once here, at module scope, rather than per picker mount:
+// this cache is a singleton every picker already shares.
+Events.On('secrets:sources-changed', () => { void refreshSecretTitles() })
 
 function notify(): void {
   listeners.forEach((l) => l())

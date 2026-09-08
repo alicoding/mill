@@ -4,7 +4,8 @@ import { Button, Select, Stack, Text } from '@primer/react'
 import { refreshSecretTitles, useSecretTitles } from './secretTitleCache'
 import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
 import { SecretsEntryDialog } from './SecretsEntryDialog'
-import { toEntryID, toReference } from './secretReference'
+import { toEntryID, toReference, parseSourceRef } from './secretReference'
+import { refreshSecretSources, useConfigureEntityStore } from './configureEntityStore'
 import styles from './ListCard.module.css'
 
 // The one control every secret-shaped field uses (goal 0306): a select
@@ -42,12 +43,17 @@ export type SecretPickerProps = {
 export function SecretPicker({ value, onChange, kinds, newEntryTitle, ariaLabel, testID }: SecretPickerProps) {
   const { t } = useTranslation('views')
   const { titles, kinds: entryKinds, error, loaded } = useSecretTitles()
+  const secretSources = useConfigureEntityStore((s) => s.secretSources)
   const [adding, setAdding] = useState<Kind | null>(null)
   // Refreshed on every mount, not just the first: an entry added in
   // the Secrets view, or by another field's own Add, has to be on
-  // offer here without a reload.
+  // offer here without a reload. secretSources is refreshed here too
+  // (goal 0408 S1) -- a picker can render before anyone has ever
+  // opened Secrets > Sources, and its own "unresolved" caption needs
+  // the source's label.
   useEffect(() => {
     void refreshSecretTitles()
+    void refreshSecretSources()
   }, [])
 
   const selected = toEntryID(value)
@@ -55,7 +61,16 @@ export function SecretPicker({ value, onChange, kinds, newEntryTitle, ariaLabel,
   const ids = Object.keys(titles).filter(accepts)
   const vaultIDs = ids.filter((id) => !id.includes(':'))
   const sourceIDs = ids.filter((id) => id.includes(':'))
-  const gone = selected !== '' && loaded && !error && titles[selected] === undefined
+  const notCurrentlyListed = selected !== '' && loaded && !error && titles[selected] === undefined
+  // A picked source key that vanished from the file is UNRESOLVED, not
+  // gone: its source is still configured, so the field keeps naming it
+  // and says exactly which key isn't there (goal 0408 S1) -- a deleted
+  // vault entry, or a reference to a source that was itself removed,
+  // stays the plain "gone" state.
+  const sourceRef = notCurrentlyListed ? parseSourceRef(selected) : null
+  const unresolvedSource = sourceRef ? (secretSources ?? []).find((s) => s.ID === sourceRef.sourceID) : undefined
+  const unresolved = notCurrentlyListed && sourceRef !== null && unresolvedSource !== undefined
+  const gone = notCurrentlyListed && !unresolved
 
   return (
     <>
@@ -76,6 +91,7 @@ export function SecretPicker({ value, onChange, kinds, newEntryTitle, ariaLabel,
             </Select.OptGroup>
           )}
           {gone && <Select.Option value={selected}>{t('settings.extensions.secretRefGone')}</Select.Option>}
+          {unresolved && sourceRef && <Select.Option value={selected}>{sourceRef.key}</Select.Option>}
         </Select>
         <Button size="small" onClick={() => setAdding(kinds?.[0] ?? Kind.KindText)} data-testid="secret-ref-add">
           {t('settings.extensions.secretRefAdd')}
@@ -83,6 +99,11 @@ export function SecretPicker({ value, onChange, kinds, newEntryTitle, ariaLabel,
       </Stack>
       {gone && (
         <Text as="p" size="small" className={styles.attention} data-testid="secret-ref-gone">{t('settings.extensions.secretRefGone')}</Text>
+      )}
+      {unresolved && sourceRef && (
+        <Text as="p" size="small" className={styles.attention} data-testid="secret-ref-unresolved">
+          {t('settings.extensions.secretRefUnresolved', { key: sourceRef.key, source: unresolvedSource?.Label })}
+        </Text>
       )}
       {error && (
         <Text as="p" size="small" className={styles.muted} data-testid="secret-ref-unavailable">{t('settings.extensions.secretRefUnavailable')}</Text>

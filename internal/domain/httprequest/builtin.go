@@ -1,6 +1,10 @@
 package httprequest
 
-import "github.com/alicoding/mill/internal/domain/seedorigin"
+import (
+	"github.com/alicoding/mill/internal/domain/secretsource"
+	"github.com/alicoding/mill/internal/domain/seedorigin"
+	"github.com/alicoding/mill/internal/domain/vaultref"
+)
 
 // BuiltIn ships one seeded, working example HTTPRequest per real
 // implemented AuthType (docs/SPEC.md §4's Update) -- the same standing
@@ -57,6 +61,11 @@ const (
 	// registration.
 	ExampleConfluencePageReadID = "example-confluence-page-read"
 	ExampleJiraSearchID         = "example-jira-search"
+	// ExampleSourceSecretID (goal 0408 S1) names a Bearer example whose
+	// SecretRef points at the seeded example secret source instead of a
+	// vault entry -- demonstrating a source-backed reference end to end
+	// without needing the user's own file.
+	ExampleSourceSecretID = "example-source-secret-httpbin"
 )
 
 // One-URL model (composition.JoinRequestURL): every seed's BaseURL is
@@ -242,6 +251,25 @@ func BuiltIn() []HTTPRequest {
 				"and Basic auth.",
 			BaseURL: "https://example.invalid", AuthType: AuthBearer, Method: "GET",
 			OpenAPISpec: jiraSearchSpec,
+			BuiltIn:     true,
+			Seed:        seedorigin.Stamp(1),
+		},
+		{
+			// SecretRef is set directly here, unlike every sibling above:
+			// it names a REFERENCE to the seeded example secret source
+			// (secretsource.ExampleDotenvSourceID), never a value -- the
+			// same "a field holds the reference, never the value"
+			// invariant every other secret-shaped field already keeps
+			// (vaultref.go), so there is nothing here for the vault-
+			// adoption pass to create.
+			ID: ExampleSourceSecretID, Label: "Example: Bearer token from a source (httpbin.org)",
+			Description: "Sends Authorization: Bearer <token> against httpbin.org/bearer, with the " +
+				"token read live from the seeded example secret source instead of the vault. " +
+				"Open Secrets to see the reference, or remove the key from the source to see a " +
+				"run refuse before it starts.",
+			BaseURL: "https://httpbin.org/bearer", AuthType: AuthBearer, Method: "GET",
+			SecretRef:   vaultref.Ref(vaultref.ProviderEnv, secretsource.ExampleDotenvSourceID+"/EXAMPLE_API_TOKEN"),
+			OpenAPISpec: typedBearerSpec,
 			BuiltIn:     true,
 			Seed:        seedorigin.Stamp(1),
 		},

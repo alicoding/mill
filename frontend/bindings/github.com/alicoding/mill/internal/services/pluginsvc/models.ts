@@ -662,8 +662,9 @@ export interface SecretSourcePathContribution {
  * SettingContribution is one declared plugin setting. Type is the
  * four-type floor every declarative settings platform shares --
  * "boolean", "string", "number", "enum" -- plus "secretRef" (ADR-0048):
- * the user picks a vault entry, the stored value is that entry's id,
- * and the plugin only ever reads its title. Default is the value in
+ * the user picks any reference the picker offers -- a vault entry or a
+ * configured source's key (goal 0408 S1) -- the stored value is that
+ * reference, and the plugin only ever reads its title. Default is the value in
  * effect until the user touches the control (the converged
  * `default` spelling), decoded as whatever JSON scalar the manifest
  * wrote; validateContributes pins it to Type. Options is enum-only;

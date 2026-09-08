@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Events } from '@wailsio/runtime'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, IconButton, Select, Spinner, Stack, Text, TextInput } from '@primer/react'
 import { LockIcon, PencilIcon, PlusIcon, SearchIcon, TrashIcon } from '@primer/octicons-react'
@@ -65,6 +66,10 @@ export function ConfigureSecretSources() {
   const [keyCounts, setKeyCounts] = useState<Record<string, { count: number; error: string }>>({})
   const [keyLists, setKeyLists] = useState<Record<string, { keys: string[]; error: string }>>({})
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({})
+  // Bumped on every live file change (goal 0408 S1) to re-run the key-
+  // count effect below without re-fetching the source LIST itself --
+  // the file changed, not which sources exist.
+  const [liveChangeSignal, setLiveChangeSignal] = useState(0)
 
   const refetch = () => {
     void refreshSecretSources()
@@ -77,6 +82,27 @@ export function ConfigureSecretSources() {
   const kindLabel = (k: string) => labelForKind(k, pluginKinds, t)
   const field = pathField(kind, pluginKind, t)
   useEffect(() => { refetch() }, [])
+
+  // A source's file changing on disk (an external editor's save, a
+  // script rewriting it) re-arrives here as one typed event per source
+  // -- no polling. The picker's own titles refresh through
+  // secretTitleCache's own subscription; this page refreshes the two
+  // things only it shows: problems, and (via liveChangeSignal) the key
+  // counts/lists below.
+  useEffect(() => {
+    return Events.On('secrets:sources-changed', () => {
+      SecretService.SourceProblems()
+        .then((p) => setProblems(Object.fromEntries(Object.entries(p ?? {}).flatMap(([id, v]) => (v ? [[id, v]] : [])))))
+        .catch(() => setProblems({}))
+      setLiveChangeSignal((n) => n + 1)
+      for (const sourceID of Object.keys(expandedKeys)) {
+        if (!expandedKeys[sourceID]) continue
+        SecretService.ListDotenvSourceKeys(sourceID)
+          .then((keys) => setKeyLists((prev) => ({ ...prev, [sourceID]: { keys: keys ?? [], error: '' } })))
+          .catch((err) => setKeyLists((prev) => ({ ...prev, [sourceID]: { keys: [], error: messageFor(err, t) } })))
+      }
+    })
+  }, [expandedKeys, t])
 
   const startCreate = () => {
     setEditingID(null)
@@ -120,7 +146,7 @@ export function ConfigureSecretSources() {
       }
     })).then((entries) => { if (live) setKeyCounts(Object.fromEntries(entries)) })
     return () => { live = false }
-  }, [sources])
+  }, [sources, liveChangeSignal])
 
   // The disclosure reads fresh on every expand; collapsing forgets the
   // last answer entirely rather than showing a stale list next time.

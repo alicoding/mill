@@ -68,7 +68,7 @@ describe('contextCopyKey', () => {
 // written before the field existed. A FailureKind added on the Go side
 // with no matching case here fails `tsc` at errorCopyKey's own
 // exhaustive switch, same sync mechanism GO_CONTEXTS gives contextCopyKey.
-const GO_FAILURE_KINDS: SecretAccessFailureKind[] = ['unrecognized-entry', 'other', '']
+const GO_FAILURE_KINDS: SecretAccessFailureKind[] = ['unrecognized-entry', 'unresolved-reference', 'other', '']
 
 describe('errorCopyKey', () => {
   it('maps unrecognized-entry to a resolvable locale key that interpolates the reference', () => {
@@ -78,9 +78,16 @@ describe('errorCopyKey', () => {
     expect(resolved).toBe('Unrecognized vault entry · example-secret-guard-token')
   })
 
+  it('maps unresolved-reference to a resolvable locale key that interpolates the reference', () => {
+    const key = errorCopyKey('unresolved-reference')
+    expect(key).not.toBeNull()
+    const resolved = i18n.t(key as string, { ns: 'secrets', reference: 'env:proj-env/GONE' })
+    expect(resolved).toBe('Unresolved reference · env:proj-env/GONE')
+  })
+
   it('falls back to the raw error text for every other FailureKind (including a pre-migration empty row)', () => {
     for (const failureKind of GO_FAILURE_KINDS) {
-      if (failureKind === 'unrecognized-entry') continue
+      if (failureKind === 'unrecognized-entry' || failureKind === 'unresolved-reference') continue
       expect(errorCopyKey(failureKind), `FailureKind ${JSON.stringify(failureKind)} unexpectedly got a dedicated label`).toBeNull()
     }
   })
