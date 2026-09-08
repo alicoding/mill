@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activation, faceOwnsInput, shieldUp } from './atlasActivation'
+import { activation, contentInert, faceOwnsInput, shieldUp } from './atlasActivation'
 
 // goal 0354: the one activation contract, across its whole input space
 // -- which state a board object is in, and which canvas opt-out each
@@ -35,5 +35,18 @@ describe('the derived canvas opt-out', () => {
     expect(shieldUp('interactive', 'selected', false)).toBe(false)
     expect(shieldUp('static', 'idle', false)).toBe(false)
     expect(shieldUp('interactive', 'idle', true)).toBe(false)
+  })
+
+  // goal 0392 S1's CI amendment: a table object's own grid is a real
+  // interactive descendant (editable cells), so an idle face -- a
+  // preview tile's own state is always idle -- must be `inert`, not
+  // just pointer-shielded, or WCAG's aria-hidden-focus rule catches a
+  // focusable cell inside a hidden preview. Activating the face (goal
+  // 0354's selected/editing states) is what removes it again.
+  it('makes an interactive face inert exactly while it is idle, never a static one', () => {
+    expect(contentInert('interactive', 'idle')).toBe(true)
+    expect(contentInert('interactive', 'selected')).toBe(false)
+    expect(contentInert('interactive', 'editing')).toBe(false)
+    expect(contentInert('static', 'idle')).toBe(false)
   })
 })

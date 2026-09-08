@@ -3,6 +3,7 @@ package atlas
 import (
 	"time"
 
+	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
 )
 
@@ -30,13 +31,14 @@ const BoardObjectSeedAssetKey = "seedAsset"
 // this prefix from its own kind-scoped locator (this package's own
 // const block above has the worked example).
 //
-// 'table' is deliberately NOT seeded here: its own artifact is a
-// Configure List (tableTool.ts's own ConfigureService.CreateList),
-// owned by configuresvc's seed lifecycle, not atlassvc's -- seeding
-// one from this package would mean either reaching across that
-// boundary or duplicating list.BuiltIn()'s own reconcile, neither of
-// which this goal's scope covers. A follow-up that seeds a built-in
-// List and references its ID here can close this gap.
+// 'table' projects list.ExampleCountryCodesID (goal 0392 S1's own
+// closing of the gap this comment used to name): a leaf domain package
+// importing another leaf domain package's exported ID constant, no
+// service-layer reach-across -- the List itself is seeded
+// independently by configuresvc's own reconcile
+// (list.BuiltIn()/reconcileBuiltInLists), which main.go always runs
+// before atlassvc's, so the referenced List exists by the time this
+// object's payload names it.
 func BuiltInBoardObjects() []BoardObject {
 	now := time.Now()
 	return []BoardObject{
@@ -137,6 +139,24 @@ func BuiltInBoardObjects() []BoardObject {
 			Payload:   map[string]string{"title": "Engagement record (YAML)", BoardObjectSeedAssetKey: "yaml"},
 			Position:  Position{X: 520, Y: 620},
 			Size:      &Dimensions{W: 380, H: 320},
+			ParentID:  cardSketchesID,
+			CreatedAt: now, UpdatedAt: now,
+			BuiltIn: true, Seed: seedorigin.Stamp(1),
+		},
+		{
+			// The object<->entity lifecycle proof (goal 0392 S1): a table
+			// projecting a REAL seeded List, so deleting it live
+			// demonstrates the delete-time toast's own entity-outcome
+			// copy without first requiring the user to build a table.
+			ID: objectTableExampleID, Kind: "table",
+			Payload: map[string]string{"listID": list.ExampleCountryCodesID, "title": "Country codes"},
+			// Y:1000 -- a new row below every existing golden's own
+			// footprint (the lowest, json/yaml at Y:620, is 320 tall),
+			// so this doesn't collide with any of them (cardSketchesID's
+			// own header comment: a seeded object here shifts the whole
+			// board's content extent, so a new one is placed clear of
+			// the rest rather than eyeballed into a gap).
+			Position:  Position{X: 80, Y: 1000},
 			ParentID:  cardSketchesID,
 			CreatedAt: now, UpdatedAt: now,
 			BuiltIn: true, Seed: seedorigin.Stamp(1),
