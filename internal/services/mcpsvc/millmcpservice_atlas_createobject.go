@@ -181,6 +181,7 @@ func (m *MillMCPService) registerAtlasCreateObjectTool() {
 			"object at it; every other file-backed kind names a file that already exists through " +
 			"payload.mirrorPath. Place it on one card's canvas with parentId, or leave it off for the " +
 			"top-level board. " + approvalPollNote,
+		Annotations: createAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasCreateBoardObjectArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.checkCreateBoardObject(in); err != nil {
 			return nil, nil, err

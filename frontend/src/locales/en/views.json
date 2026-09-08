@@ -194,8 +194,8 @@
       "addressSave": "Save",
       "addressSaved": "Saved. Restart Mill to use the new address.",
       "addressEnvOverrideCaption": "The MILL_MCP_ADDR environment variable sets this address, overriding anything saved here.",
-      "allowImportLabel": "Allow MCP clients to import data",
-      "allowImportCaption": "Lets a connected client create workflows, integrations, lists and servers.",
+      "allowImportLabel": "Allow MCP clients to change content",
+      "allowImportCaption": "Diagrams, sheets, lists and imports; each change waits for your approval when asked.",
       "askBeforeImportLabel": "Ask me before each MCP import",
       "askBeforeImportCaption": "Each import waits for your approval, then times out after 2 minutes."
     },
