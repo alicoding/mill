@@ -515,7 +515,7 @@
     "urlCaption": "The full URL, including its path, supporting {param} and {{example}}-style environment variables.",
     "urlPlaceholder": "https://api.example.com/v1/widgets/{id}",
     "description": "Description",
-    "descriptionCaption": "Optional: what this request is for, or any caveat worth noting.",
+    "descriptionCaption": "Shown wherever this integration is picked.",
     "headers": "Headers",
     "headersDescription": "Static headers (e.g. a required API version) sent with every call, in addition to whatever the Auth type adds.",
     "headerNamePlaceholder": "header name",
