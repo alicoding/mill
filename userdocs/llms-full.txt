@@ -1809,7 +1809,10 @@ Right-clicking the icon keeps the plain menu: Open Mill, Quit.
 ## Run from the Quick Panel
 
 Summon the Quick Panel with your hotkey, type a workflow's name, and
-the footer shows what the highlighted row can do:
+the footer shows what the highlighted row can do. Drag the panel by
+its top edge; it stays where you leave it. To put it back in the
+middle of the screen, search "Reset Quick Panel position" in the
+command palette (⌘K).
 
 - **↩** runs it. The panel stays open and the footer tells you the
   outcome: done and how long it took, failed and why, or waiting for
@@ -2610,6 +2613,7 @@ Shows a notification when the workflow reaches this step. "Title attribute" and 
   - **Title attribute (optional)** — Which Attributes field replaces the fixed title, when set.
   - **Message** — What the notification says.
   - **Body attribute (optional)** — Which Attributes field replaces the fixed message, when set.
+  - **Send to** — Leave empty to reach every paired device.
 
 ### Save list row
 
@@ -2915,6 +2919,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `panel.applyClipboard` | Apply from clipboard | — | Global | Always available |
 | `panel.open` | Open Quick Panel | — | Global | Conditional — available only in a matching state |
 | `panel.openMill` | Open Mill | — | Global | Always available |
+| `panel.resetPosition` | Reset Quick Panel position | — | Global | Conditional — available only in a matching state |
 | `perspective.row.delete` | Delete perspective | — | Global | Acts on the selected entity |
 | `perspective.row.rename` | Rename perspective | — | Global | Acts on the selected entity |
 | `review.rules` | Guardrail rules | — | review | Always available |
@@ -4429,8 +4434,9 @@ your plugin feels like part of Mill.
     acquireMillApi()` is its door back to Mill. Styles may stay
     inline. A canvas object's page receives the object as its context
     and writes back through `object.updatePayload`; its face is
-    always interactive. A surface that draws into Mill's own document
-    instead still works; `renderFace` is the deprecated form. (checked)
+    always interactive. A canvas object may still draw into Mill's own
+    document instead (`renderFace`, the deprecated form) — see rule 32
+    for why a view or capture may not. (checked)
 
 22. A canvas object whose face reports an open editor declares
     `content: "interactive"` on the same object. `content` says what
@@ -4502,6 +4508,18 @@ your plugin feels like part of Mill.
     (`"placement": "board-switcher"`) that writes card fields through
     `api.content.setCardFields` declares the `edit-card-fields`
     capability. (checked)
+
+## Sandboxed activation
+
+32. `main.js` itself activates inside a sandboxed frame, the same
+    isolation an entry page gets — unless your manifest declares a
+    canvas object, which still activates alongside Mill's own document
+    until Mill ships a framed canvas API. Because of that, a view or
+    capture must declare an entry page (rule 21): Mill can no longer
+    draw one in its own document, so a view or capture with no entry
+    page refuses the install. `registerCommand`, `registerView` and
+    `registerCapture` work the same either way — write one `main.js`
+    for both. (checked: refuses the install)
 
 ## Checking your own plugin
 
@@ -4798,23 +4816,23 @@ A refused install leaves nothing on disk.
 
 3 of 11 contribution families are stable; 0 ready to promote; 0 regressed.
 
-| Family | Level | Conformance | Example | E2E | Docs | SDK types | MCP | Docs behind code (days) | Flags |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| canvasObjects | experimental | no | yes | yes | yes | yes | yes | 1 | — |
-| steps | experimental | no | yes | yes | yes | no | yes | 0 | — |
-| captures | experimental | no | no | yes | yes | yes | n/a | 0 | — |
-| settings | stable | yes | yes | yes | yes | yes | n/a | 0 | — |
-| network | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
-| views | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
-| commands | stable | yes | yes | yes | yes | yes | yes | 0 | — |
-| themes | stable | yes | yes | yes | yes | yes | n/a | 1 | — |
-| secretSources | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
-| tools | experimental | no | yes | no | yes | no | yes | 0 | — |
-| mcpServers | experimental | no | yes | no | yes | no | no | 0 | — |
+| Family | Level | Conformance | Example | E2E | Docs | SDK types | MCP | Code changed | Docs changed | Flags |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| canvasObjects | experimental | no | yes | yes | yes | yes | yes | 2026-09-07 | 2026-09-06 | — |
+| steps | experimental | no | yes | yes | yes | no | yes | 2026-09-07 | 2026-09-08 | — |
+| captures | experimental | no | no | yes | yes | yes | n/a | 2026-09-07 | 2026-09-07 | — |
+| settings | stable | yes | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-08 | — |
+| network | experimental | no | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-07 | — |
+| views | experimental | no | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-07 | — |
+| commands | stable | yes | yes | yes | yes | yes | yes | 2026-09-07 | 2026-09-08 | — |
+| themes | stable | yes | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-05 | — |
+| secretSources | experimental | no | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-07 | — |
+| tools | experimental | no | yes | no | yes | no | yes | 2026-09-07 | 2026-09-07 | — |
+| mcpServers | experimental | no | yes | no | yes | no | no | 2026-09-07 | — | — |
 
 ## How a family moves
 
-A family's level changes only by a decision recorded in an architecture record (ADR-0047, ADR-0048), never by this table alone, however complete its evidence reads. "Ready to promote" is an argument for that decision, not the decision itself. This table regenerates from the repository on every `go generate ./internal/docsgen` and is checked against the committed copy on every build.
+A family's level changes only by a decision recorded in an architecture record (ADR-0047, ADR-0048), never by this table alone, however complete its evidence reads. "Ready to promote" is an argument for that decision, not the decision itself. This table regenerates from the repository on every `go generate ./internal/docsgen` and is checked against the committed copy on every build. The control room dashboard renders a live "days behind" figure from the code/docs dates below; this page shows the dates themselves, never that figure, so the committed file never depends on the day it was generated.
 
 ---
 

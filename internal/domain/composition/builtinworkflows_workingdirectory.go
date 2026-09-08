@@ -50,6 +50,8 @@ func runInCapturedFolderWorkflow() Workflow {
 		// Revision 2 (goal 0368): apply-notify gained a titleAttribute
 		// ConfigField, whose default-filled "" now lands in this seed's own
 		// persisted Config (ResolveNodeDefaults fills every declared field).
-		Seed: seedorigin.Stamp(2),
+		// Revision 3 (goal 0372): apply-notify gained a targets
+		// ConfigField, whose default-filled "" now lands here too.
+		Seed: seedorigin.Stamp(3),
 	}
 }

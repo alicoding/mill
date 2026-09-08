@@ -12,12 +12,14 @@ import (
 )
 
 // The static checks an install runs over the extracted folder before
-// the plugin is enabled (docs/goals/0349 S6, standard rules 24-26):
-// code that builds code at run time is refused, a literal address whose
-// host the manifest never declared is refused, and code Mill cannot
-// read easily is flagged for the person to weigh. The same checks run
-// in the command-line conformance tool, so an author meets them before
-// a user does.
+// the plugin is enabled (docs/goals/0349 S6, standard rules 24-26, and
+// rule 32 added for docs/goals/0375 S1b): code that builds code at run
+// time is refused, a literal address whose host the manifest never
+// declared is refused, code Mill cannot read easily is flagged for the
+// person to weigh, and a view or capture with no entry page is refused
+// since it cannot activate in the sandbox every non-built-in plugin
+// runs inside. The same checks run in the command-line conformance
+// tool, so an author meets them before a user does.
 //
 // Vendored code (a vendor/ directory) is held to the run-time-code rule
 // like the plugin's own, but an address inside it warns rather than
@@ -110,10 +112,34 @@ func readShippedSource(root, rel string) (shippedSource, bool) {
 	return shippedSource{rel: slash, body: string(raw), vendored: vendored}, true
 }
 
-// InstallChecks runs the three rules over a folder and answers the
-// refusals (rules 24 and 25) and the warnings (rule 26, and a vendored
-// file's undeclared address) with the rule number each names.
+// conformFramedSurfaces is standard rule 32 (docs/goals/0375 S1b): a
+// non-built-in view or capture with no entry page cannot activate
+// framed, so it is refused at install rather than left to rule 21's
+// advisory warning -- unlike a canvas object, which may still keep the
+// same-DOM form (the "canvas-host" grant) until the framed canvas API
+// exists. Never reached for a built-in: neither install path nor the
+// conformance tool runs this check against the embedded bundle.
+func conformFramedSurfaces(m Manifest) []string {
+	var problems []string
+	for _, v := range m.Contributes.Views {
+		if v.Entry == "" {
+			problems = append(problems, fmt.Sprintf("standard rule 32: view %q needs an entry page; Mill runs it in a sandbox", v.ID))
+		}
+	}
+	for _, c := range m.Contributes.Captures {
+		if c.Entry == "" {
+			problems = append(problems, fmt.Sprintf("standard rule 32: capture %q needs an entry page; Mill runs it in a sandbox", c.ID))
+		}
+	}
+	return problems
+}
+
+// InstallChecks runs the standard's install-blocking rules over a
+// folder and answers the refusals (rules 24, 25 and 32) and the
+// warnings (rule 26, and a vendored file's undeclared address) with
+// the rule number each names.
 func InstallChecks(dir string, m Manifest) (refusals, warnings []string) {
+	refusals = append(refusals, conformFramedSurfaces(m)...)
 	for _, src := range shippedSources(dir) {
 		refusals = append(refusals, runtimeCodeProblems(src)...)
 		reach, vendorReach := undeclaredHosts(src, m.Contributes.Network)

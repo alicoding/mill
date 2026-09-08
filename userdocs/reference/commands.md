@@ -210,6 +210,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `panel.applyClipboard` | Apply from clipboard | — | Global | Always available |
 | `panel.open` | Open Quick Panel | — | Global | Conditional — available only in a matching state |
 | `panel.openMill` | Open Mill | — | Global | Always available |
+| `panel.resetPosition` | Reset Quick Panel position | — | Global | Conditional — available only in a matching state |
 | `perspective.row.delete` | Delete perspective | — | Global | Acts on the selected entity |
 | `perspective.row.rename` | Rename perspective | — | Global | Acts on the selected entity |
 | `review.rules` | Guardrail rules | — | review | Always available |

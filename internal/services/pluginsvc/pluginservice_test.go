@@ -348,3 +348,30 @@ func TestListPlugins_ValidatesContributedSettings(t *testing.T) {
 		}
 	}
 }
+
+// A non-built-in plugin that contributes a canvas object keeps
+// same-DOM activation until the framed canvas API exists
+// (docs/goals/0375 S1b); PluginInfo names that honestly as the
+// "canvas-host" grant, never silently. A plugin with no canvas object
+// carries no grant, and a built-in never does either.
+func TestListPlugins_CanvasObjectGrantsCanvasHost(t *testing.T) {
+	root := t.TempDir()
+	writePlugin(t, root, "draws", `{"id":"draws","name":"Draws","version":"1.0.0","contributes":{"canvasObjects":[{"kind":"draws"}]}}`, nil)
+	writePlugin(t, root, "no-canvas", `{"id":"no-canvas","name":"No canvas","version":"1.0.0"}`, nil)
+
+	svc := New(root, nil, "1.0.0")
+	infos, err := svc.ListPlugins()
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID := map[string]PluginInfo{}
+	for _, i := range infos {
+		byID[filepath.Base(i.Dir)] = i
+	}
+	if got := byID["draws"]; len(got.Grants) != 1 || got.Grants[0] != "canvas-host" {
+		t.Fatalf("draws grants = %v, want [canvas-host]", got.Grants)
+	}
+	if got := byID["no-canvas"]; len(got.Grants) != 0 {
+		t.Fatalf("no-canvas grants = %v, want none", got.Grants)
+	}
+}

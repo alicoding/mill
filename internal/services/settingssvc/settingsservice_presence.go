@@ -55,14 +55,31 @@ func bringMainToFront(w *windowing.Window) {
 	w.Focus()
 }
 
-// bringFloatingToFront is the shared show sequence for Mill's two
-// always-alive floating second windows (the Quick Panel, ADR-0033's own
-// naming) -- same un-hide-first reasoning as bringMainToFront. Restore
-// is deliberately omitted: neither floating window is ever minimized
-// (DisableResize, no native minimize control in auxwindows.go's
-// options), so calling it would be a meaningless no-op on this family,
-// unlike the main window the OS lets the user actually minimize.
-func bringFloatingToFront(w *windowing.Window) {
+// floatingWindow is bringFloatingToFront's own minimal surface,
+// narrowed from *windowing.Window so the Quick Panel's own show
+// sequence (settingsservice_panelgeometry.go's presentPanelShow) has a
+// real unit test: a fake implementing this records SetPosition/Center/
+// Show/Focus in the order they actually happen, with no live OS window.
+// *windowing.Window satisfies it as-is -- every existing caller below
+// passes one unchanged.
+type floatingWindow interface {
+	Show()
+	Focus()
+	SetPosition(x, y int)
+	Center()
+}
+
+// bringFloatingToFront is the shared show sequence for Mill's
+// always-alive floating second windows (the Quick Panel, the capture
+// window, the run monitor -- ADR-0033's own naming) -- same
+// un-hide-first reasoning as bringMainToFront. Restore is deliberately
+// omitted: none of these windows are ever minimized (DisableResize, no
+// native minimize control in auxwindows.go's options), so calling it
+// would be a meaningless no-op on this family, unlike the main window
+// the OS lets the user actually minimize. Every caller already guards
+// nil before reaching here, so the check below only matters for an
+// explicit nil passed directly.
+func bringFloatingToFront(w floatingWindow) {
 	if w == nil {
 		return
 	}

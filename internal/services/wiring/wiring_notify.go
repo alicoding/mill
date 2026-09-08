@@ -33,7 +33,7 @@ import (
 // is "" for a run context the notifier can't resolve, which falls back
 // to a uuid so Publish's required-key check still holds.
 func WireNotify(notif *notificationsvc.NotificationService) {
-	composition.SetNotifier(func(title, body, runID string) error {
+	composition.SetNotifier(func(title, body, runID string, targets []string) error {
 		dedupeKey := "workflow-notify:" + runID
 		if runID == "" {
 			dedupeKey = "workflow-notify:" + uuid.NewString()
@@ -44,6 +44,7 @@ func WireNotify(notif *notificationsvc.NotificationService) {
 			Body:      body,
 			DedupeKey: dedupeKey,
 			SourceRef: runID,
+			Targets:   targets,
 		})
 		return err
 	})
