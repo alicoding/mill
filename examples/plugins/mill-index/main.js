@@ -10,10 +10,21 @@
 // It contributes one board-local object whose face is the listing.
 // The face re-renders itself on every change -- renderFace only
 // re-runs on the object's OWN data, so the change event is the door.
+//
+// It also demonstrates the lifecycle event family (docs/goals/0392
+// S2): api.on('object.*') fires for every board object create/delete
+// on the WHOLE app, not just this one board -- a "just added" line
+// names the newest one for a few seconds, clearing itself back into
+// the ordinary listing.
+
+const LAST_CREATED_DISPLAY_MS = 5000
 
 /** @param {import('../../../frontend/plugin-sdk').MillPluginAPI} api */
 export function activate(api) {
 	const faces = new Set()
+	/** @type {string | null} */
+	let lastCreatedKind = null
+	let lastCreatedTimer = 0
 	const redrawAll = () => {
 		for (const el of faces) {
 			if (!el.isConnected) { faces.delete(el); continue }
@@ -21,6 +32,13 @@ export function activate(api) {
 		}
 	}
 	api.on('contents:changed', redrawAll)
+	api.on('object.*', (ev) => {
+		if (ev.event !== 'object.created') return
+		lastCreatedKind = ev.kind ?? null
+		clearTimeout(lastCreatedTimer)
+		lastCreatedTimer = setTimeout(() => { lastCreatedKind = null; redrawAll() }, LAST_CREATED_DISPLAY_MS)
+		redrawAll()
+	})
 
 	// Declared in the manifest (contributes.commands) and named by the
 	// manifest's own tool, so the same refresh a person runs from the
@@ -60,30 +78,32 @@ export function activate(api) {
 			if (!byKind.has(e.kind)) byKind.set(e.kind, [])
 			byKind.get(e.kind).push(e)
 		}
-		// All text lands via textContent -- never markup -- so a title can
-		// never inject anything.
+		// api.ui.el is text-safe by construction -- never innerHTML -- so
+		// a title can never inject anything.
 		el.replaceChildren()
 		el.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:10px 12px;font:12px system-ui;height:100%;box-sizing:border-box;overflow:auto'
 		el.setAttribute('data-testid', 'index-face')
+		if (lastCreatedKind) {
+			const justAdded = document.createElement('div')
+			justAdded.style.cssText = 'color:var(--fgColor-muted)'
+			justAdded.textContent = 'Just added: ' + lastCreatedKind
+			justAdded.setAttribute('data-testid', 'index-last-created')
+			el.append(justAdded)
+		}
 		if (byKind.size === 0) {
-			const empty = document.createElement('div')
-			empty.textContent = 'Nothing on the board yet.'
-			el.append(empty)
+			el.append(api.ui.el('div', {}, ['Nothing on the board yet.']))
 			return
 		}
 		for (const [kind, list] of [...byKind.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-			const heading = document.createElement('div')
-			heading.style.cssText = 'font-weight:600;margin-top:4px'
-			heading.textContent = kind.charAt(0).toUpperCase() + kind.slice(1) + ' · ' + list.length
-			heading.setAttribute('data-testid', 'index-kind-' + kind)
-			el.append(heading)
+			el.append(api.ui.el('div', { style: 'font-weight:600;margin-top:4px', 'data-testid': 'index-kind-' + kind }, [
+				kind.charAt(0).toUpperCase() + kind.slice(1) + ' · ' + list.length,
+			]))
 			for (const e of list) {
-				const row = document.createElement('div')
-				row.textContent = e.title
-				row.style.cssText = 'padding-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'
-				row.setAttribute('data-testid', 'index-row')
-				row.setAttribute('data-kind', kind)
-				el.append(row)
+				el.append(api.ui.el('div', {
+					style: 'padding-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis',
+					'data-testid': 'index-row',
+					'data-kind': kind,
+				}, [e.title]))
 			}
 		}
 	}

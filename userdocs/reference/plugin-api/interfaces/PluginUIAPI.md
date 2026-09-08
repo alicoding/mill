@@ -8,6 +8,48 @@
 
 ## Properties
 
+### el
+
+```ts
+el: <K>(tag, attrs?, children?) => HTMLElementTagNameMap[K];
+```
+
+Builds one DOM element the safe way, in the same document `el`
+this SDK call runs in — a face's own document for a canvas
+object, Mill's document for a same-DOM plugin's other UI. attrs'
+values become attribute strings (never `innerHTML`); an `on*` key
+whose value is a function adds that event listener instead; a
+`style` object assigns onto the element's own style. A string
+child becomes a text node, never markup, so nothing you pass can
+inject anything; a `null`/`undefined` child is skipped. Returns
+the built element unattached — append it yourself.
+
+#### Type Parameters
+
+##### K
+
+`K` *extends* keyof `HTMLElementTagNameMap`
+
+#### Parameters
+
+##### tag
+
+`K`
+
+##### attrs?
+
+[`PluginElAttrs`](../type-aliases/PluginElAttrs.md)
+
+##### children?
+
+[`PluginElChild`](../type-aliases/PluginElChild.md)[]
+
+#### Returns
+
+`HTMLElementTagNameMap`\[`K`\]
+
+***
+
 ### renderOutput
 
 ```ts

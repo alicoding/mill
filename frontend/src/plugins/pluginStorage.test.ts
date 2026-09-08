@@ -42,4 +42,22 @@ describe('buildPluginStorage', () => {
     expect(s.keys()).toEqual([])
     expect(setValue).not.toHaveBeenCalled()
   })
+
+  it('getList answers [] for an absent or non-array key', async () => {
+    const s = buildPluginStorage('p', { notAList: '3' })
+    await expect(s.getList('missing')).resolves.toEqual([])
+    await expect(s.getList('notAList')).resolves.toEqual([])
+  })
+
+  it('pushList unshifts, dedupes by the given key, and trims to max', async () => {
+    const s = buildPluginStorage('p', {})
+    await s.pushList('history', { url: 'a' })
+    await s.pushList('history', { url: 'b' })
+    await s.pushList('history', { url: 'a' }, { dedupeBy: (i) => (i as { url: string }).url, max: 5 })
+    await expect(s.getList('history')).resolves.toEqual([{ url: 'a' }, { url: 'b' }])
+
+    await s.pushList('history', { url: 'c' }, { max: 2 })
+    await expect(s.getList('history')).resolves.toEqual([{ url: 'c' }, { url: 'a' }])
+    expect(setValue).toHaveBeenLastCalledWith('p', 'history', JSON.stringify([{ url: 'c' }, { url: 'a' }]))
+  })
 })

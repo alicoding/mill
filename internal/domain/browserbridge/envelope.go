@@ -44,12 +44,33 @@ const (
 	StatusDone    = "done"
 )
 
+// DownloadBytesCap is the largest download the bridge carries its own
+// content for. Mirrored in the extension's own background.js (the side
+// that actually measures and enforces it, since only it can read the
+// file); this constant is the wire contract both sides agree to, and
+// what a Go-side test asserts an oversized entry against.
+const DownloadBytesCap = 10 * 1024 * 1024
+
 // Download is a file the browser saved while a run was in flight,
 // reported with where it landed so a later step can read it.
 type Download struct {
 	Path     string `json:"path"`
 	Filename string `json:"filename"`
-	Bytes    int64  `json:"bytes"`
+	// Bytes is the file's own size, always reported regardless of
+	// whether Data crossed too -- goal 0350 S3's cap decision reads
+	// against this, never against len(Data).
+	Bytes int64 `json:"bytes"`
+	// Data is the file's own content, standard-base64, present only
+	// when Bytes is within DownloadBytesCap -- goal 0350 S3's mirror-
+	// not-point rule: a step that wants this download AS AN OBJECT
+	// needs real bytes, never a path into the browser's own downloads
+	// folder, which the run does not own and may not outlive.
+	Data string `json:"data,omitempty"`
+	// TooLarge marks a download the extension measured over
+	// DownloadBytesCap and deliberately left Data empty for -- distinct
+	// from a download that is genuinely zero bytes, which also has
+	// empty Data but TooLarge false.
+	TooLarge bool `json:"tooLarge,omitempty"`
 }
 
 // Result is one POST back from the browser. StepIndex present means it
