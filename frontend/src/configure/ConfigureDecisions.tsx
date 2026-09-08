@@ -446,6 +446,7 @@ export function ConfigureDecisions() {
           listId="configure.decisions"
           items={decisionItems}
           searchPlaceholder={t('configureDecisions.searchPlaceholder')}
+          selection={{ entity: 'decision' }}
           emptyState={{
             icon: ENTITY_ICON.decision.Icon,
             heading: t('configureDecisions.emptyHeading'),

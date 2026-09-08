@@ -1,10 +1,33 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, ActionMenu, Button, IconButton, Stack, Text } from '@primer/react'
+import { ActionList, ActionMenu, Button, Checkbox, IconButton, Stack, Text } from '@primer/react'
 import { ChevronDownIcon, ChevronRightIcon, KebabHorizontalIcon } from '@primer/octicons-react'
 import { ConfirmDialog } from './ConfirmDialog'
 import { menuActionLabel, menuActionsToContextMenuItems, performMenuAction, runMenuAction, visibleMenuActions, type ContextMenuOpener, type InventoryItem, type InventoryMenuAction } from './inventoryItem'
+import type { PointerLike } from './useListSelection'
 import styles from './InventoryList.module.css'
+
+// A row's own selection affordance (goal 0404 S1), built by
+// InventoryList from its one shared useListSelection instance --
+// InventoryRow never imports the hook itself, only this small
+// per-row projection of it. `longPress` is present only at a narrow/
+// companion viewport (InventoryList's own wiring decision); its
+// absence is what keeps a long touch-and-hold from arming selection
+// mode on a desktop-width pointer-driven layout.
+export interface InventoryRowSelection {
+  isSelected: boolean
+  isSelectionMode: boolean
+  onToggle: () => void
+  // A row click's modifiers decide toggle/range/open (the hook's own
+  // activate()) -- returns whether the row should still open.
+  onActivate: (mods: { shiftKey: boolean; toggleModifier: boolean }) => boolean
+  longPress?: {
+    onPointerDown: (e: PointerLike) => void
+    onPointerMove: (e: PointerLike) => void
+    onPointerUp: () => void
+    onPointerCancel: () => void
+  }
+}
 
 // One dense, identity-differentiated row for every resource inventory
 // (docs/goals/0007-resource-inventory-redesign.md), split out of
@@ -21,7 +44,7 @@ import styles from './InventoryList.module.css'
 // against bubbling the click up into the row's onOpen, done once here
 // via a stopPropagation wrapper around the whole trailing cluster
 // rather than in every caller.
-export function InventoryRow({ item, onOpenMenu }: { item: InventoryItem; onOpenMenu: ContextMenuOpener }) {
+export function InventoryRow({ item, onOpenMenu, selection }: { item: InventoryItem; onOpenMenu: ContextMenuOpener; selection?: InventoryRowSelection }) {
   const { t } = useTranslation('common')
   const [pendingConfirm, setPendingConfirm] = useState<InventoryMenuAction | null>(null)
   // Unavailable means ABSENT (goal 0343): an action whose registry
@@ -30,19 +53,72 @@ export function InventoryRow({ item, onOpenMenu }: { item: InventoryItem; onOpen
   return (
     <>
     <ActionList.Item
-      onSelect={item.onOpen}
+      onSelect={(e) => {
+        if (!selection) {
+          item.onOpen()
+          return
+        }
+        const opensRow = selection.onActivate({ shiftKey: e.shiftKey, toggleModifier: e.metaKey || e.ctrlKey })
+        if (opensRow) item.onOpen()
+      }}
       data-testid="inventory-row"
       data-entity={item.entity}
+      data-selection-mode={selection?.isSelectionMode ? 'true' : undefined}
       onContextMenu={(e) => {
         if (actions.length === 0) return
         e.preventDefault()
         onOpenMenu({ x: e.clientX, y: e.clientY, items: menuActionsToContextMenuItems(actions) })
       }}
+      {...(selection?.longPress
+        ? {
+          onPointerDown: (e: React.PointerEvent) => selection.longPress!.onPointerDown(e),
+          onPointerMove: (e: React.PointerEvent) => selection.longPress!.onPointerMove(e),
+          onPointerUp: () => selection.longPress!.onPointerUp(),
+          onPointerCancel: () => selection.longPress!.onPointerCancel(),
+        }
+        : {})}
     >
       <ActionList.LeadingVisual>
-        <span className={styles.icon} style={{ background: item.icon.bg }}>
-          <item.icon.Icon size={16} fill={item.icon.fg} />
-        </span>
+        {/* pointerEvents: 'auto' is load-bearing, not decorative -- the
+            SAME VisualWrap-class override the trailing cluster below
+            already needs (checked directly against Primer's compiled
+            CSS: LeadingVisual's own wrapper sets `pointer-events: none`
+            unconditionally too, since Primer's LeadingVisual is
+            designed for a decorative icon, never an interactive
+            control). Without it every click on the checkbox below
+            passes straight through to the grid container underneath. */}
+        <Stack direction="horizontal" gap="condensed" align="center" style={{ pointerEvents: 'auto' }}>
+          {selection && (
+            // Hover/focus-revealed via InventoryList.module.css's
+            // [data-testid='inventory-row']:hover/:focus-within rule,
+            // persistent while data-selection-mode is set above --
+            // stopPropagation on click keeps a checkbox toggle from
+            // also firing the row's own onSelect (the same guard the
+            // trailing cluster below carries). onKeyDown stops ONLY
+            // Enter/Space -- the checkbox's own native keyboard
+            // activation, which would otherwise ALSO bubble into the
+            // row's onSelect the same way a click does. Every other
+            // key (⌘A, ⌘Z, Esc, ⌫) must keep bubbling: the checkbox
+            // holds focus right after a click, and those are window-
+            // level shortcuts (app/useKeymapDispatch.ts) that a
+            // blanket stopPropagation here would silently swallow.
+            <span
+              className={styles.checkboxSlot}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation() }}
+            >
+              <Checkbox
+                checked={selection.isSelected}
+                onChange={selection.onToggle}
+                aria-label={t('inventoryList.selectRowAriaLabel', { label: item.label })}
+                data-testid="inventory-row-select"
+              />
+            </span>
+          )}
+          <span className={styles.icon} style={{ background: item.icon.bg }}>
+            <item.icon.Icon size={16} fill={item.icon.fg} />
+          </span>
+        </Stack>
       </ActionList.LeadingVisual>
       <Stack direction="horizontal" gap="condensed" align="center" className={styles.labelRow}>
         {/* Single-line rows are the whole point of the dense-row

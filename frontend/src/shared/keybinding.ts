@@ -42,6 +42,14 @@ export function keyFromEventCode(code: string): string | null {
   return null
 }
 
+// A checkbox/radio <input> never consumes a shortcut as TEXT (there is
+// no native select-all/undo/paste inside one), so treating it as
+// "editable" wrongly swallows every guarded shortcut (⌘A, ⌘Z, Delete,
+// arrow nav...) the instant one merely holds focus -- goal 0404 S1's
+// own selection checkbox surfaced this: clicking it to select a row,
+// then pressing ⌘A, went nowhere.
+const NON_TEXT_INPUT_TYPES = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file'])
+
 // True for an input/textarea/contenteditable target -- the shared
 // "don't intercept normal typing" guard for any window-level keydown
 // listener that reacts to a BARE, unmodified key (the `?` shortcuts-
@@ -50,7 +58,8 @@ export function keyFromEventCode(code: string): string | null {
 export function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   const tag = target.tagName
-  return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable
+  if (tag === 'INPUT') return !NON_TEXT_INPUT_TYPES.has((target as HTMLInputElement).type)
+  return tag === 'TEXTAREA' || target.isContentEditable
 }
 
 // True for ⌘Z/⇧⌘Z, the combo the app's one undo journal answers to

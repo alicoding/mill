@@ -381,6 +381,7 @@ export function ConfigureExecEnv() {
           listId="configure.execenv"
           items={envItems}
           searchPlaceholder={t('configureExecEnv.searchPlaceholder')}
+          selection={{ entity: 'execenv' }}
           emptyState={{
             icon: TerminalIcon,
             heading: t('configureExecEnv.emptyHeading'),

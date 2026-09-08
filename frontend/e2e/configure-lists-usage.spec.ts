@@ -1,8 +1,9 @@
 import { test, expect } from './fixtures/server'
-import { deleteTableViaMenu, openAtlas, placeSizedTable } from './fixtures/atlasTable'
+import { createList, deleteTableViaMenu, openAtlas, placeSizedTable } from './fixtures/atlasTable'
 import { pressUndo } from './fixtures/undoJournal'
 import { clickRowAction } from './inventoryRow'
 import { openConfigureKind } from './fixtures/configureNav'
+import { clickSelectionBarAction } from './fixtures/selectionBar'
 
 // The object<->entity lifecycle contract (docs/goals/0392 S1): a
 // board table's delete-time toast states the List's own fate, and
@@ -48,24 +49,85 @@ test('deleting a freshly placed table: the toast names the list as unused, and u
   await expect(listRow(page, title)).toHaveCount(0)
 })
 
-test('Configure Lists: the Unused filter finds a list nothing references, and bulk delete removes it', async ({ page }) => {
-  const label = `E2E unused list ${Date.now()}`
+// The shared selection model (goal 0404 S1), proved on Configure Lists'
+// own Unused filter: a hover-revealed checkbox toggles, Shift-click
+// ranges, ⌘A selects everything the filter currently shows, and
+// Delete runs the SAME bulk-delete door every other InventoryList
+// consumer uses -- one undo mark restores the whole selection with a
+// single ⌘Z.
+test('Configure Lists: hover checkbox, click, Shift-click range, ⌘A, and bulk delete with undo', async ({ page }) => {
+  const stamp = Date.now()
+  const labelA = `E2E sel A ${stamp}`
+  const labelB = `E2E sel B ${stamp}`
+  const labelC = `E2E sel C ${stamp}`
   await page.goto('/')
   await page.getByRole('link', { name: 'Configure' }).click()
   await openConfigureKind(page, 'Lists')
 
-  await page.getByTestId('new-list').click()
-  await page.getByLabel('Label').fill(label)
-  await page.getByRole('button', { name: 'Save list' }).click()
-  await expect(page.getByTestId('list-rows-editor')).toBeVisible()
-  await page.getByRole('button', { name: 'Close' }).click()
-
-  const row = listRow(page, label)
-  await expect(row).toContainText('Not used anywhere')
+  for (const label of [labelA, labelB, labelC]) await createList(page, label)
 
   await page.getByTestId('list-usage-filter').selectOption('unused')
-  await expect(row).toBeVisible()
-  await row.getByTestId('unused-list-select').check()
-  await page.getByTestId('delete-unused-lists').click()
-  await expect(row).toHaveCount(0)
+  const rowA = listRow(page, labelA)
+  const rowB = listRow(page, labelB)
+  const rowC = listRow(page, labelC)
+  await expect(rowA).toBeVisible()
+  await expect(rowB).toBeVisible()
+  await expect(rowC).toBeVisible()
+
+  // Hover reveals the checkbox (opacity-0 until :hover/:focus-within,
+  // InventoryList.module.css); a plain click on it toggles without
+  // opening the row.
+  await rowA.hover()
+  await rowA.getByTestId('inventory-row-select').click()
+  await expect(page.getByTestId('selection-bar')).toBeVisible()
+  await expect(page.getByTestId('selection-bar-count')).toHaveText('1 selected')
+
+  // Shift-click a range: the label text (never the checkbox) with
+  // Shift held extends from the anchor through the clicked row.
+  await rowC.getByText(labelC, { exact: true }).click({ modifiers: ['Shift'] })
+  // count: fixture-owned -- A, B and C are the only lists this test created.
+  await expect(page.getByTestId('selection-bar-count')).toHaveText('3 selected')
+
+  // Esc clears.
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('selection-bar')).toHaveCount(0)
+
+  // ⌘A selects every row the Unused filter currently shows -- narrowed
+  // to this test's own three rows via the shared `stamp` search term
+  // first, so a concurrent spec's own unused list on the shared server
+  // is never touched by it.
+  // Scoped to this pane -- Configure's other kind panes stay mounted
+  // (hidden) once visited, and getByTestId doesn't filter by visibility.
+  await page.getByTestId('configure-lists').getByTestId('inventory-search').fill(String(stamp))
+  await expect(page.locator('[data-testid="inventory-row"][data-entity="list"]')).toHaveCount(3) // count: fixture-owned -- the search term is this test's own timestamp, matching only A/B/C
+  await rowA.hover()
+  await rowA.getByTestId('inventory-row-select').click()
+  await expect(page.getByTestId('selection-bar-count')).toHaveText('1 selected')
+  await page.keyboard.press('Meta+a')
+  // count: fixture-owned -- A, B and C are the only lists this test created.
+  await expect(page.getByTestId('selection-bar-count')).toHaveText('3 selected')
+
+  await clickSelectionBarAction(page, 'selection-bar-action-list.deleteSelection', 'Delete')
+  await expect(page.getByTestId('undo-delete-toast')).toBeVisible()
+  await expect(rowA).toHaveCount(0)
+  await expect(rowB).toHaveCount(0)
+  await expect(rowC).toHaveCount(0)
+
+  // One ⌘Z restores the whole mark -- every deleted list comes back.
+  await pressUndo(page)
+  await expect(rowA).toBeVisible()
+  await expect(rowB).toBeVisible()
+  await expect(rowC).toBeVisible()
+
+  // Cleanup: delete them for good (shared server, testing.md).
+  await rowA.hover()
+  await rowA.getByTestId('inventory-row-select').click()
+  await rowB.hover()
+  await rowB.getByTestId('inventory-row-select').click()
+  await rowC.hover()
+  await rowC.getByTestId('inventory-row-select').click()
+  await clickSelectionBarAction(page, 'selection-bar-action-list.deleteSelection', 'Delete')
+  await expect(rowA).toHaveCount(0)
+  await expect(rowB).toHaveCount(0)
+  await expect(rowC).toHaveCount(0)
 })

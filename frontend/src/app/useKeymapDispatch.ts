@@ -122,14 +122,16 @@ export function useKeymapDispatch(): void {
   // while the target isn't editable -- every other ⌘Z/⇧⌘Z falls
   // through untouched, same as if this listener didn't exist.
   //
-  // Two surfaces mount it: the board, and Configure -- a List's rows
-  // are the same content a board table shows, edited through the same
-  // journaled door (goal 0352), so ⌘Z means the same thing on both.
+  // Three surfaces mount it: the board, Configure -- a List's rows are
+  // the same content a board table shows, edited through the same
+  // journaled door (goal 0352) -- and Workflows (goal 0404 S1: a bulk
+  // workflow delete joins the same journal), so ⌘Z means the same
+  // thing on all three.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (!isUndoJournalCombo(e)) return
       const surface = useAppStore.getState().view.kind
-      if (surface !== 'atlas' && surface !== 'configure') return
+      if (surface !== 'atlas' && surface !== 'configure' && surface !== 'composition') return
       if (isEditableTarget(e.target)) return
       if (e.shiftKey) {
         if (!useUISignalStore.getState().atlasRedoAvailable) return
@@ -194,6 +196,65 @@ export function useKeymapDispatch(): void {
           return
         }
       }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  // Listeners 7-9, list.selectAll/clearSelection/deleteSelection
+  // (shared/listSelectionCommands.ts, goal 0404 S1): the same
+  // dedicated-listener shape Listener 5 uses for atlas.selectAll --
+  // ⌘A is also native select-all-text, and Esc/⌫ carry their own
+  // native meanings inside an editable field, so a generic
+  // dispatchCommandForEvent match would break all three. Scoped to the
+  // list surfaces (Configure, Workflows, Secrets); each command's own
+  // enabled() already reads the FOCUSED list surface's handle
+  // (shared/listSelectionFocus.ts), so a keypress with no list
+  // currently focused simply does nothing.
+  const isListSurface = () => {
+    const kind = useAppStore.getState().view.kind
+    return kind === 'configure' || kind === 'composition' || kind === 'secrets'
+  }
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+      if (e.key.toUpperCase() !== 'A') return
+      if (!isListSurface()) return
+      if (isEditableTarget(e.target)) return
+      if (document.querySelector('[role="dialog"]')) return
+      const command = findCommand('list.selectAll')
+      if (!command?.enabled?.()) return
+      e.preventDefault()
+      void runCommand('list.selectAll')
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.metaKey || e.ctrlKey || e.altKey) return
+      if (!isListSurface()) return
+      if (document.querySelector('[role="dialog"]')) return
+      const command = findCommand('list.clearSelection')
+      if (!command?.enabled?.()) return
+      e.preventDefault()
+      void runCommand('list.clearSelection')
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return
+      if (!isListSurface()) return
+      if (isEditableTarget(e.target)) return
+      if (document.querySelector('[role="dialog"]')) return
+      const command = findCommand('list.deleteSelection')
+      if (!command?.enabled?.()) return
+      e.preventDefault()
+      void runCommand('list.deleteSelection')
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)

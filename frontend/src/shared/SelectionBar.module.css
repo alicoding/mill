@@ -1,0 +1,14 @@
+/* SelectionBar.tsx's own layout -- every control inside it is Primer
+   (.claude/rules/frontend.md). Same shape ListToolbar.module.css
+   already uses: the count sits at the start, the actions/cancel are
+   pushed to the far end by an auto margin rather than a spacer
+   element, so the bar occupies the identical row ListToolbar did. */
+.bar {
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.spacer {
+    margin-inline-start: auto;
+    flex: 0 0 auto;
+}

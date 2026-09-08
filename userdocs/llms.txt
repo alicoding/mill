@@ -21,6 +21,7 @@
 - [Workflows and steps](concepts/workflows-and-steps.md): triggers, the typed step contract, payload vs attributes, versions
 - [Guardrails and effect classes](concepts/guardrails.md): what asks for approval and how rules scope it
 - [Configure entities](concepts/configure.md): integrations, lists, MCP servers, AI providers, environments
+- [Selecting and bulk actions](concepts/selecting-and-bulk-actions.md): the checkbox, Shift/⌘-click, long-press, the selection bar, and bulk delete with undo, shared by every list
 - [Atlas](concepts/atlas.md): the knowledge board: kinds, links, areas, doc mirrors, card actions
 - [Runs, review, and debugging](concepts/runs-and-review.md): durable runs, the review queue, breakpoints
 - [The coding loop](concepts/coding-loop.md): copy a command, confirm the parsed steps, watch it run, copy the result back

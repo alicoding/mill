@@ -17,7 +17,36 @@
     "defaultSearchPlaceholder": "Search…",
     "searchAriaLabel": "Search",
     "noMatchesFor": "No matches for \"{{query}}\".",
-    "actionsForAriaLabel": "Actions for {{label}}"
+    "actionsForAriaLabel": "Actions for {{label}}",
+    "selectRowAriaLabel": "Select {{label}}"
+  },
+  "selectionBar": {
+    "selectedCount": "{{count}} selected",
+    "selectAllOf": "Select all {{count}}",
+    "cancel": "Cancel",
+    "cancelAriaLabel": "Cancel selection",
+    "actionsAriaLabel": "Bulk actions"
+  },
+  "bulkDelete": {
+    "deleted": "Deleted {{count}} {{kind}}.",
+    "deletedKept": "Deleted {{deleted}} {{kind}}. {{kept}} kept: still in use.",
+    "deletedKeptNamed": "Deleted {{deleted}} {{kind}}. {{kept}} kept: still in use ({{names}}).",
+    "andMore": "and {{count}} more",
+    "kindLabel": {
+      "list": { "one": "list", "other": "lists" },
+      "request": { "one": "integration", "other": "integrations" },
+      "mcpserver": { "one": "MCP server", "other": "MCP servers" },
+      "decision": { "one": "decision", "other": "decisions" },
+      "execenv": { "one": "execution environment", "other": "execution environments" },
+      "environment": { "one": "environment", "other": "environments" },
+      "aiprovider": { "one": "AI provider", "other": "AI providers" },
+      "steptype": { "one": "step type", "other": "step types" },
+      "secretsource": { "one": "secret source", "other": "secret sources" },
+      "conversionprofile": { "one": "conversion profile", "other": "conversion profiles" },
+      "clientcert": { "one": "certificate", "other": "certificates" },
+      "workflow": { "one": "workflow", "other": "workflows" },
+      "secret": { "one": "secret", "other": "secrets" }
+    }
   },
   "literalOrAttributeField": {
     "required": "required",
@@ -336,10 +365,6 @@
         "export": "Export",
         "reset": "Reset to shipped example"
       },
-      "lists": {
-        "deleteUnusedOne": "Delete 1 list",
-        "deleteUnusedOther": "Delete {{count}} lists"
-      },
       "mcpserver": {
         "delete": "Delete",
         "export": "Export",
@@ -485,6 +510,11 @@
       "deleteColumn": "Delete selected column",
       "addRow": "Add a row",
       "addColumn": "Add a column"
+    },
+    "list": {
+      "selectAll": "Select all",
+      "clearSelection": "Clear selection",
+      "deleteSelection": "Delete"
     },
     "clientcert": {
       "edit": "Edit certificate",

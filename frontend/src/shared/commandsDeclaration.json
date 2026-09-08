@@ -1036,14 +1036,6 @@
     "needs": "entity"
   },
   {
-    "id": "configure.lists.deleteUnused",
-    "label": "Delete {{count}} lists",
-    "binding": null,
-    "surface": null,
-    "enabled": true,
-    "needs": "entitySelection"
-  },
-  {
     "id": "configure.mcpserver.delete",
     "label": "Delete",
     "binding": null,
@@ -1495,6 +1487,42 @@
     "binding": null,
     "surface": null,
     "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "list.clearSelection",
+    "label": "Clear selection",
+    "binding": "ESCAPE",
+    "surface": [
+      "configure",
+      "composition",
+      "secrets"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "list.deleteSelection",
+    "label": "Delete",
+    "binding": "⌫",
+    "surface": [
+      "configure",
+      "composition",
+      "secrets"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "list.selectAll",
+    "label": "Select all",
+    "binding": "⌘A",
+    "surface": [
+      "configure",
+      "composition",
+      "secrets"
+    ],
+    "enabled": true,
     "needs": null
   },
   {

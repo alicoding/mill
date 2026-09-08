@@ -158,12 +158,13 @@ func WirePasteConversion(atlas *atlassvc.AtlasService, cfg *configuresvc.Configu
 
 // WireConfigureSeams bundles the seams that need both Atlas and
 // Configure: the board's paste-understanding List writes, the plugin
-// content-write door, and the List row doors' undo journal -- one line
-// at the composition root.
-func WireConfigureSeams(atlas *atlassvc.AtlasService, cfg *configuresvc.ConfigureService, plugins *pluginsvc.PluginService) {
+// content-write door, and the List/Workflow doors' undo journals --
+// one line at the composition root.
+func WireConfigureSeams(atlas *atlassvc.AtlasService, cfg *configuresvc.ConfigureService, comp *compositionsvc.CompositionService, plugins *pluginsvc.PluginService) {
 	WirePasteConversion(atlas, cfg)
 	WirePluginContentWrites(plugins, atlas, cfg)
 	WireListUndoJournal(atlas, cfg)
+	WireWorkflowUndoJournal(atlas, comp)
 }
 
 // WireListUndoJournal points Configure's List row doors at the app's
@@ -173,6 +174,15 @@ func WireConfigureSeams(atlas *atlassvc.AtlasService, cfg *configuresvc.Configur
 // edit rather than reaching past it to the table's own create.
 func WireListUndoJournal(atlas *atlassvc.AtlasService, cfg *configuresvc.ConfigureService) {
 	cfg.WireUndoJournal(atlas.RecordExternalUndo)
+}
+
+// WireWorkflowUndoJournal points CompositionService.DeleteWorkflow at
+// the SAME journal (goal 0404 S1): a workflow delete becomes undoable
+// exactly like a Configure entity's, so a bulk delete of several
+// workflows (the frontend's one BeginUndoMark/EndUndoMark wrap) undoes
+// with one ⌘Z too.
+func WireWorkflowUndoJournal(atlas *atlassvc.AtlasService, comp *compositionsvc.CompositionService) {
+	comp.WireUndoJournal(atlas.RecordExternalUndo)
 }
 
 // WirePluginContentWrites connects pluginsvc's guarded content-write

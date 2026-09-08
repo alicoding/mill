@@ -97,3 +97,22 @@
 .disclosure {
     margin-top: var(--base-size-4);
 }
+
+/* The row's own selection checkbox (goal 0404 S1): hidden until the
+   row is hovered/focused, or the list is already in selection mode
+   (InventoryRow's own data-selection-mode='true' on the row). Opacity,
+   not display -- a hidden checkbox stays in the DOM and in the
+   ActionList.Item's own focus zone, so Tab still reaches it once
+   visible. Targeted off InventoryRow's own data-testid rather than any
+   Primer-internal class, so a version bump can't silently detach this
+   rule (the same reasoning the file's other selectors already use). */
+.checkboxSlot {
+    opacity: 0;
+    display: inline-flex;
+    align-items: center;
+}
+[data-testid='inventory-row']:hover .checkboxSlot,
+[data-testid='inventory-row']:focus-within .checkboxSlot,
+[data-testid='inventory-row'][data-selection-mode='true'] .checkboxSlot {
+    opacity: 1;
+}
