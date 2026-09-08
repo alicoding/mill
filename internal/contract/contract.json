@@ -6947,5 +6947,31 @@
       "mill://schema/steptype/v1",
       "mill://schema/workflow/v1"
     ]
-  }
+  },
+  "contentPlaneContracts": [
+    {
+      "kind": "diagram",
+      "readTool": "atlas_read_diagram",
+      "editTools": [
+        "atlas_diagram_add_cells",
+        "atlas_diagram_edit_cells",
+        "atlas_diagram_delete_cells",
+        "atlas_diagram_import"
+      ]
+    },
+    {
+      "kind": "sheet",
+      "readTool": "atlas_sheet_read_range",
+      "editTools": [
+        "atlas_sheet_edit_cells"
+      ]
+    },
+    {
+      "kind": "list",
+      "readTool": "export_list",
+      "editTools": [
+        "list_append_row"
+      ]
+    }
+  ]
 }

@@ -86,6 +86,7 @@ func (m *MillMCPService) addPluginTool(s PluginToolSpec) {
 		Name:        name,
 		Description: description,
 		InputSchema: json.RawMessage(s.InputSchema),
+		Annotations: pluginToolAnnotations(s.Effect),
 	}, func(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		argsJSON := pluginArgsJSON(req)
 		if s.Effect != "write" {

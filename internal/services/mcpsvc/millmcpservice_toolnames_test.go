@@ -23,7 +23,10 @@ func TestBuiltInToolNames_ListsEveryRegisteredTool(t *testing.T) {
 			t.Errorf("names not sorted at %q", n)
 		}
 	}
-	for _, want := range []string{"export_workflow", "import_workflow", "atlas_read_diagram", "list_plugins"} {
+	for _, want := range []string{
+		"export_workflow", "import_workflow", "atlas_read_diagram", "list_plugins",
+		"atlas_sheet_read_range", "atlas_sheet_edit_cells", "list_append_row",
+	} {
 		if !seen[want] {
 			t.Errorf("missing %q in %v", want, names)
 		}

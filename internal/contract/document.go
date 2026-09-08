@@ -47,6 +47,11 @@ type Document struct {
 	// reading "nodeTypes" never breaks.
 	NodeTypes []composition.NodeType `json:"nodeTypes"`
 	Import    ImportContract         `json:"import"`
+	// ContentPlaneContracts documents goal 0388's content-contract
+	// registry: every file-backed/entity-backed kind's read+edit MCP
+	// tools, the same list mcpsvc's own registration reads (see
+	// ContentContract's own doc comment).
+	ContentPlaneContracts []ContentContract `json:"contentPlaneContracts"`
 }
 
 // ServedDocument is what mill://contract and the UI's Export contract
@@ -96,10 +101,11 @@ func GenerateDocument() ([]byte, error) {
 	}
 	stepTypes := composition.NodeTypes()
 	doc := Document{
-		Schemas:   schemaMap,
-		StepTypes: stepTypes,
-		NodeTypes: stepTypes,
-		Import:    buildImportContract(),
+		Schemas:               schemaMap,
+		StepTypes:             stepTypes,
+		NodeTypes:             stepTypes,
+		Import:                buildImportContract(),
+		ContentPlaneContracts: ContentContracts,
 	}
 	data, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
