@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Request tester</title>
+<style>
+  body { display: flex; flex-direction: column; gap: 10px; padding: 16px; font: 13px system-ui; box-sizing: border-box; color: var(--fgColor-default); background: var(--bgColor-default); }
+  .row { display: flex; gap: 8px; align-items: center; }
+  select, input, textarea, button { font: 12px ui-monospace, monospace; padding: 6px 8px; border: 1px solid var(--borderColor-default); border-radius: 6px; color: inherit; background: var(--bgColor-default); }
+  select { font-family: system-ui; }
+  #url { flex: 1; }
+  button { font: 12px system-ui; padding: 6px 12px; background: var(--bgColor-muted); cursor: pointer; }
+  #auth { color: var(--fgColor-muted); font-size: 12px; }
+  #status { color: var(--fgColor-muted); }
+  #response { min-height: 80px; white-space: pre-wrap; word-break: break-word; }
+  #history-title { font-weight: 600; margin-top: 8px; }
+  #history { display: flex; flex-direction: column; gap: 4px; }
+  .history-item { text-align: left; background: var(--bgColor-default); }
+</style>
+</head>
+<body>
+  <div class="row">
+    <select id="method" data-testid="tester-method"></select>
+    <input id="url" type="text" placeholder="https://…" data-testid="tester-url">
+    <button type="button" id="send" data-testid="tester-send">Send</button>
+  </div>
+  <div id="auth" data-testid="tester-auth"></div>
+  <textarea id="body" placeholder="Request body (optional)" data-testid="tester-body"></textarea>
+  <div id="status" data-testid="tester-status"></div>
+  <div id="response" data-testid="tester-response"></div>
+  <div id="history-title">Recent requests</div>
+  <div id="history" data-testid="tester-history"></div>
+  <script src="tester.js"></script>
+</body>
+</html>

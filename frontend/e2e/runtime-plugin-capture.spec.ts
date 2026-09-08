@@ -10,26 +10,23 @@ import { callBindingViaRPC } from './fixtures/wailsRpc'
 const GUARDRAIL = 'github.com/alicoding/mill/internal/services/guardrailsvc.GuardrailService.'
 const ATLAS = 'github.com/alicoding/mill/internal/services/atlassvc.AtlasService.'
 
+// Its own page (docs/goals/0375 S1b): quick-thought has no canvas
+// object, so it activates framed and its capture needs an entry page
+// (the install-time static check refuses one without).
+const THOUGHT_HTML = `<!doctype html><html><head><meta charset="utf-8"></head>
+<body><input type="text" data-testid="thought-input"><button type="button" data-testid="thought-keep">Keep it</button><script src="thought.js"></script></body></html>`
+const THOUGHT_JS = `const mill = window.acquireMillApi()
+const input = document.querySelector('[data-testid="thought-input"]')
+document.querySelector('[data-testid="thought-keep"]').addEventListener('click', async () => {
+	const r = await mill.call('content.createNote', { text: 'Thought: ' + input.value, parentId: mill.context.destinationId })
+	if (r.approved) await mill.call('capture.done')
+})
+`
 const CAPTURE_PLUGIN = {
 	id: 'quick-thought',
-	manifest: { name: 'Quick thought', capabilities: ['write-content'], contributes: { captures: [{ id: 'thought', label: 'Thought', description: 'A one-line thought.' }] } },
-	main: `export function activate(api) {
-	api.registerCapture({
-		id: 'thought',
-		render(el, ctx) {
-			const input = document.createElement('input')
-			input.setAttribute('data-testid', 'thought-input')
-			const button = document.createElement('button')
-			button.textContent = 'Keep it'
-			button.setAttribute('data-testid', 'thought-keep')
-			button.onclick = () => {
-				api.content.createNote({ text: 'Thought: ' + input.value, parentId: ctx.destinationId }).then((r) => { if (r.approved) ctx.done() })
-			}
-			el.append(input, button)
-		},
-	})
-}
-`,
+	manifest: { name: 'Quick thought', capabilities: ['write-content'], contributes: { captures: [{ id: 'thought', label: 'Thought', description: 'A one-line thought.', entry: 'thought.html' }] } },
+	main: 'export function activate() {}\n',
+	files: { 'thought.html': THOUGHT_HTML, 'thought.js': THOUGHT_JS },
 }
 
 test('a plugin capture is offered by the Quick Panel and, in the capture window, lands a note at the chosen destination', async () => {
@@ -43,7 +40,7 @@ test('a plugin capture is offered by the Quick Panel and, in the capture window,
 
 		await page.goto('about:blank')
 		await page.goto('/#/capture?plugin=quick-thought&id=thought')
-		const face = page.getByTestId('capture-plugin-face')
+		const face = page.frameLocator('[data-testid="plugin-capture-quick-thought-thought"]')
 		await expect(face.getByTestId('thought-input')).toBeVisible()
 		await page.getByTestId('capture-destination').selectOption('')
 		await face.getByTestId('thought-input').fill('ship it')

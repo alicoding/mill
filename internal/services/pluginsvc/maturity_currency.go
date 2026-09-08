@@ -39,15 +39,16 @@ var docPageByFamily = map[string]string{
 // they are read here for the rendered page and the control-room
 // dashboard, both meant to run against a real working checkout.
 func gatherCurrency(repoRoot, family string) Currency {
-	code := gitLastChanged(repoRoot, sourcePaths(repoRoot, family))
-	docs := time.Time{}
+	codeSHA, code := gitLastTouch(repoRoot, sourcePaths(repoRoot, family))
+	docsSHA, docs := "", time.Time{}
 	if page, ok := docPageByFamily[family]; ok {
-		docs = gitLastChanged(repoRoot, []string{filepath.Join("userdocs", "reference", page)})
+		docsSHA, docs = gitLastTouch(repoRoot, []string{filepath.Join("userdocs", "reference", page)})
 	}
 	return Currency{
+		CodeCommit:    codeSHA,
 		CodeChangedAt: code,
+		DocsCommit:    docsSHA,
 		DocsChangedAt: docs,
-		DaysBehind:    daysBehind(code, docs),
 	}
 }
 
@@ -127,27 +128,27 @@ func relPath(repoRoot, p string) string {
 	return rel
 }
 
-// gitLastChanged answers the committer date of the most recent commit
-// touching any of paths, or a zero time when git finds none (no
-// history reachable, or none of the paths exist at HEAD).
-func gitLastChanged(repoRoot string, paths []string) time.Time {
+// gitLastTouch answers the sha and committer date of the most recent
+// commit touching any of paths, or "" / a zero time when git finds
+// none (no history reachable, or none of the paths exist at HEAD).
+func gitLastTouch(repoRoot string, paths []string) (sha string, date time.Time) {
 	if len(paths) == 0 {
-		return time.Time{}
+		return "", time.Time{}
 	}
-	args := append([]string{"-C", repoRoot, "log", "-1", "--format=%cI", "--"}, paths...)
+	args := append([]string{"-C", repoRoot, "log", "-1", "--format=%H%n%cI", "--"}, paths...)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, "git", args...).Output() // #nosec G204 -- args are fixed flags plus this package's own repo-relative paths, never external input
 	if err != nil {
-		return time.Time{}
+		return "", time.Time{}
 	}
-	s := strings.TrimSpace(string(out))
-	if s == "" {
-		return time.Time{}
+	lines := strings.SplitN(strings.TrimSpace(string(out)), "\n", 2)
+	if len(lines) != 2 {
+		return "", time.Time{}
 	}
-	t, err := time.Parse(time.RFC3339, s)
+	t, err := time.Parse(time.RFC3339, strings.TrimSpace(lines[1]))
 	if err != nil {
-		return time.Time{}
+		return "", time.Time{}
 	}
-	return t
+	return strings.TrimSpace(lines[0]), t
 }

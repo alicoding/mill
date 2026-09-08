@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/alicoding/mill/internal/docsgen"
 	"github.com/alicoding/mill/internal/services/servicetest"
@@ -158,11 +159,11 @@ func regenerateGuideQuotes(docsRoot string) error {
 // across the whole repo).
 func regenerateMaturityLedger(docsRoot string) error {
 	repoRoot := filepath.Join(docsRoot, "..")
-	md := docsgen.GenerateMaturityMarkdown(repoRoot)
+	md := docsgen.GenerateMaturityMarkdown(repoRoot, time.Now)
 	if err := os.WriteFile(filepath.Join(docsRoot, "reference", "plugin-api-maturity.md"), []byte(md), 0o600); err != nil {
 		return fmt.Errorf("write plugin-api-maturity.md: %w", err)
 	}
-	out, err := docsgen.GenerateMaturityJSON(repoRoot)
+	out, err := docsgen.GenerateMaturityJSON(repoRoot, time.Now)
 	if err != nil {
 		return fmt.Errorf("generate plugin-api-maturity.json: %w", err)
 	}

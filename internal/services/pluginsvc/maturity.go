@@ -190,32 +190,24 @@ func (e Evidence) complete() bool {
 	return e.Conformance && e.Example && e.E2E && e.Docs && e.SDKTypes && e.MCP != "no"
 }
 
-// Currency is one family's docs-vs-code staleness signal: the last
-// commit to touch its own source against the last commit to touch its
-// canonical docs page. Both dates, and DaysBehind derived from them,
-// are git-commit facts -- never the wall clock -- so the same commit
-// always regenerates the same Currency regardless of what day `go
-// generate` runs (goal 0358 S9: a wall-clock-derived number here made
-// a day-old branch's regenerated ledger differ from the one it
-// committed, for no reason the commit itself changed). A family with
-// no canonical docs page (a new family before docsPageByFamily names
-// one) has a zero DocsChangedAt and DaysBehind 0 -- there is no docs
-// date to diff against yet, and no other stable fact to report.
+// Currency is one family's docs-vs-code staleness EVIDENCE: the last
+// commit (sha + date) to touch its own source, and the last commit to
+// touch its canonical docs page. Both are git-commit facts -- never
+// the wall clock -- so the same commit always regenerates the same
+// Currency regardless of what day `go generate` runs (goal 0358 S9).
+// Currency never carries a derived "days behind" figure: that number
+// is a live staleness metric (today vs CodeChangedAt), not a repo
+// fact pinned to a commit, so it belongs to a reader computing it at
+// display time (docsgen's committed artifacts, goal 0391) -- never to
+// a struct this package regenerates and commits. A family with no
+// canonical docs page (a new family before docPageByFamily names one)
+// has a zero DocsCommit/DocsChangedAt -- there is no docs evidence to
+// report yet.
 type Currency struct {
+	CodeCommit    string
 	CodeChangedAt time.Time
+	DocsCommit    string
 	DocsChangedAt time.Time
-	DaysBehind    int
-}
-
-func daysBehind(code, docs time.Time) int {
-	if docs.IsZero() {
-		return 0
-	}
-	d := int(code.Sub(docs).Hours() / 24)
-	if d < 0 {
-		return 0
-	}
-	return d
 }
 
 // Flags names the two states worth a human's attention: an
