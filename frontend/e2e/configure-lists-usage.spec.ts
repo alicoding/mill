@@ -170,13 +170,18 @@ test('Configure Lists: Shift-click and ⌘-click on the CHECKBOX itself behave l
   const [rowA, rowB, , , , rowF] = rows
 
   // Click A's checkbox (a plain click still toggles), then Shift-click
-  // F's checkbox: the full A..F range, not a second bare toggle.
+  // F's checkbox: the full A..F range, not a second bare toggle. Each
+  // clicked checkbox's own native `checked` must reflect the click,
+  // not just the model/aria-checked (goal 0404 S1 amendment 3 --
+  // preventDefault on a controlled checkbox desyncs the two).
   await rowA.hover()
   await rowA.getByTestId('inventory-row-select').click()
   await expect(page.getByTestId('selection-bar-count')).toHaveText('1 selected')
+  await expect(rowA.getByTestId('inventory-row-select')).toBeChecked()
   await rowF.hover()
   await rowF.getByTestId('inventory-row-select').click({ modifiers: ['Shift'] })
   await expect(page.getByTestId('selection-bar-count')).toHaveText('6 selected')
+  await expect(rowF.getByTestId('inventory-row-select')).toBeChecked()
 
   await page.keyboard.press('Escape')
   await expect(page.getByTestId('selection-bar')).toHaveCount(0)
@@ -186,6 +191,7 @@ test('Configure Lists: Shift-click and ⌘-click on the CHECKBOX itself behave l
   await rowB.hover()
   await rowB.getByTestId('inventory-row-select').click({ modifiers: ['Meta'] })
   await expect(page.getByTestId('selection-bar-count')).toHaveText('1 selected')
+  await expect(rowB.getByTestId('inventory-row-select')).toBeChecked()
   await expect(page.getByTestId('list-rows-editor')).toHaveCount(0)
 
   // Cleanup: select the whole range again and delete for good.

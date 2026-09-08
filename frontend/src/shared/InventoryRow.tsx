@@ -138,15 +138,23 @@ export function InventoryRow({ item, onOpenMenu, selection }: { item: InventoryI
                 // focuses it (tabIndex -1 only removes it from Tab's
                 // own traversal, not from focusability).
                 tabIndex={-1}
-                // Fully controlled by onClick below (which reads the
-                // click's own Shift/Cmd/Ctrl modifiers -- a "change"
-                // event carries none) -- this stays a deliberate no-op
-                // only to keep React's controlled-input contract happy.
-                onChange={() => {}}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
-                  selection.onActivateCheckbox({ shiftKey: e.shiftKey, toggleModifier: e.metaKey || e.ctrlKey })
+                // stopPropagation only, never preventDefault (goal
+                // 0404 S1): preventDefault here blocked the
+                // checkbox's own native toggle, desyncing its visible
+                // checked state from the controlled `checked` prop
+                // above until some unrelated re-render caught it up
+                // (React's own documented controlled-checkbox
+                // gotcha). stopPropagation still keeps the click from
+                // bubbling into the row's onSelect, which would open
+                // it.
+                onClick={(e) => e.stopPropagation()}
+                // React fires a checkbox's onChange off the native
+                // click event, so its own modifiers (never present on
+                // a real "change" event) are read here via
+                // nativeEvent rather than in onClick.
+                onChange={(e) => {
+                  const native = e.nativeEvent as MouseEvent
+                  selection.onActivateCheckbox({ shiftKey: native.shiftKey, toggleModifier: native.metaKey || native.ctrlKey })
                 }}
                 aria-label={t('inventoryList.selectRowAriaLabel', { label: item.label })}
                 data-testid="inventory-row-select"
