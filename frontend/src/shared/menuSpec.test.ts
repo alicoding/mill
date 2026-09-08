@@ -62,7 +62,7 @@ describe('menuSpecFor (the native menu bar as a projection of the command regist
       '-', 'submenu:New…',
       '-', 'Close tab', 'Close other tabs', 'Close all tabs',
       '-', 'Save',
-      '-', 'Export everything', 'Export plugin audit',
+      '-', 'Export everything', 'Export plugin audit', 'Export audit trail',
       '-', 'Lock vault',
     ])
   })
