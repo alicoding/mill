@@ -1,5 +1,6 @@
 import { runCommand } from '../shared/commands'
 import type { MillPluginAPI } from '../plugins/sdk'
+import { callExportedMethod, toWireDescriptor } from '../plugins/extensionExports'
 
 // The host half of the plugin frame's channel (docs/goals/0349),
 // composed from the shape the embedded-editor protocol already proved
@@ -83,6 +84,13 @@ export const FRAME_METHODS = [
   'capture.cancel',
   'object.updatePayload',
   'object.setEditing',
+  // extensions.get/extensions.call (goal 0364): api.extensions.get's
+  // wire-safe twin -- see pluginActivationBridge.ts's identical pair
+  // for the full contract; a live stub function cannot cross
+  // postMessage, so 'extensions.get' answers {data, methods} and
+  // 'extensions.call' is how the frame invokes one of those names.
+  'extensions.get',
+  'extensions.call',
 ] as const
 
 export type FrameMethod = typeof FRAME_METHODS[number]
@@ -126,7 +134,18 @@ export async function callFrameMethod(api: MillPluginAPI, method: string, args: 
     case 'capture.cancel': { capture?.cancel(); return true }
     case 'object.updatePayload': { await face?.updatePayload(first as Record<string, string>); return true }
     case 'object.setEditing': { face?.setEditing(!!first); return true }
+    case 'extensions.get': return toWireDescriptor(await api.extensions.get(String(first)))
+    case 'extensions.call': return callExtensionExportDoor(api, args as [string, string, unknown[] | undefined])
   }
+}
+
+// callExtensionExportDoor is 'extensions.call's own body (goal 0364),
+// split out so the switch above stays flat -- see
+// pluginActivationBridge.ts's identical helper for the full contract.
+async function callExtensionExportDoor(api: MillPluginAPI, [depId, exportMethod, callArgs]: [string, string, unknown[] | undefined]): Promise<unknown> {
+  const view = await api.extensions.get(String(depId))
+  if (!view) throw new Error(`Method ${exportMethod} is not exported by ${depId}.`)
+  return callExportedMethod(String(depId), String(exportMethod), callArgs ?? [])
 }
 
 export interface FrameBridgeOptions {

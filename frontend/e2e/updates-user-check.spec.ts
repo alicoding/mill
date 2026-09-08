@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { rmSync } from 'node:fs'
 import {
   spawnUpdatesServer,
@@ -46,6 +47,7 @@ test('a palette check with nothing new answers: checking, then up to date, then 
       MILL_TEST_UPDATE_CHECK_DELAY_MS: '1200',
     }))
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
 
     await runPaletteCheck(page)
@@ -74,6 +76,7 @@ test('a failed palette check answers honestly, offers Settings, and dismisses on
       MILL_TEST_UPDATE_CHECK_FAIL: '1',
     }))
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
 
     await runPaletteCheck(page)

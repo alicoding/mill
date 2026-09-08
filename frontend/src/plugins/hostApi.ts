@@ -15,6 +15,7 @@ import { settingDeclsFromManifest } from './pluginSettings'
 import { secretTitleOf } from '../shared/secretTitleCache'
 import { buildPluginStorage } from './pluginStorage'
 import { pushNotice } from '../shared/noticeStore'
+import { getExtensionExports } from './extensionExports'
 import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/extensionSettingsStore'
 import type { CanvasObjectDecl, ContentQuery, LinkQuery, MillPluginAPI, PluginFetchInit, PluginOutputOptions } from './sdk'
 import type { MenuPath } from '../shared/menuSkeleton'
@@ -303,6 +304,12 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 				void loading.then((m) => m.renderOutputInto(el, value, options, pluginId))
 				return () => { void loading.then((m) => m.unmountOutput(el)) }
 			},
+		}),
+		// The extension-interop door (goal 0364): a declared dependency's
+		// export surface only, gated by ITS OWN manifest exports
+		// allowlist -- never a live handle into another extension.
+		extensions: Object.freeze({
+			get: (id: string) => getExtensionExports(manifest, id),
 		}),
 	})
 	// The api object is kept, not just handed to activate(): a framed

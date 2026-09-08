@@ -113,6 +113,11 @@ export interface ActivationFrameInit {
   version: string
   settings: Record<string, boolean | string | number>
   storage: Record<string, unknown>
+  // exports (goal 0364): the manifest's own exports allowlist, so the
+  // frame can split its activate() return value into data (ungated)
+  // and methods (gated) BEFORE anything crosses the postMessage
+  // boundary at activation-done.
+  exports: string[]
 }
 
 // buildFrameSrcdoc prepends Mill's four head pieces to the plugin's own

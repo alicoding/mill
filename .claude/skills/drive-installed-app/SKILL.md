@@ -32,7 +32,7 @@ screenshots on exactly the two failures below.
 
 ## One-time machine setup
 
-1. `scripts/setup-dev-signing.sh` -- creates and imports "Mill Dev
+1. the repo root's `scripts/setup-dev-signing.sh` -- creates and imports "Mill Dev
    Signing", a local self-signed code-signing certificate, then tries
    to trust it for code signing. If that needs an interactive
    confirmation it can't give non-interactively, it prints the exact
@@ -58,7 +58,7 @@ regenerated (a new machine, or the keychain item was deleted).
 
 ## Per-run procedure
 
-1. **Preflight**: `scripts/check-drive-setup.sh` (<10s). Fix whatever
+1. **Preflight**: the repo root's `scripts/check-drive-setup.sh` (<10s). Fix whatever
    it names before continuing -- never guess past a failing line.
 2. **Quit the running Mill through the bridge door**, not an AppleEvent
    (see "Why this exists" #2). If a bridge is already listening on the
@@ -109,10 +109,15 @@ regenerated (a new machine, or the keychain item was deleted).
    open /Applications/Mill.app &`) so Mill fully detaches, and quit it
    only through step 2's `DevBridgeQuit` door, never by stopping the
    launching shell.
-5. **Wait for the bridge**, then drive command-first:
+5. **Wait for the bridge**, then drive command-first. A bounded loop,
+   never `until ... ; do sleep; done` (the session rule against
+   unbounded loops):
    ```
-   until curl -sS -m 2 -X POST http://127.0.0.1:9199/mcp -H 'Content-Type: application/json' \
-     -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"app_info","arguments":{}}}' | grep -q '"os"'; do sleep 0.3; done
+   for i in $(seq 1 20); do
+     curl -sS -m 2 -X POST http://127.0.0.1:9199/mcp -H 'Content-Type: application/json' \
+       -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"app_info","arguments":{}}}' | grep -q '"os"' && break
+     sleep 0.3
+   done
    ```
    - **`runCommand` first** (`window.__millRunCommand`, present only in
      a `MILL_DRIVE_BRIDGE=1` build) -- the same `findCommand` + `run`
@@ -134,6 +139,12 @@ regenerated (a new machine, or the keychain item was deleted).
      `tell application "System Events" to key code 29 using {command
      down, shift down}` (key code 29 is `0`; needs the driving
      terminal's own Accessibility grant, step 3 of setup).
+   - **Window resize**: the bound `SetSize` Go method errors when
+     called through the bridge (`js_eval`/`runCommand`), confirmed
+     live -- resize via System Events instead:
+     ```
+     osascript -e 'tell application "System Events" to tell process "Mill" to set size of window "Mill" to {W,H}'
+     ```
    - **`screencapture -x`** for evidence, into the session scratchpad.
 6. **Relaunch** (step 2's quit door, then steps 3-5 again) to confirm a
    second pass needs no re-grant -- the Acceptance this goal is proving.

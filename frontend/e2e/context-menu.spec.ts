@@ -5,6 +5,7 @@ import { groupCard, noteCard } from './fixtures/atlasCards'
 import { contextMenu, rightClickEmptyArea } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel } from './fixtures/canvas'
+import { clickEdgeOffChip } from './fixtures/atlasEdge'
 
 // The right-click context menu (goal 0075): one shared Primer-native
 // menu, surfaces own their items. Proof surfaces per the goal's
@@ -196,7 +197,8 @@ test('right-click on a seeded Atlas artery offers Open for each connected card',
   await page.getByRole('link', { name: 'Atlas' }).click()
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-  await page.locator('.react-flow__edge').first().click({ button: 'right' })
+  const edge = page.locator('.react-flow__edge').first()
+  await clickEdgeOffChip(page, edge, { button: 'right' })
   const menu = contextMenu(page)
   await expect(menu).toBeVisible()
   await expect(menu.getByText('Open Discovery workstream', { exact: true })).toBeVisible()
@@ -229,7 +231,7 @@ test('right-click on a canvas edge: Select connection surfaces the edge inspecto
   // actionability check reads as a zero-area (not-visible) box. force
   // skips that check and clicks the path's real on-screen center.
   const edge = panel.locator('.react-flow__edge').first()
-  await edge.click({ button: 'right', force: true })
+  await edge.click({ button: 'right', force: true }) // edge-hover: not-atlas-link -- a composition workflow edge (no chip); force works around the zero-width vertical-line box above, not a chip collision
   const menu = contextMenu(page)
   await expect(menu).toBeVisible()
   await expect(menu.getByText('Select connection', { exact: true })).toBeVisible()
@@ -237,7 +239,7 @@ test('right-click on a canvas edge: Select connection surfaces the edge inspecto
   await menu.getByText('Select connection', { exact: true }).click()
   await expect(inspector).toContainText('Only a Decision step’s outgoing edges are configurable.')
 
-  await edge.click({ button: 'right', force: true })
+  await edge.click({ button: 'right', force: true }) // edge-hover: not-atlas-link -- same composition edge as above
   await expect(menu).toBeVisible()
   await menu.getByText('Delete connection', { exact: true }).click()
   await expect(panel.locator('.react-flow__edge')).toHaveCount(0)

@@ -7,6 +7,7 @@
 // seeded example dotenv source is a source on every server, so the
 // form's true "no sources" refusal needs one where it has been deleted.
 import { chromium, test as rawTest } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -112,6 +113,7 @@ rawTest('a source-backed entry names a key in a source and shows no value of its
       backupDir: path.join(dir, 'backups'),
     })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await ensureVault(page)
     await openSecrets(page)

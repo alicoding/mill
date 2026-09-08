@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -69,6 +70,7 @@ test('Built in starts expanded when nothing else is installed', async ({}, testI
   })
   const browser = await chromium.launch()
   const page = await browser.newPage({ baseURL: server.baseURL })
+  await applyCpuThrottle(page)
   try {
     await page.goto('/')
     await openExtensions(page)
