@@ -115,6 +115,14 @@ pre-commit:
       # own sdk-comments job also calls.
       glob: "{frontend/src/plugins/sdk.ts,frontend/src/plugins/sdk/**,frontend/plugin-sdk/**,userdocs/reference/plugin-api/**}"
       run: ./scripts/check-sdk-comments.sh
+    - name: affected-selftest
+      # Goal 0401 hotfix: proves scripts/list-affected-go-packages.sh's
+      # per-event base resolution (pull_request/merge_group/push) and its
+      # bash-3.2 compatibility (CI's macos-latest runner's system
+      # /bin/bash predates mapfile/readarray) against real commits on
+      # this branch, so a future edit can't silently reintroduce either.
+      glob: "{scripts/list-affected-go-packages.sh,scripts/check-affected-selftest.sh,.github/workflows/ci.yml}"
+      run: ./scripts/check-affected-selftest.sh
     - name: plugin-typecheck
       root: "frontend/"
       glob: "{frontend/plugin-sdk/**,examples/plugins/**/*.js}"

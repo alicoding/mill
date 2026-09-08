@@ -514,6 +514,26 @@ jobs:
           cache: true
       - run: go mod tidy -diff
 
+  # Goal 0401 hotfix: proves scripts/list-affected-go-packages.sh's
+  # per-event base resolution against real commits, and that it carries
+  # no bash-4-only construct -- macos-latest to match test-go-affected's
+  # own runner, whose system /bin/bash (3.2) is what actually caught the
+  # `mapfile` regression this selftest now pins down; a ubuntu runner's
+  # newer bash would never re-catch it. fetch-depth: 0 for the real
+  # commit history the script's own resolve_base diffs against.
+  affected-selftest:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26'
+          cache: true
+      - run: ./scripts/check-affected-selftest.sh
+
   # Mirrors lefthook.yml's own sdk-freshness job -- same script. The
   # plugin SDK's committed type package and its generated API reference
   # both derive from frontend/src/plugins/sdk.ts (goal 0319), so both
@@ -896,6 +916,12 @@ jobs:
           go-version: '1.26'
           cache: true
       - run: ./scripts/list-affected-go-packages.sh
+        env:
+          # github.base_ref is empty for a merge_group event; the
+          # script's own resolve_base needs the merge queue's base commit
+          # explicitly to compute a real diff instead of falling back to
+          # "everything affected".
+          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
 
   # Changed-lines coverage (goal 0109 phase 2, the clean-as-you-code
   # counterpart to the gocognit gate): diff-cover reports how much of
@@ -1232,6 +1258,7 @@ jobs:
       - review-report-selftest
       - review-report
       - go-mod-tidy
+      - affected-selftest
       - root-file-naming
       - sdk-freshness
       - frontend
