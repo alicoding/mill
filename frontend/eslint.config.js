@@ -200,6 +200,15 @@ export default tseslint.config(
           selector: ":matches(Property[key.name='items'] ArrayExpression > ObjectExpression, Property[key.name='submenu'] ArrayExpression > ObjectExpression, TSAsExpression[typeAnnotation.typeName.name='ContextMenuItem'] > ObjectExpression, VariableDeclarator[id.typeAnnotation.typeAnnotation.typeName.name='ContextMenuItem'] > ObjectExpression, ArrowFunctionExpression[returnType.typeAnnotation.typeName.name='ContextMenuItem'] > ObjectExpression) > Property[key.name='run']",
           message: 'A context-menu item is a registry command plus its target ({ commandId, ctx }), never an inline closure -- register the command (shared/atlasSelectionCommands.ts, shared/canvasCommands.ts, an entity family) and hand it the context (goal 0346 slice B).',
         },
+        {
+          // Goal 0385: a third typed action family (shared/noticeStore.ts's
+          // NoticeAction, the notice pill's own secondary links) is
+          // command-id-shaped like the two families above -- it never
+          // HAS an onClick, so this catches the same spread/cast escape
+          // hatch excess-property checking does not reach.
+          selector: ":matches(Property[key.name='actions'] ArrayExpression > ObjectExpression, TSAsExpression[typeAnnotation.typeName.name='NoticeAction'] > ObjectExpression, VariableDeclarator[id.typeAnnotation.typeAnnotation.typeName.name='NoticeAction'] > ObjectExpression) > Property[key.name='onClick']",
+          message: 'A notice action is a registry command ({ label, commandId }), never an inline closure -- register the command and reference its id (goal 0385, following goal 0346).',
+        },
       ],
     },
   },

@@ -20,11 +20,19 @@ only, never for editing, staging, or committing anything.
 
 If any of these is missing, say so and stop rather than guessing at scope.
 
+Read ONLY: the diff, the brief/goal file given, and the rules files this
+checklist names. Do not explore the repository; open a source file only
+to resolve a file:line the diff cites. Budget: finish under 40k tokens —
+if the diff is larger than 1,500 lines, review the brief's contract
+items first and say what you did not read.
+
 ## Checklist — the only things you look for
 
-Read `.claude/skills/brief/divergences.md` and
-`.claude/rules/adopt-converged-patterns.md` before starting; every finding
-must trace to one of these questions, never to a freeform "is this good":
+Read `.claude/skills/brief/divergences.md`,
+`.claude/rules/adopt-converged-patterns.md`, `.claude/rules/testing.md`
+and `.claude/rules/delivery-discipline.md` before starting; every
+finding must trace to one of these questions, never to a freeform "is
+this good":
 
 1. **Tool-coupled where a general door would serve** — a code path,
    type, route, label, or copy that names or assumes one external tool
@@ -48,7 +56,9 @@ must trace to one of these questions, never to a freeform "is this good":
 7. **Comment provenance** — a code comment stating who-decided-when
    instead of a constraint the code can't state itself?
 8. **Deferred gap** — a "follow-up"/TODO covering a gap against a
-   CONFIRMED precedent that should have been built in this diff?
+   CONFIRMED precedent that should have been built in this diff, or a
+   deferral with no tracking home (a goal number, BACKLOG line, SPEC
+   `OPEN` item, or revisit trigger) named in the same sentence?
 9. **Settings-as-feature** — a Settings toggle implementing a side effect
    instead of composition, or configuring anything beyond the kernel?
 10. **onClick bypassing the command registry** — a handler acting inline
@@ -57,6 +67,17 @@ must trace to one of these questions, never to a freeform "is this good":
 11. **Secrets not as references** — a credential, token, or cert stored
     or passed as a literal instead of a picker/reference into the secrets
     manager?
+12. **Copy affordance** — a value the user must copy elsewhere (a code,
+    token, address) shipped with no visible copy affordance in the same
+    view, text-select-only?
+13. **Stale-form retirement** — a form/step whose terminal success state
+    leaves its own inputs live and resubmittable instead of retiring
+    them (disabled or hidden)?
+14. **Seed documentation** — a seed exercising a failure/edge-case path
+    on purpose that doesn't say so in its own Description?
+15. **Platform vs extension** — plugin code doing platform work (a shape
+    a second extension would re-implement; content plane/guardrails/
+    secrets/identity/chrome) — Important.
 
 ## Verification rule
 
