@@ -11,6 +11,7 @@ import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { armToolFromMorePanel } from './fixtures/atlasTray'
+import { applyCpuThrottle } from './fixtures/throttle'
 
 const ARTICLE = `<!doctype html><html><head><title>Why kettles whistle</title></head><body>
 <nav><a href="/">Home</a> <a href="/about">About us</a> <a href="/login">Log in</a></nav>
@@ -29,6 +30,7 @@ const ARTICLE = `<!doctype html><html><head><title>Why kettles whistle</title></
 // queued behind it, so only that row's disappearance is asserted.
 async function approveInReview(page: import('@playwright/test').Page, source: string, hasText: string) {
 	const reviewPage = await page.context().newPage()
+	await applyCpuThrottle(reviewPage)
 	await reviewPage.goto('/')
 	await reviewPage.getByRole('link', { name: 'Review' }).click()
 	const row = reviewPage.locator('[data-testid="review-guarded-action-item"]').filter({ hasText })
