@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { openSettings } from './fixtures/settingsNav'
 import { rmSync } from 'node:fs'
 import {
@@ -57,6 +58,7 @@ test('Source-channel build never offers to download, and shows the pull-and-rebu
       MILL_TEST_UPDATE_FAKE_VERSION: '9.9.9',
     }))
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await openSettings(page, 'updates')
 
@@ -103,6 +105,7 @@ test('Release-channel build offers to download, and a failed install surfaces th
       MILL_TEST_UPDATE_CHANNEL: 'release',
     }))
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await openSettings(page, 'updates')
 
@@ -167,6 +170,7 @@ test('Beta-channel build offers to download, dismissing the pill leaves the acti
       MILL_TEST_UPDATE_CHANNEL: 'beta',
     }))
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await openSettings(page, 'updates')
 
@@ -231,6 +235,7 @@ test('An installed update shows the relaunch pill AND the matching Settings prim
       MILL_TEST_UPDATE_READY: '1',
     }))
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await expect(page.getByTestId('notice-update-ready')).toContainText('relaunch')
 
@@ -260,6 +265,7 @@ test('Update-channel preference saves, explains the restart, and survives a relo
   try {
     ;({ server, dir } = await spawnUpdatesServer(idx, UPDATES_CHANNEL_PREF_SERVER_BASE_PORT, UPDATES_CHANNEL_PREF_MCP_BASE_PORT, {}))
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await openSettings(page, 'updates')
 
@@ -312,6 +318,7 @@ test('Opening the Updates section checks automatically, with no click required',
       MILL_TEST_UPDATE_FAKE_VERSION: '9.9.9',
     }))
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await openSettings(page, 'updates')
 
@@ -354,6 +361,7 @@ test('The primary action shows a checking state while the automatic check is in 
       MILL_TEST_UPDATE_CHANNEL: 'release',
     }))
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await openSettings(page, 'updates')
 
@@ -392,6 +400,7 @@ test('A failed automatic check renders honestly, never as up to date', async ({}
       MILL_TEST_UPDATE_CHECK_FAIL: '1',
     }))
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await openSettings(page, 'updates')
 

@@ -4,6 +4,7 @@ import { launchWithPlugins, runFromPalette } from './fixtures/runtimePlugins'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { openSettings } from './fixtures/settingsNav'
 import { armToolFromMorePanel } from './fixtures/atlasTray'
+import { applyCpuThrottle } from './fixtures/throttle'
 
 // Theming (goal 0320): the color scheme per mode, one theme across
 // every window, and the plugin theme contract.
@@ -147,6 +148,7 @@ pluginTest('a plugin face and view carry the resolved theme, and it flips with t
     // stays mounted -- the attribute has to change under it, not be
     // re-rendered fresh by a navigation.
     const settings = await page.context().newPage()
+    await applyCpuThrottle(settings)
     await settings.goto('/')
     await openSettings(settings, 'appearance')
     await settings.getByRole('button', { name: 'Dark', exact: true }).click()

@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { openToolbarAction } from './fixtures/toolbarActions'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -46,6 +47,7 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
       extraEnv: { MILL_TEST_DENSE_ATLAS: '1' },
     })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await page.getByRole('link', { name: 'Atlas' }).click()
     const board = page.getByTestId('atlas-board')

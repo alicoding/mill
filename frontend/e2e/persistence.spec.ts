@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -45,6 +46,7 @@ test('A composed workflow survives its own server process restarting against the
     const label = 'E2E persistence-across-restart workflow'
 
     const page1 = await browser.newPage()
+    await applyCpuThrottle(page1)
     await page1.goto(`${server.baseURL}/`)
     await page1.getByRole('link', { name: 'Workflows' }).click()
     await page1.getByTestId('new-workflow').click()
@@ -64,6 +66,7 @@ test('A composed workflow survives its own server process restarting against the
     server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
 
     const page2 = await browser.newPage()
+    await applyCpuThrottle(page2)
     await page2.goto(`${server.baseURL}/`)
     await page2.getByRole('link', { name: 'Workflows' }).click()
     const row2 = page2.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ hasText: label })

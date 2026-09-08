@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -48,6 +49,7 @@ test('deleting a frame with children confirms with the promoted count; cancel ke
       backupDir: path.join(dir, 'backups'),
     })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await page.getByRole('link', { name: 'Atlas' }).click()
     const board = page.getByTestId('atlas-board')

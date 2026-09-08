@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -98,6 +99,7 @@ test('copying says what landed on the clipboard, and whose clipboard it was', as
   try {
     const context = await browser.newContext({ baseURL: server.baseURL })
     const page = await context.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await withClipboardLock(async () => {
       const { spaceID, cardIDs } = await buildSpace(page, 'ZzImgCopySpace', ['ZzImgCopyCard'])
