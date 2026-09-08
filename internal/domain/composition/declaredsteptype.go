@@ -76,12 +76,18 @@ func SetDeclaredNodeTypeLookup(fn DeclaredNodeTypeProvider) {
 // against a Node whose Config merges the pinned values over whatever
 // the authored node itself carries (pinned always wins, matching
 // PinnedConfig's own doc comment). ok=false when EngineNodeTypeID
-// isn't a real registered NodeType -- shouldn't happen for real data,
-// but the caller treats this exactly like "unknown step type" rather
-// than panicking.
+// isn't a real registered NodeType, or PaletteGroup isn't one of the
+// 10 declared values -- shouldn't happen for real data (ConfigureService's
+// own declaredsteptype.Validate rejects an invalid group before a
+// binding is ever persisted), but the caller treats either case exactly
+// like "unknown step type" rather than exposing a mistyped NodeType.
 func resolveDeclaredEntry(b DeclaredStepBinding) (nodeTypeEntry, bool) {
 	engine, ok := nodeTypeRegistry[b.EngineNodeTypeID]
 	if !ok {
+		return nodeTypeEntry{}, false
+	}
+	pg := PaletteGroup(b.PaletteGroup)
+	if !ValidPaletteGroup(pg) {
 		return nodeTypeEntry{}, false
 	}
 
@@ -113,7 +119,7 @@ func resolveDeclaredEntry(b DeclaredStepBinding) (nodeTypeEntry, bool) {
 		Consumes:     engine.nodeType.Consumes,
 		Produces:     engine.nodeType.Produces,
 		Declared:     true,
-		PaletteGroup: b.PaletteGroup,
+		PaletteGroup: pg,
 		// Basic by construction (NodeType.Complexity's own doc comment,
 		// docs/goals/0047): a declaration exists specifically to curate
 		// the underlying engine's complexity away behind a fixed binding,
@@ -160,7 +166,7 @@ func lookupNodeTypeEntry(id string) (nodeTypeEntry, bool) {
 
 // declaredNodeTypes returns every currently-resolvable declared step
 // type as a synthesized NodeType -- NodeTypes()'s own declared half.
-// A binding whose EngineNodeTypeID isn't a real registered NodeType is
+// A binding whose EngineNodeTypeID or PaletteGroup doesn't resolve is
 // silently skipped (shouldn't happen for real Configure-authored data)
 // rather than surfacing a broken catalog entry.
 func declaredNodeTypes() []NodeType {

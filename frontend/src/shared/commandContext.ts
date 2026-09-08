@@ -39,6 +39,11 @@ export type CommandContext =
   // own id carries the family, and entityContext(ctx, family) below is
   // what refuses a context from a different one.
   | { kind: 'entity'; entity: string; id: string }
+  // A page-local multi-select over one entity family (goal 0392 S1's
+  // Unused-lists bulk delete): `ids` is the surface's own checked set,
+  // stated by the invoker the same reason `pinned`/`rowIDs` above are --
+  // it is that mount's local state, unreachable from the registry.
+  | { kind: 'entitySelection'; entity: string; ids: string[] }
   // One row of a JSON/YAML tree on the board (goal 0269). The row's
   // path, its key and the text a copy would write are all STATED by
   // the face rather than re-derived here, the same reasoning
@@ -102,6 +107,12 @@ export function runContext(ctx: CommandContext | undefined): { runId: string; wo
 // command can never act on another family's row.
 export function entityContext(ctx: CommandContext | undefined, entity: string): { id: string } | null {
   return ctx?.kind === 'entity' && ctx.entity === entity ? { id: ctx.id } : null
+}
+
+// entitySelectionContext is entityContext's multi-id sibling, same
+// family-narrowing reason.
+export function entitySelectionContext(ctx: CommandContext | undefined, entity: string): { ids: string[] } | null {
+  return ctx?.kind === 'entitySelection' && ctx.entity === entity ? { ids: ctx.ids } : null
 }
 
 export function jsonNodeContext(ctx: CommandContext | undefined): { path: string; key: string; value: string } | null {

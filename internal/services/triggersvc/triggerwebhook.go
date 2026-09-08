@@ -134,7 +134,7 @@ func (s *TriggerService) DispatchWebhookEvent(values map[string]string, raw []by
 			responderTargets = append(responderTargets, b)
 			continue
 		}
-		go s.fireWebhookEvent(b.workflowID, payload, values)
+		s.goFire(func() { s.fireWebhookEvent(b.workflowID, payload, values) })
 	}
 	if len(responderTargets) == 0 {
 		return nil

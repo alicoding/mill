@@ -25,12 +25,13 @@ func SetAtlasCardUpdater(fn func(cardID string, fields map[string]string, source
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-atlas-card-update", Kind: KindApply,
-		Label:      "Update Atlas card",
-		Effect:     guardrail.ClassLocal,
-		Complexity: ComplexityAdvanced,
-		Consumes:   []PayloadKind{PayloadNone},
-		Produces:   PayloadProduce{Passthrough: true},
-		Output:     "payload unchanged; the updated card's id -> the output attribute, if named",
+		PaletteGroup: PaletteGroupApply,
+		Label:        "Update Atlas card",
+		Effect:       guardrail.ClassLocal,
+		Complexity:   ComplexityAdvanced,
+		Consumes:     []PayloadKind{PayloadNone},
+		Produces:     PayloadProduce{Passthrough: true},
+		Output:       "payload unchanged; the updated card's id -> the output attribute, if named",
 		Description: "Writes field values onto an existing Atlas card, resolved by \"Card\" (a literal card " +
 			"id or attr:<name>, e.g. attr:cardId from a trigger-atlas-card event, or an earlier " +
 			"Atlas: find cards result). Only the fields named in \"Field values\" change; everything else " +

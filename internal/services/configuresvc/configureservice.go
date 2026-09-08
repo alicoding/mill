@@ -30,6 +30,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/httprequest"
 	"github.com/alicoding/mill/internal/domain/list"
 	"github.com/alicoding/mill/internal/domain/mcpserver"
+	"github.com/alicoding/mill/internal/domain/reference"
 	"github.com/alicoding/mill/internal/domain/secret"
 	"github.com/alicoding/mill/internal/domain/secretsource"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
@@ -134,6 +135,22 @@ type ConfigureService struct {
 	// WireUndoJournal. Nil until wired, which leaves every door below
 	// recording nothing.
 	recordUndo undoRecorder
+	// boardRefs is atlassvc's own board-object reference index
+	// (goal 0392 S1) -- wired late via WireBoardReferenceLookup, the
+	// same nil-means-off discipline every cross-service seam here
+	// follows. References() (configureservice_refintegrity.go) treats a
+	// nil boardRefs as "no board ever references anything" rather than
+	// panicking, so a test that never wires it still exercises the
+	// workflow half.
+	boardRefs func(entityKind, id string) []reference.ObjectRef
+}
+
+// WireBoardReferenceLookup injects atlassvc's ObjectsReferencing.
+// Called once from wiring.go, after both services exist.
+//
+//wails:ignore
+func (c *ConfigureService) WireBoardReferenceLookup(fn func(entityKind, id string) []reference.ObjectRef) {
+	c.boardRefs = fn
 }
 
 // SetSecretResolver wires ConfigureService's own vault-reference

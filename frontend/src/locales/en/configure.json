@@ -111,6 +111,17 @@
     "emptyHeading": "No lists yet",
     "emptyDescription": "A reusable typed dataset a workflow's List Search (or List Lookup) step can resolve against.",
     "columnsRowsSummary": "{{columns}} columns, {{rows}} rows",
+    "usageLine": "Used on {{boards}} · {{workflows}}",
+    "usageBoards_one": "{{count}} board",
+    "usageBoards_other": "{{count}} boards",
+    "usageWorkflows_one": "{{count}} workflow",
+    "usageWorkflows_other": "{{count}} workflows",
+    "usageNone": "Not used anywhere",
+    "usageFilterAriaLabel": "Filter lists by usage",
+    "usageFilterAll": "All lists",
+    "usageFilterUnused": "Unused",
+    "unusedSelectAriaLabel": "Select {{label}} for deletion",
+    "unusedEmpty": "No lists are unused.",
     "unset": "(unset)",
     "rowStatusAriaLabel": "Row status",
     "active": "Active",
@@ -446,8 +457,8 @@
   "requestTestPanel": {
     "mustBeJsonObject": "Must be a JSON object, e.g. {\"id\": \"123\"}.",
     "notValidJson": "Not valid JSON.",
-    "declareSchemaFirst": "Declare a Schema first (Schema tab).",
-    "noOperationsYet": "The Schema tab doesn't declare any operations yet.",
+    "declareSchemaHint": "Declare a schema to read fields from this response.",
+    "urlRequiredToTest": "Enter a URL to test this request.",
     "operation": "Operation",
     "selectOperation": "Select an operation…",
     "exampleValues": "Example values",
@@ -542,7 +553,8 @@
     "millsPrivateKeyCaption": "Mill's own private key, used to decrypt what comes back.",
     "test": "Test",
     "testing": "Testing…",
-    "testCaption": "Runs this draft for real and shows what comes back."
+    "testCaption": "Runs this draft for real and shows what comes back.",
+    "urlRequiredToTest": "Enter a URL to test this request."
   },
   "openapiSynth": {
     "csvRowError": "Row {{row}}: {{message}}",

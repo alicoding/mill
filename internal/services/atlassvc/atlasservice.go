@@ -124,6 +124,14 @@ type AtlasService struct {
 	// List-projection seam (goal 0105, atlasprojection.go) -- injected
 	// via WireListProjection, same nil-means-off discipline.
 	listProjection listProjectionFn
+	// entityReferences is the combined board+workflow reference index
+	// (goal 0392 S1, atlasreference.go) -- injected via
+	// WireEntityReferenceIndex with configuresvc's own References,
+	// which itself calls back into this package's ObjectsReferencing
+	// for the board half. nil (workflow references unknown) for any
+	// test that never wires it -- DeleteBoardObject then reports
+	// EntityStillUsed purely off this package's own board index.
+	entityReferences entityReferencesFn
 	// guardedDataPaths are Mill's own settings/execution-db/backup
 	// locations (main.go's own SetGuardedDataPaths call, goal 0067) --
 	// ScanFolder/ImportFolderSuggestions refuse a picked folder that

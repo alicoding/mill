@@ -280,6 +280,20 @@ type ExecutionService struct {
 	// ingress started (goal 0373) -- see
 	// executionservice_webhookresponder.go's own doc comment.
 	responders sync.Map
+	// runStartMu serializes the moment a new run is handed to the
+	// durable runtime (execution.RunWorkflow's own call, never the run's
+	// subsequent execution or its blocking GetResult wait). Goal 0395's
+	// own -race reproduction (against DBOS v1.3.0) is a launch racing a
+	// concurrent Shutdown() on the runtime's shared per-context
+	// bookkeeping (context.AfterFunc inside its executeWorkflow), fixed
+	// by triggersvc's fireWG/Drain handshake that keeps a fire from
+	// still being inside a launch call when Shutdown starts -- this
+	// mutex is the untested-but-cheap extension of that same reasoning
+	// to two launches racing EACH OTHER on the same durable context, a
+	// shape goal 0395 never actually reproduced. Held only around the
+	// launch call itself, so runs still execute concurrently once
+	// started.
+	runStartMu sync.Mutex
 }
 
 // runWorkflow is the one DBOS-registered durable workflow function --
@@ -381,6 +395,7 @@ func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, opt
 
 	runID := uuid.NewString()
 	e.storeResponder(runID, opts.Responder)
+	e.runStartMu.Lock()
 	handle, err := execution.RunWorkflow(e.ctx, e.runWorkflow, runInput{
 		WorkflowID:        wf.ID,
 		Nodes:             nodes,
@@ -395,6 +410,7 @@ func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, opt
 		SecretsToken:      opts.SecretsToken,
 		EnvironmentID:     environmentID,
 	}, execution.WithWorkflowID(runID))
+	e.runStartMu.Unlock()
 	if err != nil {
 		e.responders.Delete(runID)
 		return RunSummary{}, fmt.Errorf("start run: %w", err)
@@ -432,50 +448,6 @@ func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, opt
 		_ = err
 	}
 
-	return e.summaryFor(handle.GetWorkflowID())
-}
-
-// RedriveRun forks runID from the given node's step, reusing every
-// earlier step's checkpointed output instead of re-executing it --
-// Mill's "fix forward" mechanism (docs/adr/0004's Update), most useful
-// after correcting an HTTPRequest/List/MCP Server's Configure-page setup
-// in between, since those resolve live at execution time.
-func (e *ExecutionService) RedriveRun(runID, fromNodeID string) (RunSummary, error) {
-	steps, err := execution.GetWorkflowSteps(e.ctx, runID)
-	if err != nil {
-		return RunSummary{}, fmt.Errorf("get run steps: %w", err)
-	}
-	var stepID uint
-	found := false
-	for _, s := range steps {
-		if s.StepName == fromNodeID {
-			stepID = uint(s.StepID)
-			found = true
-			break
-		}
-	}
-	if !found {
-		return RunSummary{}, fmt.Errorf("run %s has no recorded step for node %s", runID, fromNodeID)
-	}
-
-	forkedID := uuid.NewString()
-	handle, err := execution.ForkWorkflow[string](e.ctx, execution.ForkWorkflowInput{
-		OriginalWorkflowID: runID,
-		ForkedWorkflowID:   forkedID,
-		StartStep:          stepID,
-	})
-	if err != nil {
-		return RunSummary{}, fmt.Errorf("redrive: %w", err)
-	}
-	// The fork enters DBOS via ForkWorkflow, not runWorkflowStart, so the
-	// latter's own start emit never fires for forkedID -- announce it
-	// here so an open Runs panel shows the redriven run immediately
-	// rather than only once it completes (runWorkflow's own completion
-	// emit still covers that half).
-	dataevent.Emit("run", forkedID)
-	if _, err := handle.GetResult(); err != nil {
-		_ = err // see RunWorkflowDurable's identical comment
-	}
 	return e.summaryFor(handle.GetWorkflowID())
 }
 

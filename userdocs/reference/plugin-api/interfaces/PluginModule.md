@@ -14,7 +14,9 @@ export function activate(api) { api.registerCanvasObject({...}) }
 ### activate?
 
 ```ts
-optional activate?: (api) => void | Promise<void>;
+optional activate?: (api) => 
+  | PluginExports
+| Promise<PluginExports>;
 ```
 
 #### Parameters
@@ -25,7 +27,8 @@ optional activate?: (api) => void | Promise<void>;
 
 #### Returns
 
-`void` \| `Promise`\<`void`\>
+  \| [`PluginExports`](../type-aliases/PluginExports.md)
+  \| `Promise`\<[`PluginExports`](../type-aliases/PluginExports.md)\>
 
 ***
 
@@ -34,7 +37,11 @@ optional activate?: (api) => void | Promise<void>;
 ```ts
 optional default?: 
   | {
-  activate?: (api) => void | Promise<void>;
+  activate?: (api) => 
+     | PluginExports
+    | Promise<PluginExports>;
 }
-  | ((api) => void | Promise<void>);
+  | ((api) => 
+  | PluginExports
+  | Promise<PluginExports>);
 ```
