@@ -9,14 +9,14 @@ import { useListSchemaEdits } from './useListSchemaEdits'
 import { optionsRenderer } from './listGridGlideCells'
 import { GLIDE_DEFAULT_COLUMN_WIDTH, GLIDE_HEADER_HEIGHT, GLIDE_HEADER_HEIGHT_COMPACT, GLIDE_ROW_HEIGHT, GLIDE_ROW_HEIGHT_COMPACT, useGridPalette } from './listGridGlideTheme'
 import { useDisplayDensity } from './density'
-import { anchorFromBounds, type Anchor } from './ListGridGlideMenus'
+import { anchorFromBounds } from './ListGridGlideMenus'
 import { AddColumnButton, AddColumnRail, GlideOverlays, menuProps, schemaEditorProps, useGlideCellEdits, useGlideColumns, useRowTint, type GlideMenuState } from './ListGridGlideOverlays'
 import { ListGridGlideToolbar } from './ListGridGlideToolbar'
 import { filterGridRows, nextSortDirection, sortGridRows, type GridColumnFilter, type GridColumnFilters, type GridColumnSort, type GridSortDirection } from './listStandard'
 import { findCommand, runCommand } from './commands'
 import { comboFromEvent, comboKey, isUndoJournalCombo } from './keybinding'
 import { useListGridSearchFocusStore } from './listGridSearchFocus'
-import { resolvePendingRename } from './listGridGlideRename'
+import { useListGridGlideRename } from './useListGridGlideRename'
 import styles from './ListGrid.module.css'
 
 // The adopted grid (ADR-0049, goals 0287 / 0349 S4): Glide Data Grid as
@@ -108,7 +108,6 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
   const renderers = useMemo(() => [optionsRenderer(palette)], [palette])
   const [widths, setWidths] = useState<Record<string, number>>(() => readWidths(listID))
   const [menu, setMenu] = useState<GlideMenuState>(null)
-  const [renaming, setRenaming] = useState<{ key: string; at: Anchor } | null>(null)
   const [sort, setSort] = useState<GridColumnSort | null>(null)
   const [filters, setFilters] = useState<GridColumnFilters>({})
   const [selection, setSelection] = useState<GridSelection>(EMPTY_SELECTION)
@@ -186,86 +185,20 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
     setFilters((prev) => ({ ...prev, [key]: next }))
   }, [])
 
-  // Bounds are valid only after the grid reports the region: getBounds
-  // on a column the grid has not yet painted returns a zero-width
-  // rectangle (getBoundsForItem scales against the canvas's own
-  // measured clientRect, which is 0 before the grid's first layout
-  // pass -- confirmed against the vendored source). This is never the
-  // READINESS signal (see the pending-rename block below); it is
-  // called only once a column is already known to be in the grid's
-  // own reported visible range, to compute where to anchor the
-  // overlay.
-  const getColumnBounds = useCallback((col: number) => {
-    const bounds = gridRef.current?.getBounds(col, -1)
-    return bounds && bounds.width > 0 ? bounds : undefined
-  }, [])
-
-  const openRename = useCallback((col: number, at?: Anchor) => {
-    const column = columns[col]
-    if (!column) return
-    setMenu(null)
-    if (at) {
-      setRenaming({ key: column.Key, at })
-      return
-    }
-    const bounds = getColumnBounds(col)
-    if (bounds) setRenaming({ key: column.Key, at: toAnchor(bounds) })
-  }, [columns, toAnchor, getColumnBounds])
-
-  // A fresh column opens its rename once the grid's own
-  // onVisibleRegionChanged reports it inside the visible range -- the
-  // grid's own readiness signal (resolvePendingRename), never a bounds
-  // probe. The intent lives in STATE, not a ref: when the list starts
-  // empty, the DataEditor mounts only once the first column exists,
-  // and its FIRST region report can land before or after the insert's
-  // own round trip sets the pending key -- and, independently, before
-  // or after `columns` itself comes to include the new key (the round
-  // trip that resolves the key and the one that lands it in the list's
-  // own store are separate). State makes the key's own arrival
-  // re-check against the most recently reported range (visibleRangeRef)
-  // no matter which of the three landed last. A pendingKey naming a
-  // column that never arrives (removed before the insert round-tripped)
-  // never resolves -- resolvePendingRename finds no such column and
-  // stays null -- so the intent is dropped by simply never firing,
-  // never by a guard that could fire before `columns` has caught up.
-  const [pendingRenameKey, setPendingRenameKey] = useState<string | null>(null)
-  const visibleRangeRef = useRef<Rectangle | null>(null)
+  // The rename overlay's open/close (goal 0390 amendment 2, split into
+  // its own hook at the 500-line convention): a menu click's real
+  // anchor opens it directly; a fresh column's own arrival opens it
+  // once the grid's own onVisibleRegionChanged reports the column
+  // inside its visible range -- never a bounds probe or a timer -- and
+  // survives an empty-list mount/unmount and an off-screen column past
+  // an unsized table object's width cap (useListGridGlideRename.ts).
+  // closeMenu is memoized (a stable setState identity) so openRename's
+  // own memoization inside the hook isn't defeated every render.
+  const closeMenu = useCallback(() => setMenu(null), [])
+  const { renaming, closeRename, openRename, armPendingRename, onVisibleRegionChanged } = useListGridGlideRename(gridRef, columns, toAnchor, closeMenu)
   const insertColumn = (index: number) => {
-    void edits.insertColumnAt(index).then((key) => { setPendingRenameKey(key ?? null) })
+    void edits.insertColumnAt(index).then((key) => armPendingRename(key ?? null))
   }
-
-  // Resolving (is the pending column inside the reported range?) and
-  // opening it (which reads real pixel bounds) are two different
-  // moments: the library reports the region and updates its own
-  // canvas-sizing state in the SAME event, so the canvas's pixel
-  // width the bounds read from is only current once THIS component
-  // has re-rendered past that event -- never synchronously inside the
-  // callback that reported it (confirmed against the vendored
-  // source's getBoundsForItem, which scales against the canvas's
-  // client width from that same state). resolvedRenameCol records the
-  // resolution; the effect below opens it on the NEXT render, after
-  // the commit both this component's and the library's state landed
-  // in has already happened.
-  const [resolvedRenameCol, setResolvedRenameCol] = useState<number | null>(null)
-  const tryResolvePendingRename = useCallback((range: Rectangle | null) => {
-    const col = resolvePendingRename(columns, pendingRenameKey, range)
-    if (col === null) return
-    setPendingRenameKey(null)
-    setResolvedRenameCol(col)
-  }, [columns, pendingRenameKey])
-  const onVisibleRegionChanged = useCallback((range: Rectangle) => {
-    visibleRangeRef.current = range
-    tryResolvePendingRename(range)
-  }, [tryResolvePendingRename])
-  useEffect(() => {
-    if (pendingRenameKey === null) return
-    tryResolvePendingRename(visibleRangeRef.current)
-  }, [pendingRenameKey, columns, tryResolvePendingRename])
-  useEffect(() => {
-    if (resolvedRenameCol === null) return
-    setResolvedRenameCol(null)
-    openRename(resolvedRenameCol)
-  }, [resolvedRenameCol, openRename])
 
   // The handle every listGrid.search AND listGrid.addColumn invocation
   // acts through (listGridSearchFocus.ts): published whenever focus
@@ -471,7 +404,7 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
         onCloseMenu={() => setMenu(null)}
         onRename={(col) => openRename(col, menu?.at)}
         onInsertColumn={(index) => { setMenu(null); insertColumn(index) }}
-        onCloseRename={() => setRenaming(null)}
+        onCloseRename={closeRename}
         onSort={applySort}
         onFilter={applyFilter}
       />
