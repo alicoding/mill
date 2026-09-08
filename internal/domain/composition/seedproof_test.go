@@ -150,6 +150,18 @@ var workflowProofRegistry = map[string]seedProof{
 		"triggersvc.TestWebhookDispatch_SourceMatching",
 		"manual-only remainder: the real OS banner and a paired phone's notification (OS-bound, manual-checks registry)",
 	),
+	"webhook-respond-workflow": proven(
+		"triggersvc.TestWebhookDispatch_RespondingWorkflow_DeliversReply",
+		"triggersvc.TestWebhookDispatch_FirstWinsAcrossListeners",
+		"triggersvc.TestWebhookDispatch_TerminalWithoutReply_PromptFallback",
+		"triggersvc.TestWebhookDispatch_ParkedRun_KeepsWaitingUntilBudget",
+		"triggersvc.TestWebhookDispatch_ClientDisconnect_RunsContinue",
+		"triggersvc.TestWebhookDispatch_SecondRespondInSameRun_IgnoredWithNote",
+		"triggersvc.TestExecRespondWebhook_NoResponder_RecordsNoCallerNote",
+		"bridgesvc.TestHookEvent_RespondingRun_WritesStatusBodyContentType",
+		"bridgesvc.TestHookEvent_BudgetElapsed_StandardBodyWithHeader",
+		"bridgesvc.TestHookEvent_PromptNoReply_StandardBodyNoHeaderNoWait",
+	),
 	"example-forward-approvals-workflow": proven(
 		"triggersvc.TestSeededForwardApprovalsExample_DecisionParked_PostsRealHTTPCall",
 		"triggersvc.TestSystemEvent_LoopRule_SystemEventTriggeredRunEmitsNothing",

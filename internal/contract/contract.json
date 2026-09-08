@@ -1739,6 +1739,20 @@
           "RefKind": "",
           "Multiline": false,
           "SystemManaged": false
+        },
+        {
+          "Key": "respondWithinSeconds",
+          "Label": "Reply within (seconds)",
+          "Type": "number",
+          "Required": false,
+          "Default": "55",
+          "Description": "How long the caller waits for a reply before Mill answers for it. Only matters when this workflow has an Answer the webhook step.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
         }
       ],
       "Output": "JSON payload: the raw body the external tool posted. Every top-level scalar field it carries (a string, number, or true/false) also seeds an Attribute of the same name when this workflow declares one",
@@ -4044,6 +4058,67 @@
         }
       ],
       "Output": "payload unchanged; a notification appears on every channel, including a paired phone",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
+      "ID": "apply-respond-webhook",
+      "Kind": "apply",
+      "Label": "Answer the webhook",
+      "Description": "Sends this run's reply to the tool that fired the webhook.",
+      "ConfigFields": [
+        {
+          "Key": "status",
+          "Label": "Status code",
+          "Type": "number",
+          "Required": false,
+          "Default": "200",
+          "Description": "The HTTP status code the caller receives.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "body",
+          "Label": "Reply body",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Usually JSON in the calling tool's own schema.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "contentType",
+          "Label": "Content type",
+          "Type": "text",
+          "Required": false,
+          "Default": "application/json",
+          "Description": "The reply's Content-Type header.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "payload unchanged; the webhook's caller receives this step's status/body once",
       "Consumes": [
         "none"
       ],
@@ -4397,6 +4472,20 @@
           "RefKind": "",
           "Multiline": false,
           "SystemManaged": false
+        },
+        {
+          "Key": "respondWithinSeconds",
+          "Label": "Reply within (seconds)",
+          "Type": "number",
+          "Required": false,
+          "Default": "55",
+          "Description": "How long the caller waits for a reply before Mill answers for it. Only matters when this workflow has an Answer the webhook step.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
         }
       ],
       "Output": "JSON payload: the raw body the external tool posted. Every top-level scalar field it carries (a string, number, or true/false) also seeds an Attribute of the same name when this workflow declares one",
@@ -6702,6 +6791,67 @@
         }
       ],
       "Output": "payload unchanged; a notification appears on every channel, including a paired phone",
+      "Consumes": [
+        "none"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "",
+      "Complexity": "basic"
+    },
+    {
+      "ID": "apply-respond-webhook",
+      "Kind": "apply",
+      "Label": "Answer the webhook",
+      "Description": "Sends this run's reply to the tool that fired the webhook.",
+      "ConfigFields": [
+        {
+          "Key": "status",
+          "Label": "Status code",
+          "Type": "number",
+          "Required": false,
+          "Default": "200",
+          "Description": "The HTTP status code the caller receives.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        },
+        {
+          "Key": "body",
+          "Label": "Reply body",
+          "Type": "text",
+          "Required": false,
+          "Default": "",
+          "Description": "Usually JSON in the calling tool's own schema.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": true,
+          "SystemManaged": false
+        },
+        {
+          "Key": "contentType",
+          "Label": "Content type",
+          "Type": "text",
+          "Required": false,
+          "Default": "application/json",
+          "Description": "The reply's Content-Type header.",
+          "Options": null,
+          "Suggestions": null,
+          "Secret": false,
+          "RefKind": "",
+          "Multiline": false,
+          "SystemManaged": false
+        }
+      ],
+      "Output": "payload unchanged; the webhook's caller receives this step's status/body once",
       "Consumes": [
         "none"
       ],

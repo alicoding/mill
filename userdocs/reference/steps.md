@@ -89,6 +89,7 @@ Fires when a tool on this machine posts to Mill's hook endpoint, so a workflow c
 - Effect: none — pure computation
 - Settings:
   - **Source (optional)** — Fire only for events whose source field matches this exactly, in lowercase. Leave empty to fire on any source, or on an event with no source at all.
+  - **Reply within (seconds)** — How long the caller waits for a reply before Mill answers for it. Only matters when this workflow has an Answer the webhook step.
 
 ## Capture
 
@@ -352,6 +353,17 @@ Validates the data flowing through this step against a set of named rules (busin
 - Effect: none — pure computation
 
 ## Act
+
+### Answer the webhook
+
+Sends this run's reply to the tool that fired the webhook.
+
+- Takes: nothing — Produces: its input, unchanged
+- Effect: changes something on this machine
+- Settings:
+  - **Status code** — The HTTP status code the caller receives.
+  - **Reply body** — Usually JSON in the calling tool's own schema.
+  - **Content type** — The reply's Content-Type header.
 
 ### Back up Mill data
 
