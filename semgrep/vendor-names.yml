@@ -1,0 +1,120 @@
+# Enforces goal 0385's platform/value line (.claude/rules/architecture.md):
+# a product or vendor name is legal ONLY as the VALUE of something the
+# user connects to -- a Configure entity (an AI provider, an
+# integration, a PAT example), a format flavor in an adapter
+# (Confluence/GFM markdown), a conversion profile -- never as a
+# platform CONCEPT: a trigger or node id or label, a route, a device
+# kind, feature copy, or a docs pattern (goal 0368's `trigger-hook-event`/
+# "agent's hook" shape). Test: delete the name -- a value becomes an
+# empty field; a concept makes the feature stop making sense.
+#
+# One name per line below, the practical/incident-driven form (never
+# every possible vendor -- add one the moment it names a real
+# incident, per architecture.md's dispatch-lock discipline): the
+# chat/notes/automation tools 0368's own plan named
+# (Slack/Notion/Obsidian/Discord/Telegram/WhatsApp/Zapier/IFTTT/Trello/
+# Asana/Airtable/Figma/Miro/ClickUp/Linear/Webex), and the AI-coding-
+# agent names 0368's actual incident used (Claude/Copilot/Cursor/Codex)
+# -- an AI-provider wire-protocol value (openai-compatible, anthropic)
+# is a different, legal shape and is deliberately NOT on this list; a
+# name this list cannot know (a new vendor, a subtler platform-concept
+# coupling) is the reviewer's job (.claude/agents/reviewer.md), not
+# this gate's.
+#
+# Case sensitivity is split by shape, not uniform: the three
+# structured-value rules (a Go/TS string LITERAL, a JSON locale value)
+# match case-insensitively -- a kebab-case id/source value (the actual
+# 0368 incident shape, `"claude-code"`/`trigger-slack-notify`) is
+# always lowercase, and these AST-scoped patterns never see a comment,
+# so there is no "CLAUDE.md"-shaped citation to collide with. The
+# userdocs rule matches PROSE (whole files, comments included by
+# nature), where "cursor" (mouse/text) and "CLAUDE.md"/
+# ".claude/rules/..." (this repo's own convention citations) are real
+# common words/paths -- there it matches the capitalized proper noun
+# only, since a real product mention in prose is always capitalized.
+#
+# Deliberately narrow scope, not "every Go/TS file": composition node/
+# trigger ids and labels, the webhook bridge's routes, remoteauth's
+# device kinds, frontend views/copy/locales, and userdocs are the
+# surfaces a platform CONCEPT actually reaches a user through. Path
+# exclusions below carry each one's own reason -- a real, adopted,
+# necessary naming (a document-format flavor, a wire-protocol kind, a
+# connector example) is never flagged.
+rules:
+  - id: no-vendor-name-in-composition-go-string
+    languages: [go]
+    severity: ERROR
+    message: >-
+      A product/vendor name in this string is legal only as a Configure-entity
+      value, a format flavor, or a conversion profile -- never a trigger/node
+      id, a label, a route, or a device kind. Delete the name: if the field
+      goes empty, it was a concept, not a value. See
+      .claude/rules/architecture.md.
+    patterns:
+      - pattern: '"$STR"'
+      - metavariable-regex:
+          metavariable: $STR
+          regex: (?i).*(Slack|Notion|Obsidian|Discord|Telegram|WhatsApp|Zapier|IFTTT|Trello|Asana|Airtable|Figma|Miro|ClickUp|Linear|Webex|Claude|Copilot|Cursor|Codex).*
+    paths:
+      include:
+        - '**/internal/domain/composition/**'
+        - '**/internal/services/bridgesvc/**'
+        - '**/internal/services/remoteauthsvc/**'
+      exclude:
+        - "**/*_test.go"
+
+  - id: no-vendor-name-in-frontend-ts-string
+    languages: [typescript]
+    severity: ERROR
+    message: >-
+      A product/vendor name in this string is legal only as a Configure-entity
+      value or a connector example -- never view copy, a route, or a label a
+      user reads as Mill's own feature. See .claude/rules/ux-writing.md.
+    patterns:
+      - pattern-either:
+          - pattern: '"$STR"'
+          - pattern: "'$STR'"
+      - metavariable-regex:
+          metavariable: $STR
+          regex: (?i).*(Slack|Notion|Obsidian|Discord|Telegram|WhatsApp|Zapier|IFTTT|Trello|Asana|Airtable|Figma|Miro|ClickUp|Linear|Webex|Claude|Copilot|Cursor|Codex).*
+    paths:
+      include:
+        - '**/frontend/src/views/**'
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.test.tsx"
+
+  - id: no-vendor-name-in-locale-copy
+    languages: [json]
+    severity: ERROR
+    message: >-
+      Locale copy names another product to explain a Mill feature
+      (ux-writing.md: "never name another product to explain a feature").
+      Describe the behavior generically instead.
+    patterns:
+      - pattern: '"$STR"'
+      - metavariable-regex:
+          metavariable: $STR
+          regex: (?i).*(Slack|Notion|Obsidian|Discord|Telegram|WhatsApp|Zapier|IFTTT|Trello|Asana|Airtable|Figma|Miro|ClickUp|Linear|Webex|Claude|Copilot|Cursor|Codex).*
+    paths:
+      include:
+        - '**/frontend/src/locales/**'
+
+  - id: no-vendor-name-in-userdocs
+    languages: [generic]
+    severity: ERROR
+    message: >-
+      Userdocs describe a sender/tool as a category ("a coding agent's
+      hook", "an MCP client"), never by product name (goal 0385
+      amendment). Reword to the category the feature actually reaches.
+    pattern-regex: \b(Slack|Notion|Obsidian|Discord|Telegram|WhatsApp|Zapier|IFTTT|Trello|Asana|Airtable|Figma|Miro|ClickUp|Linear|Webex|Claude|Copilot|Cursor|Codex)\b
+    paths:
+      include:
+        - '**/userdocs/**'
+      exclude:
+        # Generated (docsgen-freshness keeps it in sync with the source
+        # pages below) -- scanning the concatenation is redundant with
+        # scanning the pages it's built from, same "don't audit
+        # generated output" convention as check-loc.sh's bindings
+        # exclusion.
+        - '**/userdocs/llms-full.txt'

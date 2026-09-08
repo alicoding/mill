@@ -17,6 +17,11 @@ pre-commit:
     - name: framework-api-first
       glob: "*.go"
       run: ./scripts/check-framework-api-first.sh
+    - name: framework-api-first-selftest
+      # Fixture-tests the location half of the gate above (goal 0385) --
+      # same probe-on-touch shape as review-report-selftest.
+      glob: "scripts/check-framework-api-first*.sh"
+      run: ./scripts/check-framework-api-first-selftest.sh
     - name: test-side-effects
       # Goal 0356: a _test.go file constructing the real clipboard Host
       # adapter without the MILL_CLIPBOARD_HOST_OK opt-in in the same
@@ -37,8 +42,24 @@ pre-commit:
       glob: "frontend/src/locales/**/*.json"
       run: ./scripts/check-ui-copy.sh
     - name: drag-regions
-      glob: "frontend/src/**/*.{css,ts,tsx}"
+      # Goal 0385 widened this to *.go too: the cross-check walks every
+      # tracked Go file for a Frameless: true window construction, not
+      # just auxwindows.go/main.go by name, so a future window family
+      # split (the 500-line convention) still gets caught.
+      glob: "{frontend/src/**/*.{css,ts,tsx},*.go}"
       run: ./scripts/check-drag-regions.sh
+    - name: drag-regions-selftest
+      glob: "scripts/check-drag-regions*.sh"
+      run: ./scripts/check-drag-regions-selftest.sh
+    - name: vendor-names
+      # Goal 0385: semgrep/vendor-names.yml's own header comment carries
+      # the value-vs-concept rule and the case-sensitivity split.
+      # Requires `brew install semgrep` once (task setup:hooks).
+      glob: "{internal/domain/composition/**,internal/services/bridgesvc/**,internal/services/remoteauthsvc/**,frontend/src/views/**,frontend/src/locales/**,userdocs/**,semgrep/**}"
+      run: semgrep --config semgrep/ --error --quiet
+    - name: vendor-names-selftest
+      glob: "{semgrep/**,scripts/check-vendor-names-selftest.sh}"
+      run: ./scripts/check-vendor-names-selftest.sh
     - name: toolbar-action-testids
       glob: "{frontend/src/atlas/AtlasToolbar.tsx,frontend/e2e/*.spec.ts,frontend/e2e/fixtures/toolbarActions.ts}"
       run: ./scripts/check-toolbar-action-testids.sh
@@ -152,6 +173,12 @@ pre-commit:
       # checkout's own gitignored .task/ isolates each worktree; the
       # cost is one cold lint per fresh worktree.
       run: GOLANGCI_LINT_CACHE="$PWD/.task/golangci-cache" golangci-lint run . ./internal/... --build-tags=server --allow-parallel-runners
+    - name: gomodguard-selftest
+      # Fixture-tests the gomodguard_v2 wiring above (goal 0385) against
+      # a throwaway module -- same probe-on-touch shape as
+      # review-report-selftest.
+      glob: "{.golangci.yml,scripts/check-gomodguard-selftest.sh}"
+      run: ./scripts/check-gomodguard-selftest.sh
     - name: gocognit-new
       glob: "*.go"
       # Cognitive complexity gates NEW/CHANGED code only (goal 0109,
@@ -194,6 +221,13 @@ pre-commit:
       root: "frontend/"
       glob: "frontend/**/*.{ts,tsx}"
       run: npm run lint
+    - name: notice-action-eslint-selftest
+      # Fixture-tests the NoticeAction inline-onClick ban above (goal
+      # 0385) against a real, transient file (ESLint's type-aware parser
+      # refuses a virtual path) -- same probe-on-touch shape as
+      # review-report-selftest.
+      glob: "{frontend/eslint.config.js,scripts/check-notice-action-eslint-selftest.sh}"
+      run: ./scripts/check-notice-action-eslint-selftest.sh
     - name: boundaries
       # docs/adr/0012: dependency-cruiser enforces the bounded-context
       # folder rules (src/app|views|composition|configure|shared) --
