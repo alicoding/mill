@@ -3,6 +3,7 @@ package composition
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -193,7 +194,10 @@ func TestInterpolateNotifyText(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, missing := interpolateNotifyText(tc.in, vars)
+			got, missing, err := interpolateNotifyText(tc.in, vars)
+			if err != nil {
+				t.Fatalf("interpolateNotifyText(%q) unexpected error: %v", tc.in, err)
+			}
 			if got != tc.want {
 				t.Errorf("interpolateNotifyText(%q) = %q, want %q", tc.in, got, tc.want)
 			}
@@ -202,4 +206,36 @@ func TestInterpolateNotifyText(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestInterpolateNotifyText_CapsRunaway pins the go/allocation-size-
+// overflow guard (CWE-190): a run whose combined attribute and
+// missing-reference count exceeds maxMergedMapEntries is rejected
+// with a typed error instead of feeding an unbounded sum into the
+// blanked map's capacity hint, while a normal-sized run still renders.
+func TestInterpolateNotifyText_CapsRunaway(t *testing.T) {
+	t.Run("a normal-sized run renders", func(t *testing.T) {
+		vars := map[string]string{"entityId": "list-42"}
+		got, missing, err := interpolateNotifyText("List {{entityId}} / {{nope}}", vars)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got != "List list-42 / " {
+			t.Errorf("got = %q", got)
+		}
+		if !reflect.DeepEqual(missing, []string{"nope"}) {
+			t.Errorf("missing = %v", missing)
+		}
+	})
+
+	t.Run("an oversized attribute bag is rejected, not overflowed into", func(t *testing.T) {
+		vars := make(map[string]string, maxMergedMapEntries+1)
+		for i := 0; i <= maxMergedMapEntries; i++ {
+			vars[strconv.Itoa(i)] = "x"
+		}
+		_, _, err := interpolateNotifyText("{{nope}}", vars)
+		if err == nil || !strings.Contains(err.Error(), "too many entries to merge") {
+			t.Fatalf("expected the too-many-entries error, got %v", err)
+		}
+	})
 }

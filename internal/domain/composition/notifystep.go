@@ -86,7 +86,11 @@ func execNotify(node Node, ctx ExecContext) (ExecContext, error) {
 		}
 	}
 	var titleGaps []string
-	title, titleGaps = interpolateNotifyText(title, vars)
+	var err error
+	title, titleGaps, err = interpolateNotifyText(title, vars)
+	if err != nil {
+		return ctx, err
+	}
 	gaps.add(titleGaps)
 	if title == "" {
 		return ctx, fmt.Errorf("apply-notify: title is required")
@@ -98,7 +102,10 @@ func execNotify(node Node, ctx ExecContext) (ExecContext, error) {
 		}
 	}
 	var bodyGaps []string
-	body, bodyGaps = interpolateNotifyText(body, vars)
+	body, bodyGaps, err = interpolateNotifyText(body, vars)
+	if err != nil {
+		return ctx, err
+	}
 	gaps.add(bodyGaps)
 
 	var targets []string
@@ -149,12 +156,16 @@ func attributeVars(attrs map[string]any) map[string]string {
 // a notification is read text, so a name with no value renders empty
 // here instead, via a second Interpolate pass over the same vars with
 // the missing names blanked in (never a second grammar).
-func interpolateNotifyText(s string, vars map[string]string) (string, []string) {
+func interpolateNotifyText(s string, vars map[string]string) (string, []string, error) {
 	result, missing := Interpolate(s, vars)
 	if len(missing) == 0 {
-		return result, nil
+		return result, nil, nil
 	}
-	blanked := make(map[string]string, len(vars)+len(missing))
+	capHint, err := boundedMapCapacity(len(vars), len(missing), "apply-notify")
+	if err != nil {
+		return "", nil, err
+	}
+	blanked := make(map[string]string, capHint)
 	for k, v := range vars {
 		blanked[k] = v
 	}
@@ -162,7 +173,7 @@ func interpolateNotifyText(s string, vars map[string]string) (string, []string) 
 		blanked[name] = ""
 	}
 	result, _ = Interpolate(s, blanked)
-	return result, missing
+	return result, missing, nil
 }
 
 // notifyMissingNote formats the run-detail note recorded under the
