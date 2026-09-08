@@ -400,7 +400,8 @@
     "panel": {
       "openMill": "Open Mill",
       "applyClipboard": "Apply from clipboard",
-      "open": "Open Quick Panel"
+      "open": "Open Quick Panel",
+      "resetPosition": "Reset Quick Panel position"
     },
     "backup": {
       "now": "Back up now",
