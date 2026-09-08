@@ -219,6 +219,19 @@ export function CreateCardLinkedFrom(fromCardID: string, linkKindID: string, kin
     return $Call.ByID(2183741437, fromCardID, linkKindID, kindID, title, parentID, position);
 }
 
+/**
+ * CreateFileObjectFromDownload lands base64Data as a file-backed board
+ * object, or -- when the same content already landed -- reports that
+ * existing object unchanged, never a duplicate. filename is the
+ * browser's own download name (the object's title and
+ * its file extension both read from it); sourceRunID is the writing
+ * run's own id, stamped onto a NEW object's Payload so a later
+ * duplicate hit can name which run first landed it.
+ */
+export function CreateFileObjectFromDownload(base64Data: string, filename: string, sourceRunID: string): $CancellablePromise<$models.FileObjectResult> {
+    return $Call.ByID(1260092503, base64Data, filename, sourceRunID);
+}
+
 export function CreateKind(label: string, description: string, icon: string, fields: typedfield$0.Field[] | null): $CancellablePromise<atlas$0.Kind> {
     return $Call.ByID(3663898672, label, description, icon, fields);
 }
@@ -903,6 +916,22 @@ export function RevealSpaceFolder(spaceID: string): $CancellablePromise<string> 
  */
 export function RunCardAction(cardID: string, workflowID: string): $CancellablePromise<void> {
     return $Call.ByID(3407735559, cardID, workflowID);
+}
+
+/**
+ * SaveFileBytes is SaveImageBytes' extension-agnostic sibling (goal
+ * 0350 S3): a caller with arbitrary bytes and no reason to believe
+ * they're an image (a browser download can be anything a site serves)
+ * still needs the SAME mirror-write shape -- a fresh file under the
+ * captures directory, never a second writer. ext must include its
+ * leading "." and is never validated against an allow-list here: the
+ * caller already resolved which board-object Kind (and therefore which
+ * renderer) the file becomes, and that resolution is what actually
+ * gates what Mill can usefully do with the bytes, not the extension
+ * string itself.
+ */
+export function SaveFileBytes(base64Data: string, ext: string, title: string): $CancellablePromise<string> {
+    return $Call.ByID(4283463200, base64Data, ext, title);
 }
 
 /**

@@ -136,6 +136,7 @@ func (e *ExecutionService) GetRun(runID string) (RunDetail, error) {
 				// later attempt exists yet: the run is waiting there.
 				rs.Waits = append(rs.Waits, RunWait{Reason: ParkReasonVaultLocked, ParkedAt: s.CompletedAt})
 			}
+			rs.CompletedAt = s.CompletedAt
 			if s.Error != nil {
 				rs.Status = "failed"
 				rs.Error = s.Error.Error()
