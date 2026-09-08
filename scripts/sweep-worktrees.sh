@@ -28,7 +28,21 @@
 # Never touches the main checkout (the first entry `git worktree list`
 # reports). Called by the orchestrator's tick, not by any automatic
 # hook. Always exits 0; `--dry-run` prints verdicts without removing.
+#
+# A git-commit-invoked pre-commit hook exports GIT_DIR/GIT_WORK_TREE/
+# GIT_INDEX_FILE (and the rest of git's local-repo environment) for the
+# repo being committed; those override every `-C <path>` call below,
+# so every worktree this script checks would resolve against that ONE
+# inherited repo instead of the actual worktree path (confirmed live: a
+# nested git status call against a different directory, run under an
+# inherited GIT_DIR, silently ignores that directory -- goal 0394's
+# class). Cleared unconditionally so this script's verdicts are correct
+# regardless of what invoked it.
 set -uo pipefail
+
+for _git_local_var in $(git rev-parse --local-env-vars 2>/dev/null || true); do
+  unset "$_git_local_var"
+done
 
 dry=0
 [ "${1:-}" = "--dry-run" ] && dry=1
@@ -44,7 +58,7 @@ command -v gh >/dev/null 2>&1 || has_gh=0
 has_jq=1
 command -v jq >/dev/null 2>&1 || has_jq=0
 
-origin_url="$(git -C "$main_worktree" remote get-url origin 2>/dev/null || true)"
+origin_url="$(git -C "$main_worktree" remote get-url origin 2>/dev/null || true)"  # git-isolation:allow -- real worktree list, not a fixture; local git env vars are cleared above
 repo_slug="$(echo "${origin_url%.git}" | awk -F'[:/]' '{print $(NF-1)"/"$NF}')"
 
 # worktree_busy <path> -- true (0) when a live process is using it.
@@ -66,7 +80,7 @@ worktree_busy() {
 # on origin/<branch>, or no upstream to compare against.
 branch_unpushed() {
   local path="$1" branch="$2" ahead
-  ahead="$(git -C "$path" rev-list --count "origin/${branch}..HEAD" 2>/dev/null)" || return 0
+  ahead="$(git -C "$path" rev-list --count "origin/${branch}..HEAD" 2>/dev/null)" || return 0  # git-isolation:allow -- real worktree list, not a fixture; local git env vars are cleared above
   [ -z "$ahead" ] && return 0
   [ "$ahead" -gt 0 ]
 }
@@ -75,8 +89,8 @@ branch_unpushed() {
 # merge/rebase is in progress.
 tree_dirty_or_mid_merge() {
   local path="$1" gitdir
-  [ -n "$(git -C "$path" status --porcelain 2>/dev/null)" ] && return 0
-  gitdir="$(git -C "$path" rev-parse --git-dir 2>/dev/null)" || return 1
+  [ -n "$(git -C "$path" status --porcelain 2>/dev/null)" ] && return 0  # git-isolation:allow -- real worktree list, not a fixture; local git env vars are cleared above
+  gitdir="$(git -C "$path" rev-parse --git-dir 2>/dev/null)" || return 1  # git-isolation:allow -- real worktree list, not a fixture; local git env vars are cleared above
   [ -f "$gitdir/MERGE_HEAD" ] && return 0
   [ -d "$gitdir/rebase-merge" ] && return 0
   [ -d "$gitdir/rebase-apply" ] && return 0
@@ -110,7 +124,7 @@ git worktree list --porcelain | awk '/^worktree /{print $2}' | while read -r wt;
   [ "$wt" = "$main_worktree" ] && continue
   [ -d "$wt" ] || continue
 
-  branch="$(git -C "$wt" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+  branch="$(git -C "$wt" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"  # git-isolation:allow -- real worktree list, not a fixture; local git env vars are cleared above
 
   if worktree_busy "$wt"; then
     echo "SKIP  $wt (branch $branch): a live process is using it"
