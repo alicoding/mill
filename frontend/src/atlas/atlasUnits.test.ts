@@ -73,6 +73,28 @@ describe('resolveUnit (ADR-0043 board-unit registry, goal 0133 slice 1)', () => 
   })
 })
 
+// A promoted card keeps its face (goal 0410 S1): every unit backed by
+// real board-object content (a mirrored image or diagram, a List
+// projection) declares a Face so the board never shows a blank titled
+// box for a card that has something to show -- mirror-markdown/
+// mirror-text/icon-fallback pin the honest floor, no Face yet.
+describe('unit Face declarations (goal 0410 S1: a promoted card keeps its face)', () => {
+  it.each([
+    ['table-projection', true],
+    ['drawio-svg', true],
+    ['drawio', true],
+    ['mirror-markdown', false],
+    ['mirror-image', true],
+    ['mirror-text', false],
+    ['mermaid', true],
+    ['icon-fallback', false],
+  ])('unit %s declares a Face: %s', (id, hasFace) => {
+    const unit = UNIT_REGISTRY.find((u) => u.id === id)
+    expect(unit, `${id} should be a registered unit`).toBeDefined()
+    expect(Boolean(unit?.render.Face)).toBe(hasFace)
+  })
+})
+
 describe('exportersForCard (ADR-0043 §3 Decision 1, goal 0133 slice E1)', () => {
   const ORIGINAL = 'Original file'
 

@@ -13,6 +13,9 @@ import type { Card } from '../../bindings/github.com/alicoding/mill/internal/dom
 const MERMAID_EXTENSIONS = new Set(['.mmd', '.mermaid'])
 
 const mermaidPageLoader = cachedLoader(() => import('./AtlasUnitMermaidPage').then((m) => m.AtlasUnitMermaidPage))
+// A promoted card keeps its face (goal 0410 S1): the same mermaid
+// render this unit's Page already uses, sized to the card's face area.
+const mermaidFaceLoader = cachedLoader(() => import('./AtlasUnitMermaidFace').then((m) => m.AtlasUnitMermaidFace))
 
 // The declared exporter (ADR-0043 §3: "the source .mmd itself, at
 // minimum"): hands back the mirrored file's own raw source unchanged
@@ -33,7 +36,7 @@ export const MERMAID_UNITS: UnitRenderer[] = [
     id: 'mermaid',
     detect: (card) => MERMAID_EXTENSIONS.has(extensionOf(card.MirrorPath)),
     tag: () => ({ label: 'MMD', color: 'attention' }),
-    render: { Page: mermaidPageLoader },
+    render: { Page: mermaidPageLoader, Face: mermaidFaceLoader },
     exporters: MERMAID_EXPORTERS,
   },
 ]
