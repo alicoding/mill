@@ -249,7 +249,7 @@
       "browser": "browser",
       "webhook-token": "webhook token"
     },
-    "noDevicesPaired": "No devices paired yet. Pair one in Settings › Connections.",
+    "noDevicesPaired": "No devices paired yet.",
     "tabs": {
       "ariaLabel": "Step inspector sections",
       "parameters": "Parameters",
