@@ -466,6 +466,31 @@ export interface TombstoneResult {
     "ObjectIDs": string[] | null;
     "LinksRemoved": number;
     "ChildrenPromoted": number;
+
+    /**
+     * EntityRefKind (goal 0392 S1) is the deleted board object's own
+     * declared entityRef.EntityKind ("list" for a table), or "" for a
+     * DeleteCard/DeleteNote result or a DeleteBoardObject call whose
+     * kind carries no entityRef -- the toast's own signal for whether
+     * to render an entity-outcome segment at all. Set only by
+     * DeleteBoardObject.
+     */
+    "EntityRefKind": string;
+
+    /**
+     * ObjectKind is the deleted board object's own Kind, alongside
+     * EntityRefKind -- which of the two locale-key pairs the toast
+     * picks (one pair per kind that declares an entityRef).
+     */
+    "ObjectKind": string;
+
+    /**
+     * EntityStillUsed reports whether any OTHER live board object or
+     * workflow still references the entity after this delete -- decides
+     * which of the two entity-outcome strings the toast shows. Always
+     * false when EntityRefKind is "".
+     */
+    "EntityStillUsed": boolean;
 }
 
 /**

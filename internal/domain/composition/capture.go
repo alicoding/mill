@@ -15,13 +15,14 @@ var readClipboardText = clipboard.New().ReadText
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "capture-clipboard-html", Kind: KindCapture,
-		Effect:      guardrail.ClassRead,
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadNone},
-		Produces:    PayloadProduce{Kind: PayloadHTML},
-		Output:      "HTML from the clipboard",
-		Label:       "Read clipboard",
-		Description: "Reads the clipboard's HTML. If there's no HTML flavor (many apps only put plain text), falls back to the plain-text flavor rather than failing.",
+		PaletteGroup: PaletteGroupCapture,
+		Effect:       guardrail.ClassRead,
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadHTML},
+		Output:       "HTML from the clipboard",
+		Label:        "Read clipboard",
+		Description:  "Reads the clipboard's HTML. If there's no HTML flavor (many apps only put plain text), falls back to the plain-text flavor rather than failing.",
 	}, func(_ Node, ctx ExecContext) (ExecContext, error) {
 		html, err := readClipboardHTML()
 		if err == nil {
@@ -45,13 +46,14 @@ func init() {
 	// hash or an encoder.
 	RegisterNodeType(NodeType{
 		ID: "capture-clipboard-text", Kind: KindCapture,
-		Effect:      guardrail.ClassRead,
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadNone},
-		Produces:    PayloadProduce{Kind: PayloadText},
-		Output:      "plain text from the clipboard",
-		Label:       "Read clipboard text",
-		Description: "Reads the clipboard's plain text only, never its HTML. Use it for ids, tokens, and anything copied as-is.",
+		PaletteGroup: PaletteGroupCapture,
+		Effect:       guardrail.ClassRead,
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadText},
+		Output:       "plain text from the clipboard",
+		Label:        "Read clipboard text",
+		Description:  "Reads the clipboard's plain text only, never its HTML. Use it for ids, tokens, and anything copied as-is.",
 	}, func(_ Node, ctx ExecContext) (ExecContext, error) {
 		text, err := readClipboardText()
 		if err != nil {

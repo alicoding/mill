@@ -9,7 +9,7 @@ import { usePluginReloadVersion } from '../plugins/pluginReloadSignal'
 import { unknownKindContent } from './atlasBoardObjectContent'
 import type { AtlasBoardObjectContent } from './atlasBoardObjectContent'
 import type { DrawioPageCursor } from './drawioInteraction'
-import { activation, faceOwnsInput, shieldUp } from './atlasActivation'
+import { activation, contentInert, faceOwnsInput, shieldUp } from './atlasActivation'
 import type { AtlasActivation, AtlasInputMode } from './atlasActivation'
 import { useAtlasObjectKeyBoundary } from './useAtlasObjectKeyBoundary'
 import { AtlasShapeRotateHandle } from './AtlasShapeRotateHandle'
@@ -325,9 +325,13 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
       // (img: image/diagram) may carry it. A preview tile is an inert
       // duplicate of content reachable by drilling in, hidden from AT
       // the way decorative repetition is; the frame header's own item
-      // count announces membership.
+      // count announces membership. `inert` (not `aria-hidden` alone,
+      // goal 0392 S1's CI amendment) removes it from the tab order too
+      // -- a Kind with real interactive descendants (table's grid) is
+      // never left focusable inside an aria-hidden subtree.
       aria-label={role && !preview ? t(ariaLabelKey) : undefined}
       aria-hidden={preview ? true : undefined}
+      inert={preview || undefined}
       onDoubleClick={editable ? () => { void dispatchObjectEdit(object, editRoute!) } : undefined}
     >
       {/* The rotation handle (goal 0214): visible only when this shape
@@ -433,6 +437,13 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
       <div
         className={objectContentClassName(state, resolvedFacts.input)}
         data-testid="atlas-board-object-face"
+        // inert (goal 0392 S1's CI amendment, not just the CSS pointer-
+        // events guard `contentInert` already applies): an idle
+        // interactive face's real descendants -- a table's grid cells,
+        // a diagram viewer's own controls -- must be unreachable by
+        // keyboard focus too, gone the instant the face goes live
+        // (contentInert, atlasActivation.ts).
+        inert={contentInert(resolvedFacts.input, state) || undefined}
         onPointerDownCapture={dragBand ? (e) => {
           // Primary button only: a right-click must reach the context
           // menu with the CURRENT selection intact (a multi-select

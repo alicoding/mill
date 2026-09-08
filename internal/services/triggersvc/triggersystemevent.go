@@ -75,6 +75,6 @@ func (s *TriggerService) DispatchSystemEvent(ev executionsvc.SystemEvent) {
 		return
 	}
 	for _, wfID := range targets {
-		go s.fire(wfID, "", string(payload))
+		s.goFire(func() { s.fire(wfID, "", string(payload)) })
 	}
 }

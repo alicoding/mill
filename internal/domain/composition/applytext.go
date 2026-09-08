@@ -14,13 +14,14 @@ var writeClipboardText = clipboard.New().WriteText
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-clipboard-write-text", Kind: KindApply,
-		Effect:      guardrail.ClassLocal,
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadText},
-		Produces:    PayloadProduce{Passthrough: true},
-		Output:      "the text it wrote",
-		Label:       "Write text to clipboard",
-		Description: "Writes the workflow's current payload to the clipboard as plain text.",
+		PaletteGroup: PaletteGroupApply,
+		Effect:       guardrail.ClassLocal,
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadText},
+		Produces:     PayloadProduce{Passthrough: true},
+		Output:       "the text it wrote",
+		Label:        "Write text to clipboard",
+		Description:  "Writes the workflow's current payload to the clipboard as plain text.",
 	}, func(_ Node, ctx ExecContext) (ExecContext, error) {
 		if err := writeClipboardText(ctx.Payload); err != nil {
 			return ctx, err

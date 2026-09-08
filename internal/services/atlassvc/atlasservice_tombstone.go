@@ -2,7 +2,6 @@ package atlassvc
 
 import (
 	"fmt"
-	"log/slog"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/atlas"
@@ -34,6 +33,22 @@ type TombstoneResult struct {
 	ObjectIDs        []string
 	LinksRemoved     int
 	ChildrenPromoted int
+	// EntityRefKind (goal 0392 S1) is the deleted board object's own
+	// declared entityRef.EntityKind ("list" for a table), or "" for a
+	// DeleteCard/DeleteNote result or a DeleteBoardObject call whose
+	// kind carries no entityRef -- the toast's own signal for whether
+	// to render an entity-outcome segment at all. Set only by
+	// DeleteBoardObject.
+	EntityRefKind string
+	// ObjectKind is the deleted board object's own Kind, alongside
+	// EntityRefKind -- which of the two locale-key pairs the toast
+	// picks (one pair per kind that declares an entityRef).
+	ObjectKind string
+	// EntityStillUsed reports whether any OTHER live board object or
+	// workflow still references the entity after this delete -- decides
+	// which of the two entity-outcome strings the toast shows. Always
+	// false when EntityRefKind is "".
+	EntityStillUsed bool
 }
 
 // liveLinkTouchCountLocked counts currently-live links (both endpoints
@@ -294,102 +309,18 @@ func (a *AtlasService) DeleteBoardObject(id string) (TombstoneResult, error) {
 		func(a *AtlasService) error { return a.UndoDelete(nil, nil, []string{id}) },
 		func(a *AtlasService) error { _, err := a.DeleteBoardObject(id); return err },
 	)
-	return TombstoneResult{ObjectIDs: []string{id}}, nil
-}
-
-// UndoDelete reverses one or more DeleteCard/DeleteNote/
-// DeleteBoardObject calls: clears DeletedAt on exactly the ids named (a
-// no-op for any id that's no longer tombstoned, e.g. already purged)
-// and clears a built-in card's or board object's seed tombstone too, so
-// top-up seeding can reach it again. cardIDs/noteIDs/objectIDs are the
-// exact TombstoneResult(s) the original delete call(s) returned.
-func (a *AtlasService) UndoDelete(cardIDs []string, noteIDs []string, objectIDs []string) error {
-	a.mu.Lock()
-	previousCards := append([]atlas.Card(nil), a.cards...)
-	previousNotes := append([]atlas.Note(nil), a.notes...)
-	previousObjects := append([]atlas.BoardObject(nil), a.objects...)
-
-	clearedBuiltInIDs := a.restoreCardTombstonesLocked(cardIDs)
-	restoreTombstonesLocked(a.notes, noteIDs, a.findNoteLocked,
-		func(n atlas.Note) time.Time { return n.DeletedAt },
-		func(n *atlas.Note, t time.Time) { n.DeletedAt = time.Time{}; n.UpdatedAt = t })
-	clearedBuiltInIDs = append(clearedBuiltInIDs, a.restoreObjectTombstonesLocked(objectIDs)...)
-
-	perr := a.persistLocked()
-	if perr != nil {
-		a.cards = previousCards
-		a.notes = previousNotes
-		a.objects = previousObjects
-	}
-	a.mu.Unlock()
-	if perr != nil {
-		return fmt.Errorf("save undo delete: %w", perr)
-	}
-	for _, id := range clearedBuiltInIDs {
-		if err := seeding.ClearTombstone(a.store, id); err != nil {
-			slog.Error("failed to clear seed tombstone on undo delete", "id", id, "error", err)
+	result := TombstoneResult{ObjectIDs: []string{id}, ObjectKind: previous.Kind}
+	// The board half is tombstoned above BEFORE this reads the index, so
+	// a sole reference correctly reports "no longer used" -- no explicit
+	// self-exclusion needed (goal 0392 S1).
+	if decl, ok := atlas.BoardObjectKindDeclFor(previous.Kind); ok && decl.EntityRef != nil {
+		result.EntityRefKind = decl.EntityRef.EntityKind
+		if entityID := previous.Payload[decl.EntityRef.PayloadKey]; entityID != "" && a.entityReferences != nil {
+			result.EntityStillUsed = !a.entityReferences(decl.EntityRef.EntityKind, entityID).Empty()
 		}
 	}
-	emitUndoDeleteEvents(cardIDs, noteIDs, objectIDs)
-	return nil
+	return result, nil
 }
-
-// restoreCardTombstonesLocked is UndoDelete's own card half: same
-// shape as restoreTombstonesLocked, plus the built-in-seed bookkeeping
-// only a card carries -- returns the ids that need their seed
-// tombstone cleared too (so top-up seeding can reach them again).
-// Caller must already hold a.mu.
-func (a *AtlasService) restoreCardTombstonesLocked(cardIDs []string) []string {
-	var clearedBuiltInIDs []string
-	now := time.Now()
-	for _, id := range cardIDs {
-		idx := a.findCardLocked(id)
-		if idx == -1 || a.cards[idx].DeletedAt.IsZero() {
-			continue
-		}
-		a.cards[idx].DeletedAt = time.Time{}
-		a.cards[idx].UpdatedAt = now
-		if a.cards[idx].BuiltIn {
-			clearedBuiltInIDs = append(clearedBuiltInIDs, id)
-		}
-	}
-	return clearedBuiltInIDs
-}
-
-// restoreObjectTombstonesLocked is restoreCardTombstonesLocked's own
-// board-object twin (goal 0223 gives BoardObject the same seed
-// provenance Card already carries). Caller must already hold a.mu.
-func (a *AtlasService) restoreObjectTombstonesLocked(objectIDs []string) []string {
-	var clearedBuiltInIDs []string
-	now := time.Now()
-	for _, id := range objectIDs {
-		idx := a.findObjectLocked(id)
-		if idx == -1 || a.objects[idx].DeletedAt.IsZero() {
-			continue
-		}
-		a.objects[idx].DeletedAt = time.Time{}
-		a.objects[idx].UpdatedAt = now
-		if a.objects[idx].BuiltIn {
-			clearedBuiltInIDs = append(clearedBuiltInIDs, id)
-		}
-	}
-	return clearedBuiltInIDs
-}
-
-// emitUndoDeleteEvents fires the live-sync event for every restored id
-// across all three entity families, in one place.
-func emitUndoDeleteEvents(cardIDs, noteIDs, objectIDs []string) {
-	for _, id := range cardIDs {
-		dataevent.Emit("atlas", id)
-	}
-	for _, id := range noteIDs {
-		dataevent.Emit("atlas", id)
-	}
-	for _, id := range objectIDs {
-		dataevent.Emit("atlas", id)
-	}
-}
-
 // purgeTombstonesLocked hard-removes every card/note tombstoned more
 // than tombstoneGraceWindow before now -- called once from restore()
 // at boot, never a background timer. A purged card's surviving

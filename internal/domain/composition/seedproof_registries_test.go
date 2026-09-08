@@ -95,6 +95,10 @@ var listProofRegistry = map[string]seedProof{
 		"executionsvc.TestSeededTaskTrackerExample_PinnedSearch_ResolvesFrozenV1AfterLiveWrite",
 		"configuresvc.TestApplyListRow_CreatesThenUpdatesByKeyColumn",
 	),
+	list.ExampleUnusedListID: proven(
+		"configuresvc.TestListUsageSummary_ReportsCountsPerList",
+		"e2e: configure-lists-usage.spec.ts",
+	),
 }
 
 // mcpServerProofRegistry: every mcpserver.BuiltIn() ID.
