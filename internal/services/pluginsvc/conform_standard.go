@@ -375,9 +375,13 @@ var capabilityUsageMarkers = map[string][]string{
 	"open-app":          {"requestGuardedAction('open-app'", `requestGuardedAction("open-app"`},
 	"list-files":        {"api.files.list("},
 	"erase-board-items": {"eraseHitTest(", "commitErase("},
-	"fetch":             {"api.fetch("},
-	"write-content":     {"api.content."},
-	"read-file":         {"ctx.readFile(", "ctx.listFiles("},
+	// The two spellings of one door (docs/goals/0375 S1b): a plugin's
+	// own code holds the api object (api.fetch), a framed page (a
+	// view, capture or the activation frame's own SDK) calls it by name
+	// over the bridge (call('fetch', ...)).
+	"fetch":         {"api.fetch(", "call('fetch'", `call("fetch"`},
+	"write-content": {"api.content."},
+	"read-file":     {"ctx.readFile(", "ctx.listFiles("},
 	// The two spellings of one door: a plugin's own code holds the
 	// api object (api.content.setCardFields), an entry page calls it by
 	// name over the frame's bridge (call('content.setCardFields', ...)).

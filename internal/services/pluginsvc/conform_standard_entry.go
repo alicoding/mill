@@ -43,20 +43,16 @@ func conformEntryPages(dir string, m Manifest) []string {
 }
 
 // conformSurfacesWithoutEntry is standard rule 21's advisory half: a
-// view or capture with no entry page draws into Mill's own document
-// instead of its own frame. It still works; the author is told the
-// framed form exists, which is the one that survives a Mill upgrade
-// unchanged.
+// canvas object with no entry page draws into Mill's own document
+// instead of its own frame (the "canvas-host" grant, docs/goals/0375
+// S1b) -- the one surface family still allowed to, until the framed
+// canvas API exists. A view or capture with no entry page is rule 32's
+// hard refusal instead, since neither can activate framed at all.
 func conformSurfacesWithoutEntry(m Manifest) []string {
 	var warnings []string
-	for _, v := range m.Contributes.Views {
-		if v.Entry == "" {
-			warnings = append(warnings, fmt.Sprintf("standard rule 21: view %q declares no entry page, so it renders in Mill's own document", v.ID))
-		}
-	}
-	for _, c := range m.Contributes.Captures {
-		if c.Entry == "" {
-			warnings = append(warnings, fmt.Sprintf("standard rule 21: capture %q declares no entry page, so it renders in Mill's own document", c.ID))
+	for _, o := range m.Contributes.CanvasObjects {
+		if o.Entry == "" {
+			warnings = append(warnings, fmt.Sprintf("standard rule 21: canvas object %q declares no entry page, so it renders in Mill's own document", o.Kind))
 		}
 	}
 	return warnings

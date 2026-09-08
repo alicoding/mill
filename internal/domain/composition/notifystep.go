@@ -1,6 +1,7 @@
 package composition
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/alicoding/mill/internal/domain/guardrail"
@@ -13,15 +14,17 @@ import (
 // dock bounce and the phone. runID is the delivering run's own id for
 // the record's SourceRef/DedupeKey, "" when unresolvable (a bare unit
 // test with no current-run lookup wired degrades rather than failing).
-// Defaults to erroring so a node run before SetNotifier is wired fails
-// loudly.
-var notifierFn = func(title, body, runID string) error {
+// targets names the paired device ids (docs/goals/0372) this
+// notification should reach; nil/empty reaches every paired device,
+// the pre-existing broadcast behavior. Defaults to erroring so a node
+// run before SetNotifier is wired fails loudly.
+var notifierFn = func(title, body, runID string, targets []string) error {
 	return fmt.Errorf("no notifier registered (yet)")
 }
 
 // SetNotifier wires the function apply-notify nodes use. Called once
 // from main.go once NotificationService exists.
-func SetNotifier(fn func(title, body, runID string) error) {
+func SetNotifier(fn func(title, body, runID string, targets []string) error) {
 	notifierFn = fn
 }
 
@@ -56,6 +59,17 @@ func init() {
 				Key: "bodyAttribute", Label: "Body attribute (optional)", Type: FieldText,
 				Description: "Which Attributes field replaces the fixed message, when set.",
 			},
+			{
+				Key: "targets", Label: "Send to", Type: FieldArray,
+				Description: "Leave empty to reach every paired device.",
+				Items: &ConfigField{
+					Type: FieldOptions, OptionsSource: "devices",
+					// Needs "notification": only a device whose Accepts
+					// names it is offered (docs/goals/0372 decision 3 --
+					// today's whole vocabulary is a plain notification).
+					Needs: []string{"notification"},
+				},
+			},
 		},
 	}, execNotify)
 }
@@ -76,7 +90,17 @@ func execNotify(node Node, ctx ExecContext) (ExecContext, error) {
 			body = v
 		}
 	}
-	if err := notifierFn(title, body, currentRunID(ctx.RunContext)); err != nil {
+	var targets []string
+	if raw := node.Config["targets"]; raw != "" {
+		// Structured, never matched (.claude/rules/adopt-converged-
+		// patterns.md's divergence list): the wire value is a JSON
+		// array of device ids, parsed the same way ValidateValue
+		// checks a TypeArray value, never string-split.
+		if err := json.Unmarshal([]byte(raw), &targets); err != nil {
+			return ctx, fmt.Errorf("apply-notify: targets: %w", err)
+		}
+	}
+	if err := notifierFn(title, body, currentRunID(ctx.RunContext), targets); err != nil {
 		return ctx, fmt.Errorf("apply-notify: %w", err)
 	}
 	return ctx, nil

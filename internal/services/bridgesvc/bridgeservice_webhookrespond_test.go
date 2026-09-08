@@ -7,11 +7,11 @@ import (
 	"github.com/alicoding/mill/internal/services/bridgesvc"
 )
 
-// TestHookEvent_RespondingRun_WritesStatusBodyContentType proves the
+// TestWebhook_RespondingRun_WritesStatusBodyContentType proves the
 // handler writes a delivered reply's own status/body/content-type
 // verbatim, not a Mill-chosen shape.
-func TestHookEvent_RespondingRun_WritesStatusBodyContentType(t *testing.T) {
-	fixture := newHooksFixture(t)
+func TestWebhook_RespondingRun_WritesStatusBodyContentType(t *testing.T) {
+	fixture := newWebhookFixture(t)
 	reply := make(chan bridgesvc.WebhookReply, 1)
 	reply <- bridgesvc.WebhookReply{Status: 201, ContentType: "text/plain", Body: "hi"}
 	fixture.setWait(&bridgesvc.WebhookWait{Reply: reply, Budget: 5 * time.Second})
@@ -31,11 +31,11 @@ func TestHookEvent_RespondingRun_WritesStatusBodyContentType(t *testing.T) {
 	}
 }
 
-// TestHookEvent_BudgetElapsed_StandardBodyWithHeader proves goal 0373
+// TestWebhook_BudgetElapsed_StandardBodyWithHeader proves goal 0373
 // design contract item 3: nobody answered before the budget, so the
 // caller gets the standard body plus the Mill-Reply: none header.
-func TestHookEvent_BudgetElapsed_StandardBodyWithHeader(t *testing.T) {
-	fixture := newHooksFixture(t)
+func TestWebhook_BudgetElapsed_StandardBodyWithHeader(t *testing.T) {
+	fixture := newWebhookFixture(t)
 	reply := make(chan bridgesvc.WebhookReply) // never sent
 	fixture.setWait(&bridgesvc.WebhookWait{Reply: reply, Budget: 30 * time.Millisecond})
 
@@ -51,13 +51,13 @@ func TestHookEvent_BudgetElapsed_StandardBodyWithHeader(t *testing.T) {
 	}
 }
 
-// TestHookEvent_PromptNoReply_StandardBodyNoHeaderNoWait proves the
+// TestWebhook_PromptNoReply_StandardBodyNoHeaderNoWait proves the
 // OTHER half of item 3: a run that finished without ever answering
 // gets the SAME standard body, but promptly (never waiting out the
 // budget) and with NO Mill-Reply header -- the header names only the
 // budget-elapsed case.
-func TestHookEvent_PromptNoReply_StandardBodyNoHeaderNoWait(t *testing.T) {
-	fixture := newHooksFixture(t)
+func TestWebhook_PromptNoReply_StandardBodyNoHeaderNoWait(t *testing.T) {
+	fixture := newWebhookFixture(t)
 	reply := make(chan bridgesvc.WebhookReply, 1)
 	reply <- bridgesvc.WebhookReply{Status: 0} // the "nobody replied" sentinel
 	fixture.setWait(&bridgesvc.WebhookWait{Reply: reply, Budget: 10 * time.Second})
@@ -79,12 +79,12 @@ func TestHookEvent_PromptNoReply_StandardBodyNoHeaderNoWait(t *testing.T) {
 	}
 }
 
-// TestHookEvent_NilWait_ACKsExactlyAsBefore proves goal 0373 design
+// TestWebhook_NilWait_ACKsExactlyAsBefore proves goal 0373 design
 // contract item 3's "byte-identical" requirement: a nil wait (no
 // started run's graph contains a respond-webhook node) never touches
 // the response beyond today's plain 202.
-func TestHookEvent_NilWait_ACKsExactlyAsBefore(t *testing.T) {
-	fixture := newHooksFixture(t)
+func TestWebhook_NilWait_ACKsExactlyAsBefore(t *testing.T) {
+	fixture := newWebhookFixture(t)
 	// fixture.wait stays nil -- the default.
 	status, header, body := fixture.postFull(t)
 	if status != 202 {

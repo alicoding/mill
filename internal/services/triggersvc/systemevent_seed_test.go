@@ -320,12 +320,12 @@ func TestSeededUpdateNotifyExample_UpdateAvailable_RunsToCompletion(t *testing.T
 	// adapter -- recorded so the assertion below proves the banner
 	// call itself, not just run success.
 	var notified int32
-	composition.SetNotifier(func(title, body, _ string) error {
+	composition.SetNotifier(func(title, body, _ string, _ []string) error {
 		atomic.AddInt32(&notified, 1)
 		return nil
 	})
 	t.Cleanup(func() {
-		composition.SetNotifier(func(title, body, _ string) error { return fmt.Errorf("no notifier registered (yet)") })
+		composition.SetNotifier(func(title, body, _ string, _ []string) error { return fmt.Errorf("no notifier registered (yet)") })
 	})
 
 	notify := findWorkflowByLabel(t, comp, "Notify when an update is available")
