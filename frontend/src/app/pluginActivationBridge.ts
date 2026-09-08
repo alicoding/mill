@@ -4,6 +4,7 @@ import { getPluginCapture } from '../plugins/pluginCaptures'
 import { subscribeExtensionSetting } from '../shared/extensionSettingsStore'
 import type { ExtensionSettingDecl } from '../atlas/atlasNounRegistry'
 import type { MillPluginAPI } from '../plugins/sdk'
+import { callExportedMethod, toWireDescriptor } from '../plugins/extensionExports'
 
 // The host half of a third-party plugin's activation frame (docs/
 // goals/0375 S1b): the same envelope pluginFrameBridge.ts's entry-page
@@ -71,13 +72,18 @@ export interface ActivationFrameContext {
   // subscription resolves the exact declaration the snapshot did.
   settingDecls: readonly ExtensionSettingDecl[]
   pendingCommandRuns: Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>
+  // pendingExtensionCalls is sendExtensionCall's own pending table
+  // (goal 0364) -- the reverse-call twin of pendingCommandRuns, for
+  // when THIS plugin is a dependant's dependency and one of its
+  // exported methods is being invoked from outside.
+  pendingExtensionCalls: Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>
   nextCallId: number
   subscriptions: Map<number, ActivationSubscription>
   nextSubId: number
 }
 
 export function createActivationFrameContext(frame: HTMLIFrameElement, pluginId: string, settingDecls: readonly ExtensionSettingDecl[]): ActivationFrameContext {
-  return { frame, pluginId, alive: true, settingDecls, pendingCommandRuns: new Map(), nextCallId: 0, subscriptions: new Map(), nextSubId: 0 }
+  return { frame, pluginId, alive: true, settingDecls, pendingCommandRuns: new Map(), pendingExtensionCalls: new Map(), nextCallId: 0, subscriptions: new Map(), nextSubId: 0 }
 }
 
 // teardownActivationFrameContext ends every live subscription and
@@ -89,6 +95,8 @@ export function teardownActivationFrameContext(ctx: ActivationFrameContext): voi
   ctx.subscriptions.clear()
   for (const pending of ctx.pendingCommandRuns.values()) pending.reject(new Error(`plugin ${ctx.pluginId}: its extension frame was torn down`))
   ctx.pendingCommandRuns.clear()
+  for (const pending of ctx.pendingExtensionCalls.values()) pending.reject(new Error(`Extension ${ctx.pluginId} is not running.`))
+  ctx.pendingExtensionCalls.clear()
 }
 
 function post(ctx: ActivationFrameContext, message: unknown): void {
@@ -104,6 +112,32 @@ function sendCommandRun(ctx: ActivationFrameContext, id: string, args: unknown[]
     const callId = ++ctx.nextCallId
     ctx.pendingCommandRuns.set(callId, { resolve: () => resolve(), reject })
     post(ctx, { mill: 1, kind: 'command.run', callId, id, args })
+  })
+}
+
+// EXTENSION_CALL_TIMEOUT_MS is design contract item 4's "10 s per
+// call": a framed callee that never answers -- hung, or torn down
+// without the teardown path running -- must not leave the caller's
+// promise pending forever. A dead frame and a timed-out one read the
+// same to the caller, since neither tells it anything more specific.
+const EXTENSION_CALL_TIMEOUT_MS = 10_000
+
+// sendExtensionCall asks this frame's OWN activation to run one method
+// off the object its activate() returned (goal 0364) -- the reverse
+// round trip callExportedMethod takes when the exporting extension is
+// framed, exactly the shape sendCommandRun already established.
+export function sendExtensionCall(ctx: ActivationFrameContext, method: string, args: unknown[]): Promise<unknown> {
+  if (!ctx.alive) return Promise.reject(new Error(`Extension ${ctx.pluginId} is not running.`))
+  return new Promise((resolve, reject) => {
+    const callId = ++ctx.nextCallId
+    const timer = setTimeout(() => {
+      if (ctx.pendingExtensionCalls.delete(callId)) reject(new Error(`Extension ${ctx.pluginId} is not running.`))
+    }, EXTENSION_CALL_TIMEOUT_MS)
+    ctx.pendingExtensionCalls.set(callId, {
+      resolve: (v) => { clearTimeout(timer); resolve(v) },
+      reject: (e) => { clearTimeout(timer); reject(e) },
+    })
+    post(ctx, { mill: 1, kind: 'extension.call', callId, method, args })
   })
 }
 
@@ -230,38 +264,69 @@ export async function callActivationMethod(ctx: ActivationFrameContext, api: Mil
     case 'capture.postMessage': { const { id, payload } = first as { id: string; payload: unknown }; getPluginCapture(ctx.pluginId, id)?.post?.(payload); return true }
     case 'subscribe': return subscribe(ctx, first as SubscribeTopic)
     case 'unsubscribe': unsubscribe(ctx, (first as { subId: number }).subId); return true
+    // extensions.get/extensions.call (goal 0364): the wire-safe twin
+    // of MillPluginAPI['extensions']['get'] -- a live function cannot
+    // cross postMessage, so 'extensions.get' answers plain {data,
+    // methods} instead of api.extensions.get's own callable stubs, and
+    // 'extensions.call' is how a framed caller actually invokes one of
+    // those method names.
+    case 'extensions.get': return toWireDescriptor(await api.extensions.get(String(first)))
+    case 'extensions.call': return callExtensionExportDoor(api, args as [string, string, unknown[] | undefined])
     default: throw new Error(`${method} is not available in a frame`)
   }
+}
+
+// callExtensionExportDoor is 'extensions.call's own body, split out so
+// the switch above stays flat: it re-runs api.extensions.get's own
+// gate (declared dependency, activated) rather than trusting that the
+// frame only ever asks for what it was handed.
+async function callExtensionExportDoor(api: MillPluginAPI, [depId, exportMethod, callArgs]: [string, string, unknown[] | undefined]): Promise<unknown> {
+  const view = await api.extensions.get(String(depId))
+  if (!view) throw new Error(`Method ${exportMethod} is not exported by ${depId}.`)
+  return callExportedMethod(String(depId), String(exportMethod), callArgs ?? [])
 }
 
 export interface ActivationBridgeOptions {
   ctx: ActivationFrameContext
   api: MillPluginAPI
-  onDone: () => void
+  // exported carries what activate() returned, split by the frame's
+  // own activation.js into wire-safe data/method-name shape (goal
+  // 0364) -- undefined for a frame running before this slice, or one
+  // whose activate() returned nothing.
+  onDone: (exported?: { data: Record<string, unknown>; methods: string[] }) => void
   onError: (message: string) => void
 }
 
 // attachActivationBridge listens for one activation frame's messages
 // until the returned disposer runs: a 'call' routes through
-// callActivationMethod, a 'command.result' resolves the matching
-// sendCommandRun promise, and the one-shot activation-done/error
-// signals hand off to the orchestrator that created this frame.
+// callActivationMethod, a 'command.result'/'extension.result' resolves
+// the matching reverse-call promise, and the one-shot activation-done/
+// error signals hand off to the orchestrator that created this frame.
+type ActivationMessage = { mill?: number; kind?: string; id?: number; callId?: number; ok?: boolean; result?: unknown; error?: string; method?: string; args?: unknown[]; exports?: { data: Record<string, unknown>; methods: string[] } }
+
+// settleReverseCall resolves or rejects one pending reverse call --
+// sendCommandRun's 'command.result' and sendExtensionCall's
+// 'extension.result' answer the SAME shape, so both settle through
+// this one function instead of two near-identical blocks.
+function settleReverseCall(pending: Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>, data: ActivationMessage, failureNoun: string): void {
+  if (typeof data.callId !== 'number') return
+  const entry = pending.get(data.callId)
+  if (!entry) return
+  pending.delete(data.callId)
+  if (data.ok) entry.resolve(data.result)
+  else entry.reject(new Error(data.error || `the ${failureNoun} failed`))
+}
+
 export function attachActivationBridge(options: ActivationBridgeOptions): () => void {
   const { ctx, api } = options
   const onMessage = (event: MessageEvent) => {
     if (event.source !== ctx.frame.contentWindow) return
-    const data = event.data as { mill?: number; kind?: string; id?: number; callId?: number; ok?: boolean; result?: unknown; error?: string; method?: string; args?: unknown[] } | null
+    const data = event.data as ActivationMessage | null
     if (!data || data.mill !== 1) return
-    if (data.kind === 'activation-done') { options.onDone(); return }
+    if (data.kind === 'activation-done') { options.onDone(data.exports); return }
     if (data.kind === 'activation-error') { options.onError(data.error ?? 'activation failed'); return }
-    if (data.kind === 'command.result' && typeof data.callId === 'number') {
-      const pending = ctx.pendingCommandRuns.get(data.callId)
-      if (!pending) return
-      ctx.pendingCommandRuns.delete(data.callId)
-      if (data.ok) pending.resolve(undefined)
-      else pending.reject(new Error(data.error || 'the command failed'))
-      return
-    }
+    if (data.kind === 'command.result') { settleReverseCall(ctx.pendingCommandRuns, data, 'command'); return }
+    if (data.kind === 'extension.result') { settleReverseCall(ctx.pendingExtensionCalls, data, 'call'); return }
     if (data.kind !== 'call' || typeof data.id !== 'number') return
     const id = data.id
     void callActivationMethod(ctx, api, String(data.method), data.args ?? [])

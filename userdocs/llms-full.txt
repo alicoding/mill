@@ -4523,6 +4523,70 @@ your plugin feels like part of Mill.
     `registerCapture` work the same either way — write one `main.js`
     for both. (checked: refuses the install)
 
+## Extension interop
+
+33. An extension that needs another installed extension's capability
+    declares it in `dependencies: [{ "id", "version" }]` (a semver
+    range) rather than reaching into it directly — never
+    `app.plugins[id]`-style reach. The loader activates a dependency
+    before its dependant; a dependant whose dependency never activates
+    shows *Waits for `<id>`* on its Extensions row instead of running.
+    Installing an extension whose `dependencies` name an id that is
+    not installed, a version outside the declared range, or a mutual
+    dependency cycle refuses the install, naming what is missing.
+    (checked: refuses the install)
+
+## Depending on another extension
+
+Declare the id and the version range you need:
+
+```json
+{
+  "id": "my-consumer",
+  "dependencies": [{ "id": "my-provider", "version": ">=1.0.0" }]
+}
+```
+
+Reach it through `api.extensions.get`, never through a live handle you
+found some other way:
+
+```js
+export async function activate(api) {
+  const provider = await api.extensions.get('my-provider')
+  if (provider) {
+    const result = await provider.someMethod('argument')
+  }
+}
+```
+
+`api.extensions.get(id)` resolves to `undefined` for any id not in
+your own manifest's `dependencies`, and again for a declared
+dependency that has not activated yet.
+
+The other half of the door is `exports`: name the methods on your own
+`activate()`'s returned object a dependant may call.
+
+```json
+{
+  "id": "my-provider",
+  "exports": ["someMethod"]
+}
+```
+
+```js
+export function activate(api) {
+  return {
+    someMethod(argument) { return `did something with ${argument}` },
+  }
+}
+```
+
+Only the methods you list in `exports` are callable, and only by an
+extension that declares you as a dependency; every other property on
+the returned object is plain data, readable by any declared dependant
+without an allowlist entry. Calling a method you did not list throws
+*Method `<name>` is not exported by `<id>`.*
+
 ## Checking your own plugin
 
 ```sh
