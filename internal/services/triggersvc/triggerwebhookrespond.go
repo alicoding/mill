@@ -47,7 +47,7 @@ func (s *TriggerService) dispatchRespondingTargets(targets []webhookBinding, pay
 	outcome := make(chan WebhookReply, 1)
 	outstanding := int32(len(targets)) //nolint:gosec // G115: bounded by armed listener count, never near int32's range
 	for _, b := range targets {
-		go s.fireRespondingTarget(b.workflowID, payload, values, outcome, &outstanding)
+		s.goFire(func() { s.fireRespondingTarget(b.workflowID, payload, values, outcome, &outstanding) })
 	}
 	return &WebhookWait{Reply: outcome, Budget: budget}
 }
