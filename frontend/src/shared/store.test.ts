@@ -102,3 +102,41 @@ describe('requestFormTestReady cleanup', () => {
     expect(useAppStore.getState().requestFormTestReady).toEqual({})
   })
 })
+
+// docs/goals/0407-tab-close-activation.md: closeWorkTab only recomputes
+// the active tab when the closed tab WAS the active one --
+// workTabs.test.ts's nextActiveAfterClose table exhaustively covers the
+// pure survivor decision itself; this exercises the store's own guard
+// around it, which the pure function cannot express on its own.
+describe('closeWorkTab activation (goal 0407)', () => {
+  afterEach(() => {
+    useAppStore.setState({ workTabs: [], activeWorkTabKey: null, recentWorkTabKeys: [] })
+  })
+
+  it('closing an inactive tab leaves the active tab untouched', () => {
+    useAppStore.setState({
+      workTabs: [
+        { key: 'k1', kind: 'request-edit', requestId: 'r1' },
+        { key: 'k2', kind: 'request-edit', requestId: 'r2' },
+      ],
+      activeWorkTabKey: 'k2',
+      recentWorkTabKeys: ['k1', 'k2'],
+    })
+    useAppStore.getState().closeWorkTab('k1')
+    expect(useAppStore.getState().activeWorkTabKey).toBe('k2')
+  })
+
+  it('closing the active tab activates the most-recently-used survivor', () => {
+    useAppStore.setState({
+      workTabs: [
+        { key: 'k1', kind: 'request-edit', requestId: 'r1' },
+        { key: 'k2', kind: 'request-edit', requestId: 'r2' },
+        { key: 'k3', kind: 'request-edit', requestId: 'r3' },
+      ],
+      activeWorkTabKey: 'k3',
+      recentWorkTabKeys: ['k1', 'k2', 'k3'],
+    })
+    useAppStore.getState().closeWorkTab('k3')
+    expect(useAppStore.getState().activeWorkTabKey).toBe('k2')
+  })
+})

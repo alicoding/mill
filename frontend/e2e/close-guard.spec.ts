@@ -193,3 +193,85 @@ test('Cmd+Alt+W (close others) with one dirty non-kept tab shows the close-other
   await page.getByRole('button', { name: 'Close tab' }).click()
   await clickRowAction(page, workflowRow(page, 'E2E close-guard others'), 'Delete')
 })
+
+// docs/goals/0407-tab-close-activation.md: which tab activates after a
+// real ⌘W/✕ close on the ACTIVE tab -- most-recently-used first (the
+// editor rule), a neighbour when the closed tab left no recorded
+// successor, the page tab once nothing remains. workTabs.test.ts's
+// nextActiveAfterClose table covers every branch of the pure decision
+// in isolation; these three drive it end to end through real
+// keyboard/pointer primitives.
+
+test('closing the active tab returns to the most recently used tab, not the first one', async ({ page }) => {
+  await createSavedWorkflow(page, 'E2E tab-mru A')
+  await createSavedWorkflow(page, 'E2E tab-mru B')
+  await createSavedWorkflow(page, 'E2E tab-mru C')
+  const workTabStrip = page.getByTestId('titlebar-tabs')
+
+  // Activate A, then B, then C -- MRU order is now A, B, C. The
+  // Workflows list panel is the page tab's own content, hidden behind
+  // whichever work tab is active, so it's reselected between each row
+  // click to reach the next row.
+  await workflowRow(page, 'E2E tab-mru A').click()
+  await workTabStrip.getByRole('tab', { name: 'Workflows' }).click()
+  await workflowRow(page, 'E2E tab-mru B').click()
+  await workTabStrip.getByRole('tab', { name: 'Workflows' }).click()
+  await workflowRow(page, 'E2E tab-mru C').click()
+  await expect(workTabStrip.getByRole('tab')).toHaveCount(4) // page tab + 3
+  await expect(workTabStrip.getByRole('tab', { selected: true })).toHaveText('E2E tab-mru C')
+
+  // C is active; Cmd+W returns to B -- the tab visited just before it
+  // -- never A, the first tab (the browser's own right-neighbour rule
+  // does not apply here).
+  await page.keyboard.press('Meta+w')
+  await expect(workTabStrip.getByRole('tab')).toHaveCount(3)
+  await expect(workTabStrip.getByRole('tab', { selected: true })).toHaveText('E2E tab-mru B')
+
+  await page.keyboard.press('Meta+w')
+  await page.keyboard.press('Meta+w')
+  for (const label of ['E2E tab-mru A', 'E2E tab-mru B', 'E2E tab-mru C']) {
+    await clickRowAction(page, workflowRow(page, label), 'Delete')
+  }
+})
+
+test('closing a re-activated middle tab returns to its right neighbour', async ({ page }) => {
+  await createSavedWorkflow(page, 'E2E tab-neighbour A')
+  await createSavedWorkflow(page, 'E2E tab-neighbour B')
+  await createSavedWorkflow(page, 'E2E tab-neighbour C')
+  const workTabStrip = page.getByTestId('titlebar-tabs')
+
+  await workflowRow(page, 'E2E tab-neighbour A').click()
+  await workTabStrip.getByRole('tab', { name: 'Workflows' }).click()
+  await workflowRow(page, 'E2E tab-neighbour B').click()
+  await workTabStrip.getByRole('tab', { name: 'Workflows' }).click()
+  await workflowRow(page, 'E2E tab-neighbour C').click()
+
+  // Only the middle tab gets a further explicit activation -- A and C
+  // were never revisited after the initial open above.
+  await workTabStrip.getByRole('tab', { name: 'E2E tab-neighbour B' }).click()
+  await expect(workTabStrip.getByRole('tab', { selected: true })).toHaveText('E2E tab-neighbour B')
+
+  await page.keyboard.press('Meta+w')
+  await expect(workTabStrip.getByRole('tab')).toHaveCount(3)
+  await expect(workTabStrip.getByRole('tab', { selected: true })).toHaveText('E2E tab-neighbour C')
+
+  await page.keyboard.press('Meta+w')
+  await page.keyboard.press('Meta+w')
+  for (const label of ['E2E tab-neighbour A', 'E2E tab-neighbour B', 'E2E tab-neighbour C']) {
+    await clickRowAction(page, workflowRow(page, label), 'Delete')
+  }
+})
+
+test('closing the last remaining tab returns to the page tab', async ({ page }) => {
+  await createSavedWorkflow(page, 'E2E tab-last')
+  const workTabStrip = page.getByTestId('titlebar-tabs')
+
+  await workflowRow(page, 'E2E tab-last').click()
+  await expect(workTabStrip.getByRole('tab')).toHaveCount(2)
+
+  await page.keyboard.press('Meta+w')
+  await expect(workTabStrip.getByRole('tab')).toHaveCount(1)
+  await expect(workTabStrip.getByRole('tab', { selected: true })).toHaveText('Workflows')
+
+  await clickRowAction(page, workflowRow(page, 'E2E tab-last'), 'Delete')
+})
