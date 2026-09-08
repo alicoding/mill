@@ -235,6 +235,11 @@ func wireAuxWindows(app *application.App, settingsService *settingssvc.SettingsS
 	// out of macOS window restoration (docs/goals/0344). Only the main
 	// window, wired in main.go, stays restorable.
 	settingsService.SetPanelWindow(windowing.WrapAuxWindow(newQuickPanelWindow(app, settingsService)))
+	// SetPanelPositionClamp before WatchPanelGeometry: presentPanel's own
+	// show sequence (goal 0377's regression fix) and the geometry
+	// watcher's persist path both re-clamp through this on every call,
+	// not just at construction (clampedPanelPosition above).
+	settingsService.SetPanelPositionClamp(func(x, y int) (int, int) { return clampedPanelPosition(app, x, y) })
 	settingsService.WatchPanelGeometry()
 	settingsService.SetApprovalPromptWindow(windowing.WrapAuxWindow(newApprovalPromptWindow(app)))
 	settingsService.SetRunMonitorWindow(windowing.WrapAuxWindow(newRunMonitorWindow(app)))

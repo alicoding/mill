@@ -2,6 +2,7 @@ package settingssvc
 
 import (
 	"testing"
+	"time"
 
 	"github.com/alicoding/mill/internal/services/dataevent"
 )
@@ -42,6 +43,25 @@ func TestPersistAndLoadPanelGeometry_RoundTrips(t *testing.T) {
 	}
 }
 
+// TestPersistPanelGeometry_ReclampsThroughLiveClamp pins the other half
+// of the regression fix: a move that WOULD land off the live screen
+// layout is re-clamped before it's ever written, not just at show time
+// (settingsservice_panelgeometry.go's WatchPanelGeometry doc comment).
+func TestPersistPanelGeometry_ReclampsThroughLiveClamp(t *testing.T) {
+	s := newTestSettingsService(t)
+	s.SetPanelPositionClamp(func(x, y int) (int, int) { return x + 1000, y + 2000 })
+
+	s.persistPanelGeometry(windowGeometry{X: 10, Y: 20})
+
+	x, y, ok := s.LoadPanelGeometry()
+	if !ok {
+		t.Fatal("LoadPanelGeometry() after persisting returned ok=false")
+	}
+	if x != 1010 || y != 2020 {
+		t.Errorf("LoadPanelGeometry() = (%d, %d), want the CLAMPED (1010, 2020)", x, y)
+	}
+}
+
 func TestClearPanelGeometry_ClearsSavedPosition(t *testing.T) {
 	s := newTestSettingsService(t)
 	s.persistPanelGeometry(windowGeometry{X: 300, Y: 150})
@@ -62,6 +82,94 @@ func TestClearPanelGeometry_ClearsSavedPosition(t *testing.T) {
 func TestResetPanelPosition_NilPanel_DoesNotPanic(t *testing.T) {
 	s := newTestSettingsService(t)
 	s.ResetPanelPosition() // SetPanelWindow was never called -- must not panic.
+}
+
+// fakePanelWindow implements floatingWindow (settingsservice_presence.go)
+// -- presentPanelShow's own fake-testable half, per that function's doc
+// comment: records Show/Focus/SetPosition/Center in the exact order
+// they happen, with no live OS window.
+type fakePanelWindow struct {
+	calls      []string
+	setX, setY int
+}
+
+func (f *fakePanelWindow) Show()  { f.calls = append(f.calls, "Show") }
+func (f *fakePanelWindow) Focus() { f.calls = append(f.calls, "Focus") }
+func (f *fakePanelWindow) SetPosition(x, y int) {
+	f.calls = append(f.calls, "SetPosition")
+	f.setX, f.setY = x, y
+}
+func (f *fakePanelWindow) Center() { f.calls = append(f.calls, "Center") }
+
+func (f *fakePanelWindow) callOrderEquals(want []string) bool {
+	if len(f.calls) != len(want) {
+		return false
+	}
+	for i, c := range f.calls {
+		if c != want[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// TestPresentPanelShow_SavedPosition_SetsClampedPositionBeforeShow pins
+// the regression's own fix: the saved position, run through the live
+// clamp, lands via SetPosition strictly BEFORE Show/Focus -- construction-
+// time InitialPosition alone was never enough (this file's package doc).
+func TestPresentPanelShow_SavedPosition_SetsClampedPositionBeforeShow(t *testing.T) {
+	f := &fakePanelWindow{}
+	clamp := func(x, y int) (int, int) { return x + 1, y + 2 }
+
+	presentPanelShow(f, 100, 200, true, clamp)
+
+	if f.setX != 101 || f.setY != 202 {
+		t.Errorf("SetPosition(%d, %d), want the CLAMPED (101, 202)", f.setX, f.setY)
+	}
+	want := []string{"SetPosition", "Show", "Focus"}
+	if !f.callOrderEquals(want) {
+		t.Errorf("call order = %v, want %v -- SetPosition must land before Show", f.calls, want)
+	}
+}
+
+// TestPresentPanelShow_NoSavedPosition_Centers covers first run/no
+// saved position: Center(), never SetPosition, still before Show.
+func TestPresentPanelShow_NoSavedPosition_Centers(t *testing.T) {
+	f := &fakePanelWindow{}
+
+	presentPanelShow(f, 999, 999, false, nil)
+
+	want := []string{"Center", "Show", "Focus"}
+	if !f.callOrderEquals(want) {
+		t.Errorf("call order = %v, want %v -- no saved position must Center, never SetPosition", f.calls, want)
+	}
+}
+
+// TestShouldPersistPanelMove covers the placement-grace guard's full
+// input space: hidden never persists regardless of timing, visible
+// within the grace window is the window manager's own post-show
+// settling move (not a user drag), visible past it is.
+func TestShouldPersistPanelMove(t *testing.T) {
+	cases := []struct {
+		name      string
+		visible   bool
+		sinceShow time.Duration
+		want      bool
+	}{
+		{"hidden -- never persisted regardless of timing", false, time.Second, false},
+		{"hidden and within the placement grace -- still not persisted", false, 50 * time.Millisecond, false},
+		{"visible but within the placement grace -- window manager's own settling move", true, 100 * time.Millisecond, false},
+		{"visible at exactly the grace boundary -- persisted", true, panelGeometryPlacementGrace, true},
+		{"visible and past the placement grace -- a real user drag", true, 500 * time.Millisecond, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := shouldPersistPanelMove(tc.visible, tc.sinceShow)
+			if got != tc.want {
+				t.Errorf("shouldPersistPanelMove(visible=%v, sinceShow=%v) = %v, want %v", tc.visible, tc.sinceShow, got, tc.want)
+			}
+		})
+	}
 }
 
 // captureQuickPanelPositionEmits mirrors compositionservice_dataevent_

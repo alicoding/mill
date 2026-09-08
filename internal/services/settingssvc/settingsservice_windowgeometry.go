@@ -114,7 +114,7 @@ func (s *SettingsService) WatchWindowGeometry() {
 	if w == nil {
 		return
 	}
-	watchGeometry(w, s.persistWindowGeometry)
+	watchGeometry(w, nil, s.persistWindowGeometry)
 }
 
 // watchGeometry is WatchWindowGeometry's key-agnostic core (goal 0377):
@@ -123,9 +123,17 @@ func (s *SettingsService) WatchWindowGeometry() {
 // (settingsservice_panelgeometry.go) reuses this for the Quick Panel
 // rather than duplicating the debounce/OnGeometryChange wiring. A
 // package-level function, not a method: it closes over nothing from
-// *SettingsService, so the caller's own persist closure is the only
-// state it needs.
-func watchGeometry(w *windowing.Window, persist func(windowGeometry)) {
+// *SettingsService, so the caller's own guard/persist closures are the
+// only state it needs.
+//
+// guard, if non-nil, is consulted on every raw OnGeometryChange firing
+// BEFORE the debounce timer is (re)armed -- returning false suppresses
+// that event entirely rather than letting it (re)start the debounce.
+// The main window passes nil (every move persists); the Quick Panel
+// passes its own placement-grace check (settingsservice_panelgeometry.go's
+// shouldPersistPanelMove) so the window manager's post-show settling
+// move, which also fires WindowDidMove, never arms the timer at all.
+func watchGeometry(w *windowing.Window, guard func() bool, persist func(windowGeometry)) {
 	var timerMu sync.Mutex
 	var timer *time.Timer
 	doPersist := func() {
@@ -134,6 +142,9 @@ func watchGeometry(w *windowing.Window, persist func(windowGeometry)) {
 		persist(windowGeometry{X: x, Y: y, Width: width, Height: height, Maximized: w.IsMaximised()})
 	}
 	w.OnGeometryChange(func() {
+		if guard != nil && !guard() {
+			return
+		}
 		timerMu.Lock()
 		defer timerMu.Unlock()
 		if timer != nil {
