@@ -111,7 +111,7 @@ func validateMCPServerEnv(serverID, key, value string, secretSettings map[string
 // conformMCPServers is standard rule 23: the same checks the loader
 // applies, named by rule so an author finds it on the standard page.
 func conformMCPServers(m Manifest) []string {
-	if problem := validateMCPServers(m.Contributes.Settings, m.Contributes.MCPServers); problem != "" {
+	if problem := validateMCPServers(m.Contributes.EffectiveSettings(), m.Contributes.MCPServers); problem != "" {
 		return []string{"standard rule 23: " + problem}
 	}
 	return nil
@@ -184,7 +184,7 @@ func (p *PluginService) mcpServerEnv(m Manifest, server MCPServerContribution) (
 // becomes "vault:<id>"; a provider-qualified id is already a reference.
 func (p *PluginService) pickedSecretReference(m Manifest, settingKey string) (string, error) {
 	label := settingKey
-	for _, st := range m.Contributes.Settings {
+	for _, st := range m.Contributes.EffectiveSettings() {
 		if st.Key == settingKey && strings.TrimSpace(st.Label) != "" {
 			label = st.Label
 		}
