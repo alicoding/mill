@@ -1,0 +1,112 @@
+name: Claude Build
+
+# Automation-mode brief runner (goal 0398 S2): a `workflow_dispatch` job
+# that hands a written brief's BODY to the `/build-brief` skill on a
+# GitHub-hosted runner, running the same builder operational block a
+# local worktree agent follows -- this checkout IS the worktree. Never
+# a second review/merge path: the reviewer + `## Review` section +
+# `ci-gate` stay the authority, exactly as for a local builder.
+on:
+  workflow_dispatch:
+    inputs:
+      brief:
+        description: 'The brief body, verbatim -- never a docs/goals path (that directory is local-only and invisible to the runner).'
+        required: true
+        type: string
+      branch:
+        description: 'Branch to create, e.g. goal/<n>-<slug>'
+        required: true
+        type: string
+      arm_auto_merge:
+        description: 'Arm gh pr merge --auto --squash once the PR opens'
+        required: false
+        type: boolean
+        default: true
+      max_turns:
+        description: 'Claude Code --max-turns budget'
+        required: false
+        type: number
+        default: 200
+
+concurrency:
+  group: claude-build-${{ inputs.branch }}
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+  id-token: write
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      # GitHub Actions expressions substitute into `with:`/`env:` values
+      # before the step runs, not via a shell -- these three carry the
+      # dispatch inputs into the job's process environment so the
+      # skill's own Bash tool calls can read them ($BRIEF/$BRANCH/
+      # $ARM_AUTO_MERGE), the same indirection ci.yml's other jobs use
+      # for GH_TOKEN rather than interpolating secrets into a command
+      # line.
+      BRIEF: ${{ inputs.brief }}
+      BRANCH: ${{ inputs.branch }}
+      ARM_AUTO_MERGE: ${{ inputs.arm_auto_merge }}
+      GH_TOKEN: ${{ github.token }}
+      # playwright.config.ts's webServer builds the real server-mode
+      # binary inline; CGO must be disabled on Linux or the build pulls
+      # in Wails3's GTK-gated desktop code (ci.yml's e2e job, same
+      # reason).
+      CGO_ENABLED: '0'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Create the brief's branch
+        run: git checkout -b "$BRANCH"
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+        working-directory: frontend
+
+      # Same cache-by-version pattern as ci.yml's e2e job: the runner
+      # image already carries Chromium's system deps, and skipping
+      # `--with-deps` avoids the apt-phase stalls that pattern exists
+      # to route around.
+      - name: Resolve Playwright version
+        id: pw-version
+        working-directory: frontend
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
+
+      - if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install chromium
+        working-directory: frontend
+
+      - name: Run the brief
+        id: claude
+        uses: anthropics/claude-code-action@9c5ddab2e6d17b83ea679153b31f1d5f023cf636 # v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            actions: read
+          prompt: '/build-brief ${{ env.BRIEF }}'
+          claude_args: '--max-turns ${{ inputs.max_turns }} --allowedTools "Bash,Read,Edit,Write,Glob,Grep,Agent"'
