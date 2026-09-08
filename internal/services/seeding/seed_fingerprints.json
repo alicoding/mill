@@ -292,8 +292,8 @@
     "fingerprint": "cc3e5338fab823d9ff76f94415fdd51d8f6b686f82a3f72b866edf8422173036"
   },
   "workflow:example-browser-replay-workflow": {
-    "seedRevision": 1,
-    "fingerprint": "0738f3c0f3f39a3e5bb08e4b4e9c319fdcd5beba28cdfcbebf15aaab8005bd4b"
+    "seedRevision": 2,
+    "fingerprint": "2ee263e137f20ec08c98ce75fbc52473c81305f0aaff2baebb0284a29c2415f1"
   },
   "workflow:example-bruno-run-workflow": {
     "seedRevision": 2,
@@ -426,6 +426,10 @@
   "workflow:example-step-failure-workflow": {
     "seedRevision": 2,
     "fingerprint": "aa775e5fc052bc02953048fc21320f72c192e0ed72bc606db2e04f6a1ac2df09"
+  },
+  "workflow:example-tidy-unused-lists-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "ef64572d1f29ea187a8fcbaff8efcbbcc698b81d95aa7a05d4fa1f38e646f194"
   },
   "workflow:example-todo-scan-workflow": {
     "seedRevision": 2,

@@ -307,8 +307,26 @@ export interface ManifestContributes {
      * contract compiled-in nouns use. Declared in the manifest, not
      * at activate() time, so the Extensions row can render them
      * without running plugin code and validation fails the LOAD.
+     * 
+     * Deprecated: superseded by Configuration (0349 S2), kept working
+     * as an alias.
      */
     "settings": SettingContribution[] | null;
+
+    /**
+     * Configuration is docs/goals/0349 S2's canonical settings key
+     * (VS Code's contributes.configuration); EffectiveSettings
+     * resolves it against the deprecated Settings alias, and a
+     * manifest declaring both refuses to load.
+     */
+    "configuration": SettingContribution[] | null;
+
+    /**
+     * Menus is docs/goals/0349 S2's accepted contributes.menus shape
+     * (VS Code's menu-id -> command list), classified onto Mill's own
+     * seats by pluginservice_menus.go's one mapping table.
+     */
+    "menus": { [_ in string]?: MenuItemContribution[] | null } | null;
 
     /**
      * Network (docs/goals/0288): the hosts a plugin may fetch from,
@@ -374,6 +392,19 @@ export interface MarketplaceSource {
     "locator": string;
     "ref": string;
     "addedAt": string;
+}
+
+/**
+ * MenuItemContribution is one entry in a contributes.menus array: the
+ * command to seat, VS Code's optional `when` clause (accepted for
+ * shape compatibility -- Mill has no context-key expression language,
+ * so it is never evaluated; a ported command stays reachable through
+ * its own Command.enabled instead) and an optional group band.
+ */
+export interface MenuItemContribution {
+    "command": string;
+    "when": string;
+    "group": string;
 }
 
 /**
@@ -547,6 +578,15 @@ export interface PluginInfo {
      * built-in's do. Always empty for a built-in.
      */
     "Grants": string[] | null;
+
+    /**
+     * Warnings are non-blocking manifest notices -- a deprecated key
+     * still in use, a foreign menu id Mill has no seat for
+     * (docs/goals/0349 S2) -- stated once in the plugin's status. A
+     * plugin with a load-blocking Error may still carry these; the
+     * status pane shows the error first.
+     */
+    "Warnings": string[] | null;
 }
 
 /**

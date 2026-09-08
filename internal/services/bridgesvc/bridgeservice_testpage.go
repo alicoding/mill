@@ -37,6 +37,7 @@ const testPageHTML = `<!doctype html>
 <button id="` + browserbridge.TestPageButtonID + `" aria-label="Confirm the connection">Confirm the connection</button>
 <div id="` + browserbridge.TestPageReadyID + `" hidden>Connected</div>
 <div id="` + browserbridge.TestPageEchoID + `" hidden></div>
+<a id="` + browserbridge.TestPageDownloadLinkID + `" href="` + TestDownloadPath + `" download="` + browserbridge.TestDownloadFilename + `">Download the test file</a>
 <script>
  document.getElementById('` + browserbridge.TestPageButtonID + `').addEventListener('click', function () {
    document.getElementById('` + browserbridge.TestPageReadyID + `').hidden = false;
@@ -64,4 +65,37 @@ func (s *BridgeService) handleTestPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write([]byte(testPageHTML))
+}
+
+// testDownloadPDF is the fixture the test page's download link and the
+// seeded "Replay a browser flow" example both point at (goal 0350 S3):
+// a minimal, deterministic single-page PDF, so a run against it always
+// produces the exact same content and checksum. No xref table -- every
+// PDF reader Mill ships against (pdf.js included) reconstructs one by
+// scanning for "N G obj" when it's absent, and a hand-computed table
+// would be one more thing to keep byte-accurate under editing.
+const testDownloadPDF = `%PDF-1.4
+1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
+2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
+3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Resources<<>>>>endobj
+trailer<</Root 1 0 R/Size 4>>
+%%EOF
+`
+
+// handleTestDownload serves the fixture file itself. Content-Disposition
+// names it explicitly rather than relying on the request path, matching
+// what the extension's own download sink reports as Filename.
+func (s *BridgeService) handleTestDownload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !isLoopback(r) {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+browserbridge.TestDownloadFilename+`"`)
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write([]byte(testDownloadPDF))
 }

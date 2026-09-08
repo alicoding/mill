@@ -25,6 +25,7 @@ func init() {
 	application.RegisterEvent[mcpsvc.MCPWriteRequest]("mcp-write-approval")
 	application.RegisterEvent[mcpsvc.MCPWriteActivity]("mcp-write-activity")
 	application.RegisterEvent[dataevent.Changed](dataevent.EventName)
+	application.RegisterEvent[dataevent.LifecycleEvent](dataevent.LifecycleEventName)
 	application.RegisterEvent[atlassvc.MirrorChanged](atlassvc.MirrorChangedEvent)
 	application.RegisterEvent[secretsvc.SourcesChanged](secretsvc.SourcesChangedEvent)
 	application.RegisterEvent[executionsvc.GuardrailPendingChanged]("guardrail-pending-changed")

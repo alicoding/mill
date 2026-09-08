@@ -476,7 +476,10 @@ func BuiltInWorkflows() []Workflow {
 	workflows = append(workflows, builtInWebhookWorkflows()...)
 	// goal 0373: the respond-webhook step's own seeded proof, same
 	// split-file reasoning.
-	return append(workflows, builtInWebhookRespondWorkflows()...)
+	workflows = append(workflows, builtInWebhookRespondWorkflows()...)
+	// docs/goals/0392 S2: the entity/object lifecycle event family's own
+	// seeded proof, same split-file reasoning.
+	return append(workflows, builtInLifecycleWorkflows()...)
 }
 
 // ExampleChildWorkflowID is exported so the parent seed above and any

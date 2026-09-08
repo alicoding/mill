@@ -104,6 +104,8 @@ import (
 //	commands      | commands.md
 //	themes        | plugin-theming.md
 //	tools         | install-a-plugin.md
+//	configuration | port-a-vscode-extension.md
+//	menus         | port-a-vscode-extension.md
 //	(new family)  | no entry -- Docs evidence still searches every
 //	              | userdocs/reference/*.md for the family key; a
 //	              | missing canonical-page entry only affects Currency

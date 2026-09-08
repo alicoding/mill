@@ -142,3 +142,42 @@ func TestErrors_CarryCodesAndOneSentence(t *testing.T) {
 		t.Fatalf("a chain-shaped reason reached the UI as %q", declared.Message)
 	}
 }
+
+// TestDownload_DataAndTooLargeAreOmittedWhenAbsent pins the envelope's
+// own wire shape (goal 0350 S3): a download under the cap carries its
+// bytes and no tooLarge flag, and one over it carries neither Data nor
+// stale size-derived Data -- omitempty on both keeps an ordinary small
+// download's JSON identical to before this field existed.
+func TestDownload_DataAndTooLargeAreOmittedWhenAbsent(t *testing.T) {
+	small := browserbridge.Download{Path: "/tmp/a.pdf", Filename: "a.pdf", Bytes: 4, Data: "YWJjZA=="}
+	encoded, err := json.Marshal(small)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !strings.Contains(string(encoded), `"data":"YWJjZA=="`) {
+		t.Fatalf("encoded = %s, want data on the wire", encoded)
+	}
+	if strings.Contains(string(encoded), "tooLarge") {
+		t.Fatalf("encoded = %s, want tooLarge omitted when false", encoded)
+	}
+
+	huge := browserbridge.Download{Path: "/tmp/b.pdf", Filename: "b.pdf", Bytes: browserbridge.DownloadBytesCap + 1, TooLarge: true}
+	encoded, err = json.Marshal(huge)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if strings.Contains(string(encoded), `"data"`) {
+		t.Fatalf("encoded = %s, want data omitted with no bytes", encoded)
+	}
+	if !strings.Contains(string(encoded), `"tooLarge":true`) {
+		t.Fatalf("encoded = %s, want tooLarge on the wire", encoded)
+	}
+
+	var back browserbridge.Download
+	if err := json.Unmarshal(encoded, &back); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if back.Bytes != huge.Bytes || !back.TooLarge || back.Data != "" {
+		t.Fatalf("round-tripped = %+v, want it to match %+v", back, huge)
+	}
+}

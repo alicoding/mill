@@ -138,6 +138,18 @@ checked against its published digest and refused on mismatch, and a
 backup snapshot is taken before any install. A copy built from
 source never self-updates.
 
+**Beta builds carry one stable signing identity.** Every beta is
+signed with the same self-signed certificate, so permissions like
+Accessibility stay granted across updates instead of asking again.
+First launch still needs the Gatekeeper override
+([Install](../start-here/install.md)) — the certificate isn't from
+Apple. A paid Developer ID certificate and notarization, which would
+remove that step entirely, are a future path. To allow-list by
+certificate instead: SHA-1 fingerprint
+`65:9A:26:7D:8A:23:52:36:90:39:E9:C2:45:64:F3:C7:46:A8:C6:22`,
+designated requirement `identifier "com.alicoding.mill" and
+certificate leaf = H"659a267d8a2352369039e9c24564f3c746a8c622"`.
+
 **When something breaks, you get the truth.** Every failure you can
 see — a crash, a failed run, a bad connector save, an update that
 didn't install — shows a Copy details button that copies the exact

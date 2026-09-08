@@ -3,6 +3,7 @@ import { Heading, Stack, Text } from '@primer/react'
 import { usePluginPolicy } from '../shared/pluginPolicyStore'
 import { capabilityDeedKey, tierLabelKey } from './extensionTrust'
 import { SettingsRow } from './SettingsRow'
+import { mustSetting } from '../shared/settingsRegistry'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './SettingsView.module.css'
 
@@ -12,7 +13,6 @@ import styles from './SettingsView.module.css'
 // managed-editor convention: Settings SHOWS what the organisation
 // decided so a person can see why an install was refused; changing it
 // is a conversation with whoever manages the Mac.
-const MANAGED_EXTENSIONS_DOCS_PAGE = 'reference/managed-extensions.md'
 
 export default function SettingsExtensionPolicy() {
   const { t } = useTranslation('views')
@@ -35,26 +35,26 @@ export default function SettingsExtensionPolicy() {
       )}
       {policy?.Managed && !policy.Error && (
         <>
-          <SettingsRow label={t('extensions.policy.managedByLabel')}>
+          <SettingsRow setting={mustSetting('security.extensionManagedBy')}>
             <Text size="small" data-testid="settings-extension-policy-managed-by">{policy.ManagedBy}</Text>
           </SettingsRow>
-          <SettingsRow label={t('extensions.policy.requiredTierLabel')}>
+          <SettingsRow setting={mustSetting('security.extensionRequiredTier')}>
             <Text size="small" data-testid="settings-extension-policy-tier">
               {tierLabelKey(policy.RequiredTier) ? t(tierLabelKey(policy.RequiredTier) as string) : t('extensions.policy.tierAny')}
             </Text>
           </SettingsRow>
-          <SettingsRow label={t('extensions.policy.blockedCapabilitiesLabel')}>
+          <SettingsRow setting={mustSetting('security.extensionBlockedCapabilities')}>
             <Text size="small" data-testid="settings-extension-policy-capabilities">
               {list((policy.BlockedCapabilities ?? []).map((c) => t(capabilityDeedKey(c))), 'extensions.policy.noneValue')}
             </Text>
           </SettingsRow>
-          <SettingsRow label={t('extensions.policy.allowedSourcesLabel')}>
+          <SettingsRow setting={mustSetting('security.extensionAllowedSources')}>
             <Text size="small" data-testid="settings-extension-policy-sources">{list(policy.AllowedSources, 'extensions.policy.anySource')}</Text>
           </SettingsRow>
-          <SettingsRow label={t('extensions.policy.listsLabel')}>
+          <SettingsRow setting={mustSetting('security.extensionLists')}>
             <Text size="small">{t('extensions.policy.listsValue', { allow: policy.AllowCount, block: policy.BlockCount })}</Text>
           </SettingsRow>
-          <SettingsRow label={t('extensions.policy.fileLabel')} caption={t('extensions.policy.fileCaption')} docsPage={MANAGED_EXTENSIONS_DOCS_PAGE}>
+          <SettingsRow setting={mustSetting('security.extensionPolicyFile')}>
             <Text size="small" className={listStyles.muted} data-testid="settings-extension-policy-path">{policy.Path}</Text>
           </SettingsRow>
         </>

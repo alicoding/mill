@@ -42,6 +42,7 @@ declare module "@wailsio/runtime" {
             "mcp-write-activity": mcpsvc$0.MCPWriteActivity;
             "mcp-write-approval": mcpsvc$0.MCPWriteRequest;
             "mill-data-changed": dataevent$0.Changed;
+            "mill-lifecycle-event": dataevent$0.LifecycleEvent;
             "mill-navigate": string;
             "secrets:sources-changed": secretsvc$0.SourcesChanged;
             "time": string;

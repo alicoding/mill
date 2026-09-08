@@ -5,6 +5,7 @@ import { SunIcon, MoonIcon, DeviceDesktopIcon } from '@primer/octicons-react'
 import { SettingsService } from '../shared/bindings'
 import { applyDensity, type DisplayDensity } from '../shared/density'
 import { SettingsRow } from './SettingsRow'
+import { mustSetting } from '../shared/settingsRegistry'
 import { ThemePicker, useThemeOptions } from './ThemePicker'
 import { background } from '../shared/background'
 import { pluginThemeRejections, subscribePluginThemes, type PluginThemeRejection } from '../shared/appearanceThemes'
@@ -107,7 +108,7 @@ export default function AppearanceSection() {
   return (
     <>
       <SettingsRow
-        label={t('settings.appearance.themeLabel')}
+        setting={mustSetting('appearance.colorMode')}
         control={() => (
           <SegmentedControl aria-label={t('settings.appearance.themeLabel')} onChange={(i) => setMode(COLOR_MODES[i])}>
             <SegmentedControl.IconButton icon={SunIcon} aria-label={t('settings.appearance.lightLabel')} selected={appearance.mode === 'light'} />
@@ -116,12 +117,12 @@ export default function AppearanceSection() {
           </SegmentedControl>
         )}
       />
-      {appearance.mode === 'light' && <SettingsRow label={t('settings.theme.label')} control={lightPicker} />}
-      {appearance.mode === 'dark' && <SettingsRow label={t('settings.theme.label')} control={darkPicker} />}
+      {appearance.mode === 'light' && <SettingsRow setting={mustSetting('appearance.theme')} control={lightPicker} />}
+      {appearance.mode === 'dark' && <SettingsRow setting={mustSetting('appearance.theme')} control={darkPicker} />}
       {appearance.mode === 'auto' && (
         <>
-          <SettingsRow label={t('settings.theme.lightLabel')} caption={t('settings.theme.lightCaption')} control={lightPicker} />
-          <SettingsRow label={t('settings.theme.darkLabel')} caption={t('settings.theme.darkCaption')} control={darkPicker} />
+          <SettingsRow setting={mustSetting('appearance.lightTheme')} control={lightPicker} />
+          <SettingsRow setting={mustSetting('appearance.darkTheme')} control={darkPicker} />
         </>
       )}
       {rejections.map((r) => (
@@ -130,7 +131,7 @@ export default function AppearanceSection() {
         </Flash>
       ))}
       <SettingsRow
-        label={t('settings.appearance.densityLabel')}
+        setting={mustSetting('appearance.density')}
         control={() => (
           <SegmentedControl
             aria-label={t('settings.appearance.densityLabel')}

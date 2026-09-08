@@ -115,6 +115,10 @@ test('a dropped .drawio file renders as a board object through the vendored view
   const card = page.locator('[data-testid="atlas-note-card"]').filter({ hasText: 'ZzE2eDiagramObject' })
   await expect(card).toBeVisible()
   await expect(card.getByTestId('atlas-note-file-tag')).toHaveText('DRAWIO')
+  // A promoted diagram card displays the diagram on the board face
+  // itself -- the same vendored viewer SVG the board object showed --
+  // never a blank titled box until opened.
+  await expect(card.locator('[data-testid="atlas-drawio-page-body"] svg')).toBeVisible()
 
   // Cleanup.
   await card.click({ button: 'right' })

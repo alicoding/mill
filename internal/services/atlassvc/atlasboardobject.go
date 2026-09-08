@@ -51,6 +51,21 @@ func (a *AtlasService) CreateBoardObject(kind string, payload map[string]string,
 	}
 	dataevent.Emit("atlas", o.ID)
 	a.armMirrorWatch(o.ID, o.Payload["mirrorPath"])
+	// goal 0392 S2: object.created fires for every kind; entity.referenced
+	// only for a kind whose registry declaration names an entityRef AND
+	// whose payload already carries that key's value -- true for every
+	// production table-creation path (paste and toolbar both mint the
+	// List through configuresvc BEFORE calling here, atlaspastebuild.go/
+	// useAtlasTableObjectCreate.ts), so the reference is never announced
+	// before the entity it points at exists.
+	entityRefKind := ""
+	if decl, ok := atlas.BoardObjectKindDeclFor(o.Kind); ok && decl.EntityRef != nil {
+		entityRefKind = decl.EntityRef.EntityKind
+		if entityID := o.Payload[decl.EntityRef.PayloadKey]; entityID != "" {
+			dataevent.EmitEntityReferenced(decl.EntityRef.EntityKind, entityID, dataevent.LifecycleBy{BoardID: o.ParentID, ObjectID: o.ID})
+		}
+	}
+	dataevent.EmitObjectCreated(o.ParentID, o.ID, o.Kind, entityRefKind)
 	created := o.ID
 	a.recordUndo(actorUI, "object", created, kind,
 		func(a *AtlasService) error { _, err := a.DeleteBoardObject(created); return err },

@@ -3,11 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { Text, TextInput } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
 import { SettingsRow } from './SettingsRow'
+import { mustSetting } from '../shared/settingsRegistry'
 import listStyles from '../shared/ListCard.module.css'
 import { background } from '../shared/background'
-
-// Where the rest of the trimmed away/alert captions lives (goal 0321).
-const SETTINGS_DOCS_PAGE = 'reference/settings.md'
 
 // Settings > Notifications (goal 0321): when a parked decision is
 // allowed to follow you, and what macOS does with the alert when it
@@ -44,9 +42,7 @@ export default function SettingsNotificationsPane() {
         </Text>
       )}
       <SettingsRow
-        label={t('settings.notifications.awayAfterLabel')}
-        caption={t('settings.notifications.awayAfterCaption')}
-        docsPage={SETTINGS_DOCS_PAGE}
+        setting={mustSetting('notifications.awayAfter')}
         control={(labelId) => (
           <TextInput
             className={listStyles.themedNumberInput}
@@ -62,11 +58,7 @@ export default function SettingsNotificationsPane() {
           />
         )}
       />
-      <SettingsRow
-        label={t('settings.notifications.alertPermissionLabel')}
-        caption={t('settings.notifications.alertPermissionNote')}
-        docsPage={SETTINGS_DOCS_PAGE}
-      />
+      <SettingsRow setting={mustSetting('notifications.alertPermission')} />
     </>
   )
 }
