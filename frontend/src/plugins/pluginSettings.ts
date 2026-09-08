@@ -1,5 +1,22 @@
 import type { ExtensionSettingDecl } from '../atlas/atlasNounRegistry'
 import type { Manifest, SettingContribution } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
+import { resolveExtensionSetting } from '../shared/extensionSettingsStore'
+import { secretTitleOf } from '../shared/secretTitleCache'
+
+// snapshotPluginSettings resolves every declared setting's CURRENT
+// value once, the same read buildPluginAPI's settings.get performs
+// (a secretRef answers its vault entry's title, never its value) --
+// an activation frame's own settings.get stays synchronous over this
+// snapshot rather than a round trip (docs/goals/0375 S1b).
+export function snapshotPluginSettings(manifest: Manifest): Record<string, boolean | string | number> {
+  const pluginId = manifest.id
+  const snapshot: Record<string, boolean | string | number> = {}
+  for (const decl of settingDeclsFromManifest(manifest)) {
+    const value = resolveExtensionSetting(pluginId, decl)
+    snapshot[decl.key] = decl.type === 'secretRef' ? secretTitleOf(String(value)) : value
+  }
+  return snapshot
+}
 
 // settingDeclsFromManifest -- a plugin's manifest `contributes.settings`
 // (docs/goals/0258 slice 1, VS Code's `default` spelling) restated as

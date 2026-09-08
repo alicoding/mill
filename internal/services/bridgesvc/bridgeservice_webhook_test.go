@@ -14,12 +14,12 @@ import (
 	"github.com/alicoding/mill/internal/services/bridgesvc"
 )
 
-// hooksFixture wires the hook door with a captured sink, the same half
-// of main.go's assembly these ingress tests pin. wait, when set, is
-// what the sink returns to the next post -- nil (the default) matches
-// every listener with no respond-webhook node, byte-identical to
-// before goal 0373.
-type hooksFixture struct {
+// webhookFixture wires the webhook door with a captured sink, the same
+// half of main.go's assembly these ingress tests pin. wait, when set,
+// is what the sink returns to the next post -- nil (the default)
+// matches every listener with no respond-webhook node, byte-identical
+// to before goal 0373.
+type webhookFixture struct {
 	srv *httptest.Server
 
 	mu     sync.Mutex
@@ -29,10 +29,10 @@ type hooksFixture struct {
 	wait   *bridgesvc.WebhookWait
 }
 
-func newHooksFixture(t *testing.T) *hooksFixture {
+func newWebhookFixture(t *testing.T) *webhookFixture {
 	t.Helper()
-	auth := &stubAuth{token: "good", hookToken: "hook-good"}
-	fixture := &hooksFixture{}
+	auth := &stubAuth{token: "good", webhookToken: "webhook-good"}
+	fixture := &webhookFixture{}
 	svc := bridgesvc.New(auth, slog.New(slog.DiscardHandler))
 	svc.SetWebhookEventSink(func(values map[string]string, raw []byte) *bridgesvc.WebhookWait {
 		fixture.mu.Lock()
@@ -49,15 +49,15 @@ func newHooksFixture(t *testing.T) *hooksFixture {
 }
 
 // setWait arms the sink to return wait on the NEXT post.
-func (f *hooksFixture) setWait(wait *bridgesvc.WebhookWait) {
+func (f *webhookFixture) setWait(wait *bridgesvc.WebhookWait) {
 	f.mu.Lock()
 	f.wait = wait
 	f.mu.Unlock()
 }
 
-func (f *hooksFixture) post(t *testing.T, token, body string) (int, []byte) {
+func (f *webhookFixture) post(t *testing.T, token, body string) (int, []byte) {
 	t.Helper()
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, f.srv.URL+bridgesvc.HookEventPath, strings.NewReader(body))
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, f.srv.URL+bridgesvc.WebhookPath, strings.NewReader(body))
 	if err != nil {
 		t.Fatalf("NewRequest() = %v, want nil error", err)
 	}
@@ -79,16 +79,16 @@ func (f *hooksFixture) post(t *testing.T, token, body string) (int, []byte) {
 // postFull is post plus the response headers, for a case that needs to
 // assert Content-Type or Mill-Reply -- always the same valid, minimal
 // post, since every caller is exercising the WAIT/REPLY behavior past
-// dispatch, never what gets posted (TestHookEvent_RequiresAHookToken
-// and TestHookEvent_ValidPost_DispatchesValuesAndRawBody already own
-// the token gate and the values/raw parsing respectively).
-func (f *hooksFixture) postFull(t *testing.T) (int, http.Header, []byte) {
+// dispatch, never what gets posted (TestWebhook_RequiresAWebhookToken
+// and TestWebhook_ValidPost_DispatchesValuesAndRawBody already own the
+// token gate and the values/raw parsing respectively).
+func (f *webhookFixture) postFull(t *testing.T) (int, http.Header, []byte) {
 	t.Helper()
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, f.srv.URL+bridgesvc.HookEventPath, strings.NewReader(`{"source":"ci"}`))
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, f.srv.URL+bridgesvc.WebhookPath, strings.NewReader(`{"source":"ci"}`))
 	if err != nil {
 		t.Fatalf("NewRequest() = %v, want nil error", err)
 	}
-	req.Header.Set("Authorization", "Bearer hook-good")
+	req.Header.Set("Authorization", "Bearer webhook-good")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("POST = %v, want nil error", err)
@@ -101,16 +101,16 @@ func (f *hooksFixture) postFull(t *testing.T) (int, http.Header, []byte) {
 	return resp.StatusCode, resp.Header, respBody
 }
 
-func (f *hooksFixture) captured() (map[string]string, []byte, int) {
+func (f *webhookFixture) captured() (map[string]string, []byte, int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.values, f.raw, f.calls
 }
 
-func TestHookEvent_RequiresAHookToken(t *testing.T) {
-	fixture := newHooksFixture(t)
+func TestWebhook_RequiresAWebhookToken(t *testing.T) {
+	fixture := newWebhookFixture(t)
 
-	for _, name := range []string{"no header", "wrong token", "a browser token on the hook route"} {
+	for _, name := range []string{"no header", "wrong token", "a browser token on the webhook route"} {
 		t.Run(name, func(t *testing.T) {
 			var token string
 			switch name {
@@ -118,7 +118,7 @@ func TestHookEvent_RequiresAHookToken(t *testing.T) {
 				token = ""
 			case "wrong token":
 				token = "nope"
-			case "a browser token on the hook route":
+			case "a browser token on the webhook route":
 				// Kind separation: the browser credential is a real,
 				// valid bearer token on its own route and 401 here.
 				token = "good"
@@ -138,8 +138,8 @@ func TestHookEvent_RequiresAHookToken(t *testing.T) {
 	}
 }
 
-func TestHookEvent_RejectsUnreadableBodies(t *testing.T) {
-	fixture := newHooksFixture(t)
+func TestWebhook_RejectsUnreadableBodies(t *testing.T) {
+	fixture := newWebhookFixture(t)
 
 	cases := map[string]string{
 		"not JSON at all":    "oops",
@@ -151,7 +151,7 @@ func TestHookEvent_RejectsUnreadableBodies(t *testing.T) {
 	}
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {
-			status, _ := fixture.post(t, "hook-good", body)
+			status, _ := fixture.post(t, "webhook-good", body)
 			if status != http.StatusBadRequest {
 				t.Fatalf("status = %d, want 400", status)
 			}
@@ -162,11 +162,11 @@ func TestHookEvent_RejectsUnreadableBodies(t *testing.T) {
 	}
 }
 
-func TestHookEvent_ValidPost_DispatchesValuesAndRawBody(t *testing.T) {
-	fixture := newHooksFixture(t)
+func TestWebhook_ValidPost_DispatchesValuesAndRawBody(t *testing.T) {
+	fixture := newWebhookFixture(t)
 
 	body := `{"source":"MyTool","title":"build done","attempts":3,"cached":true,"ratio":1.5,"nested":{"a":1},"list":[1,2],"empty":null}`
-	status, respBody := fixture.post(t, "hook-good", body)
+	status, respBody := fixture.post(t, "webhook-good", body)
 	if status != http.StatusAccepted {
 		t.Fatalf("status = %d, want 202 (body=%s)", status, respBody)
 	}
@@ -197,19 +197,19 @@ func TestHookEvent_ValidPost_DispatchesValuesAndRawBody(t *testing.T) {
 	}
 }
 
-func TestHookEvent_NoSinkWired_IsAServerError(t *testing.T) {
+func TestWebhook_NoSinkWired_IsAServerError(t *testing.T) {
 	// Unreachable from main.go's assembly, exercised so the route never
 	// silently swallows a wiring fault.
-	auth := &stubAuth{hookToken: "hook-good"}
+	auth := &stubAuth{webhookToken: "webhook-good"}
 	svc := bridgesvc.New(auth, slog.New(slog.DiscardHandler))
 	srv := httptest.NewServer(svc.Handler())
 	t.Cleanup(srv.Close)
 
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL+bridgesvc.HookEventPath, strings.NewReader(`{"source":"ci"}`))
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL+bridgesvc.WebhookPath, strings.NewReader(`{"source":"ci"}`))
 	if err != nil {
 		t.Fatalf("NewRequest() = %v, want nil error", err)
 	}
-	req.Header.Set("Authorization", "Bearer hook-good")
+	req.Header.Set("Authorization", "Bearer webhook-good")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("POST = %v, want nil error", err)
@@ -220,9 +220,9 @@ func TestHookEvent_NoSinkWired_IsAServerError(t *testing.T) {
 	}
 }
 
-func TestHookEvent_GetIsRefused(t *testing.T) {
-	fixture := newHooksFixture(t)
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, fixture.srv.URL+bridgesvc.HookEventPath, nil)
+func TestWebhook_GetIsRefused(t *testing.T) {
+	fixture := newWebhookFixture(t)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, fixture.srv.URL+bridgesvc.WebhookPath, nil)
 	if err != nil {
 		t.Fatalf("NewRequest() = %v, want nil error", err)
 	}

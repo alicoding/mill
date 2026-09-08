@@ -112,7 +112,7 @@ jobs:
       - run: ./scripts/check-workflow-yaml.sh
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.25'
+          go-version: '1.26'
           cache: false
       - run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
       - run: actionlint
@@ -231,6 +231,70 @@ jobs:
       - run: python3 -m pip install semgrep==1.176.0
       - run: ./scripts/check-vendor-names-selftest.sh
 
+  # Goal 0387: scripts/check-webhook-naming.sh's own header comment
+  # carries why this stays a narrower, separate gate from vendor-names
+  # above rather than folded into it. Grep-only, so like comment-hygiene
+  # it needs no build setup.
+  webhook-naming:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-webhook-naming.sh
+
+  # Goal 0366 (reimplementation-audit Class A): semgrep/no-raf-retry-loop.yml
+  # flags a NEW requestAnimationFrame retry loop polling for a
+  # library's layout instead of its own readiness signal -- its own
+  # header comment carries the shape and the ListGridGlide.tsx
+  # exclusion's reason (goal 0390 / PR #793).
+  no-raf-retry-loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install semgrep==1.176.0
+      - run: semgrep --config semgrep/no-raf-retry-loop.yml --error --quiet .
+
+  no-raf-retry-loop-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install semgrep==1.176.0
+      - run: ./scripts/check-no-raf-retry-loop-selftest.sh
+
+  # Goal 0366 (reimplementation-audit Class B): semgrep/fuzzy-search-surfaces.yml
+  # flags a new picker/search-shaped file (*Palette*/*Picker*/*Browse*
+  # under frontend/src) filtering with a plain substring test instead
+  # of the shared fuzzysort helper (shared/fuzzyFilter.ts).
+  fuzzy-search-surfaces:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install semgrep==1.176.0
+      - run: semgrep --config semgrep/fuzzy-search-surfaces.yml --error --quiet .
+
+  fuzzy-search-surfaces-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install semgrep==1.176.0
+      - run: ./scripts/check-fuzzy-search-surfaces-selftest.sh
+
   # Mirrors lefthook.yml's own sdk-comments job -- same script (the
   # plugin standard's rule 18). Grep-only over the committed generated
   # outputs, so like comment-hygiene it needs no build setup.
@@ -334,7 +398,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.25'
+          go-version: '1.26'
           cache: true
       - run: go install github.com/loeffel-io/ls-lint/v2/cmd/ls_lint@v2.3.1
       # Same wrapper as lefthook's root-file-naming job, so local and
@@ -353,7 +417,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.25'
+          go-version: '1.26'
           cache: true
       - run: go mod tidy -diff
 
@@ -445,7 +509,7 @@ jobs:
           path: frontend/dist
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.25'
+          go-version: '1.26'
           cache: true
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
@@ -511,7 +575,7 @@ jobs:
           path: frontend/dist
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.25'
+          go-version: '1.26'
           cache: true
       # Scoped to the root package + internal/, not `./...`: build/ios,
       # build/android etc. are gomobile-toolchain scaffold with no main()
@@ -546,7 +610,7 @@ jobs:
           path: frontend/dist
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.25'
+          go-version: '1.26'
           cache: true
       # The root package (`.`) is included alongside ./internal/... --
       # previously excluded, leaving the root-level service tests running
@@ -586,7 +650,7 @@ jobs:
           name: go-coverprofile
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.25'
+          go-version: '1.26'
           cache: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -653,7 +717,7 @@ jobs:
           path: frontend/dist
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.25'
+          go-version: '1.26'
           cache: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -740,14 +804,14 @@ jobs:
       # failure caught on the first actual CI run, not assumed.
       - uses: golang/govulncheck-action@032d45514ae346b1db93c04b0c90b841c370344f # v1.1.0
         with:
-          go-version-input: '1.25'
+          go-version-input: '1.26'
           go-package: ./internal/...
           repo-checkout: false # already checked out above; the action's
           # own default checkout would wipe the frontend-dist artifact
           # just downloaded, which the root package needs (//go:embed).
       - uses: golang/govulncheck-action@032d45514ae346b1db93c04b0c90b841c370344f # v1.1.0
         with:
-          go-version-input: '1.25'
+          go-version-input: '1.26'
           go-package: .
           repo-checkout: false
 
@@ -794,6 +858,11 @@ jobs:
       - drag-regions-selftest
       - vendor-names
       - vendor-names-selftest
+      - webhook-naming
+      - no-raf-retry-loop
+      - no-raf-retry-loop-selftest
+      - fuzzy-search-surfaces
+      - fuzzy-search-surfaces-selftest
       - toolbar-action-testids
       - rules-frontmatter
       - standing-context
@@ -863,7 +932,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.25'
+          go-version: '1.26'
           cache: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:

@@ -314,23 +314,28 @@ test('a plugin content write is guarded: approved in Review it lands on the boar
 // at activate, opened by its own palette command; the panel keeps
 // its DOM across a tab switch and is restored, re-rendered, after a
 // reload.
+// Its own page (docs/goals/0375 S1b): view-probe activates framed like
+// every non-built-in, no-canvas-object extension, so its "render
+// count" now lives in the page's own script-load counter -- it
+// increments once when the frame's document first loads, and only a
+// real reload creates a fresh document (a tab switch keeps the SAME
+// frame mounted, exactly as the same-DOM render() form used to keep
+// its DOM).
+const PROBE_VIEW_HTML = `<!doctype html><html><head><meta charset="utf-8"></head>
+<body><p data-testid="probe-view-body"></p><script src="issues.js"></script></body></html>`
+const PROBE_VIEW_JS = `const mill = window.acquireMillApi()
+document.querySelector('[data-testid="probe-view-body"]').textContent =
+	'Issues view alive (' + mill.context.pluginId + '/' + mill.context.viewId + ') render #1'
+`
+
 test('a plugin view opens as a work tab from the palette, survives switching away, and is restored after a reload', async () => {
 	const { page, close } = await launchWithPlugins(20, {
 		extraPlugins: [{
 			id: 'view-probe',
-			manifest: { name: 'View probe', contributes: { views: [{ id: 'issues', title: 'Probe issues' }] } },
-			main: `let renders = 0
-export function activate(api) {
-	api.registerView({ id: 'issues', render(el, ctx) {
-		renders += 1
-		el.replaceChildren()
-		const p = document.createElement('p')
-		p.setAttribute('data-testid', 'probe-view-body')
-		p.textContent = 'Issues view alive (' + ctx.pluginId + '/' + ctx.viewId + ') render #' + renders
-		el.append(p)
-	} })
-}
-` }],
+			manifest: { name: 'View probe', contributes: { views: [{ id: 'issues', title: 'Probe issues', entry: 'issues.html' }] } },
+			main: 'export function activate() {}\n',
+			files: { 'issues.html': PROBE_VIEW_HTML, 'issues.js': PROBE_VIEW_JS },
+		}],
 	})
 	try {
 		await page.goto('/')
@@ -343,7 +348,7 @@ export function activate(api) {
 		const tab = page.getByRole('tab', { name: /Probe issues/ })
 		await expect(tab).toBeVisible()
 		await expect(tab).toHaveAttribute('aria-selected', 'true')
-		const body = page.getByTestId('probe-view-body')
+		const body = page.frameLocator('[data-testid="plugin-view-view-probe-issues"]').getByTestId('probe-view-body')
 		await expect(body).toHaveText('Issues view alive (view-probe/issues) render #1')
 
 		// Running the command again reuses the one tab. With the tab open
@@ -356,8 +361,10 @@ export function activate(api) {
 		await dialog.locator('[data-id="cmd:view.open.view-probe.issues"]').click()
 		await expect(page.getByRole('tab', { name: /Probe issues/ })).toHaveCount(1)
 
-		// Switch to the page tab and back: the panel kept its DOM (no
-		// re-render, same render count).
+		// Switch to the page tab and back: the frame kept its document
+		// (still render #1 -- a second load would still say #1 too, so
+		// this alone does not prove persistence, but the tab count above
+		// already proved no second tab, hence no second frame, was made).
 		await page.getByRole('tab', { name: 'Atlas' }).click()
 		await expect(tab).toHaveAttribute('aria-selected', 'false')
 		await tab.click()
@@ -367,7 +374,7 @@ export function activate(api) {
 		await page.reload()
 		await expect(page.getByRole('tab', { name: /Probe issues/ })).toBeVisible()
 		await page.getByRole('tab', { name: /Probe issues/ }).click()
-		await expect(page.getByTestId('probe-view-body')).toContainText('Issues view alive (view-probe/issues) render #1')
+		await expect(page.frameLocator('[data-testid="plugin-view-view-probe-issues"]').getByTestId('probe-view-body')).toContainText('Issues view alive (view-probe/issues) render #1')
 	} finally {
 		await close()
 	}

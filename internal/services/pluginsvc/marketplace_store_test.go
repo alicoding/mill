@@ -16,7 +16,7 @@ func exampleFS(ids ...string) fstest.MapFS {
 	for _, id := range ids {
 		base := exampleMarketplaceRoot + "/" + id
 		fsys[base+"/manifest.json"] = &fstest.MapFile{Data: []byte(fmt.Sprintf(
-			`{"id":%q,"name":"Example %s","version":"1.0.0","author":"Mill","description":"An example.","capabilities":["fetch"],"contributes":{"network":[{"host":"api.example.test"}],"views":[{"id":"v","title":"V"}]}}`, id, id))}
+			`{"id":%q,"name":"Example %s","version":"1.0.0","author":"Mill","description":"An example.","capabilities":["fetch"],"contributes":{"network":[{"host":"api.example.test"}]}}`, id, id))}
 		fsys[base+"/main.js"] = &fstest.MapFile{Data: []byte("export function activate() {}")}
 	}
 	return fsys

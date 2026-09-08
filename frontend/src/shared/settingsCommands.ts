@@ -1,7 +1,7 @@
 import type { Command } from './commands'
 import { copy } from './copy'
 import { useAppStore } from './store'
-import { BackupService, SettingsService, UpdateState } from './bindings'
+import { AuditService, BackupService, SettingsService, UpdateState } from './bindings'
 import { SETTINGS_GROUPS, resolveGroupTitle } from './settingsGroups'
 import { useUpdateNoticeStore } from './updateNoticeStore'
 import { useUISignalStore } from './uiSignalStore'
@@ -91,6 +91,22 @@ export const SETTINGS_COMMANDS: Command[] = [
     run: () =>
       PluginService.ExportPluginAudit()
         .then((json) => downloadBlob(`mill-plugin-audit-${new Date().toISOString().slice(0, 10)}.json`, new Blob([json], { type: 'application/json' }))),
+  },
+  {
+    id: 'audit.export',
+    menu: { path: 'file', group: 3, order: 2 },
+    label: 'commands.audit.export',
+    // The shared audit trail (goal 0351 Decision 5): every MCP call,
+    // secret read and browser bridge action Mill recorded, in one
+    // file -- kinds=[] exports every kind, the same download door
+    // every other export uses. No `enabled` predicate, matching
+    // backup.export/extensions.exportAudit's own sibling commands
+    // right above: a local read against an always-open store is
+    // unconditionally available, never gated on a live connection.
+    defaultBinding: null,
+    run: () =>
+      AuditService.ExportAuditTrail([])
+        .then((jsonLines) => downloadBlob(`mill-audit-trail-${new Date().toISOString().slice(0, 10)}.jsonl`, new Blob([jsonLines], { type: 'application/json' }))),
   },
   {
     id: 'backup.export',
