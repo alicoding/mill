@@ -14,11 +14,9 @@ vi.mock('@primer/react', () => ({
 
 // The activation frame's own host element (the <iframe>) carries the
 // same theme attribute pair as PluginViewHost's non-framed div, read
-// from the same usePluginTheme source (CI amendment on PR #785,
-// theming.spec.ts:129 -- an example's view root had no data-mill-theme
-// at all). Proven by flipping the resolved theme mid-mount and reading
-// the iframe's own attributes back, not by asserting on the div branch
-// a second time.
+// from the same usePluginTheme source -- proven by flipping the
+// resolved theme mid-mount and reading the iframe's own attributes
+// back, not by asserting on the div branch a second time.
 
 vi.mock('@wailsio/runtime', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@wailsio/runtime')>()
