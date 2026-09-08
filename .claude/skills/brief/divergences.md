@@ -176,3 +176,14 @@ this file is the record, a brief is a projection of it.
   exact line `Important findings open: 0`, or CI rejects the PR. Paste
   the review report into the PR body under `## Review` with that exact
   line, not just into the final chat report.
+- Obvious: after `gh pr create`, watch CI until it merges. Here: NEVER —
+  a builder arms `gh pr merge --squash --auto`, delivers its report and
+  STOPS. Subagents never receive background-task notifications (three
+  builders in one night ended turns "waiting for CI"; one burned 570k
+  tokens polling); the orchestrator watches merges, BEHIND states and
+  conflicts. Poll in place applies to the builder's OWN commands only.
+- Obvious: `until ! pgrep -f "<cmd>"; do sleep; done` to wait for a
+  process. Here: the loop's own command line contains `<cmd>`, so pgrep
+  matches itself and the loop never exits (seven stale loops in one
+  session). Wait on the PID you started (`while kill -0 $pid`), or on
+  the log line the command prints when done.
