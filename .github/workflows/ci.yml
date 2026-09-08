@@ -303,6 +303,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-drag-regions-selftest.sh
 
+  # Goal 0403 S2f: proves gocache-trim.sh's busy-process guard and
+  # --dry-run without hardcache installed. The plist/plutil half of the
+  # selftest SKIPs itself here (Linux runner, no launchd).
+  gocache-trim-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/dev/gocache-trim-selftest.sh
+
   # Goal 0385: semgrep/vendor-names.yml denies a product/vendor name
   # used as a platform CONCEPT (a trigger/node id, a route, a device
   # kind, view/locale copy, userdocs prose) -- see the rule file's own
@@ -1287,6 +1297,7 @@ jobs:
       - ui-copy
       - drag-regions
       - drag-regions-selftest
+      - gocache-trim-selftest
       - vendor-names
       - vendor-names-selftest
       - webhook-naming
