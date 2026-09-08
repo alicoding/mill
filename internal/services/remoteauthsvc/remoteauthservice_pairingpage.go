@@ -22,7 +22,7 @@ const (
 // wrong for half of them.
 const (
 	pairingInstructionsServer  = "Find the pairing code in this server's log."
-	pairingInstructionsDesktop = "Open Settings → Remote access on your Mac to see the code."
+	pairingInstructionsDesktop = "Open Settings → Connections → Devices on your Mac to see the code."
 )
 
 // resendConfirmationServer and resendConfirmationDesktop are the
@@ -30,7 +30,7 @@ const (
 // action -- same reasoning as the instructions above.
 const (
 	resendConfirmationServer  = "A new code is in this server's log."
-	resendConfirmationDesktop = "A new code is showing in Settings → Remote access."
+	resendConfirmationDesktop = "A new code is showing in Settings → Connections → Devices."
 )
 
 // pairingInstructions returns the truthful, mode-specific sentence
