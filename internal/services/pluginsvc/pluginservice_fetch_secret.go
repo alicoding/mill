@@ -72,9 +72,10 @@ func (p *PluginService) secretForFetch(plugin PluginInfo, req PluginFetchRequest
 	}
 	key := strings.TrimSpace(req.Secret.SettingKey)
 	var declared *SettingContribution
-	for i := range plugin.Manifest.Contributes.Settings {
-		if plugin.Manifest.Contributes.Settings[i].Key == key {
-			declared = &plugin.Manifest.Contributes.Settings[i]
+	settings := plugin.Manifest.Contributes.EffectiveSettings()
+	for i := range settings {
+		if settings[i].Key == key {
+			declared = &settings[i]
 		}
 	}
 	if declared == nil || declared.Type != SettingTypeSecretRef {

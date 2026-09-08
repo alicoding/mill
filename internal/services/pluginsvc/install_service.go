@@ -165,7 +165,7 @@ func applyManifestToPreview(pv *InstallPreview, m Manifest, builtin bool) {
 		pv.NetworkHosts = append(pv.NetworkHosts, n.Host)
 	}
 	pv.Kinds = contributionKinds(m.Contributes)
-	for _, s := range m.Contributes.Settings {
+	for _, s := range m.Contributes.EffectiveSettings() {
 		if strings.EqualFold(s.Type, "secretRef") {
 			pv.UsesSecrets = true
 		}

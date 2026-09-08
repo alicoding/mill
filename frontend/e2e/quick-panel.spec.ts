@@ -311,7 +311,7 @@ test('a workflow run from the panel a few times sorts above one that was never r
 // between parking the write and reading the badge), not just the
 // on-mount fetch every other assertion here already exercises
 // incidentally.
-test('a parked MCP write bumps the Quick Panel review badge live, no reload', async ({ page }, testInfo) => {
+test('a parked MCP write bumps the Quick Panel review badge live, no reload', async ({ page, workerServer }) => {
   await enableMCPWritesWithApprovalRequired(page)
 
   const sourceLabel = 'ZzE2eQuickPanelReviewSource'
@@ -322,7 +322,7 @@ test('a parked MCP write bumps the Quick Panel review badge live, no reload', as
   const search = page.getByRole('combobox', { name: 'Quick Panel search' })
   await expect(search).toBeFocused()
 
-  const client = await connectMCPClient(testInfo.parallelIndex)
+  const client = await connectMCPClient(workerServer.mcpPort)
   let importResultPromise: ReturnType<Client['callTool']>
   try {
     const sourceId = await findWorkflowIdByLabel(client, sourceLabel)
@@ -456,13 +456,13 @@ test('pinning a workflow from the panel row sorts it above frecency, unpinning r
 // headlessly (see hotkeyDebugKnob.ts's own header comment) --
 // assignDebugWorkflowHotkey records the combo server-side the same way
 // a real AssignHotkey call would, minus the OS probe.
-test('a workflow row shows its own hotkey-trigger combo inline; a non-hotkey trigger shows none', async ({ page }, testInfo) => {
+test('a workflow row shows its own hotkey-trigger combo inline; a non-hotkey trigger shows none', async ({ page, workerServer }) => {
   const hotkeyLabel = 'ZzE2ePanelHotkeyChipX'
   const manualLabel = 'ZzE2ePanelNoHotkeyChip'
   await createHotkeyTriggerWorkflow(page, hotkeyLabel)
   await createSimpleWorkflow(page, manualLabel)
 
-  const client = await connectMCPClient(testInfo.parallelIndex)
+  const client = await connectMCPClient(workerServer.mcpPort)
   let hotkeyWorkflowId: string
   try {
     hotkeyWorkflowId = await findWorkflowIdByLabel(client, hotkeyLabel)

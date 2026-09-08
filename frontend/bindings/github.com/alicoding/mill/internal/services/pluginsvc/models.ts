@@ -315,8 +315,26 @@ export interface ManifestContributes {
      * contract compiled-in nouns use. Declared in the manifest, not
      * at activate() time, so the Extensions row can render them
      * without running plugin code and validation fails the LOAD.
+     * 
+     * Deprecated: superseded by Configuration (0349 S2), kept working
+     * as an alias.
      */
     "settings": SettingContribution[] | null;
+
+    /**
+     * Configuration is docs/goals/0349 S2's canonical settings key
+     * (VS Code's contributes.configuration); EffectiveSettings
+     * resolves it against the deprecated Settings alias, and a
+     * manifest declaring both refuses to load.
+     */
+    "configuration": SettingContribution[] | null;
+
+    /**
+     * Menus is docs/goals/0349 S2's accepted contributes.menus shape
+     * (VS Code's menu-id -> command list), classified onto Mill's own
+     * seats by pluginservice_menus.go's one mapping table.
+     */
+    "menus": { [_ in string]?: MenuItemContribution[] | null } | null;
 
     /**
      * Network (docs/goals/0288): the hosts a plugin may fetch from,
@@ -382,6 +400,19 @@ export interface MarketplaceSource {
     "locator": string;
     "ref": string;
     "addedAt": string;
+}
+
+/**
+ * MenuItemContribution is one entry in a contributes.menus array: the
+ * command to seat, VS Code's optional `when` clause (accepted for
+ * shape compatibility -- Mill has no context-key expression language,
+ * so it is never evaluated; a ported command stays reachable through
+ * its own Command.enabled instead) and an optional group band.
+ */
+export interface MenuItemContribution {
+    "command": string;
+    "when": string;
+    "group": string;
 }
 
 /**
@@ -504,9 +535,7 @@ export interface PluginFileEntry {
  * a plugin is either fully valid or visibly broken, never silently
  * half-loaded. Builtin marks a plugin embedded in the binary
  * (pluginservice_builtin.go): same loader and disable list as any
- * plugin, but nothing on disk to reveal or delete. Split from
- * pluginservice.go at the hand-written-file line limit
- * (.claude/rules/architecture.md).
+ * plugin, but nothing on disk to reveal or delete.
  */
 export interface PluginInfo {
     "Manifest": Manifest;
@@ -516,8 +545,8 @@ export interface PluginInfo {
 
     /**
      * ContentHash is the folder's current content hash
-     * (pluginservice_hash.go), "" for a built-in/invalid plugin -- the
-     * signing/tier comparison input.
+     * (pluginservice_hash.go), "" for a built-in or an invalid plugin
+     * -- what the lock compares against.
      */
     "ContentHash": string;
 
@@ -559,8 +588,9 @@ export interface PluginInfo {
      * Grants names what this plugin was given outside the sandboxed
      * activation frame every other non-built-in plugin runs inside
      * (docs/goals/0375 S1b): "canvas-host" for a non-built-in plugin
-     * declaring a canvas object, since the framed canvas API does not
-     * exist yet. Always empty for a built-in.
+     * that declares a canvas object, since the framed canvas API does
+     * not exist yet and its own tools still need board input the way a
+     * built-in's do. Always empty for a built-in.
      */
     "Grants": string[] | null;
 
@@ -572,6 +602,15 @@ export interface PluginInfo {
      * never allowed, or built-in.
      */
     "Widened": InstallPreview | null;
+
+    /**
+     * Warnings are non-blocking manifest notices -- a deprecated key
+     * still in use, a foreign menu id Mill has no seat for
+     * (docs/goals/0349 S2) -- stated once in the plugin's status. A
+     * plugin with a load-blocking Error may still carry these; the
+     * status pane shows the error first.
+     */
+    "Warnings": string[] | null;
 }
 
 /**

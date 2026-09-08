@@ -11,7 +11,7 @@ import { workflowRow } from './fixtures/canvas'
 // (mcpauditservice_middleware_test.go) and the agent-loop coverage
 // proof (millmcpservice_audit_test.go) cover the rest of that chain at
 // the Go layer.
-test('a real MCP tool call appears in Activity\'s MCP calls section', async ({ page }, testInfo) => {
+test('a real MCP tool call appears in Activity\'s MCP calls section', async ({ page, workerServer }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByTestId('new-workflow').click()
@@ -19,7 +19,7 @@ test('a real MCP tool call appears in Activity\'s MCP calls section', async ({ p
   await page.locator('[role="tabpanel"]:not([hidden])').last().getByTestId('save-workflow').click()
   await expect(workflowRow(page, 'E2E MCP observability source')).toBeVisible()
 
-  const client = await connectMCPClient(testInfo.parallelIndex)
+  const client = await connectMCPClient(workerServer.mcpPort)
   try {
     const workflowId = await findWorkflowIdByLabel(client, 'E2E MCP observability source')
     await exportWorkflowViaMCP(client, workflowId)

@@ -207,13 +207,22 @@ pairTypedButton.addEventListener('click', async () => {
 })
 
 disconnectButton.addEventListener('click', async () => {
-  // No bridge door revokes a browser's OWN token by presenting it --
-  // RevokeDevice needs a device id and is a Wails-bound RPC reachable
-  // only from Mill's own Settings UI, not this loopback HTTP surface
-  // (goal 0379). Disconnect therefore only ever clears the credential
-  // THIS browser holds; the paired-device row still exists in Mill's
-  // Browsers list until revoked there.
+  // Ends the pairing in Mill first (POST /__mill/bridge/disconnect,
+  // this browser's own bearer token as proof) -- best-effort: a failed
+  // or unreachable call still falls through to the local clear below,
+  // since disconnecting must never depend on Mill being reachable
+  // right now.
   const current = await stored()
+  if (current.address && current.token) {
+    try {
+      await fetch(`${current.address}/__mill/bridge/disconnect`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${current.token}` },
+      })
+    } catch {
+      // Mill unreachable -- the local clear below still runs.
+    }
+  }
   await setStored({ address: current.address })
   await init()
 })

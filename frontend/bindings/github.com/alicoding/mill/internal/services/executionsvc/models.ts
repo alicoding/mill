@@ -319,6 +319,15 @@ export interface RunStep {
      * today only a vault wait (executionservice_vaultwait.go's RunWait).
      */
     "waits"?: RunWait[] | null;
+
+    /**
+     * CompletedAt is when THIS step's own last recorded attempt finished
+     * (DBOS's own StepInfo.CompletedAt, goal 0350 S3) -- zero for a step
+     * that hasn't executed yet ("pending"), so a run's receipt can
+     * answer "when did this step finish" per step, not only for the run
+     * as a whole (RunSummary.CompletedAt).
+     */
+    "completedAt"?: string;
 }
 
 /**

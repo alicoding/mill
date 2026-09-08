@@ -6,17 +6,15 @@ package pluginsvc
 // a plugin is either fully valid or visibly broken, never silently
 // half-loaded. Builtin marks a plugin embedded in the binary
 // (pluginservice_builtin.go): same loader and disable list as any
-// plugin, but nothing on disk to reveal or delete. Split from
-// pluginservice.go at the hand-written-file line limit
-// (.claude/rules/architecture.md).
+// plugin, but nothing on disk to reveal or delete.
 type PluginInfo struct {
 	Manifest Manifest
 	Dir      string
 	Error    string
 	Builtin  bool
 	// ContentHash is the folder's current content hash
-	// (pluginservice_hash.go), "" for a built-in/invalid plugin -- the
-	// signing/tier comparison input.
+	// (pluginservice_hash.go), "" for a built-in or an invalid plugin
+	// -- what the lock compares against.
 	ContentHash string
 	// CodeHash excludes manifest.json (docs/goals/0375 S2): the trust
 	// lock's own comparison input, so a manifest-only edit never trips
@@ -40,8 +38,9 @@ type PluginInfo struct {
 	// Grants names what this plugin was given outside the sandboxed
 	// activation frame every other non-built-in plugin runs inside
 	// (docs/goals/0375 S1b): "canvas-host" for a non-built-in plugin
-	// declaring a canvas object, since the framed canvas API does not
-	// exist yet. Always empty for a built-in.
+	// that declares a canvas object, since the framed canvas API does
+	// not exist yet and its own tools still need board input the way a
+	// built-in's do. Always empty for a built-in.
 	Grants []string
 	// Widened is non-nil for a non-built-in plugin whose manifest
 	// declares MORE than its own consent covered (docs/goals/0375 S2,
@@ -49,4 +48,10 @@ type PluginInfo struct {
 	// shape permissionLines() renders. Nil when narrowed/unchanged,
 	// never allowed, or built-in.
 	Widened *InstallPreview
+	// Warnings are non-blocking manifest notices -- a deprecated key
+	// still in use, a foreign menu id Mill has no seat for
+	// (docs/goals/0349 S2) -- stated once in the plugin's status. A
+	// plugin with a load-blocking Error may still carry these; the
+	// status pane shows the error first.
+	Warnings []string
 }

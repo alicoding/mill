@@ -6,6 +6,7 @@ import { StatusStamp } from '../shared/StatusStamp'
 import { OutputViewer } from '../shared/OutputViewer'
 import { shapeForNodeType } from '../shared/payloadShape'
 import { useAppStore } from '../shared/store'
+import { formatRunStartedAt } from '../shared/runTime'
 import styles from '../shared/ListCard.module.css'
 
 const STEP_ICON: Record<string, React.ReactNode> = {
@@ -54,6 +55,11 @@ export function RunStepRow({ step, detail, busy, onRetry }: {
           {step.guardrailEffect && (
             <Text as="p" size="small" className={styles.muted} data-testid="step-guardrail">
               {t('workflowRunsPanel.guardrailLabel', { effect: step.guardrailEffect, ruleSuffix: step.guardrailRule ? t('workflowRunsPanel.ruleSuffix', { rule: step.guardrailRule }) : '' })}
+            </Text>
+          )}
+          {step.completedAt && (
+            <Text as="p" size="small" className={styles.muted} data-testid="step-completed-at">
+              {t('workflowRunsPanel.stepCompletedAt', { when: formatRunStartedAt(step.completedAt) })}
             </Text>
           )}
           {step.output && (

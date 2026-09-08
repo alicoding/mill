@@ -35,10 +35,39 @@ export interface ContentQuery {
   parentId?: string
 }
 
+/** One firing of the entity/object lifecycle family:
+ * `event` names which of the six transitions fired
+ * ('entity.created' | 'entity.referenced' | 'entity.dereferenced' |
+ * 'entity.deleted' | 'object.created' | 'object.deleted'). Every other
+ * field is populated only by the event that carries it: entityKind/
+ * entityId on every 'entity.*' event; by on 'entity.referenced'/
+ * 'entity.dereferenced' (which board object added or removed the
+ * reference); remaining on 'entity.dereferenced' only (how many
+ * references survive it — 0 means nothing does anymore); boardId/
+ * objectId on every 'object.*' event; kind and entityRef on
+ * 'object.created' only (the object's own kind, and the Configure
+ * entity kind it references, when it declares one). Ids and kinds
+ * only, never the entity's own content — query for that. */
+export interface LifecycleEventPayload {
+  event: 'entity.created' | 'entity.referenced' | 'entity.dereferenced' | 'entity.deleted' | 'object.created' | 'object.deleted'
+  entityKind?: string
+  entityId?: string
+  by?: { boardId?: string; objectId?: string; workflowId?: string }
+  remaining?: number
+  boardId?: string
+  objectId?: string
+  kind?: string
+  entityRef?: string
+}
+
 /** The events a plugin can subscribe to through api.on.
  * 'contents:changed' fires whenever anything on the board is created,
- * edited, moved, or deleted, carrying the changed entry's id. A closed
- * map: a new event arrives here as a type addition, never a loose
+ * edited, moved, or deleted, carrying the changed entry's id.
+ * 'entity.*' fires on every entity.created/referenced/dereferenced/
+ * deleted; 'object.*' fires on every object.created/deleted — a
+ * filter's `kinds` narrows 'entity.*' by entityKind ('list', say) and
+ * 'object.*' by the object's own kind ('table', say). A closed map: a
+ * new event arrives here as a type addition, never a loose
  * convention. */
 export interface PluginEventMap {
   /** kind names WHICH family changed — 'card', 'note', a board
@@ -46,6 +75,8 @@ export interface PluginEventMap {
    * re-query on changes it ignores. Undefined when Mill could not
    * say. */
   'contents:changed': { id: string; kind?: string }
+  'entity.*': LifecycleEventPayload
+  'object.*': LifecycleEventPayload
 }
 
 /** One field of a card kind's own schema, as api.kinds lists it. */
@@ -81,6 +112,19 @@ export interface PluginFetchResult {
   status: number
   headers: Record<string, string>
   body: string
+}
+
+/** api.fetchJSON's answer: never throws, not for a denied request, a
+ * non-2xx status, or a body that isn't JSON. Check ok before reading
+ * data; it carries the same non-throwing contract PluginFetchResult
+ * itself does. errorText names what went wrong when ok is false: the
+ * rule that denied the request, the status, or that the body wasn't
+ * valid JSON. */
+export interface PluginFetchJSONResult<T = unknown> {
+  ok: boolean
+  status: number
+  data?: T
+  errorText?: string
 }
 
 /** The outcome of a guarded write through api.content: a denied write
@@ -136,8 +180,11 @@ export interface PluginFilesAPI {
 
 /** Pure transforms Mill already implements, offered to a plugin as-is.
  * htmlToMarkdown is the exact conversion every paste and every
- * workflow convert step uses. No capability required — a transform
- * reaches nothing outside the input you pass it. */
+ * workflow convert step uses; markdownToHtml is its reverse, the same
+ * sanitized renderer a mirrored file's markdown preview uses. No
+ * capability required — a transform reaches nothing outside the input
+ * you pass it. */
 export interface PluginConvertAPI {
   htmlToMarkdown: (html: string) => Promise<string>
+  markdownToHtml: (markdown: string) => Promise<string>
 }

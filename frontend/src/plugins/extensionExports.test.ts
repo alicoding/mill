@@ -21,7 +21,7 @@ function manifest(id: string, dependsOn: string[] = []): Manifest {
 		id, name: id, version: '1.0.0', description: '', author: '', minMillVersion: '', icon: '',
 		capabilities: [], exports: [],
 		dependencies: dependsOn.map((depID) => ({ id: depID, version: '*' })),
-		contributes: { canvasObjects: [], steps: [], captures: [], settings: [], network: [], views: [], commands: [], tools: [], themes: [], secretSources: [], mcpServers: [] },
+		contributes: { canvasObjects: [], steps: [], captures: [], settings: [], configuration: [], menus: {}, network: [], views: [], commands: [], tools: [], themes: [], secretSources: [], mcpServers: [] },
 	}
 }
 

@@ -207,14 +207,14 @@ test('Enter on a workflow"s Run row test-runs it, closes the palette, and the ru
 // assignment can't run headlessly (see hotkeyDebugKnob.ts's own header
 // comment) -- assignDebugWorkflowHotkey records the combo server-side
 // the same way a real AssignHotkey call would, minus the OS probe.
-test('a workflow row shows its own hotkey-trigger combo inline; a non-hotkey trigger shows none', async ({ page }, testInfo) => {
+test('a workflow row shows its own hotkey-trigger combo inline; a non-hotkey trigger shows none', async ({ page, workerServer }) => {
   const hotkeyLabel = 'ZzE2ePaletteHotkeyChipX'
   const manualLabel = 'ZzE2ePaletteNoHotkeyChip'
   await page.goto('/')
   await createHotkeyTriggerWorkflow(page, hotkeyLabel)
   await createSimpleWorkflow(page, manualLabel)
 
-  const client = await connectMCPClient(testInfo.parallelIndex)
+  const client = await connectMCPClient(workerServer.mcpPort)
   let hotkeyWorkflowId: string
   try {
     hotkeyWorkflowId = await findWorkflowIdByLabel(client, hotkeyLabel)

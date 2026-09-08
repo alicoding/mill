@@ -1,4 +1,5 @@
 import { chromium, expect, test, type Browser, type Page } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -58,6 +59,7 @@ async function openDedicatedServer(namePrefix: string, offset: number, idx: numb
   // resolve against this test's own dedicated server, not Playwright's
   // (unset, since this file never uses the standard workerServer fixture).
   const page = await browser.newPage({ baseURL: server.baseURL })
+  await applyCpuThrottle(page)
   return { server, browser, page, dir }
 }
 
@@ -361,7 +363,7 @@ test('Review kind filter narrows pending rows by kind, and the Blankslate empty 
     const mcpSourceRow = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText('E2E kind-filter MCP source', { exact: true }) })
     await expect(mcpSourceRow).toBeVisible()
 
-    const client = await connectMCPClient(testInfo.parallelIndex, GUARDRAIL_REVIEW_MCP_BASE_PORT + 70 + testInfo.parallelIndex)
+    const client = await connectMCPClient(GUARDRAIL_REVIEW_MCP_BASE_PORT + 70 + testInfo.parallelIndex)
     const sourceId = await findWorkflowIdByLabel(client, 'E2E kind-filter MCP source')
     const exported = await exportWorkflowViaMCP(client, sourceId)
     // ADR-0036: strip the source's real id so this exercises the create

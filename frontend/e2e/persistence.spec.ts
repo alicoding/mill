@@ -1,14 +1,10 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { clickRowAction } from './inventoryRow'
-import {
-  PERSISTENCE_MCP_BASE_PORT,
-  PERSISTENCE_SERVER_BASE_PORT,
-  spawnMillServer,
-  type SpawnedServer,
-} from './fixtures/server'
+import { spawnMillServer, type SpawnedServer } from './fixtures/server'
 
 // goal 0009 (docs/goals/0009-e2e-parallel-isolation.md): the one
 // deliberate exception to "every worker's server is fully isolated and
@@ -23,11 +19,11 @@ import {
 // global-setup.ts used) -- this test owns two server lifetimes, not
 // one, so the standard one-server-per-worker fixture doesn't fit it.
 //
-// Ports come from a range (fixtures/server.ts's PERSISTENCE_* constants)
-// disjoint from both the standard per-worker range and Mill's own
-// defaults (8080/8090, a real always-on LaunchAgent instance on this
-// machine) -- collision-proof regardless of how many other workers are
-// concurrently spawning their own standard servers.
+// Both server lifetimes bind OS-assigned ports (goal 0358 S6: servers
+// bind OS-assigned ports, never a literal port in a spec) --
+// collision-proof regardless of how many other workers, or other
+// worktrees' own worker pools, are concurrently spawning their own
+// servers.
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
 test('A composed workflow survives its own server process restarting against the same settings file', async ({}, testInfo) => {
   const idx = testInfo.parallelIndex
@@ -35,16 +31,15 @@ test('A composed workflow survives its own server process restarting against the
   const settingsPath = path.join(dir, 'settings.json')
   const executionDbPath = path.join(dir, 'execution.db')
   const backupDir = path.join(dir, 'backups')
-  const port = PERSISTENCE_SERVER_BASE_PORT + idx
-  const mcpPort = PERSISTENCE_MCP_BASE_PORT + idx
 
   let server: SpawnedServer | undefined
   const browser = await chromium.launch()
   try {
-    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
+    server = await spawnMillServer({ settingsPath, executionDbPath, backupDir })
     const label = 'E2E persistence-across-restart workflow'
 
     const page1 = await browser.newPage()
+    await applyCpuThrottle(page1)
     await page1.goto(`${server.baseURL}/`)
     await page1.getByRole('link', { name: 'Workflows' }).click()
     await page1.getByTestId('new-workflow').click()
@@ -61,9 +56,10 @@ test('A composed workflow survives its own server process restarting against the
     // the workflow is only visible because the first process kept it in
     // memory, this second process would come up without it.
     await server.stop()
-    server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
+    server = await spawnMillServer({ settingsPath, executionDbPath, backupDir })
 
     const page2 = await browser.newPage()
+    await applyCpuThrottle(page2)
     await page2.goto(`${server.baseURL}/`)
     await page2.getByRole('link', { name: 'Workflows' }).click()
     const row2 = page2.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ hasText: label })

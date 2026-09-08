@@ -30,9 +30,23 @@ screenshots on exactly the two failures below.
    `quit` door (below) sidesteps this by calling the quit method
    directly over HTTP, no AppleEvent involved.
 
+## The updater will never overwrite this build automatically
+
+A `task install:app` build always stamps its channel as `source` at
+compile time. `SettingsService`'s auto-download policy (goal 0403 S2d)
+checks that build-time stamp, not the resolved channel a user
+preference can override, before ever triggering an automatic download-
+and-install -- so a background auto-update tick (or the manual "Check
+for updates" button's own found-result) can never download and stage a
+newer release over the exact build this skill just installed and is
+driving. `CheckForUpdates` (detection) still answers normally, and an
+explicit "Update now" click still installs -- only the AUTOMATIC apply
+is skipped. No manual toggle of the update policy is needed before or
+after a driving pass.
+
 ## One-time machine setup
 
-1. `scripts/setup-dev-signing.sh` -- creates and imports "Mill Dev
+1. the repo root's `scripts/setup-dev-signing.sh` -- creates and imports "Mill Dev
    Signing", a local self-signed code-signing certificate, then tries
    to trust it for code signing. If that needs an interactive
    confirmation it can't give non-interactively, it prints the exact
@@ -58,7 +72,7 @@ regenerated (a new machine, or the keychain item was deleted).
 
 ## Per-run procedure
 
-1. **Preflight**: `scripts/check-drive-setup.sh` (<10s). Fix whatever
+1. **Preflight**: the repo root's `scripts/check-drive-setup.sh` (<10s). Fix whatever
    it names before continuing -- never guess past a failing line.
 2. **Quit the running Mill through the bridge door**, not an AppleEvent
    (see "Why this exists" #2). If a bridge is already listening on the

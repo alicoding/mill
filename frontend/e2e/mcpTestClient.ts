@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { MCP_BASE_PORT, expect } from './fixtures/server'
+import { expect } from './fixtures/server'
 import { openSettings } from './fixtures/settingsNav'
 
 // Shared e2e helpers for driving Mill's real MCP server over HTTP
@@ -43,12 +43,13 @@ export async function backdatePendingMCPWrite(page: Page, id: string, ageMinutes
   }
 }
 
-// mcpPort lets a dedicated-server spec (its own port pair, not the
-// standard per-worker pool) pass its own computed port directly --
-// defaults to the worker-pool formula every other caller already relies on.
-export async function connectMCPClient(workerIndex: number, mcpPort?: number): Promise<Client> {
+// mcpPort is always the caller's own server's real bound port (goal
+// 0358 S6: servers bind OS-assigned ports, never a literal port in a
+// spec) -- the standard per-worker pool's callers pass `workerServer.
+// mcpPort`, a dedicated-server spec passes its own SpawnedServer's.
+export async function connectMCPClient(mcpPort: number): Promise<Client> {
   const client = new Client({ name: 'mill-e2e', version: '0.0.0' })
-  const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${mcpPort ?? MCP_BASE_PORT + workerIndex}`))
+  const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${mcpPort}`))
   await client.connect(transport)
   return client
 }

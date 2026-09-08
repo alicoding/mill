@@ -148,36 +148,26 @@ export function activate(api) {
 		el.className = ''
 		el.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:12px;font:12px system-ui;height:100%;min-width:280px;min-height:96px;box-sizing:border-box;background:var(--bgColor-default);border-radius:inherit'
 		if (notice) {
-			const p = document.createElement('div')
-			p.setAttribute('data-testid', 'mindmap-notice')
-			p.style.cssText = 'color:var(--fgColor-muted)'
-			p.textContent = notice
-			el.append(p)
+			el.append(api.ui.el('div', { 'data-testid': 'mindmap-notice', style: 'color:var(--fgColor-muted)' }, [notice]))
 		}
-		const label = document.createElement('label')
-		label.style.cssText = 'display:flex;flex-direction:column;gap:6px;font-weight:600'
-		label.textContent = "Show a note's headings as a mind map"
-		const select = document.createElement('select')
-		select.setAttribute('data-testid', 'mindmap-note-picker')
-		select.className = 'nodrag'
-		select.style.cssText = 'font:12px system-ui;padding:4px 6px;border:1px solid var(--borderColor-default);border-radius:6px;font-weight:400;max-width:100%'
-		const first = document.createElement('option')
-		first.value = ''
-		first.textContent = list.length ? 'Choose a note…' : 'Add a note to the board first'
-		select.append(first)
-		for (const note of [...list].sort((a, b) => a.title.localeCompare(b.title))) {
-			const opt = document.createElement('option')
-			opt.value = note.id
-			opt.textContent = note.title
-			select.append(opt)
-		}
-		select.addEventListener('change', () => {
-			if (!select.value) return
-			void face.ctx.updatePayload({ noteId: select.value }).catch(saveFailed)
-		})
-		// Board shortcuts stay out of the picker's own keys.
-		select.addEventListener('keydown', (e) => { e.stopPropagation() })
-		label.append(select)
+		const select = api.ui.el('select', {
+			'data-testid': 'mindmap-note-picker',
+			class: 'nodrag',
+			style: 'font:12px system-ui;padding:4px 6px;border:1px solid var(--borderColor-default);border-radius:6px;font-weight:400;max-width:100%',
+			onchange: () => {
+				if (!select.value) return
+				void face.ctx.updatePayload({ noteId: select.value }).catch(saveFailed)
+			},
+			// Board shortcuts stay out of the picker's own keys.
+			onkeydown: (e) => { e.stopPropagation() },
+		}, [
+			api.ui.el('option', { value: '' }, [list.length ? 'Choose a note…' : 'Add a note to the board first']),
+			...[...list].sort((a, b) => a.title.localeCompare(b.title)).map((note) => api.ui.el('option', { value: note.id }, [note.title])),
+		])
+		const label = api.ui.el('label', { style: 'display:flex;flex-direction:column;gap:6px;font-weight:600' }, [
+			"Show a note's headings as a mind map",
+			select,
+		])
 		el.append(label)
 	}
 }

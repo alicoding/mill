@@ -71,7 +71,19 @@ type ManifestContributes struct {
 	// contract compiled-in nouns use. Declared in the manifest, not
 	// at activate() time, so the Extensions row can render them
 	// without running plugin code and validation fails the LOAD.
+	//
+	// Deprecated: superseded by Configuration (0349 S2), kept working
+	// as an alias.
 	Settings []SettingContribution `json:"settings"`
+	// Configuration is docs/goals/0349 S2's canonical settings key
+	// (VS Code's contributes.configuration); EffectiveSettings
+	// resolves it against the deprecated Settings alias, and a
+	// manifest declaring both refuses to load.
+	Configuration []SettingContribution `json:"configuration"`
+	// Menus is docs/goals/0349 S2's accepted contributes.menus shape
+	// (VS Code's menu-id -> command list), classified onto Mill's own
+	// seats by pluginservice_menus.go's one mapping table.
+	Menus map[string][]MenuItemContribution `json:"menus"`
 	// Network (docs/goals/0288): the hosts a plugin may fetch from,
 	// declared so the Extensions row can state them before the plugin
 	// runs and so an undeclared host is refused before any rule. Only
@@ -310,6 +322,7 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 	info.Manifest = m
 	info.Grants = pluginGrants(false, m)
 	info.Widened = widenedInfo(p.trust, m)
+	info.Warnings = manifestWarnings(m)
 	_, mainErr := os.Stat(filepath.Join(dir, "main.js")) // #nosec G703 -- folder passed pluginIDPattern (no separators, no dots)
 	info.Error = manifestProblem(m, folder, mainErr == nil, p.appVersion)
 	if info.Error == "" {

@@ -110,6 +110,17 @@ export function ConvertHTMLToMarkdown(html: string): $CancellablePromise<string>
 }
 
 /**
+ * ConvertMarkdownToHTML is the convert door's reverse direction (goal
+ * 0386 S1): the same sanitized CommonMark+GFM renderer a mirrored
+ * file's markdown preview already uses, offered to a plugin as a pure
+ * transform. No capability gates it, for the same reason
+ * ConvertHTMLToMarkdown needs none.
+ */
+export function ConvertMarkdownToHTML(md: string): $CancellablePromise<string> {
+    return $Call.ByID(34437298, md);
+}
+
+/**
  * ExportPluginAudit assembles the document and returns it as JSON text
  * (the frontend saves it through the same download door every other
  * export uses).

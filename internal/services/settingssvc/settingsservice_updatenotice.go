@@ -349,8 +349,20 @@ func (s *SettingsService) markUpdateReady() {
 // Runs in its own goroutine so a caller reading CheckForUpdates' return
 // value (the manual button's RPC in particular) is never held up by an
 // actual download.
+//
+// isLocalBuild's guard (goal 0403 S2d) sits here, not inside
+// DownloadAndInstallUpdate: CheckForUpdates itself -- detection -- must
+// keep working on a local build (the Settings pane's manual "Check for
+// updates" still answers honestly), only the AUTOMATIC apply this hook
+// triggers is skipped, so a background tick or a manual check's own
+// found-result can never silently swap out a build under verification.
+// A user's own explicit "Update now" click still calls
+// DownloadAndInstallUpdate directly, unaffected by this guard.
 func (s *SettingsService) triggerAutoDownloadPolicy(version string) {
 	if !s.AutoUpdateCheck() {
+		return
+	}
+	if s.isLocalBuild() {
 		return
 	}
 	go s.maybeAutoDownload(version, s.DownloadAndInstallUpdate)

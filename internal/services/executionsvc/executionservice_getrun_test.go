@@ -104,3 +104,71 @@ func TestGetRun_MultiStepInput_PopulatedAndChained(t *testing.T) {
 		t.Errorf("process-inject-text step Output = %q, want %q", injectStep.Output, want)
 	}
 }
+
+// TestGetRun_CompletedAt_SetOnExecutedStepsOnly is goal 0350 S3's own
+// repro: a receipt built mid-run has to answer "when did THIS step
+// finish" per step, which needs RunStep.CompletedAt populated for
+// every step that actually ran and left zero for one that hasn't.
+func TestGetRun_CompletedAt_SetOnExecutedStepsOnly(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	guard := guardrailsvc.NewGuardrailService(store, comp)
+	dbPath := filepath.Join(t.TempDir(), "exec.db")
+	exec, err := NewExecutionService("sqlite:"+dbPath, comp, guard)
+	if err != nil {
+		t.Fatalf("NewExecutionService: %v", err)
+	}
+	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
+
+	wf, err := comp.CreateWorkflow("completedAt test", "", []composition.Node{
+		{ID: "t", NodeTypeID: "trigger-manual", Kind: composition.KindTrigger, Position: composition.Position{X: 0, Y: 0}},
+		{ID: "p", NodeTypeID: "process-inject-text", Kind: composition.KindProcess,
+			Config:   map[string]string{"text": "TAG", "placement": "append"},
+			Position: composition.Position{X: 0, Y: 100}},
+	}, []composition.Edge{
+		{ID: "e1", Source: "t", Target: "p"},
+	})
+	if err != nil {
+		t.Fatalf("CreateWorkflow: %v", err)
+	}
+
+	before := time.Now().Add(-time.Second)
+	summary, err := exec.RunWorkflowWithPayload(wf.ID, RunKindTest, nil, "seed text")
+	if err != nil {
+		t.Fatalf("RunWorkflowWithPayload: %v", err)
+	}
+	final := waitFor(t, "run to succeed", 10*time.Second, func() (RunSummary, bool) {
+		s, err := exec.summaryFor(summary.RunID)
+		if err != nil || (s.Status != "SUCCESS" && s.Status != "ERROR") {
+			return RunSummary{}, false
+		}
+		return s, true
+	})
+	if final.Status != "SUCCESS" {
+		t.Fatalf("run status = %q, want SUCCESS (error: %s)", final.Status, final.Error)
+	}
+
+	detail, err := exec.GetRun(summary.RunID)
+	if err != nil {
+		t.Fatalf("GetRun: %v", err)
+	}
+
+	var injectStep *RunStep
+	for i := range detail.Steps {
+		if detail.Steps[i].NodeID == "p" {
+			injectStep = &detail.Steps[i]
+		}
+	}
+	if injectStep == nil {
+		t.Fatalf("GetRun did not report the inject step: %+v", detail.Steps)
+	}
+	if injectStep.Status != "succeeded" {
+		t.Fatalf("inject step status = %q, want succeeded", injectStep.Status)
+	}
+	if injectStep.CompletedAt.IsZero() {
+		t.Error("CompletedAt is zero on an executed step, want the moment it finished")
+	}
+	if injectStep.CompletedAt.Before(before) {
+		t.Errorf("CompletedAt = %v, want no earlier than this test's own start %v", injectStep.CompletedAt, before)
+	}
+}
