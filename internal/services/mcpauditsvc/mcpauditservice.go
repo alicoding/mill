@@ -1,11 +1,13 @@
 // Package mcpauditsvc is the Wails-bound service owning Mill's MCP call
 // audit trail's lifecycle (goal 0159 slice 1): opens the storage
-// adapter, prunes retention at boot, builds the two SDK middleware
-// functions (mcpauditservice_middleware.go) mcpserving/mcpclient wire
-// in, and exposes the bound read API Activity's "MCP calls" section
-// calls. .claude/rules/backend.md's service-owns-storage split: types
-// in internal/adapters/mcpaudit, raw SQL in
-// internal/adapters/mcpauditstore, lifecycle/wiring here.
+// adapter, builds the two SDK middleware functions
+// (mcpauditservice_middleware.go) mcpserving/mcpclient wire in, and
+// exposes the bound read API Activity's "MCP calls" section calls.
+// .claude/rules/backend.md's service-owns-storage split: types in
+// internal/adapters/mcpaudit, raw SQL in internal/adapters/
+// mcpauditstore, lifecycle/wiring here. Retention is no longer this
+// service's own job (goal 0351 Decision 4): auditsvc prunes the shared
+// table, across every kind, to one kernel-configured cap.
 package mcpauditsvc
 
 import (
@@ -16,10 +18,6 @@ import (
 	"github.com/alicoding/mill/internal/adapters/mcpauditstore"
 )
 
-// RetentionKeep is how many newest rows survive a prune -- the design
-// contract's own "keep the newest 10,000, prune at boot" number.
-const RetentionKeep = 10000
-
 // MCPAuditService wraps the storage adapter and provides the two audit
 // middleware constructors plus the bound read API.
 type MCPAuditService struct {
@@ -29,9 +27,7 @@ type MCPAuditService struct {
 
 // New opens dbPath (the same execution SQLite file path
 // backupsvc.SQLiteDBPath already resolves for every other adapter that
-// touches this file) and prunes it down to RetentionKeep before
-// returning -- "prune at boot" is this constructor's own job, not a
-// separate startup step main.go has to remember to call.
+// touches this file).
 func New(dbPath string, logger *slog.Logger) (*MCPAuditService, error) {
 	store, err := mcpauditstore.Open(dbPath)
 	if err != nil {
@@ -41,13 +37,6 @@ func New(dbPath string, logger *slog.Logger) (*MCPAuditService, error) {
 		logger = slog.Default()
 	}
 	s := &MCPAuditService{store: store, log: logger}
-	if _, err := store.Prune(RetentionKeep); err != nil {
-		// Retention pruning is housekeeping, not correctness -- a failed
-		// prune leaves a few extra rows around, never breaks recording or
-		// reading, so this is logged and Mill keeps starting rather than
-		// failing boot over it.
-		logger.Error("mcp audit: prune at boot", "error", err)
-	}
 	return s, nil
 }
 

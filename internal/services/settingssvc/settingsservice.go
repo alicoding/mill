@@ -61,6 +61,12 @@ type SettingsService struct {
 	// plugin tools appear and disappear with the toggle, never only
 	// after a restart. nil until wired.
 	pluginPolicyChanged func()
+	// auditRetentionChanged runs after SetAuditRetentionEntries persists
+	// a new cap, so the shared audit trail is pruned to it immediately
+	// rather than only at the next restart -- goal 0351's own retention
+	// setting doc comment promises "removed automatically", which a
+	// restart-only prune would not honor. nil until wired.
+	auditRetentionChanged func(int)
 	// pluginLocator answers where an installed plugin's folder is --
 	// set by the composition root, nil on a build with no plugin
 	// service (settingsservice_pluginremove.go).
