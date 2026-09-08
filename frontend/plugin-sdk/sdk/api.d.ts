@@ -1,5 +1,5 @@
 import type { CanvasObjectDecl } from './canvasObjects';
-import type { GuardedActionResult } from './guardedAction';
+import type { GuardedActionEvaluation, GuardedActionResult } from './guardedAction';
 import type { PluginCommandDecl } from './commands';
 import type { PluginSettingsAPI } from './settings';
 import type { PluginNoticeInput } from './notify';
@@ -17,6 +17,16 @@ export interface MillPluginAPI {
      * See CanvasObjectFaceCtx's own requestGuardedAction for the full
      * contract — this is the same door, callable outside a face. */
     requestGuardedAction: (kind: string, attributes: Record<string, string>, description: string) => Promise<GuardedActionResult>;
+    /** Read-only: what a kind/attributes pair would do right now, with
+     * no side effect. Lets a view drive its own local state before
+     * asking Mill to actually send — see PluginViewHost's own inline
+     * confirmation banner for the kinds this powers. */
+    evaluateGuardedAction: (kind: string, attributes: Record<string, string>) => Promise<GuardedActionEvaluation>;
+    /** Reads through a Configure Integration the user picked in this
+     * plugin's own settings — never an arbitrary host. path/method name
+     * one operation the Integration's own OpenAPI spec declares; values
+     * fill that operation's declared fields. */
+    callIntegration: (integrationId: string, path: string, method: string, values: Record<string, string>) => Promise<string>;
     settings: PluginSettingsAPI;
     /** Shows a notice and returns its dismiss function. */
     notify: (input: PluginNoticeInput) => () => void;

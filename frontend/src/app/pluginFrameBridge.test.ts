@@ -16,6 +16,8 @@ function fakeApi(overrides: Partial<MillPluginAPI> = {}): MillPluginAPI {
     registerView: vi.fn(),
     registerCapture: vi.fn(),
     requestGuardedAction: vi.fn(),
+    evaluateGuardedAction: vi.fn(),
+    callIntegration: vi.fn(),
     settings: { get: vi.fn(() => 'value'), onChange: vi.fn() },
     notify: vi.fn(() => () => {}),
     storage: {
@@ -84,8 +86,20 @@ describe('callFrameMethod', () => {
   it('keeps every whitelisted name routable', async () => {
     const api = fakeApi()
     for (const method of FRAME_METHODS) {
-      await expect(callFrameMethod(api, method, ['a', {}, 'c'], { done: () => {}, cancel: () => {} }, { updatePayload: async () => {}, setEditing: () => {} })).resolves.not.toThrow()
+      await expect(callFrameMethod(
+        api, method, ['a', {}, 'c'],
+        { done: () => {}, cancel: () => {} },
+        { updatePayload: async () => {}, setEditing: () => {} },
+        { perform: async () => ({ approved: true, effect: 'allow', ruleLabel: '', performed: true }) },
+      )).resolves.not.toThrow()
     }
+  })
+
+  it('routes a guarded write only through the controls the host supplied -- never api, so a frame can never assert confirmed itself', async () => {
+    await expect(callFrameMethod(fakeApi(), 'performGuardedAction', ['external.comment', {}, 'Post'])).rejects.toThrow('performGuardedAction is not available in this frame')
+    const perform = vi.fn(async () => ({ approved: true, effect: 'allow', ruleLabel: '', performed: true }))
+    await expect(callFrameMethod(fakeApi(), 'performGuardedAction', ['external.comment', { itemKey: 'k' }, 'Post'], undefined, undefined, { perform })).resolves.toEqual({ approved: true, effect: 'allow', ruleLabel: '', performed: true })
+    expect(perform).toHaveBeenCalledWith('external.comment', { itemKey: 'k' }, 'Post')
   })
 })
 

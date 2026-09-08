@@ -22,6 +22,12 @@ const (
 	KindMCPCall       Kind = "mcp-call"
 	KindSecretAccess  Kind = "secret-access"
 	KindBridgeCommand Kind = "bridge-command"
+	// KindGuardedAction is a non-workflow guarded write a plugin or
+	// agent asked for directly (goal 0374): distinct from KindMCPCall
+	// (an MCP tool round trip) because there is no MCP client on this
+	// path, and from KindBridgeCommand (the browser bridge) because the
+	// actor is a plugin/agent, not a paired device.
+	KindGuardedAction Kind = "guarded-action"
 )
 
 // Actor is who/what performed the action. Correlation stays each

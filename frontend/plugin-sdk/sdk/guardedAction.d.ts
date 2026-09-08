@@ -8,3 +8,10 @@ export interface GuardedActionResult {
     ruleLabel: string;
     performed: boolean;
 }
+/** What a kind/attributes pair would do right now, with no side effect
+ * and nothing recorded. Lets a view drive its own local state before
+ * ever asking Mill to actually send. */
+export interface GuardedActionEvaluation {
+    effect: string;
+    ruleLabel: string;
+}

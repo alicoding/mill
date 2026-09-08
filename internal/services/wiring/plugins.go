@@ -21,8 +21,12 @@ import (
 // service (docs/goals/0249): plugins live beside the settings file
 // (<data dir>/plugins/<id>/), so MILL_SETTINGS_PATH isolation covers
 // plugins for free; MILL_PLUGINS_DIR overrides independently for
-// fixture-driven tests.
-func NewPluginService(settingsPath string, guardrail *guardrailsvc.GuardrailService, channel, appVersion string) *pluginsvc.PluginService {
+// fixture-driven tests. auditDBPath opens the guarded-write audit
+// trail's own connection (goal 0374) -- the SAME execution SQLite file
+// mcpAuditService/bridgeService each connect to independently, folded
+// into this one existing composition-root call rather than a second
+// line in main.go.
+func NewPluginService(settingsPath string, guardrail *guardrailsvc.GuardrailService, channel, appVersion, auditDBPath string, logger *slog.Logger) *pluginsvc.PluginService {
 	dir := pluginsvc.ResolveDir(settingsPath)
 	// A source build's version constant is the LAST release, not this
 	// build's real lineage (main.go's build-stamp trio: only beta/
@@ -32,7 +36,9 @@ func NewPluginService(settingsPath string, guardrail *guardrailsvc.GuardrailServ
 	if channel == "source" {
 		appVersion = ""
 	}
-	return pluginsvc.New(dir, guardrail, appVersion)
+	svc := pluginsvc.New(dir, guardrail, appVersion)
+	svc.OpenAudit(auditDBPath, logger)
+	return svc
 }
 
 // ComposedAssetMiddleware chains the remote-auth gate (server builds

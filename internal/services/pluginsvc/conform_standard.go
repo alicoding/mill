@@ -371,8 +371,14 @@ func containsEmoji(s string) bool {
 // for the rest. A capability missing from this map is skipped (an
 // unknown capability is the loader's own error, not this warning).
 var capabilityUsageMarkers = map[string][]string{
-	"open-url":          {"requestGuardedAction('open-url'", `requestGuardedAction("open-url"`},
-	"open-app":          {"requestGuardedAction('open-app'", `requestGuardedAction("open-app"`},
+	// The two spellings of one door (goal 0374, extending docs/goals/
+	// 0375 S1b's precedent to open-url/open-app): a plugin's own
+	// activate()-level code holds the api object
+	// (api.requestGuardedAction('open-url', ...)), a framed page (a
+	// view, capture or the activation frame's own SDK) calls it by name
+	// over the bridge (call('requestGuardedAction', 'open-url', ...)).
+	"open-url":          {"requestGuardedAction('open-url'", `requestGuardedAction("open-url"`, "call('requestGuardedAction', 'open-url'", `call("requestGuardedAction", "open-url"`},
+	"open-app":          {"requestGuardedAction('open-app'", `requestGuardedAction("open-app"`, "call('requestGuardedAction', 'open-app'", `call("requestGuardedAction", "open-app"`},
 	"list-files":        {"api.files.list("},
 	"erase-board-items": {"eraseHitTest(", "commitErase("},
 	// The two spellings of one door (docs/goals/0375 S1b): a plugin's

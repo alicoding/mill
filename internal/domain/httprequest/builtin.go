@@ -57,6 +57,15 @@ const (
 	// registration.
 	ExampleConfluencePageReadID = "example-confluence-page-read"
 	ExampleJiraSearchID         = "example-jira-search"
+	// ExampleTrackedItemsID (goal 0374) is the mill-live-view plugin's
+	// own seeded Integration: unlike the single-operation examples
+	// above, it declares all four request shapes one tracked-items tool
+	// (a Jira-like issue tracker, generically) needs -- search, list an
+	// item's allowed transitions, post a comment, and perform a
+	// transition -- so ONE Integration entity is the live view's whole
+	// mapping, never a per-plugin config. Same bring-your-own-host
+	// placeholder shape as the two examples above.
+	ExampleTrackedItemsID = "example-tracked-items-tool"
 )
 
 // One-URL model (composition.JoinRequestURL): every seed's BaseURL is
@@ -129,6 +138,34 @@ const jiraSearchSpec = `{"openapi":"3.0.3","info":{"title":"Jira search (PAT)","
 	`"summary":"Search Jira issues with a JQL query",` +
 	`"parameters":[{"name":"jql","in":"path","required":true,"schema":{"type":"string","description":"The JQL query string"}}],` +
 	`"responses":{"200":{"description":"OK"}}}}}}`
+
+// trackedItemsSpec declares the four operations goal 0374's live view
+// needs against ANY tracked-items tool (a Jira-like issue tracker,
+// named generically -- the tool's real identity lives in the user's
+// own BaseURL/PAT, never in Mill's copy): search, list one item's
+// allowed next transitions, post a comment, and perform a transition.
+// One Integration entity, four named operations -- the mapping goal
+// 0374 item 6 needed, composed from the existing multi-operation
+// OpenAPISpec shape rather than a new per-plugin config.
+const trackedItemsSpec = `{"openapi":"3.0.3","info":{"title":"Tracked items","version":"1.0.0"},"paths":{` +
+	`"/search":{"get":{` +
+	`"summary":"Search items",` +
+	`"parameters":[{"name":"q","in":"query","required":false,"schema":{"type":"string","description":"The search filter, in whatever query language the tool accepts"}}],` +
+	`"responses":{"200":{"description":"OK"}}}},` +
+	`"/items/{itemKey}/transitions":{` +
+	`"get":{"summary":"List the item's allowed next transitions",` +
+	`"parameters":[{"name":"itemKey","in":"path","required":true,"schema":{"type":"string"}}],` +
+	`"responses":{"200":{"description":"OK"}}},` +
+	`"post":{"summary":"Move the item to a new status",` +
+	`"parameters":[{"name":"itemKey","in":"path","required":true,"schema":{"type":"string"}}],` +
+	`"requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","properties":{"toStatus":{"type":"string"}}}}}},` +
+	`"responses":{"200":{"description":"OK"}}}},` +
+	`"/items/{itemKey}/comments":{"post":{` +
+	`"summary":"Post a comment on the item",` +
+	`"parameters":[{"name":"itemKey","in":"path","required":true,"schema":{"type":"string"}}],` +
+	`"requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","properties":{"body":{"type":"string"}}}}}},` +
+	`"responses":{"200":{"description":"OK"}}}}` +
+	`}}`
 
 // BuiltIn returns the seeded example requests -- pure config, no
 // secrets (HTTPRequest never carries one, by design). Whoever owns
@@ -242,6 +279,16 @@ func BuiltIn() []HTTPRequest {
 				"and Basic auth.",
 			BaseURL: "https://example.invalid", AuthType: AuthBearer, Method: "GET",
 			OpenAPISpec: jiraSearchSpec,
+			BuiltIn:     true,
+			Seed:        seedorigin.Stamp(1),
+		},
+		{
+			ID: ExampleTrackedItemsID, Label: "Example: a tracked-items tool",
+			Description: "The mill-live-view plugin's own Integration: search, list an item's " +
+				"allowed transitions, post a comment, and change status, against any tracked-items " +
+				"tool that accepts a personal access token. Set your own base URL and PAT.",
+			BaseURL: "https://example.invalid", AuthType: AuthBearer, Method: "GET",
+			OpenAPISpec: trackedItemsSpec,
 			BuiltIn:     true,
 			Seed:        seedorigin.Stamp(1),
 		},

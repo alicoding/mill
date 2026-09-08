@@ -49,6 +49,21 @@ export function BrowseMarketplaces(): $CancellablePromise<$models.BrowseEntry[] 
 }
 
 /**
+ * CallIntegrationForPlugin performs a READ-only operation against a
+ * Configure Integration the plugin's own settings named (goal 0374
+ * item 1's rows, and the transition picker's own "allowed next
+ * transitions" read): never itself a guarded action -- the same
+ * "reading through a wire the user already authorized when they picked
+ * the Integration" posture a workflow's own integration-http read step
+ * already has. A WRITE (kind external.comment/external.transition)
+ * never reaches here; it crosses pluginservice_guardedwrite.go's own
+ * ClassExternal ask gate first.
+ */
+export function CallIntegrationForPlugin(pluginID: string, integrationID: string, path: string, method: string, values: { [_ in string]?: string } | null): $CancellablePromise<string> {
+    return $Call.ByID(4147776926, pluginID, integrationID, path, method, values);
+}
+
+/**
  * Captures lists every runnable plugin's declared captures, by plugin
  * then capture id.
  */
@@ -98,6 +113,16 @@ export function ContributionVocabulary(): $CancellablePromise<string[] | null> {
  */
 export function ConvertHTMLToMarkdown(html: string): $CancellablePromise<string> {
     return $Call.ByID(3842719554, html);
+}
+
+/**
+ * EvaluateGuardedActionForPlugin answers what a kind/attributes pair
+ * would do right now, without performing or recording anything -- lets
+ * the frame drive its own local Composing/Sending state before ever
+ * asking Mill to actually send.
+ */
+export function EvaluateGuardedActionForPlugin(pluginID: string, kind: string, attributes: { [_ in string]?: string } | null): $CancellablePromise<$models.GuardedActionEvaluation> {
+    return $Call.ByID(318646697, pluginID, kind, attributes);
 }
 
 /**
@@ -166,6 +191,24 @@ export function ListPlugins(): $CancellablePromise<$models.PluginInfo[] | null> 
  */
 export function ListUpdates(): $CancellablePromise<$models.UpdateCheck> {
     return $Call.ByID(3557701958);
+}
+
+/**
+ * PerformGuardedActionForPlugin is the ONLY caller allowed to set
+ * confirmed=true, and it is never reachable from a plugin frame: the
+ * frame-facing bridge method carries no such parameter on the wire
+ * (frontend/src/app/pluginFrameBridge.ts's FRAME_METHODS never lists
+ * this door at all), so confirmed only ever arrives from PluginFrame.tsx's
+ * OWN click handler on the banner Mill's chrome renders, outside the
+ * sandboxed frame (goal 0374 amendment 1). No shared pending record is
+ * ever created: an "ask" outcome with confirmed=false returns
+ * immediately, unaudited (nothing was attempted, nothing for another
+ * actor to see or resolve); the SAME call again with confirmed=true is
+ * the human's decision, audited as such. The generic
+ * guardrailsvc.ResolveGuardedAction door is never involved.
+ */
+export function PerformGuardedActionForPlugin(pluginID: string, kind: string, attributes: { [_ in string]?: string } | null, description: string, confirmed: boolean): $CancellablePromise<$models.PluginGuardedActionResult> {
+    return $Call.ByID(422817651, pluginID, kind, attributes, description, confirmed);
 }
 
 /**

@@ -1,0 +1,17 @@
+/* PluginFrame's own chrome (goal 0374): a flex column so the inline
+   "ask" banner docks below the frame without covering it -- the frame
+   keeps its full box, the banner takes only the space its own content
+   needs. */
+.host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.askBanner {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-top: 1px solid var(--borderColor-default);
+  background: var(--bgColor-muted);
+}

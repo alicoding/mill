@@ -202,7 +202,7 @@ func main() {
 		logger.Error("migrate legacy MCP pending writes", "error", err)
 	}
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
-	pluginService := wiring.NewPluginService(settingsPath, guardrailService, millChannel, millUpdateVersion)
+	pluginService := wiring.NewPluginService(settingsPath, guardrailService, millChannel, millUpdateVersion, backupsvc.SQLiteDBPath(executionDatabaseURL), logger)
 	pluginService.SetExampleMarketplace(examplePluginsFS)
 	// docs/goals/0240 S1: the coding loop's Confirm-screen preview --
 	// read-only over guardrailService.Rules(). Its ExecutionService

@@ -38,7 +38,7 @@ func TestNewPluginService_SourceChannelSkipsMinVersionEnforcement(t *testing.T) 
 	writeVersionPinnedPlugin(t, root)
 	settingsPath := filepath.Join(root, "settings.json")
 
-	srcInfos, err := NewPluginService(settingsPath, nil, "source", "0.5.0").ListPlugins()
+	srcInfos, err := NewPluginService(settingsPath, nil, "source", "0.5.0", "", nil).ListPlugins()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestNewPluginService_SourceChannelSkipsMinVersionEnforcement(t *testing.T) 
 		t.Fatalf("source build refused the pinned plugin: %q", row.Error)
 	}
 
-	betaInfos, err := NewPluginService(settingsPath, nil, "beta", "0.5.0").ListPlugins()
+	betaInfos, err := NewPluginService(settingsPath, nil, "beta", "0.5.0", "", nil).ListPlugins()
 	if err != nil {
 		t.Fatal(err)
 	}

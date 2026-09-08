@@ -78,6 +78,18 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		const d = await PluginService.RequestGuardedAction(pluginId, kind, attributes, description)
 		return { approved: d.Approved, effect: d.Effect, ruleLabel: d.RuleLabel, performed: d.Performed }
 	}
+	// evaluateGuardedAction/callIntegration (goal 0374): a pure read
+	// (what would this do? / read through the Integration the user
+	// picked), never itself a confirmation surface — the inline "ask"
+	// banner for external.comment/external.transition is PluginFrame's
+	// own guardedWrite control, never this generic api object, since it
+	// needs to render outside the sandboxed frame.
+	const evaluateGuardedAction = async (kind: string, attributes: Record<string, string>) => {
+		const e = await PluginService.EvaluateGuardedActionForPlugin(pluginId, kind, attributes)
+		return { effect: e.Effect, ruleLabel: e.RuleLabel }
+	}
+	const callIntegration = (integrationId: string, path: string, method: string, values: Record<string, string>) =>
+		PluginService.CallIntegrationForPlugin(pluginId, integrationId, path, method, values)
 	// The settings door (goal 0258 slice 1): declarations come from the
 	// validated manifest, values from the same central store the
 	// Settings row writes -- one resolver for built-ins and plugins.
@@ -280,6 +292,8 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			})
 		},
 		requestGuardedAction,
+		evaluateGuardedAction,
+		callIntegration,
 		// The output door (goal 0326): Mill's own output viewer, drawn
 		// into the plugin's element. Loaded on first use so activation
 		// never pulls the app's module graph forward, and so a plugin
