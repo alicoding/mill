@@ -1,13 +1,12 @@
 # Request tester
 
 Sends an HTTP request to any host you approve, and reads the response
-in its own work tab. Every send is a guarded request: with any host
+in its own work tab, drawn by its own page (`tester.html`/`tester.js`)
+inside Mill's sandbox. Every send is a guarded request: with any host
 declared, Mill parks each one for your approval in Review.
 
-The response is drawn by Mill's own output viewer
-(`api.ui.renderOutput`): JSON opens as a tree, an array of objects as a
-table, anything else as a numbered log, with Find, Copy and Raw on the
-same toolbar.
+The response prints pretty-printed JSON when the body parses as JSON,
+the raw text otherwise.
 
 ## Settings
 
