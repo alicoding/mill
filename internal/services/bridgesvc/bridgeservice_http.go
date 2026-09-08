@@ -9,8 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alicoding/mill/internal/domain/audit"
 	"github.com/alicoding/mill/internal/domain/browserbridge"
 	"github.com/alicoding/mill/internal/domain/usererror"
+	"github.com/alicoding/mill/internal/services/remoteauthsvc"
 )
 
 // The bridge's four browser routes. Everything lives under one prefix
@@ -71,20 +73,36 @@ func (s *BridgeService) handlePair(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	actorSource := "browser:" + sourceKey(r)
 	var body struct {
 		Code  string `json:"code"`
 		Label string `json:"label"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxResultBytes)).Decode(&body); err != nil {
+		s.recordCommand(r.Context(), "pair", audit.Target{}, actorSource, "rejected", "", http.StatusBadRequest, "")
 		writeUserError(w, http.StatusBadRequest, usererror.New("bad-pairing-request", "That pairing request wasn't readable."))
 		return
 	}
 	pairing, err := s.auth.PairBrowser(body.Code, body.Label, sourceKey(r))
 	if err != nil {
+		s.recordCommand(r.Context(), "pair", audit.Target{}, actorSource, "rejected", pairFailureKind(err), http.StatusUnauthorized, "")
 		writeUserError(w, http.StatusUnauthorized, err)
 		return
 	}
+	s.recordCommand(r.Context(), "pair", audit.Target{Kind: "browser", ID: pairing.DeviceID, Label: pairing.Label}, "browser:"+pairing.DeviceID, "accepted", "", http.StatusOK, "")
 	writeJSON(w, http.StatusOK, pairing)
+}
+
+// pairFailureKind classifies a PairBrowser error into the audit row's
+// FailureKind -- the goal 0351 item 7 contract's own "401/rate-limit"
+// pair (CodePairingLockedOut is remoteauthsvc's own rate-limit code;
+// every other pairing error reads as an ordinary unauthorized attempt).
+func pairFailureKind(err error) string {
+	var declared *usererror.Error
+	if errors.As(err, &declared) && declared.Code == remoteauthsvc.CodePairingLockedOut {
+		return "rate-limited"
+	}
+	return "unauthorized"
 }
 
 // rootPageHTML is what a human meets pasting the bridge's own address
@@ -209,19 +227,28 @@ func (s *BridgeService) handleResult(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if _, ok := s.auth.ValidateBrowserToken(bearerToken(r)); !ok {
+	device, ok := s.auth.ValidateBrowserToken(bearerToken(r))
+	if !ok {
+		s.recordCommand(r.Context(), "result", audit.Target{}, "browser:"+sourceKey(r), "rejected", "unauthorized", http.StatusUnauthorized, "")
 		writeUserError(w, http.StatusUnauthorized, browserbridge.ErrNoBrowser())
 		return
 	}
 	var result browserbridge.Result
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxResultBytes)).Decode(&result); err != nil {
+		s.recordCommand(r.Context(), "result", audit.Target{}, "browser:"+device.ID, "rejected", "", http.StatusBadRequest, "")
 		http.Error(w, "unreadable result", http.StatusBadRequest)
 		return
 	}
 	if strings.TrimSpace(result.ID) == "" {
+		s.recordCommand(r.Context(), "result", audit.Target{}, "browser:"+device.ID, "rejected", "", http.StatusBadRequest, "")
 		http.Error(w, "a result needs a run id", http.StatusBadRequest)
 		return
 	}
+	// The 204 success path is deliberately NOT audited here -- a
+	// multi-step flow posts one result per step, and the owning Replay
+	// call's own audit row already captures the whole run's outcome;
+	// auditing every step POST would spam the trail with one row per
+	// step rather than one per command.
 	s.recordResult(result)
 	w.WriteHeader(http.StatusNoContent)
 }
