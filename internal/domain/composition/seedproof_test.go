@@ -145,7 +145,7 @@ var workflowProofRegistry = map[string]seedProof{
 		"manual-only remainder: the real OS banner (apply-notify's signed-bundle class, testing.md)",
 	),
 	"webhook-notify-workflow": proven(
-		"triggersvc.TestSeededWebhookNotifyExample_HookPost_NotifiesFromPostedFields",
+		"triggersvc.TestSeededWebhookNotifyExample_WebhookPost_NotifiesFromPostedFields",
 		"triggersvc.TestSeededWebhookNotifyExample_PostWithoutFields_UsesFallbacks",
 		"triggersvc.TestWebhookDispatch_SourceMatching",
 		"manual-only remainder: the real OS banner and a paired phone's notification (OS-bound, manual-checks registry)",
@@ -158,9 +158,9 @@ var workflowProofRegistry = map[string]seedProof{
 		"triggersvc.TestWebhookDispatch_ClientDisconnect_RunsContinue",
 		"triggersvc.TestWebhookDispatch_SecondRespondInSameRun_IgnoredWithNote",
 		"triggersvc.TestExecRespondWebhook_NoResponder_RecordsNoCallerNote",
-		"bridgesvc.TestHookEvent_RespondingRun_WritesStatusBodyContentType",
-		"bridgesvc.TestHookEvent_BudgetElapsed_StandardBodyWithHeader",
-		"bridgesvc.TestHookEvent_PromptNoReply_StandardBodyNoHeaderNoWait",
+		"bridgesvc.TestWebhook_RespondingRun_WritesStatusBodyContentType",
+		"bridgesvc.TestWebhook_BudgetElapsed_StandardBodyWithHeader",
+		"bridgesvc.TestWebhook_PromptNoReply_StandardBodyNoHeaderNoWait",
 	),
 	"example-forward-approvals-workflow": proven(
 		"triggersvc.TestSeededForwardApprovalsExample_DecisionParked_PostsRealHTTPCall",

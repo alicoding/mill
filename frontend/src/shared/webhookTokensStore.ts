@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { RemoteAuthService } from './bindings'
-import type { DeviceInfo, HookToken } from './bindings'
+import type { DeviceInfo, WebhookToken } from './bindings'
 import { background } from './background'
 import { writeClipboardText } from './clipboardWrite'
 import { messageFor, appTranslate } from './userError'
@@ -11,10 +11,10 @@ import { messageFor, appTranslate } from './userError'
 // needs the same truth the section renders, and a command has no React
 // tree to reach into.
 interface WebhookTokensState {
-  hooks: DeviceInfo[] | null
+  tokens: DeviceInfo[] | null
   minting: boolean
   labelDraft: string
-  fresh: HookToken | null
+  fresh: WebhookToken | null
   copied: boolean
   error: string
   refresh: () => Promise<void>
@@ -27,7 +27,7 @@ interface WebhookTokensState {
 }
 
 export const useWebhookTokensStore = create<WebhookTokensState>()((set, get) => ({
-  hooks: null,
+  tokens: null,
   minting: false,
   labelDraft: '',
   fresh: null,
@@ -35,8 +35,8 @@ export const useWebhookTokensStore = create<WebhookTokensState>()((set, get) => 
   error: '',
   refresh: async () => {
     try {
-      const hooks = await RemoteAuthService.ListHooks()
-      set({ hooks: hooks ?? [] })
+      const tokens = await RemoteAuthService.ListWebhookTokens()
+      set({ tokens: tokens ?? [] })
     } catch (err) {
       set({ error: messageFor(err, appTranslate) })
     }
@@ -47,7 +47,7 @@ export const useWebhookTokensStore = create<WebhookTokensState>()((set, get) => 
   confirmMint: async () => {
     const label = get().labelDraft.trim()
     set({ minting: false })
-    const token = await RemoteAuthService.MintHookToken(label)
+    const token = await RemoteAuthService.MintWebhookToken(label)
     set({ fresh: token, copied: false })
     await get().refresh()
   },

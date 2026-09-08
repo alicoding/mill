@@ -2,10 +2,11 @@ import { useMemo, useState, type DragEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, FormControl, Label, Text, TextInput, TreeView } from '@primer/react'
 import { WorkflowIcon } from '@primer/octicons-react'
-import { Complexity, type NodeType, type Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { Complexity, type NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { useAppStore } from '../shared/store'
 import { PALETTE_GROUP_ICON, PALETTE_GROUP_LABEL, PALETTE_GROUP_ORDER, paletteGroupFor, shortLabel, type PaletteGroupId } from '../shared/paletteGroups'
 import { filterByComplexity, useShowAdvancedSteps } from './nodeComplexity'
+import { exampleMatches, nodeTypeMatchesQuery } from './nodePaletteFilter'
 import { contractLine } from './payloadKinds'
 import styles from './CompositionCanvas.module.css'
 
@@ -15,13 +16,6 @@ interface NodePaletteProps {
   // Trigger-kind entry gets disabled while true (see the component doc
   // comment below for why this has to be caught here, not just at Save).
   hasTrigger: boolean
-}
-
-function exampleMatches(workflows: Workflow[] | null, normalizedQuery: string): Workflow[] {
-  if (!workflows || !normalizedQuery) return []
-  return workflows
-    .filter((w) => (w.Label + ' ' + w.Description).toLowerCase().includes(normalizedQuery))
-    .slice(0, 3)
 }
 
 function onPaletteDragStart(event: DragEvent<HTMLLIElement>, nt: NodeType) {
@@ -63,15 +57,8 @@ export function NodePalette({ nodeTypes, hasTrigger }: NodePaletteProps) {
   const workflows = useAppStore((s) => s.workflows)
   const openWorkTab = useAppStore((s) => s.openWorkTab)
 
-  // Matches both the shortened palette label AND the full nt.Label
-  // (task requirement -- a query can match a declared/legacy step's
-  // colon-style label even though the palette itself only shows the
-  // shortened form), case-insensitive.
   const normalizedQuery = query.trim().toLowerCase()
-  const matches = (nt: NodeType) => {
-    if (!normalizedQuery) return true
-    return nt.Label.toLowerCase().includes(normalizedQuery) || shortLabel(nt).toLowerCase().includes(normalizedQuery)
-  }
+  const matches = (nt: NodeType) => nodeTypeMatchesQuery(nt, normalizedQuery)
 
   const advancedCount = nodeTypes.filter((nt) => nt.Complexity === Complexity.ComplexityAdvanced).length
   const matchingExamples = useMemo(() => exampleMatches(workflows, query.trim().toLowerCase()), [workflows, query])
