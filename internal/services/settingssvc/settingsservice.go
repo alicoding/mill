@@ -128,6 +128,14 @@ type SettingsService struct {
 	backupRunner  func(keepN int) (string, error)
 	appVersion    string
 	updateChannel string
+	// buildChannel is the channel stamped into this binary AT BUILD
+	// TIME (main.go's raw millChannel, before ResolveUpdateChannel
+	// applies the user's persisted channel preference) -- unlike
+	// updateChannel, no user setting can ever change it, so it is the
+	// one reliable signal that this binary is a local dev/worktree/
+	// `task install:app` build rather than a CI-produced release or
+	// beta artifact (goal 0403 S2d). See isLocalBuild.
+	buildChannel string
 	// updateDownloading marks an install in flight (goal 0142) -- the
 	// UI reads it via UpdateNoticeState so navigating away never
 	// forgets a running download.

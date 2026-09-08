@@ -30,6 +30,20 @@ screenshots on exactly the two failures below.
    `quit` door (below) sidesteps this by calling the quit method
    directly over HTTP, no AppleEvent involved.
 
+## The updater will never overwrite this build automatically
+
+A `task install:app` build always stamps its channel as `source` at
+compile time. `SettingsService`'s auto-download policy (goal 0403 S2d)
+checks that build-time stamp, not the resolved channel a user
+preference can override, before ever triggering an automatic download-
+and-install -- so a background auto-update tick (or the manual "Check
+for updates" button's own found-result) can never download and stage a
+newer release over the exact build this skill just installed and is
+driving. `CheckForUpdates` (detection) still answers normally, and an
+explicit "Update now" click still installs -- only the AUTOMATIC apply
+is skipped. No manual toggle of the update policy is needed before or
+after a driving pass.
+
 ## One-time machine setup
 
 1. the repo root's `scripts/setup-dev-signing.sh` -- creates and imports "Mill Dev
