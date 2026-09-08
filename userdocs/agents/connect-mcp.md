@@ -14,7 +14,7 @@ would hit.
 
 Settings → MCP access shows the address your agent connects to and
 whether the server is enabled. Point any MCP-capable client at it —
-for example, a Claude Code MCP entry:
+for example, an MCP client's own server-list entry:
 
 ```
 { "mcpServers": { "mill": { "url": "http://127.0.0.1:8090/mcp" } } }

@@ -111,6 +111,11 @@ ignore:
   - .playwright-mcp
   - .gitignore
   - .DS_Store
+  # semgrep/ (goal 0385, ADR-0001 extension): the Semgrep rule files
+  # (vendor-names.yml today) a required CI job and lefthook both run
+  # `semgrep --config semgrep/` against -- Semgrep's own convention puts
+  # rule files in a directory named for the tool, not the root.
+  - semgrep
   # docs/goals/BACKLOG.md Standing #11c: a stray root-level node_modules
   # (created by an npm/npx invocation run from the repo root instead of
   # frontend/) broke root-file-naming once, 2026-08-12 -- top-level
