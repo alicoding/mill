@@ -61,7 +61,7 @@ export const PALETTE_GROUP_LABEL: Record<PaletteGroupId, string> = {
 }
 
 // Group-header icons -- a THEME icon per group, deliberately not a
-// per-item Kind-colored square anymore: two of the 9 display groups
+// per-item Kind-colored square anymore: two of the 10 display groups
 // (`flow`: child-workflow is Kind `process`, decision-route is Kind
 // `decision`; `guardrails`: human-review/ruleset are Kind `process`,
 // decision-outcome is Kind `terminal`) mix domain Kinds, so a single
@@ -84,114 +84,22 @@ export const PALETTE_GROUP_ICON: Record<PaletteGroupId, Icon> = {
   apply: UploadIcon,
 }
 
-// Every registered NodeType ID as of this change (internal/domain/
-// composition/*.go's RegisterNodeType call sites, checked directly
-// against the Go registry, not guessed) -- 39 total, every one
-// accounted for. vitest (paletteGroups.test.ts) asserts every ID
-// NodeTypes() actually returns has an entry here, so this map can't
-// silently drift from the backend registry.
-const NODE_TYPE_GROUP: Record<string, PaletteGroupId> = {
-  // Triggers (8)
-  'trigger-manual': 'triggers',
-  'trigger-hotkey': 'triggers',
-  'trigger-schedule': 'triggers',
-  'trigger-clipboard-watch': 'triggers',
-  'trigger-filesystem-watch': 'triggers',
-  'trigger-callable': 'triggers',
-  'trigger-system-event': 'triggers',
-  'trigger-atlas-card': 'triggers',
-  // Capture (4)
-  'capture-clipboard-html': 'capture',
-  'capture-clipboard-info': 'capture',
-  'capture-file': 'capture',
-  'capture-attribute': 'capture',
-  // Transform (3)
-  'process-extract-html': 'transform',
-  'process-html-to-markdown': 'transform',
-  'process-inject-text': 'transform',
-  // AI (3)
-  'process-ai-classify': 'ai',
-  'process-ai-completion': 'ai',
-  'process-ai-extract-structured': 'ai',
-  // Data (5)
-  'list-lookup': 'data',
-  'list-search': 'data',
-  'process-run-receipt': 'data',
-  'process-atlas-card-find': 'data',
-  'process-todo-scan': 'data',
-  // Actions (3)
-  'integration-http': 'actions',
-  'mcp-tool-call': 'actions',
-  'code-execution': 'actions',
-  // Browser (1) -- its own group rather than a tenth entry under
-  // Actions: a step that drives the user's own signed-in browser is a
-  // different kind of reach from an HTTP call or a subprocess, and a
-  // reader scanning the palette should see that before they read the
-  // label.
-  'process-browser-replay': 'browser',
-  // Flow (2)
-  'child-workflow': 'flow',
-  'decision-route': 'flow',
-  // Guardrails (3)
-  'human-review': 'guardrails',
-  'ruleset': 'guardrails',
-  'decision-outcome': 'guardrails',
-  // Apply (7)
-  'apply-clipboard-write-html': 'apply',
-  'apply-clipboard-write-text': 'apply',
-  'apply-file-write': 'apply',
-  'apply-file-move': 'apply',
-  'apply-atlas-card-create': 'apply',
-  'apply-atlas-card-update': 'apply',
-  'apply-atlas-card-link': 'apply',
-  'apply-list-row': 'apply',
-  'apply-respond-webhook': 'apply',
-  // Declared step types (ADR-0037, goal 0054 slice A): data-backed, not
-  // a RegisterNodeType call site, so not counted in this map's "31
-  // registered node types" total above -- the seeded "Check httpbin"
-  // example still needs its own group entry, same as any built-in, so
-  // it renders under its real group instead of paletteGroupFor's
-  // Kind-fallback path.
-  'example-check-httpbin-step': 'actions',
-}
-
-// Fallback for a NodeType ID this map hasn't been updated for yet
-// (a new node type shipped without a matching palette-group entry) --
-// nearest Kind-based group rather than a crash or a silently hidden
-// item. `process` alone spans 5 of the 9 display groups above, so
-// this is a best-effort landing spot, not a claim of correctness --
-// paletteGroupFor warns to the dev console specifically so the real
-// fix (adding a NODE_TYPE_GROUP entry) gets noticed during
-// development, not silently shipped.
-const KIND_FALLBACK_GROUP: Record<string, PaletteGroupId> = {
-  trigger: 'triggers',
-  capture: 'capture',
-  process: 'actions',
-  apply: 'apply',
-  decision: 'flow',
-  terminal: 'guardrails',
-}
-
-// Structural (ID/Kind/PaletteGroup as plain strings), not
-// `Pick<NodeType, ...>` -- this is a plain string-keyed lookup with no
-// real dependency on NodeKind's enum type, and staying structural lets
-// the vitest suite exercise the fallback path with an
-// intentionally-unknown Kind string without needing to import/cast the
-// generated enum.
-export function paletteGroupFor(nt: { ID: string; Kind: string; PaletteGroup?: string }): PaletteGroupId {
-  // A declared step type (ADR-0037, goal 0054) is authored at runtime,
-  // so it can never have a compile-time NODE_TYPE_GROUP entry below --
-  // its own chosen group (composition.NodeType.PaletteGroup, empty for
-  // every built-in) is the only place its real group can come from.
-  // Checked first, no console.warn: this isn't a missing-mapping gap,
-  // it's the declared-type path working as designed.
-  if (nt.PaletteGroup && (PALETTE_GROUP_ORDER as string[]).includes(nt.PaletteGroup)) {
+// paletteGroupFor reads the group straight off the NodeType descriptor
+// (composition.NodeType.PaletteGroup, goal 0389) instead of a
+// hand-kept ID-keyed map: the backend registry is the one place a node
+// type's group is authored now, for a built-in (every RegisterNodeType
+// call site sets it, enforced by TestNodeTypes) exactly like a declared
+// step type (ADR-0037, its own author-chosen group carried through
+// resolveDeclaredEntry) or a plugin-contributed one (pluginservice_steps.go).
+// A missing/invalid value can therefore only mean a real registry bug,
+// not an unmaintained frontend list -- warned loudly rather than
+// silently mis-grouped.
+export function paletteGroupFor(nt: { ID: string; Kind: string; PaletteGroup: string }): PaletteGroupId {
+  if ((PALETTE_GROUP_ORDER as string[]).includes(nt.PaletteGroup)) {
     return nt.PaletteGroup as PaletteGroupId
   }
-  const known = NODE_TYPE_GROUP[nt.ID]
-  if (known) return known
-  console.warn(`[NodePalette] NodeType "${nt.ID}" (Kind "${nt.Kind}") has no palette display-group mapping. Add it to NODE_TYPE_GROUP in composition/paletteGroups.ts. Falling back to its Kind's nearest group.`)
-  return KIND_FALLBACK_GROUP[nt.Kind] ?? 'actions'
+  console.warn(`[NodePalette] NodeType "${nt.ID}" (Kind "${nt.Kind}") has an invalid PaletteGroup ${JSON.stringify(nt.PaletteGroup)}. The registry should never emit this; falling back to Actions.`)
+  return 'actions'
 }
 
 // Built-in NodeType labels are now verb-first with no prefix (goal

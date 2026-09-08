@@ -23,6 +23,7 @@ fi
 
 python3 - "$dashboard_dir/template.html" "$data_file" "$out" <<'PY'
 import json, re, sys
+from datetime import date
 
 template_path, data_path, out_path = sys.argv[1:4]
 
@@ -237,7 +238,16 @@ substitute("turns-per-goal", turns_html)
 
 # --- maturity (goal 0348: userdocs/reference/plugin-api-maturity.json,
 # read straight through -- derive.sh already degrades a missing file to
-# {"generated": false}, no ledger fields to fall back on) ---
+# {"generated": false}, no ledger fields to fall back on). The ledger
+# never stores a "days behind" number, nor codeChangedAt/docsChangedAt
+# themselves (goal 0397): both are live facts derive.sh merges in from
+# a fresh git read at derive time, never from the committed file, so
+# "days behind" is computed here, at render time, from whatever those
+# merged-in dates happen to be -- an absent pair (an ungenerated
+# currency read) degrades to 0 rather than a rendering error. This
+# script's own output is gitignored (dashboard-data.json,
+# mill-control-room.html), so a figure that grows with real time
+# belongs here, never in the committed userdocs ledger it reads.
 def maturity_level_chip(level):
     return {"stable": "good", "deprecated": "warn"}.get(level, "plain")
 
@@ -246,9 +256,22 @@ def maturity_flag_chip(flag):
     return "crit" if flag == "regressed" else "good"
 
 
+def maturity_days_behind(row, today):
+    docs_changed = row.get("docsChangedAt")
+    code_changed = row.get("codeChangedAt")
+    if not docs_changed or not code_changed:
+        return 0
+    code_date = date.fromisoformat(code_changed)
+    docs_date = date.fromisoformat(docs_changed)
+    if code_date <= docs_date:
+        return 0
+    return (today - code_date).days
+
+
 maturity = data.get("maturity") or {}
 maturity_rows = maturity.get("rows") or []
 if maturity_rows:
+    today = date.today()
     rows = []
     for r in maturity_rows:
         flags = r.get("flags") or []
@@ -274,7 +297,7 @@ if maturity_rows:
                 "yes" if r.get("docs") else "no",
                 "yes" if r.get("sdkTypes") else "no",
                 esc(r.get("mcp")),
-                r.get("daysBehindCode", 0),
+                maturity_days_behind(r, today),
                 flags_html,
             )
         )

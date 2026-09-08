@@ -12,19 +12,24 @@ import (
 // GenerateMaturityMarkdown renders the plugin API maturity ledger
 // (goal 0348) wholesale -- no hand-authored region to preserve, unlike
 // commands.md/menu-bar.md, so the whole file is generated the same way
-// steps.md is.
-func GenerateMaturityMarkdown(repoRoot string) string {
-	ledger := pluginsvc.Report(repoRoot, time.Now)
+// steps.md is. The table carries no git-derived field (goal 0397):
+// every cell is a pure function of tracked content, so two branches
+// regenerating on different bases produce byte-identical output. A
+// live reader wanting code/docs currency (the control room dashboard)
+// gets it from `go run ./internal/docsgen/gen -currency`, never from
+// this committed file.
+func GenerateMaturityMarkdown(repoRoot string, now func() time.Time) string {
+	ledger := pluginsvc.Report(repoRoot, now)
 	var b strings.Builder
 	b.WriteString("---\nkind: reference\n---\n\n# Plugin API maturity\n\n")
 	fmt.Fprintf(&b, "%s\n\n", ledger.Headline)
-	b.WriteString("| Family | Level | Conformance | Example | E2E | Docs | SDK types | MCP | Docs behind code (days) | Flags |\n")
-	b.WriteString("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
+	b.WriteString("| Family | Level | Conformance | Example | E2E | Docs | SDK types | MCP | Flags |\n")
+	b.WriteString("| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
 	for _, r := range ledger.Rows {
 		writeMaturityRow(&b, r)
 	}
 	b.WriteString("\n## How a family moves\n\n")
-	b.WriteString("A family's level changes only by a decision recorded in an architecture record (ADR-0047, ADR-0048), never by this table alone, however complete its evidence reads. \"Ready to promote\" is an argument for that decision, not the decision itself. This table regenerates from the repository on every `go generate ./internal/docsgen` and is checked against the committed copy on every build.\n")
+	b.WriteString("A family's level changes only by a decision recorded in an architecture record (ADR-0047, ADR-0048), never by this table alone, however complete its evidence reads. \"Ready to promote\" is an argument for that decision, not the decision itself. This table regenerates from the repository on every `go generate ./internal/docsgen` and is checked against the committed copy on every build. The control room dashboard renders each family's code/docs currency and a live \"days behind\" figure derived from it; this page never carries either, so the committed file never depends on the checkout it was generated from.\n")
 	return b.String()
 }
 
@@ -33,7 +38,7 @@ func writeMaturityRow(b *strings.Builder, r pluginsvc.Row) {
 	if len(r.Flags) > 0 {
 		flags = strings.Join(r.Flags, ", ")
 	}
-	fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %s | %s | %s | %d | %s |\n",
+	fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %s | %s | %s | %s |\n",
 		r.Family,
 		r.Level,
 		yesNo(r.Evidence.Conformance),
@@ -42,7 +47,6 @@ func writeMaturityRow(b *strings.Builder, r pluginsvc.Row) {
 		yesNo(r.Evidence.Docs),
 		yesNo(r.Evidence.SDKTypes),
 		r.Evidence.MCP,
-		r.Currency.DaysBehind,
 		flags,
 	)
 }
@@ -55,25 +59,27 @@ func yesNo(v bool) string {
 }
 
 // maturityJSONRow/maturityJSONLedger are the JSON ledger's own wire
-// shape -- dates render as YYYY-MM-DD (goal 0348's decided design),
-// never a full timestamp, so the committed file reads as a ledger, not
-// a git-log dump. No generatedAt key: that field is a run-time fact
+// shape. No generatedAt key: that field is a run-time fact
 // (pluginsvc.Ledger.GeneratedAt), never a per-commit one, so it is
 // left out rather than baked into a file `go generate` must reproduce
 // byte-for-byte on an unchanged commit regardless of the day it runs.
+// No daysBehind key either: that figure is a live staleness metric,
+// not a repo fact, computed by a reader (the control room dashboard)
+// instead. No code/docs commit or changed-at key either (goal 0397):
+// those are git-log facts that differ by branch/checkout for the same
+// tracked content, so a committed file carrying them can never be
+// byte-identical across branches; the dashboard's -currency entry
+// point supplies them at render time instead.
 type maturityJSONRow struct {
-	Family        string   `json:"family"`
-	Level         string   `json:"level"`
-	Conformance   bool     `json:"conformance"`
-	Example       bool     `json:"example"`
-	E2E           bool     `json:"e2e"`
-	Docs          bool     `json:"docs"`
-	SDKTypes      bool     `json:"sdkTypes"`
-	MCP           string   `json:"mcp"`
-	CodeChangedAt string   `json:"codeChangedAt,omitempty"`
-	DocsChangedAt string   `json:"docsChangedAt,omitempty"`
-	DaysBehind    int      `json:"daysBehindCode"`
-	Flags         []string `json:"flags"`
+	Family      string   `json:"family"`
+	Level       string   `json:"level"`
+	Conformance bool     `json:"conformance"`
+	Example     bool     `json:"example"`
+	E2E         bool     `json:"e2e"`
+	Docs        bool     `json:"docs"`
+	SDKTypes    bool     `json:"sdkTypes"`
+	MCP         string   `json:"mcp"`
+	Flags       []string `json:"flags"`
 }
 
 type maturityJSONLedger struct {
@@ -81,18 +87,13 @@ type maturityJSONLedger struct {
 	Rows     []maturityJSONRow `json:"rows"`
 }
 
-func dateOrEmpty(t time.Time) string {
-	if t.IsZero() {
-		return ""
-	}
-	return t.Format("2006-01-02")
-}
-
 // GenerateMaturityJSON renders the same ledger as machine-readable
 // JSON -- the control room dashboard's own source (scripts/dashboard),
-// so a person and an agent read the identical facts.
-func GenerateMaturityJSON(repoRoot string) (string, error) {
-	ledger := pluginsvc.Report(repoRoot, time.Now)
+// so a person and an agent read the identical facts. The committed
+// bytes carry no git-derived field (see maturityJSONRow), so they
+// never depend on which branch or checkout generated them.
+func GenerateMaturityJSON(repoRoot string, now func() time.Time) (string, error) {
+	ledger := pluginsvc.Report(repoRoot, now)
 	out := maturityJSONLedger{
 		Headline: ledger.Headline,
 		Rows:     make([]maturityJSONRow, 0, len(ledger.Rows)),
@@ -103,18 +104,15 @@ func GenerateMaturityJSON(repoRoot string) (string, error) {
 			flags = []string{}
 		}
 		out.Rows = append(out.Rows, maturityJSONRow{
-			Family:        r.Family,
-			Level:         string(r.Level),
-			Conformance:   r.Evidence.Conformance,
-			Example:       r.Evidence.Example,
-			E2E:           r.Evidence.E2E,
-			Docs:          r.Evidence.Docs,
-			SDKTypes:      r.Evidence.SDKTypes,
-			MCP:           r.Evidence.MCP,
-			CodeChangedAt: dateOrEmpty(r.Currency.CodeChangedAt),
-			DocsChangedAt: dateOrEmpty(r.Currency.DocsChangedAt),
-			DaysBehind:    r.Currency.DaysBehind,
-			Flags:         flags,
+			Family:      r.Family,
+			Level:       string(r.Level),
+			Conformance: r.Evidence.Conformance,
+			Example:     r.Evidence.Example,
+			E2E:         r.Evidence.E2E,
+			Docs:        r.Evidence.Docs,
+			SDKTypes:    r.Evidence.SDKTypes,
+			MCP:         r.Evidence.MCP,
+			Flags:       flags,
 		})
 	}
 	raw, err := json.MarshalIndent(out, "", "  ")

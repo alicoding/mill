@@ -1,4 +1,5 @@
 import { chromium, expect, test, type Locator, type Page } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -70,6 +71,7 @@ test('a recorded flow becomes a step: import it, bind a parameter, replay it, re
       backupDir: path.join(dir, 'backups'),
     })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
 
     // 1. Pair a browser and let it hold its stream open.
@@ -78,6 +80,7 @@ test('a recorded flow becomes a step: import it, bind a parameter, replay it, re
     const code = (await page.getByTestId('browser-pairing-code').innerText()).trim()
     const token = await pairFakeExtension(bridgeURL, code, 'Chrome')
     const replayPage = await browser.newPage()
+    await applyCpuThrottle(replayPage)
     extension = connectFakeExtension(bridgeURL, token, replayPage)
     await extension.ready
 

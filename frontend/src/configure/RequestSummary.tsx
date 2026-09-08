@@ -158,6 +158,7 @@ export function RequestSummary({ request, onEdit, onDuplicate, onDelete }: {
             effectiveSpec={request.OpenAPISpec}
             label={request.Label}
             baseURL={request.BaseURL}
+            method={request.Method}
             authType={request.AuthType}
             auth={request.Auth}
             jose={request.JOSE}

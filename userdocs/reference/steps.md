@@ -462,6 +462,7 @@ Shows a notification when the workflow reaches this step. "Title attribute" and 
   - **Title attribute (optional)** — Which Attributes field replaces the fixed title, when set.
   - **Message** — What the notification says.
   - **Body attribute (optional)** — Which Attributes field replaces the fixed message, when set.
+  - **Send to** — Leave empty to reach every paired device.
 
 ### Save list row
 

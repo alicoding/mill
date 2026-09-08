@@ -28,7 +28,8 @@ func SetAtlasCardCreator(fn func(kindID, title string, fields map[string]string,
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-atlas-card-create", Kind: KindApply,
-		Label: "Create Atlas card",
+		PaletteGroup: PaletteGroupApply,
+		Label:        "Create Atlas card",
 		// ClassLocal: writes to Atlas's own persisted store, the native
 		// baseline a person already performs by hand from the Atlas
 		// surface itself -- same classification apply-file-write/

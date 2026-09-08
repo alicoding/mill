@@ -29,16 +29,33 @@ and reload the extension.
 
 A browser has to be paired before Mill will send it anything, and that
 holds even when both are on the same computer. Anything running locally
-could otherwise drive your tabs.
+could otherwise drive your tabs. Pairing works the way Bluetooth does:
+the same code shows on both sides, and you confirm the match once.
+
+1. Open the extension's popup and press **Pair with Mill**. A 6-digit
+   code appears in the popup.
+2. Open **Settings › Connections › Browsers** in Mill. The browser's
+   request shows there with the same code.
+3. Check the two codes match, then press **Accept**.
+4. The popup shows **Connected to Mill**, and the browser appears in the
+   Browsers list.
+
+If the popup can't reach Mill this way — a remote Mill, or Mill still
+starting up — press **Enter a code instead** in the popup:
 
 1. Open **Settings › Connections › Browsers**. Note the **Mill address**
    shown there.
 2. Press **Pair a browser**. An eight-character code appears, good for
    five minutes and usable once.
-3. Open the extension's popup, check the address matches, type the code,
-   and press **Pair**.
+3. In the popup's **Enter a code instead** form, check the address
+   matches, type the code, and press **Pair**.
 4. The popup shows **Connected to Mill**, and the browser appears in the
    Browsers list.
+
+Once paired, the popup shows **Connected to Mill** with the address kept
+behind a **Show details** disclosure — **Disconnect** ends the pairing:
+the browser drops off Mill's Browsers list, and the popup's own
+credential clears right away even if Mill can't be reached.
 
 ## Test it
 

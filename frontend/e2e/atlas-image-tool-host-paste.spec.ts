@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { execSync } from 'node:child_process'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -54,6 +55,7 @@ test('pasting a screenshot bitmap directly on the board lands an image object', 
   const browser = await chromium.launch()
   try {
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await withClipboardLock(async () => {
       if (process.platform === 'darwin') {
         execSync('pbcopy', { input: 'goal-0255-plain-text-baseline' })

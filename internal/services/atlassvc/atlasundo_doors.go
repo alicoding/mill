@@ -150,4 +150,6 @@ var notMutationDoors = map[string]string{
 	"WireListProjection": "wails:ignore wiring call", "WirePasteListWrites": "wails:ignore wiring call",
 	"WirePluginPasteClaims": "wails:ignore wiring call",
 	"WireSourceRecognition": "wails:ignore wiring call",
+	"WireEntityReferenceIndex": "wails:ignore wiring call",
+	"ObjectsReferencing":       "wails:ignore read/reference-integrity check (goal 0392), no board-state change",
 }

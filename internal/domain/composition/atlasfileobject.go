@@ -42,12 +42,13 @@ func init() {
 		// it already brought back is a local write, the operation-merge
 		// rule keeping the more restrictive verdict per step, not this
 		// one borrowing the other's.
-		Effect:     guardrail.ClassLocal,
-		Complexity: ComplexityBasic,
-		Consumes:   []PayloadKind{PayloadJSON},
-		Produces:   PayloadProduce{Passthrough: true},
-		Output:     "the same steps/extracted/downloads document, each download's own landing outcome added",
-		Label:      "Land downloads on the board",
+		Effect:       guardrail.ClassLocal,
+		Complexity:   ComplexityBasic,
+		PaletteGroup: PaletteGroupApply,
+		Consumes:     []PayloadKind{PayloadJSON},
+		Produces:     PayloadProduce{Passthrough: true},
+		Output:       "the same steps/extracted/downloads document, each download's own landing outcome added",
+		Label:        "Land downloads on the board",
 		Description: "Turns every download a browser-replay step brought back into a file-backed board object, " +
 			"mirror-checksummed so a file already landed before is matched, never duplicated.",
 	}, execAtlasFileObject)

@@ -81,6 +81,11 @@ const (
 	FieldNumber  = typedfield.TypeNumber
 	FieldBoolean = typedfield.TypeBoolean
 	FieldOptions = typedfield.TypeOptions
+	// FieldArray is consumed for the first time by apply-notify's
+	// "targets" field (docs/goals/0372): a multi-select over a
+	// runtime-enumerated OptionsSource, never a comma-separated text
+	// field.
+	FieldArray = typedfield.TypeArray
 )
 
 // ConfigField declares one configurable parameter a node type's nodes
@@ -159,15 +164,17 @@ type NodeType struct {
 	// catalog/contract document is unaffected until a declared type
 	// actually exists -- additive, per ADR-0036's schema-evolution rule.
 	Declared bool
-	// PaletteGroup is the frontend display-group id (composition/
-	// paletteGroups.ts's PaletteGroupId) a declared step type was
-	// authored under -- empty for every built-in, whose group instead
-	// comes from paletteGroups.ts's own compile-time NODE_TYPE_GROUP map.
-	// A declared type has no compile-time map entry (it doesn't exist
-	// until a user creates it), so this is the only channel carrying its
-	// author-chosen group from the Configure-authored DeclaredStepType
-	// (ADR-0037) into the palette at all.
-	PaletteGroup string
+	// PaletteGroup is the frontend display-group id (frontend/src/shared/
+	// paletteGroups.ts's PaletteGroupId, exported through contract.json)
+	// -- required for every NodeType, no exception (TestNodeTypes
+	// enforces it with no pureNodeTypes-style allow-list, the same bar
+	// Complexity holds below): the palette derives its grouping from
+	// this field directly, never from a hand-kept frontend map keyed by
+	// ID, which drifted silently whenever a new NodeType shipped without
+	// a matching map entry. A declared step type (ADR-0037) carries its
+	// author's own chosen group here via DeclaredStepBinding.PaletteGroup,
+	// resolved at synthesis time (resolveDeclaredEntry, declaredsteptype.go).
+	PaletteGroup PaletteGroup
 	// Complexity is the node type's audience/complexity facet
 	// (docs/goals/0047): required for every registered NodeType
 	// (TestNodeTypes enforces it, the zero value is invalid, never a
@@ -185,29 +192,11 @@ type NodeType struct {
 	Complexity Complexity
 }
 
-// Complexity is NodeType's audience/complexity facet -- see NodeType's
-// own doc comment for the classification rule and
-// docs/goals/0047-node-audience-facet.md for the researched precedent
-// (progressive disclosure over an audience label, which ages badly).
-type Complexity string
-
-const (
-	ComplexityBasic    Complexity = "basic"
-	ComplexityAdvanced Complexity = "advanced"
-)
-
-// ValidComplexity reports whether c is one of the two declared
-// Complexity values -- the zero value ("") and any other string are
-// both invalid, exercised directly by nodetypes_test.go's own
-// TestValidComplexity and, for every registered NodeType, by
-// TestNodeTypes.
-func ValidComplexity(c Complexity) bool {
-	switch c {
-	case ComplexityBasic, ComplexityAdvanced:
-		return true
-	}
-	return false
-}
+// Complexity and PaletteGroup, NodeType's audience/complexity and
+// frontend display-group facets, live in nodetypefacets.go -- split out
+// from this file to stay under the package's 500-line convention
+// (CLAUDE.md), matching this file's own doc comment about the package
+// being split by concern across sibling files.
 
 // Position is a node's canvas coordinates. Ignored by execution entirely
 // -- it exists purely for the React Flow canvas to restore a workflow's

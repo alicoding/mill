@@ -33,6 +33,19 @@ func (a *revocableAuth) ValidateWebhookToken(token string) (remoteauthsvc.Device
 	return remoteauthsvc.DeviceInfo{}, false
 }
 
+func (a *revocableAuth) RequestPairing(label, source string) (remoteauthsvc.PairingRequestInfo, error) {
+	return remoteauthsvc.PairingRequestInfo{}, nil
+}
+
+func (a *revocableAuth) PairingStatus(requestID string) remoteauthsvc.PairingRequestStatus {
+	return remoteauthsvc.PairingRequestStatus{Status: "expired"}
+}
+
+func (a *revocableAuth) RevokeDevice(id string) error {
+	a.revoked.Store(true)
+	return nil
+}
+
 // TestEvents_KeepalivePingsAndClosesOnRevoke pins both jobs the
 // keepalive does: an idle stream keeps receiving pings (which is what
 // keeps a browser extension's service worker alive between commands),

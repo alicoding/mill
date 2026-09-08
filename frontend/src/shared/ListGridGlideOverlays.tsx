@@ -116,10 +116,10 @@ export function AddColumnRail({ headerHeight, onClick }: { headerHeight: number;
 // mount). Stateless only: the header-end add-column rail is set
 // directly as a JSX prop on <DataEditor> in ListGridGlide.tsx instead
 // of flowing through here -- it closes over the mount's own
-// insertColumn, which writes a ref (pendingRenameKey) on resolve, and
-// a plain function call during render (this one) must never receive an
-// argument built from a ref-touching closure; only a JSX prop value
-// may carry one.
+// insertColumn, which sets pending-rename state (pendingRenameKey) on
+// resolve, and a plain function call during render (this one) must
+// never receive an argument built from a ref-touching closure; only a
+// JSX prop value may carry one.
 export function schemaEditorProps(on: boolean, ctx: {
   listID: string
   edits: Edits
