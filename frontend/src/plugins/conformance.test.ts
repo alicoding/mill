@@ -116,7 +116,7 @@ describe('every shipped example plugin conforms to the platform contract', () =>
 // THEM rather than re-deriving the rule inline.
 function fixtureManifest(contributes: Partial<RealManifest['contributes']>): RealManifest {
   return {
-    id: 'demo', name: 'Demo', version: '1.0.0', description: '', author: '', minMillVersion: '', icon: 'icon.png', capabilities: null,
+    id: 'demo', name: 'Demo', version: '1.0.0', description: '', author: '', minMillVersion: '', icon: 'icon.png', capabilities: null, dependencies: null, exports: null,
     contributes: {
       canvasObjects: null, steps: null, captures: null, settings: null, configuration: null, menus: null,
       network: null, views: null, commands: null, themes: null, secretSources: null, tools: null, mcpServers: null,

@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net'
 import { launchWithPlugins, runFromPalette } from './fixtures/runtimePlugins'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { openPluginDetail } from './fixtures/settingsNav'
+import { applyCpuThrottle } from './fixtures/throttle'
 
 // The Request tester example plugin (goal 0291) and its secretRef
 // door (goal 0281, ADR-0048), split from runtime-plugin-doors.spec.ts
@@ -40,6 +41,7 @@ test('the Request tester sends to a host you approve in Review, shows the respon
 		await expect(frame.getByTestId('tester-status')).toContainText('needs your approval')
 
 		const reviewPage = await page.context().newPage()
+		await applyCpuThrottle(reviewPage)
 		await reviewPage.goto('/')
 		await reviewPage.getByRole('link', { name: 'Review' }).click()
 		const parked = reviewPage.locator('[data-testid="review-guarded-action-item"]')
@@ -107,6 +109,7 @@ test('a secretRef setting picks a vault entry; the request parks naming it, send
 		await expect(frame.getByTestId('tester-status')).toContainText('needs your approval')
 
 		const reviewPage = await page.context().newPage()
+		await applyCpuThrottle(reviewPage)
 		await reviewPage.goto('/')
 		await reviewPage.getByRole('link', { name: 'Review' }).click()
 		const parked = reviewPage.locator('[data-testid="review-guarded-action-item"]')

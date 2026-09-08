@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -36,6 +37,7 @@ test('Coding loop secret chain: a vault entry resolves, a typed value resolves, 
     // content, not the per-server default in-memory adapter (goal 0356).
     server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir, extraEnv: { MILL_CLIPBOARD: 'host' } })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
     await page.goto(`${server.baseURL}/`)
 

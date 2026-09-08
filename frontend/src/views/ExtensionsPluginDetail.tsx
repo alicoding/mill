@@ -74,7 +74,7 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
     extra: (contributes?.mcpServers ?? []).length > 0
       ? <ExtensionsMCPServers pluginId={id} servers={contributes?.mcpServers ?? []} />
       : undefined,
-    status: <PluginStatusNote error={error} status={runtime?.status} policyReason={plugin.PolicyBlocked ?? ''} allowed={allowed} onAllow={onAllow} warnings={plugin.Warnings ?? []} />,
+    status: <PluginStatusNote error={error} status={runtime?.status} policyReason={plugin.PolicyBlocked ?? ''} waitsFor={runtime?.waitsFor} allowed={allowed} onAllow={onAllow} warnings={plugin.Warnings ?? []} />,
     actions: reloadCommand?.enabled?.() ? (
       <Button
         size="small"
@@ -200,15 +200,16 @@ function pluginClaims(plugin: PluginInfo, t: Translate): string[] {
 // settings alias, a menu id Mill has no seat for), which stand beside
 // whatever primary status the switch below renders rather than
 // replacing it -- a disabled plugin can still be told to rename a key.
-function PluginStatusNote({ error, status, policyReason, allowed, onAllow, warnings }: {
+function PluginStatusNote({ error, status, policyReason, waitsFor, allowed, onAllow, warnings }: {
   error: string | undefined
   status: string | undefined
   policyReason: string
+  waitsFor: string | undefined
   allowed: boolean
   onAllow: () => void
   warnings: string[]
 }) {
-  const primary = PrimaryStatusNote({ error, status, policyReason, allowed, onAllow })
+  const primary = PrimaryStatusNote({ error, status, policyReason, waitsFor, allowed, onAllow })
   if (!primary && warnings.length === 0) return null
   return (
     <Stack direction="vertical" gap="condensed">
@@ -224,14 +225,18 @@ function PluginStatusNote({ error, status, policyReason, allowed, onAllow, warni
   )
 }
 
-function PrimaryStatusNote({ error, status, policyReason, allowed, onAllow }: {
+function PrimaryStatusNote({ error, status, policyReason, waitsFor, allowed, onAllow }: {
   error: string | undefined
   status: string | undefined
   policyReason: string
+  waitsFor: string | undefined
   allowed: boolean
   onAllow: () => void
 }) {
   const { t } = useTranslation('views')
+  if (status === 'waits') {
+    return <Text as="p" size="small" className={listStyles.muted} data-testid="extensions-plugin-waits">{t('settings.extensions.pluginWaitsNote', { id: waitsFor ?? '' })}</Text>
+  }
   if (status === 'policy') {
     return (
       <Stack direction="vertical" gap="none" data-testid="extensions-plugin-policy">

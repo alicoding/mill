@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { rmSync } from 'node:fs'
 import { spawnUpdatesServer, type SpawnedServer, UPDATES_QUICK_PANEL_MCP_BASE_PORT, UPDATES_QUICK_PANEL_SERVER_BASE_PORT } from './fixtures/server'
 
@@ -23,6 +24,7 @@ test('the Quick Panel shows "Download the update and install" only once CheckFor
       MILL_TEST_UPDATE_CHANNEL: 'release',
     }))
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/#/quickpanel`)
     const search = page.getByRole('combobox', { name: 'Quick Panel search' })
     await expect(search).toBeFocused()

@@ -5,7 +5,8 @@ import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal
 function manifestWith(commands: Manifest['contributes']['commands']): Manifest {
   return {
     id: 'mill-index', name: 'Board index', version: '1.0.0', description: '', author: '', minMillVersion: '0.9.0', icon: 'icon.png',
-    capabilities: [], contributes: { canvasObjects: [], steps: [], captures: [], settings: [], configuration: [], menus: {}, network: [], views: [], commands, tools: [], themes: [], secretSources: [], mcpServers: [] },
+    capabilities: [], dependencies: [], exports: [],
+    contributes: { canvasObjects: [], steps: [], captures: [], settings: [], configuration: [], menus: {}, network: [], views: [], commands, tools: [], themes: [], secretSources: [], mcpServers: [] },
   }
 }
 

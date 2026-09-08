@@ -116,6 +116,7 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
     const badgeKey = tierLabelKey(p.Tier ?? '')
     const policyBlocked = runtime?.status === 'policy'
     const canvasHost = hasCanvasHostGrant(p)
+    const waitsFor = runtime?.status === 'waits' ? runtime.waitsFor : undefined
     // A blocked row's trailing cluster is already the widest the list
     // carries (the policy label replaces the toggle); repeating the
     // author and version alongside it overflows onto the name in the
@@ -138,6 +139,7 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
               {policyBlocked && (
                 <Label variant="attention" data-testid="extensions-row-policy">{t('extensions.policy.blockedStatus')}</Label>
               )}
+              {waitsFor && <Label data-testid="extensions-row-waits">{t('settings.extensions.pluginWaitsLabel', { id: waitsFor })}</Label>}
             </>
           )}
           actions={p.Builtin ? undefined : <ExtensionRowMenu id={id} name={name} />}
