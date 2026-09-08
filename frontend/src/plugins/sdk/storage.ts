@@ -11,4 +11,12 @@ export interface PluginStorageAPI {
   set: (key: string, value: unknown) => Promise<void>
   delete: (key: string) => Promise<void>
   keys: () => string[]
+  /** Reads the array stored at key, or [] when nothing is stored there
+   * yet or the stored value is not an array. */
+  getList: (key: string) => Promise<unknown[]>
+  /** Adds item to the front of the list stored at key (creating it
+   * empty first). dedupeBy, when given, first removes any earlier
+   * item it resolves to the same key as item; max, when given, then
+   * trims the list to that many entries, oldest dropped first. */
+  pushList: (key: string, item: unknown, opts?: { dedupeBy?: (item: unknown) => unknown; max?: number }) => Promise<void>
 }

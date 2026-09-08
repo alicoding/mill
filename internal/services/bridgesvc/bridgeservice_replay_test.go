@@ -74,6 +74,55 @@ func TestReplay_CarriesEveryStepResultInOrder(t *testing.T) {
 	}
 }
 
+// TestReplay_DownloadDataAndTooLargeSurviveThePassThrough is goal 0350
+// S3's own bytes-cap wire proof at the bridge layer: collect() must
+// carry a download's Data/TooLarge fields through to the Outcome
+// exactly as the browser posted them -- neither is bridgesvc's own
+// decision, both are the extension's.
+func TestReplay_DownloadDataAndTooLargeSurviveThePassThrough(t *testing.T) {
+	svc, srv := newService(t, &stubAuth{token: "good"})
+	stream, stop := openStream(t, srv)
+	defer stop()
+	waitForBrowsers(t, svc)
+
+	type outcome struct {
+		out bridgesvc.Outcome
+		err error
+	}
+	results := make(chan outcome, 1)
+	go func() {
+		out, err := svc.Replay(context.Background(), browserbridge.TestFlow(srv.URL+bridgesvc.TestPagePath), bridgesvc.ReplayOptions{})
+		results <- outcome{out, err}
+	}()
+
+	command := readCommand(t, stream)
+	underCap, overCap := 0, 1
+	postResult(t, srv, "good", browserbridge.Result{ID: command.ID, StepIndex: &underCap, Status: browserbridge.StatusOK,
+		Download: &browserbridge.Download{Path: "/tmp/small.pdf", Filename: "small.pdf", Bytes: 4, Data: "YWJjZA=="}})
+	postResult(t, srv, "good", browserbridge.Result{ID: command.ID, StepIndex: &overCap, Status: browserbridge.StatusOK,
+		Download: &browserbridge.Download{Path: "/tmp/huge.pdf", Filename: "huge.pdf", Bytes: browserbridge.DownloadBytesCap + 1, TooLarge: true}})
+	postResult(t, srv, "good", browserbridge.Result{ID: command.ID, Status: browserbridge.StatusDone})
+
+	select {
+	case got := <-results:
+		if got.err != nil {
+			t.Fatalf("Replay() = %v, want nil error", got.err)
+		}
+		if len(got.out.Downloads) != 2 {
+			t.Fatalf("Downloads = %+v, want both reported", got.out.Downloads)
+		}
+		small, huge := got.out.Downloads[0], got.out.Downloads[1]
+		if small.Data != "YWJjZA==" || small.TooLarge {
+			t.Errorf("small download = %+v, want its Data carried through and TooLarge false", small)
+		}
+		if huge.Data != "" || !huge.TooLarge {
+			t.Errorf("huge download = %+v, want no Data and TooLarge true", huge)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatalf("Replay() never returned after the final result")
+	}
+}
+
 // TestReplay_HonoursTheCallersTimeout pins that a step's own budget
 // bounds the run, and that the sentence names it -- the default is two
 // minutes, far longer than this test would wait.

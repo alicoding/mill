@@ -36,7 +36,8 @@ page may call are `settings.get`, `notify`, `storage.get`,
 `content.createNote`, `content.createCard`, `content.updateCard`,
 `content.appendListRow`, `content.createList`,
 `content.setCardFields`, `files.list`,
-`convert.htmlToMarkdown`, `requestGuardedAction`, `runCommand`,
+`convert.htmlToMarkdown`, `convert.markdownToHtml`,
+`requestGuardedAction`, `runCommand`,
 in a capture, `capture.done` and `capture.cancel`, and in a canvas
 object's face, `object.updatePayload` (merge a patch into this
 object's payload; an empty string deletes a key) and
@@ -67,6 +68,32 @@ readonly context: Record<string, unknown>;
 
 The surface's context, always current: a capture's chosen
 destination, a view's own ids.
+
+***
+
+### formatDate
+
+```ts
+formatDate: (iso, style?) => string;
+```
+
+Formats an ISO timestamp the way Mill's own interface does —
+same-DOM's api.formatDate's twin, answered directly since it
+touches nothing outside its own input and needs no call().
+
+#### Parameters
+
+##### iso
+
+`string`
+
+##### style?
+
+`"relative"` \| `"short"` \| `"long"`
+
+#### Returns
+
+`string`
 
 ***
 

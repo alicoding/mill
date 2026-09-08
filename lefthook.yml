@@ -22,6 +22,18 @@ pre-commit:
       # same probe-on-touch shape as review-report-selftest.
       glob: "scripts/check-framework-api-first*.sh"
       run: ./scripts/check-framework-api-first-selftest.sh
+    - name: bash-portability
+      # Goal 0403 S2e: a scripts/**/*.sh or build/**/*.sh file using a
+      # bash-4-only construct is a latent exit 127/2 on GitHub's macOS
+      # runner (/bin/bash 3.2) -- grep-only, so like comment-hygiene it
+      # needs no build setup.
+      glob: "{scripts/**/*.sh,build/**/*.sh}"
+      run: ./scripts/check-bash-portability.sh
+    - name: bash-portability-selftest
+      # Fixture-tests the gate above -- same probe-on-touch shape as
+      # framework-api-first-selftest.
+      glob: "scripts/check-bash-portability*.sh"
+      run: ./scripts/check-bash-portability-selftest.sh
     - name: test-side-effects
       # Goal 0356: a _test.go file constructing the real clipboard Host
       # adapter without the MILL_CLIPBOARD_HOST_OK opt-in in the same

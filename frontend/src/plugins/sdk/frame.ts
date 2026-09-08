@@ -43,7 +43,8 @@ export interface MillFrameApi {
    * `content.createNote`, `content.createCard`, `content.updateCard`,
    * `content.appendListRow`, `content.createList`,
    * `content.setCardFields`, `files.list`,
-   * `convert.htmlToMarkdown`, `requestGuardedAction`, `runCommand`,
+   * `convert.htmlToMarkdown`, `convert.markdownToHtml`,
+   * `requestGuardedAction`, `runCommand`,
    * in a capture, `capture.done` and `capture.cancel`, and in a canvas
    * object's face, `object.updatePayload` (merge a patch into this
    * object's payload; an empty string deletes a key) and
@@ -68,4 +69,8 @@ export interface MillFrameApi {
   /** The surface's context, always current: a capture's chosen
    * destination, a view's own ids. */
   readonly context: Record<string, unknown>
+  /** Formats an ISO timestamp the way Mill's own interface does —
+   * same-DOM's api.formatDate's twin, answered directly since it
+   * touches nothing outside its own input and needs no call(). */
+  formatDate: (iso: string, style?: 'relative' | 'short' | 'long') => string
 }

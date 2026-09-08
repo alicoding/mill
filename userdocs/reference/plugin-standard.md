@@ -6,12 +6,16 @@ kind: reference
 
 Every plugin that ships with Mill follows these rules, and the
 conformance check enforces the ones a machine can. Follow them and
-your plugin feels like part of Mill.
+your plugin feels like part of Mill. Bringing a plugin over from
+another platform? Start with [Port an extension from another
+platform](port-a-vscode-extension.md).
 
 ## Configuration
 
-1. Declare every setting in the manifest with a type, a default and a
-   one-sentence description. (checked)
+1. Declare every setting in the manifest's `configuration` key, with a
+   type, a default and a one-sentence description. (checked) `settings`
+   still loads as a deprecated alias; renaming to `configuration` clears
+   the warning.
 2. Settings render in Mill's Settings; a plugin never builds its own
    settings page. (review)
 3. Request only the capabilities and hosts you use. (checked: an
@@ -24,7 +28,11 @@ your plugin feels like part of Mill.
    reference declared commands. (checked) A command may also seat
    itself in Mill's menu bar with `menu: { path, group?, order? }` --
    `path` is `"workflow"`, `"atlas"` or `"help"` only, never one of
-   Mill's own menus. (checked)
+   Mill's own menus. (checked) A ported manifest's own
+   `contributes.menus` is accepted too, mapped onto whichever of
+   Mill's seats it names; see [the porting
+   guide](port-a-vscode-extension.md#menu-ids-and-mills-seats).
+   (checked)
 5. Ship no default hotkey; people bind their own in Settings ›
    Shortcuts. (checked: the SDK has no hotkey field; this rule
    documents why)
@@ -170,69 +178,23 @@ your plugin feels like part of Mill.
     `registerCapture` work the same either way — write one `main.js`
     for both. (checked: refuses the install)
 
-## Extension interop
+## SDK conveniences
 
-33. An extension that needs another installed extension's capability
-    declares it in `dependencies: [{ "id", "version" }]` (a semver
-    range) rather than reaching into it directly — never
-    `app.plugins[id]`-style reach. The loader activates a dependency
-    before its dependant; a dependant whose dependency never activates
-    shows *Waits for `<id>`* on its Extensions row instead of running.
-    Installing an extension whose `dependencies` name an id that is
-    not installed, a version outside the declared range, or a mutual
-    dependency cycle refuses the install, naming what is missing.
-    (checked: refuses the install)
-
-## Depending on another extension
-
-Declare the id and the version range you need:
-
-```json
-{
-  "id": "my-consumer",
-  "dependencies": [{ "id": "my-provider", "version": ">=1.0.0" }]
-}
-```
-
-Reach it through `api.extensions.get`, never through a live handle you
-found some other way:
-
-```js
-export async function activate(api) {
-  const provider = await api.extensions.get('my-provider')
-  if (provider) {
-    const result = await provider.someMethod('argument')
-  }
-}
-```
-
-`api.extensions.get(id)` resolves to `undefined` for any id not in
-your own manifest's `dependencies`, and again for a declared
-dependency that has not activated yet.
-
-The other half of the door is `exports`: name the methods on your own
-`activate()`'s returned object a dependant may call.
-
-```json
-{
-  "id": "my-provider",
-  "exports": ["someMethod"]
-}
-```
-
-```js
-export function activate(api) {
-  return {
-    someMethod(argument) { return `did something with ${argument}` },
-  }
-}
-```
-
-Only the methods you list in `exports` are callable, and only by an
-extension that declares you as a dependency; every other property on
-the returned object is plain data, readable by any declared dependant
-without an allowlist entry. Calling a method you did not list throws
-*Method `<name>` is not exported by `<id>`.*
+The SDK carries a few small helpers so a plugin never re-invents them:
+`api.ui.el(tag, attrs, children)` builds one DOM element the safe way —
+never `innerHTML`, so nothing you pass can inject markup — for the
+rest of your face's own layout (rule 10 still governs presenting a
+*result*, through `api.ui.renderOutput`). `api.fetchJSON(url, init?)`
+is `api.fetch` plus a JSON parse, answering `{ ok, status, data,
+errorText }` and never throwing, not even for a denied request or a
+non-2xx response. `api.storage.pushList(key, item, { dedupeBy?, max?
+})` and `api.storage.getList(key)` are sugar over `get`/`set` for a
+request-history or cache-list. `api.convert.markdownToHtml(markdown)`
+is `htmlToMarkdown`'s reverse direction, the same sanitized renderer.
+`api.formatDate(iso, style)` formats a timestamp the way Mill's own
+interface does (`'relative'`, `'short'` or `'long'`) instead of a
+plugin's own `Date` math. Every one of these is optional — hand-rolling
+the same shape yourself still works, it's just more code.
 
 ## Checking your own plugin
 
