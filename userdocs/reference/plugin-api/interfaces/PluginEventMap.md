@@ -8,8 +8,12 @@
 
 The events a plugin can subscribe to through api.on.
 'contents:changed' fires whenever anything on the board is created,
-edited, moved, or deleted, carrying the changed entry's id. A closed
-map: a new event arrives here as a type addition, never a loose
+edited, moved, or deleted, carrying the changed entry's id.
+'entity.*' fires on every entity.created/referenced/dereferenced/
+deleted; 'object.*' fires on every object.created/deleted — a
+filter's `kinds` narrows 'entity.*' by entityKind ('list', say) and
+'object.*' by the object's own kind ('table', say). A closed map: a
+new event arrives here as a type addition, never a loose
 convention.
 
 ## Properties
@@ -35,4 +39,20 @@ id: string;
 
 ```ts
 optional kind?: string;
+```
+
+***
+
+### entity.\*
+
+```ts
+entity.*: LifecycleEventPayload;
+```
+
+***
+
+### object.\*
+
+```ts
+object.*: LifecycleEventPayload;
 ```

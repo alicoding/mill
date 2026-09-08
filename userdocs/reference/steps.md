@@ -73,13 +73,13 @@ Fires on a cron schedule.
 
 ### System event
 
-Fires when Mill's own engine emits an internal event (a run finishing, failing, or parking for approval), so a workflow can react to the platform itself, like forwarding pending approvals to another device.
+Fires when Mill's own engine emits an internal event: a run finishing, failing, or parking for approval, or a Configure entity or board object being created, referenced, dereferenced, or deleted. React to the platform itself, like forwarding a pending approval to another device or flagging a list nobody references anymore.
 
 - Takes: nothing — Produces: JSON
 - Effect: none — pure computation
 - Settings:
-  - **Event** — Which internal event fires this trigger. "Decision parked" fires when a guardrail ask or human-review checkpoint parks awaiting approval; the run events fire once a run reaches a terminal state; "update-available" fires when an update check finds a newer release on this install's channel.
-  - **Workflow scope** — Fire for every workflow's matching event, or scope to one specific workflow. Empty means all workflows.
+  - **Event** — Which internal event fires this trigger. "Decision parked" fires when a guardrail ask or human-review checkpoint parks awaiting approval; the run events fire once a run reaches a terminal state; "update-available" fires when an update check finds a newer release on this install's channel. The entity/object events fire on a Configure entity or board object's own lifecycle. Pair "entity dereferenced" with a Branch step checking remaining == 0 to catch only the case where nothing references it anymore.
+  - **Workflow scope** — Fire for every workflow's matching event, or scope to one specific workflow. Empty means all workflows. Has no effect on an entity/object event, which carries no source workflow.
 
 ### Webhook fired
 
