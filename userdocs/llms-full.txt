@@ -2609,10 +2609,10 @@ Shows a notification when the workflow reaches this step. "Title attribute" and 
 - Takes: nothing — Produces: its input, unchanged
 - Effect: changes something on this machine
 - Settings:
-  - **Title** — The notification's first line.
-  - **Title attribute (optional)** — Which Attributes field replaces the fixed title, when set.
-  - **Message** — What the notification says.
-  - **Body attribute (optional)** — Which Attributes field replaces the fixed message, when set.
+  - **Title** — The notification's first line. Use {{attribute}} to include a value.
+  - **Title attribute (optional)** — Which Attributes field replaces the fixed title, when set. Prefer {{attribute}} in the text.
+  - **Message** — What the notification says. Use {{attribute}} to include a value.
+  - **Body attribute (optional)** — Which Attributes field replaces the fixed message, when set. Prefer {{attribute}} in the text.
   - **Send to** — Leave empty to reach every paired device.
 
 ### Save list row
