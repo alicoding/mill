@@ -11,6 +11,14 @@ import {
 import { contextMenu } from './fixtures/contextMenu'
 import { clickBoardPoint, groupCard, noteCard, zoomAllTheWayOut } from './fixtures/atlasBoard'
 import { findEmptyBoardPoint, rectsOverlap } from './fixtures/atlasEmptyRegion'
+import { callBindingViaRPC } from './fixtures/wailsRpc'
+import { waitForViewportStable } from './fixtures/animation'
+
+// "Board gallery"'s own stable Go ID (internal/domain/atlas/builtin.go's
+// cardSketchesID) -- read here rather than hand-kept so its child count
+// below always matches what the seed actually files under it (goal 0358
+// S7's literal-seeded-count gate).
+const ATLAS_BOARD_GALLERY_ID = 'atlas-card-session-sketches'
 
 // Own dedicated server (docs/goals/0183): this spec deletes the seeded
 // root card down to ZERO spaces and back, a global root-card-count
@@ -139,26 +147,32 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     }
 
     // "Board gallery" nests board objects, never cards -- a region
-    // frame under goal 0266's law. Deleting it promotes its 9 seeded
-    // objects (goal 0233's EffectiveParentID seam, joined by the json/
-    // yaml twins of goal 0269 and the xlsx workbook of goal 0365) out
-    // to THIS root level; they must land visibly placed, clear of
-    // "Client records", never stacked on top of it the way their
-    // stale pre-promotion X/Y used to.
+    // frame under goal 0266's law. Deleting it promotes its seeded
+    // objects (goal 0233's EffectiveParentID seam) out to THIS root
+    // level; they must land visibly placed, clear of "Client records",
+    // never stacked on top of it the way their stale pre-promotion X/Y
+    // used to.
     const clientRecords = groupCard(page, 'Client records')
     await expect(clientRecords).toBeVisible()
 
+    // "Board gallery" is the permanent home for seeded board objects
+    // (testing.md), so its child count moves as seeds are added --
+    // read back through the same door the app itself lists objects
+    // through, never hand-kept, so the next seed never breaks this
+    // assertion (goal 0358 S7).
+    const galleryObjects = await callBindingViaRPC<{ ParentID: string }[]>(
+      page,
+      'github.com/alicoding/mill/internal/services/atlassvc.AtlasService.Objects',
+      [],
+    )
+    const galleryObjectCount = galleryObjects.filter((o) => o.ParentID === ATLAS_BOARD_GALLERY_ID).length
+
     // A frame under the 0266 law: delete via its header menu, and the
-    // container-delete gate now counts the 9 filed objects it promotes.
+    // container-delete gate counts the filed objects it promotes.
     await groupCard(page, 'Board gallery').getByTestId('atlas-group-header').click({ button: 'right' })
     await expect(menu).toBeVisible()
     await menu.getByText('Delete', { exact: true }).click()
-    // "Board gallery" is the permanent home for seeded board objects
-    // (testing.md), so adding one moves this number. No door reads a
-    // FRAME's child count back: React Flow renders no parent link in
-    // the DOM, and no binding lists a container's contents. Tracked
-    // under goal 0358 S7.
-    await expect(page.getByText('9 items inside move up a level. You can undo right after.')).toBeVisible() // count: seed-owned -- Board gallery's seeded objects.
+    await expect(page.getByText(`${galleryObjectCount} items inside move up a level. You can undo right after.`)).toBeVisible()
     // The confirm dialog's own Delete button (deletePromoteConfirm),
     // scoped to the dialog so the frame menu's identical label can't
     // double-match.
@@ -175,13 +189,18 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
     await page.keyboard.press('Meta+ArrowUp')
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
+    // The up-nav's own fitView animates the viewport transform (d3-zoom,
+    // not CSS) -- a boundingBox() read racing it captures each promoted
+    // object against a different in-flight transform, which can read as
+    // a false overlap between two objects that never actually touch.
+    await waitForViewportStable(page.getByTestId('atlas-board'))
 
     const promotedObjects = page.locator('[data-testid="atlas-board-object"]')
-    await expect(promotedObjects).toHaveCount(8)
+    await expect(promotedObjects).toHaveCount(galleryObjectCount)
     const clientRecordsBox = await clientRecords.boundingBox()
     if (!clientRecordsBox) throw new Error('Client records has no bounding box')
     const promotedBoxes = []
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < galleryObjectCount; i++) {
       const box = await promotedObjects.nth(i).boundingBox()
       if (!box) throw new Error('promoted board object has no bounding box')
       expect(rectsOverlap(box, clientRecordsBox), 'a promoted board object must not overlap the sibling card').toBe(false)

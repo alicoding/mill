@@ -36,7 +36,12 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     await page.getByRole('link', { name: 'Atlas' }).click()
     await expect(page.getByTestId('atlas-board')).toBeVisible()
 
-    await createBoardObjectViaRPC(page, 'diagram', { mirrorPath: mermaidFile }, { X: 960, Y: 80 }, ATLAS_BOARD_GALLERY_ID)
+    // X:1180 is a column no seeded board-object golden occupies in any
+    // row (boardobject_builtin.go's own grid tops out at X:960) -- the
+    // xlsx workbook goal 0365 S1 seeded at (960, 240) sits directly
+    // under this diagram's own natural render height when the two
+    // share a column, so this test's own fixture stays clear of it.
+    await createBoardObjectViaRPC(page, 'diagram', { mirrorPath: mermaidFile }, { X: 1180, Y: 80 }, ATLAS_BOARD_GALLERY_ID)
     await page.reload()
     await page.getByRole('link', { name: 'Atlas' }).click()
     await expect(page.getByTestId('atlas-board')).toBeVisible()
@@ -86,6 +91,12 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     await expect(xlsxSheet).toBeVisible()
     const xlsxGrid = xlsxSheet.getByTestId('atlas-object-sheet-grid')
     await expect(xlsxGrid.locator('thead th').first()).toHaveText('Item')
+    // Object first, cell second (goal 0354's activation contract): the grid
+    // is an interactive face, so a click shield covers it until the object
+    // is selected -- the same activation the csv sheet edit case in
+    // atlas-sheet-object.spec.ts drives before its own dblclick.
+    await xlsxSheet.click()
+    await expect(xlsxSheet.getByTestId('atlas-object-click-shield')).toHaveCount(0)
     await xlsxGrid.locator('tbody td').first().dblclick()
     await expect(xlsxSheet.getByTestId('atlas-object-sheet-cell-input')).toHaveCount(0)
 
