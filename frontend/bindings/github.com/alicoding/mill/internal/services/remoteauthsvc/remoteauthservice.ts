@@ -19,6 +19,30 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 import * as $models from "./models.js";
 
 /**
+ * AcceptPairingRequest is the numeric-comparison trust decision itself
+ * (goal 0379): Settings > Connections > Browsers' Accept button,
+ * meant to be called only after a human has read the SAME code in both
+ * the popup and this card. Mints a browser pairing exactly like
+ * PairBrowser (mintDevice, KindBrowser), so a browser's post-pairing
+ * storage write is unchanged whichever path it arrived through.
+ * Rejects a stale/wrong/already-resolved id server-side -- Accept
+ * after expiry is refused, never silently minting a token for a
+ * request the popup has already given up on.
+ */
+export function AcceptPairingRequest(requestID: string): $CancellablePromise<$models.BrowserPairing> {
+    return $Call.ByID(2479429157, requestID);
+}
+
+/**
+ * DenyPairingRequest is Settings > Connections > Browsers' Deny
+ * button: marks the pending request denied so a browser's next poll
+ * fails closed, without touching the paired-device list at all.
+ */
+export function DenyPairingRequest(requestID: string): $CancellablePromise<void> {
+    return $Call.ByID(4095290179, requestID);
+}
+
+/**
  * GeneratePairingCode mints a new single-use enrollment code on
  * demand, replacing any code still outstanding (only one is ever
  * live at a time). Held in memory only -- see devicesSettingsKey's
@@ -75,6 +99,17 @@ export function ListHooks(): $CancellablePromise<$models.DeviceInfo[] | null> {
  */
 export function MintHookToken(label: string): $CancellablePromise<$models.HookToken> {
     return $Call.ByID(3786229052, label);
+}
+
+/**
+ * PendingPairingRequest is Settings > Connections > Browsers' own poll
+ * (goal 0379, no server push exists to tell it a request just arrived)
+ * -- the SAME code the popup shows, for the human comparison step
+ * Accept/Deny confirms. A zero-value RequestID means nothing is
+ * pending right now, including a request whose TTL just lapsed.
+ */
+export function PendingPairingRequest(): $CancellablePromise<$models.PendingPairingRequest> {
+    return $Call.ByID(2775362346);
 }
 
 /**

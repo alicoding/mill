@@ -7,7 +7,9 @@ export {
 };
 
 export type {
+    BrowserPairing,
     DeviceInfo,
     HookToken,
-    PairingCodeInfo
+    PairingCodeInfo,
+    PendingPairingRequest
 } from "./models.js";

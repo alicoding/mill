@@ -33,6 +33,15 @@ type stubAuth struct {
 	// re-checking the token on its keepalive tick.
 	revoked atomic.Bool
 	pairErr error
+
+	// The nearby-flow seam (goal 0379): a test sets these to control
+	// what RequestPairing/PairingStatus answer, and reads the *Calls
+	// slices back to pin what the HTTP layer forwarded.
+	pairRequestInfo  remoteauthsvc.PairingRequestInfo
+	pairRequestErr   error
+	pairRequestCalls []string // one "label|source" entry per call
+	pairStatus       remoteauthsvc.PairingRequestStatus
+	pairStatusCalls  []string // one requestID per call
 }
 
 func (a *stubAuth) PairBrowser(code, label, source string) (remoteauthsvc.BrowserPairing, error) {
@@ -40,6 +49,19 @@ func (a *stubAuth) PairBrowser(code, label, source string) (remoteauthsvc.Browse
 		return remoteauthsvc.BrowserPairing{}, a.pairErr
 	}
 	return remoteauthsvc.BrowserPairing{Token: a.token, DeviceID: "browser-1", Label: label}, nil
+}
+
+func (a *stubAuth) RequestPairing(label, source string) (remoteauthsvc.PairingRequestInfo, error) {
+	a.pairRequestCalls = append(a.pairRequestCalls, label+"|"+source)
+	if a.pairRequestErr != nil {
+		return remoteauthsvc.PairingRequestInfo{}, a.pairRequestErr
+	}
+	return a.pairRequestInfo, nil
+}
+
+func (a *stubAuth) PairingStatus(requestID string) remoteauthsvc.PairingRequestStatus {
+	a.pairStatusCalls = append(a.pairStatusCalls, requestID)
+	return a.pairStatus
 }
 
 func (a *stubAuth) ValidateBrowserToken(token string) (remoteauthsvc.DeviceInfo, bool) {

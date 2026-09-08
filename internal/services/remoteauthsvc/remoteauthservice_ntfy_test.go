@@ -296,3 +296,22 @@ func TestPhoneChannel_ShouldDeliver(t *testing.T) {
 		t.Fatalf("ShouldDeliver() = false with a paired device (Focused=true), want true -- a phone's delivery must never depend on a browser tab's focus")
 	}
 }
+
+// TestPhoneChannel_ExcludesBrowserPairRequest pins goal 0379 Decision
+// 3: even with a paired phone ready to receive, an incoming browser
+// pair-request never reaches it -- Accept only ever happens at the
+// desktop Mill the browser is trying to reach.
+func TestPhoneChannel_ExcludesBrowserPairRequest(t *testing.T) {
+	s := newTestService(t)
+	ch := s.NotificationChannel()
+	if _, err := s.mintDevice("Phone", "", KindDevice); err != nil {
+		t.Fatalf("mintDevice() = %v, want nil error", err)
+	}
+
+	if ch.ShouldDeliver(notification.Event{Type: browserPairRequestEventType}) {
+		t.Fatalf("ShouldDeliver(browser-pair-request) = true with a paired phone, want false")
+	}
+	if !ch.ShouldDeliver(notification.Event{Type: "workflow-notify"}) {
+		t.Fatalf("ShouldDeliver(workflow-notify) = false with a paired phone, want true -- only browser-pair-request is excluded")
+	}
+}
