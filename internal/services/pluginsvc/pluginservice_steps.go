@@ -229,7 +229,7 @@ func externalNodeType(info PluginInfo, st StepContribution, pack *jsengine.Pack)
 		Output:       "Text",
 		Consumes:     []composition.PayloadKind{composition.PayloadText},
 		Produces:     composition.PayloadProduce{Kind: composition.PayloadText},
-		PaletteGroup: "transform",
+		PaletteGroup: composition.PaletteGroupTransform,
 		Complexity:   composition.ComplexityBasic,
 	}
 	return composition.ExternalNodeType{NodeType: nt, Exec: stepExec(pack, st.ID)}

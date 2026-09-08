@@ -32,7 +32,8 @@ func SetAtlasLedgerSync(fn func(folderPath, parentTitle, sourceRunID string) (st
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-atlas-ledger-sync", Kind: KindApply,
-		Label: "Mirror delivery ledger from a docs folder",
+		PaletteGroup: PaletteGroupApply,
+		Label:        "Mirror delivery ledger from a docs folder",
 		// ClassLocal: writes to Atlas's own persisted store, same
 		// classification as the other apply-atlas-* nodes.
 		Effect:     guardrail.ClassLocal,

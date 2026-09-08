@@ -437,13 +437,14 @@ func runShellCommandBlock(node Node, ctx ExecContext, steps []ParsedCommandStep)
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "process-shell-command", Kind: KindProcess,
-		Effect:      guardrail.ClassExternal,
-		Complexity:  ComplexityAdvanced,
-		Consumes:    []PayloadKind{PayloadText},
-		Produces:    PayloadProduce{Kind: PayloadText},
-		Output:      "combined stdout+stderr from every sub-command that ran",
-		Label:       "Run a captured command",
-		Description: "Runs the captured payload exactly as written, in your real login shell by default, or inside a Configure-authored execution environment (its shell, directory, and variables) when one is chosen. A piped command stays one step; commands separated by a new line or && show as separate steps. External effect: the run asks for your approval by default.",
+		PaletteGroup: PaletteGroupActions,
+		Effect:       guardrail.ClassExternal,
+		Complexity:   ComplexityAdvanced,
+		Consumes:     []PayloadKind{PayloadText},
+		Produces:     PayloadProduce{Kind: PayloadText},
+		Output:       "combined stdout+stderr from every sub-command that ran",
+		Label:        "Run a captured command",
+		Description:  "Runs the captured payload exactly as written, in your real login shell by default, or inside a Configure-authored execution environment (its shell, directory, and variables) when one is chosen. A piped command stays one step; commands separated by a new line or && show as separate steps. External effect: the run asks for your approval by default.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "envId", Label: "Execution environment",

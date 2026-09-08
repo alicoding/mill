@@ -2,20 +2,35 @@
 // llms-full.txt) into userdocs/ and the README's inventory block --
 // run via `go generate ./internal/docsgen`; TestUserDocs_MatchCommitted
 // and TestREADME_MatchesGenerated keep the committed output honest.
+// -currency prints the plugin API maturity ledger's git-derived
+// currency instead, for a live reader (the control room dashboard) --
+// see printCurrency.
 package main
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/alicoding/mill/internal/docsgen"
+	"github.com/alicoding/mill/internal/services/pluginsvc"
 	"github.com/alicoding/mill/internal/services/servicetest"
 )
 
 func main() {
+	currency := flag.Bool("currency", false, "print each family's git-derived code/docs currency as JSON instead of regenerating userdocs/")
+	flag.Parse()
 	root := filepath.Join("..", "..", "userdocs")
+	if *currency {
+		if err := printCurrency(filepath.Join(root, "..")); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := os.WriteFile(filepath.Join(root, "reference", "steps.md"), []byte(docsgen.GenerateStepReference()), 0o600); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -218,4 +233,51 @@ func regenerateReadmeInventory(docsRoot string) error {
 		return fmt.Errorf("write README.md: %w", err)
 	}
 	return nil
+}
+
+// currencyJSONRow is the wire shape -currency prints, one object per
+// family -- the fields goal 0397 removed from the committed maturity
+// ledger, now sourced live instead of regenerated into a file two
+// branches would disagree on.
+type currencyJSONRow struct {
+	Family        string `json:"family"`
+	CodeCommit    string `json:"codeCommit,omitempty"`
+	CodeChangedAt string `json:"codeChangedAt,omitempty"`
+	DocsCommit    string `json:"docsCommit,omitempty"`
+	DocsChangedAt string `json:"docsChangedAt,omitempty"`
+}
+
+// printCurrency writes every family's git-derived currency to stdout
+// as a JSON array, reading repoRoot's own git history -- never write
+// this output to a committed path; scripts/dashboard/derive.sh is its
+// only intended reader, merging it into the committed ledger's rows
+// by family at render time.
+func printCurrency(repoRoot string) error {
+	rows := pluginsvc.GatherAllCurrency(repoRoot)
+	out := make([]currencyJSONRow, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, currencyJSONRow{
+			Family:        r.Family,
+			CodeCommit:    r.Currency.CodeCommit,
+			CodeChangedAt: currencyDate(r.Currency.CodeChangedAt),
+			DocsCommit:    r.Currency.DocsCommit,
+			DocsChangedAt: currencyDate(r.Currency.DocsChangedAt),
+		})
+	}
+	raw, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal currency rows: %w", err)
+	}
+	fmt.Println(string(raw))
+	return nil
+}
+
+// currencyDate renders a zero time.Time as "" (no evidence yet) and
+// any other time as YYYY-MM-DD, the same wire format the committed
+// ledger used before goal 0397 moved currency off it.
+func currencyDate(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format("2006-01-02")
 }

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Events } from '@wailsio/runtime'
 import { refreshKeybindings, refreshNodeTypes, refreshRequests, refreshWorkflows } from '../shared/store'
-import { refreshAIProviders, refreshClientCerts, refreshConversionProfiles, refreshDeclaredStepTypes, refreshDecisions, refreshEnvironments, refreshExecEnvs, refreshLists, refreshMCPServers, refreshSecretSources } from '../shared/configureEntityStore'
+import { refreshAIProviders, refreshClientCerts, refreshConversionProfiles, refreshDeclaredStepTypes, refreshDecisions, refreshEnvironments, refreshExecEnvs, refreshLists, refreshListUsage, refreshMCPServers, refreshSecretSources } from '../shared/configureEntityStore'
 import { refreshVaultStatus } from '../shared/vaultStatusStore'
 import { refreshSecretTitles } from '../shared/secretTitleCache'
 import { refreshDisabledExtensions } from '../shared/extensionEnablementStore'
@@ -18,7 +18,7 @@ import { refreshHasCustomPanelPosition } from '../shared/quickPanelPositionStore
 // own store (shared/store.ts's workflows/requests, shared/
 // configureEntityStore.ts's lists/decisions/mcpServers/execEnvs/
 // environments/conversionProfiles/secretSources/aiProviders/
-// clientCerts/declaredStepTypes, shared/vaultStatusStore.ts's
+// clientCerts/declaredStepTypes/listUsage, shared/vaultStatusStore.ts's
 // vaultStatus). 'guardrail-rule' has no shared-store consumer here --
 // useGuardrailBadges/the Guardrails section subscribe to it directly.
 // 'steptype' (ADR-0037, goal 0054) refreshes BOTH the Configure page's
@@ -31,14 +31,22 @@ import { refreshHasCustomPanelPosition } from '../shared/quickPanelPositionStore
 // through the door's own event, goal 0352 part 2) needs an entry here
 // -- without one the restored entity stays invisible until a reload.
 const ENTITY_REFRESHERS: Record<string, () => Promise<void> | void> = {
-  'workflow': refreshWorkflows,
+  // A workflow node's own config edit moves Configure's List usage
+  // counts too (goal 0392 S1) -- binding/unbinding a listId reference
+  // has no entity kind of its own to announce under.
+  'workflow': () => { void refreshWorkflows(); void refreshListUsage() },
   // Stopping a run (CancelRun) and answering one (ResolveApproval)
   // both announce through this door and nothing else -- routed here
   // so the Review badge/queue stop needing a poll of their own
   // (review/pendingReviewStore.ts).
   'run': () => { void refreshWorkflows(); void refreshPendingReview() },
   'request': refreshRequests,
-  'list': refreshLists,
+  'list': () => { void refreshLists(); void refreshListUsage() },
+  // Every Atlas mutation shares this one entity string (this file's
+  // own header comment) -- a board table's own create/delete is the
+  // one that actually moves usage counts, but re-fetching one cheap
+  // summary on any Atlas write is simpler than a table-specific event.
+  'atlas': refreshListUsage,
   'mcpserver': refreshMCPServers,
   'decision': refreshDecisions,
   'execenv': refreshExecEnvs,

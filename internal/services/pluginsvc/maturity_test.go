@@ -103,10 +103,9 @@ func TestReport_GeneratedAtUsesTheInjectedClock(t *testing.T) {
 
 // TestReport_StableFieldsIndependentOfClock proves every field the
 // committed markdown/JSON actually carries (family, level, evidence,
-// currency, flags) is identical across two Report calls that differ
-// only in which clock they were given -- the guarantee `go generate`
-// on an unchanged commit needs to be idempotent regardless of today's
-// date.
+// flags) is identical across two Report calls that differ only in
+// which clock they were given -- the guarantee `go generate` on an
+// unchanged commit needs to be idempotent regardless of today's date.
 func TestReport_StableFieldsIndependentOfClock(t *testing.T) {
 	repoRoot := "../../.."
 	a := Report(repoRoot, func() time.Time { return time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC) })
