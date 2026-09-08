@@ -36,6 +36,10 @@ type RunOptions struct {
 	// trigger, a child call) leaves both zero and inherits the default.
 	EnvironmentID  string
 	EnvironmentSet bool
+	// Responder is this run's live, in-memory-only webhook responder
+	// (goal 0373) -- see composition.ExecContext.Responder's own doc
+	// comment. nil for every caller but the webhook ingress.
+	Responder composition.WebhookResponder
 }
 
 // environmentFor resolves which Environment a run executes in: the
@@ -127,6 +131,19 @@ func (e *ExecutionService) RunWorkflowWithSecretsToken(workflowID string, kind R
 // only one that can say "none" and mean it rather than "no opinion."
 func (e *ExecutionService) RunWorkflowInEnvironment(workflowID string, kind RunKind, values map[string]string, payload, environmentID string) (RunSummary, error) {
 	return e.runWorkflowStart(workflowID, kind, RunOptions{Values: values, Payload: payload, EnvironmentID: environmentID, EnvironmentSet: true})
+}
+
+// RunWorkflowWithResponder is RunWorkflowWithPayload plus a run-scoped
+// webhook responder (goal 0373) -- the webhook ingress's own entry
+// point, used only for a target whose armed graph contains a
+// respond-webhook node. Every other caller of RunWorkflowWithPayload is
+// unaffected -- this is an additive method, not a signature change to
+// the existing one. Not Wails-bound: composition.WebhookResponder
+// carries a live channel, which has no wire representation.
+//
+//wails:ignore
+func (e *ExecutionService) RunWorkflowWithResponder(workflowID string, kind RunKind, values map[string]string, payload string, responder composition.WebhookResponder) (RunSummary, error) {
+	return e.runWorkflowStart(workflowID, kind, RunOptions{Values: values, Payload: payload, Responder: responder})
 }
 
 // RunWorkflowStepped starts a workflow run in debug "step mode"

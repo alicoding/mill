@@ -145,6 +145,7 @@ const NODE_TYPE_GROUP: Record<string, PaletteGroupId> = {
   'apply-atlas-card-update': 'apply',
   'apply-atlas-card-link': 'apply',
   'apply-list-row': 'apply',
+  'apply-respond-webhook': 'apply',
   // Declared step types (ADR-0037, goal 0054 slice A): data-backed, not
   // a RegisterNodeType call site, so not counted in this map's "31
   // registered node types" total above -- the seeded "Check httpbin"

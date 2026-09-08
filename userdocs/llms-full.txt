@@ -2111,6 +2111,7 @@ Fires when a tool on this machine posts to Mill's hook endpoint, so a workflow c
 - Effect: none — pure computation
 - Settings:
   - **Source (optional)** — Fire only for events whose source field matches this exactly, in lowercase. Leave empty to fire on any source, or on an event with no source at all.
+  - **Reply within (seconds)** — How long the caller waits for a reply before Mill answers for it. Only matters when this workflow has an Answer the webhook step.
 
 ## Capture
 
@@ -2374,6 +2375,17 @@ Validates the data flowing through this step against a set of named rules (busin
 - Effect: none — pure computation
 
 ## Act
+
+### Answer the webhook
+
+Sends this run's reply to the tool that fired the webhook.
+
+- Takes: nothing — Produces: its input, unchanged
+- Effect: changes something on this machine
+- Settings:
+  - **Status code** — The HTTP status code the caller receives.
+  - **Reply body** — Usually JSON in the calling tool's own schema.
+  - **Content type** — The reply's Content-Type header.
 
 ### Back up Mill data
 
@@ -3445,58 +3457,77 @@ plugin folder there, then reload it.
 
 ## Connections
 
-Everything that reaches Mill from outside: MCP access, Remote access,
-and the Contract export, in that order.
+Everything that reaches Mill from outside: paired devices and
+browsers, MCP and webhook credentials, and the offline contract
+export, in that order.
 
-### MCP access
+### Devices
 
-Lets connected agents read Mill's catalog and, if you turn on
-imports, create workflows and Configure entries. Reading never
-includes secrets. Set the address here to accept connections from
-other devices, not just this Mac — changes take effect after you
-restart Mill. See "Automate with agents" for the full picture.
+Pair a device to reach Mill from your phone or another computer. This
+Mac always has access. Other devices pair once, then stay connected
+until you revoke them.
 
-### Remote access
-
-Mill is reachable from any device on your network. Pairing is what
-keeps it yours. This Mac always has access — other devices pair once,
-then stay connected until you revoke them.
-
-To reach Mill from your phone or another computer, open Settings on
-this Mac and select "Pair a device." Enter the 8-character code it
-shows on the other device within 5 minutes. The pairing page tells you
-how long a paired device stays signed in and that you can revoke it
-anytime. Paired devices appear below with when they were paired and
-last seen, a pencil to rename them, and a Revoke button that
-disconnects them immediately.
+Select "Pair a device." A code appears with a Copy button. Enter this
+code on the other device within 5 minutes — a live "Expires in m:ss"
+countdown shows how long you have left. Once it runs out, select "Pair
+a device" again for a fresh code.
 
 If you already have a background Mill instance reachable from another
-device — for example, one kept running over Tailscale — it now asks
-for pairing the first time you reach it after upgrading. A background
-instance has no window to show "Pair a device" in, so the pairing page
-itself tells you to find the code in the instance's log instead, and
-writes one there on every startup until a first device pairs. Find
-that code wherever you already check the instance's output, then pair
-from any device the same way — enter it within 5 minutes. Once a
-device is paired, the instance stops writing codes to its log.
+device, it asks for pairing the first time you reach it. A background
+instance has no window to show "Pair a device" in, so it writes the
+code to its own log instead, and keeps writing a fresh one on every
+startup until a device pairs. Enter that code on any device the same
+way, within 5 minutes. Once a device is paired, the instance stops
+writing codes to its log.
 
-Code expired before you could read it? The pairing page has a "Get a
-new code" button — it writes a fresh code to the instance's log (or to
-Settings, on this Mac) without needing a restart, and works even after
-another device is already paired.
+Locked out of a background instance with no paired device left? Stop
+it, delete its saved device list, and start it again — it writes a
+fresh code to its log.
 
-Locked out of a background instance with no paired device left to pair
-from? Stop it, delete its saved device list, and start it again — it
-writes a fresh code to its log, same as an instance that's never been
-paired.
+Each paired row shows when it was paired and last seen, a pencil to
+rename it, and Revoke to disconnect it immediately.
 
 On a phone or another computer's browser tab, turn on "Notify me on
-this device" in Settings > Remote access to get a notification when a
-decision needs your action. Your browser asks for permission the first
-time. Notifications only appear while that tab isn't in view, and
-clicking one brings you straight to the item waiting for you. If
-notifications are blocked, turn them back on in your browser's site
-settings — Mill can't ask again automatically.
+this device" to get a notification when a decision needs your action.
+Your browser asks for permission the first time. Notifications only
+appear while that tab isn't in view, and clicking one takes you to the
+item waiting for you. If notifications are blocked, turn them back on
+in your browser's site settings.
+
+### Browsers
+
+Mill can replay a recorded flow in your own browser, signed in as you
+already are. Load Mill's extension into your browser as an unpacked
+extension.
+
+Select "Reveal the extension folder" to find it on disk. Mill address
+shows the address the extension connects to, with a Copy button.
+Opening it in a browser shows Mill's connection page.
+
+Select "Pair a browser." A code appears with a Copy button. Enter this
+code in the browser extension's popup within 5 minutes.
+
+Each paired browser shows Connected or Waiting to connect, when it was
+paired and last seen, and Revoke to disconnect it. "Test the
+connection" replays a short flow in a paired browser to confirm the
+whole path works.
+
+### Credentials
+
+Credentials other tools use to reach Mill.
+
+MCP access sets the address MCP clients connect to — changes take
+effect after you restart Mill. "Allow MCP clients to import data" lets
+a connected client create workflows, integrations, lists and servers;
+reading never includes secrets. With imports allowed, "Ask me before
+each MCP import" makes each import wait for your approval, then time
+out after 2 minutes.
+
+Webhooks let a tool on this Mac fire a workflow by posting to Mill's
+hook endpoint with a token. Select "Add webhook token," name the tool
+that will send it, then select "Mint token." The token shows once —
+copy it now, Mill never shows it again. Each row shows when it was
+minted and Revoke to disconnect it.
 
 ### Contract
 
@@ -4984,3 +5015,87 @@ command — declared as JSON config with the door's `url` and an
 
 Either form is fire-and-forget: Mill acknowledges a well-formed post
 and never asks the tool to wait for, or read, anything back.
+
+---
+
+
+# Reply to a webhook
+
+A workflow that starts from **Webhook fired** can answer the tool that
+posted the event, not just react to it. Add an **Answer the webhook**
+step, and Mill holds the caller's connection open until that step
+runs, then sends its status, body, and content type back verbatim.
+
+## Add the step
+
+Drag **Answer the webhook** onto the canvas from the Apply group and
+connect it after whatever steps decide what to say. Set:
+
+- **Status code** — the HTTP status the caller receives.
+- **Reply body** — usually JSON, in the calling tool's own schema. Use
+  `{{attributeName}}` to drop in a value the trigger or an earlier step
+  captured.
+- **Content type** — the reply's Content-Type header.
+
+Set **Reply within (seconds)** on the trigger's own **Webhook fired**
+step to how long the caller should wait. The tool's own hook timeout
+must be longer than this — a hook that gives up first never sees the
+reply Mill sends.
+
+## The sender reads the response body
+
+Some tools' hook config posts an event and reads the decision straight
+from the response, no script in between. For example, a Claude Code
+`type: "http"` hook posts and reads back this way:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "http://127.0.0.1:8092/__mill/hooks/event",
+            "headers": {
+              "Authorization": "Bearer <token>",
+              "Content-Type": "application/json"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+A hook config that only runs a command reads the same reply from the
+curl response instead:
+
+```
+curl -s -X POST http://127.0.0.1:8092/__mill/hooks/event \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d @-
+```
+
+Either way, whatever the Answer the webhook step sent — status, body,
+content type — is what the tool's hook receives.
+
+## A quiet failure proceeds, at the sender
+
+If nothing answers, if the reply is malformed for what the tool
+expects, or if the tool's own hook times out first, most tools treat
+that as a non-blocking failure and let the action proceed anyway. A
+workflow meant to gate a tool call needs to say so plainly in its own
+reply body, in the tool's own schema — Mill never assumes what
+"allow" or "deny" look like on the other end.
+
+## Order decides what a run answers with
+
+Only the FIRST Answer the webhook step to run in a given execution
+sends anything; every one after it is skipped; a step's own run notes
+say so ("Reply already sent by step …"). Put the steps that decide
+WHAT to say — a Branch, a lookup, a guardrail check — before the
+Answer the webhook step, not after it. A reply step placed too early
+answers before that evaluation ever runs.
