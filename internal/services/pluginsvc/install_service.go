@@ -422,7 +422,26 @@ func (p *PluginService) stagedChecks(root string, rec InstallRecord) ([]string, 
 		slog.Warn("install refused by the static checks", "plugin", m.ID, "problems", refusals)
 		return nil, usererror.New(InstallRefusedCode, installRefusalSentence(refusals[0]))
 	}
+	if err := p.dependencyInstallRefusal(m); err != nil {
+		return nil, err
+	}
 	return warnings, nil
+}
+
+// dependencyInstallRefusal is standard rule 33's install door: every
+// declared dependency must resolve against what is ALREADY on this
+// Mill (installed extensions, built-ins included), and the new
+// manifest may not close a dependency cycle. Run only at install --
+// the registry of what else is installed exists nowhere else.
+func (p *PluginService) dependencyInstallRefusal(m Manifest) error {
+	installed := p.installedManifests()
+	if refusals := dependencyRefusals(m.Dependencies, installed); len(refusals) > 0 {
+		return usererror.New(InstallRefusedCode, refusals[0])
+	}
+	if a, b, found := dependencyCycle(m.ID, m.Dependencies, installed); found {
+		return usererror.New(InstallRefusedCode, fmt.Sprintf("Extensions %s and %s depend on each other.", a, b))
+	}
+	return nil
 }
 
 // InstallRefusedCode is the error code a static-check refusal carries.

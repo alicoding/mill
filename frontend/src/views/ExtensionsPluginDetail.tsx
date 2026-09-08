@@ -74,7 +74,7 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
     extra: (contributes?.mcpServers ?? []).length > 0
       ? <ExtensionsMCPServers pluginId={id} servers={contributes?.mcpServers ?? []} />
       : undefined,
-    status: <PluginStatusNote error={error} status={runtime?.status} policyReason={plugin.PolicyBlocked ?? ''} allowed={allowed} widened={!!plugin.Widened} onAllow={onAllow} />,
+    status: <PluginStatusNote error={error} status={runtime?.status} policyReason={plugin.PolicyBlocked ?? ''} waitsFor={runtime?.waitsFor} allowed={allowed} widened={!!plugin.Widened} onAllow={onAllow} />,
     actions: reloadCommand?.enabled?.() ? (
       <Button
         size="small"
@@ -196,10 +196,11 @@ function pluginClaims(plugin: PluginInfo, t: Translate): string[] {
 
 // What actually happened to this plugin this boot, stated in full --
 // including the two states that ask the user to act.
-function PluginStatusNote({ error, status, policyReason, allowed, widened, onAllow }: {
+function PluginStatusNote({ error, status, policyReason, waitsFor, allowed, widened, onAllow }: {
   error: string | undefined
   status: string | undefined
   policyReason: string
+  waitsFor: string | undefined
   allowed: boolean
   // widened (docs/goals/0375 S2): this extension is back in review
   // because its manifest now declares more than its consent covered,
@@ -209,6 +210,9 @@ function PluginStatusNote({ error, status, policyReason, allowed, widened, onAll
   onAllow: () => void
 }) {
   const { t } = useTranslation('views')
+  if (status === 'waits') {
+    return <Text as="p" size="small" className={listStyles.muted} data-testid="extensions-plugin-waits">{t('settings.extensions.pluginWaitsNote', { id: waitsFor ?? '' })}</Text>
+  }
   if (status === 'policy') {
     return (
       <Stack direction="vertical" gap="none" data-testid="extensions-plugin-policy">
