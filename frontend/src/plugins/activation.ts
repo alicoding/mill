@@ -1,9 +1,10 @@
 import type { Manifest, PluginInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { activationScriptUrl, buildFrameSrcdoc, hostTokenReader, millTokenCss, pluginAssetBase, type ActivationFrameInit } from '../app/pluginFrameBootstrap'
-import { attachActivationBridge, createActivationFrameContext, teardownActivationFrameContext, type ActivationFrameContext } from '../app/pluginActivationBridge'
+import { attachActivationBridge, createActivationFrameContext, sendExtensionCall, teardownActivationFrameContext, type ActivationFrameContext } from '../app/pluginActivationBridge'
 import { buildPluginAPI } from './hostApi'
 import { settingDeclsFromManifest, snapshotPluginSettings } from './pluginSettings'
 import { buildPluginStorage } from './pluginStorage'
+import { captureFramedExports, clearExports, setFramedExportCallHandler } from './extensionExports'
 
 // Sandboxed activation for a third-party plugin with no canvas object
 // (docs/goals/0375 S1b): main.js runs inside a hidden iframe instead of
@@ -26,6 +27,19 @@ interface ActivationEntry {
 }
 
 const activations = new Map<string, ActivationEntry>()
+
+// The reverse half of extension interop (goal 0364): when a captured
+// export is framed, calling one of its methods means reaching INTO
+// that plugin's own activation frame -- exactly the command.run-style
+// round trip this module already owns the live contexts for. Installed
+// once at module load, since extensionExports.ts must not import this
+// module (loader.ts's own IMPORT DISCIPLINE: nothing this module
+// imports may pull activation.ts forward of activation).
+setFramedExportCallHandler((id, method, args) => {
+  const entry = activations.get(id)
+  if (!entry) return Promise.reject(new Error(`Extension ${id} is not running.`))
+  return sendExtensionCall(entry.ctx, method, args)
+})
 
 // isFramedActivation is the one branch this slice adds (docs/goals/
 // 0375 S1b's binding scope): a built-in keeps same-DOM behind its own
@@ -52,12 +66,14 @@ export async function activateFramed(info: PluginInfo, millVersion: string, stor
   const storage = buildPluginStorage(pluginId, storageSnapshot)
   const decodedStorage: Record<string, unknown> = {}
   for (const key of storage.keys()) decodedStorage[key] = storage.get(key)
+  const exportAllowlist = manifest.exports ?? []
   const init: ActivationFrameInit = {
     pluginId,
     millVersion,
     version: manifest.version,
     settings: snapshotPluginSettings(manifest),
     storage: decodedStorage,
+    exports: exportAllowlist,
   }
   const srcdoc = buildFrameSrcdoc(pluginAssetBase(pluginId), [activationScriptUrl()], '', init, millTokenCss(hostTokenReader()))
 
@@ -76,7 +92,15 @@ export async function activateFramed(info: PluginInfo, millVersion: string, stor
     const detachBridge = attachActivationBridge({
       ctx,
       api,
-      onDone: resolve,
+      onDone: (exported) => {
+        // Captured (goal 0364) even when exported is undefined -- an
+        // empty {data:{}, methods:[]} registers the plugin as RUNNING
+        // with nothing exported, so a dependant sees "activated, no
+        // methods" rather than "not running" for a plugin that simply
+        // returned nothing from activate().
+        captureFramedExports(pluginId, exportAllowlist, exported?.data, exported?.methods)
+        resolve()
+      },
       onError: (message) => reject(new Error(message)),
     })
     activations.set(pluginId, { ctx, detachBridge })
@@ -96,4 +120,5 @@ export function teardownActivationFrame(pluginId: string): void {
   entry.detachBridge()
   entry.ctx.frame.remove()
   activations.delete(pluginId)
+  clearExports(pluginId)
 }

@@ -107,3 +107,35 @@ test('Test on a draft is disabled until the URL is filled, then returns a result
   await expect(requestRow(page, 'Form Test Draft Request')).toBeVisible()
   await deleteRequest(page, 'Form Test Draft Request')
 })
+
+test('Test with only a method and URL shows the result pane', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await page.getByTestId('new-integration').click()
+  await page.getByTestId('new-integration-rest').click()
+  await page.getByLabel('Label').fill('No Schema Draft Request')
+  // Port 1 is reserved and essentially never bound -- a deterministic
+  // connection-refused, not a real remote host (same fixture
+  // request-test-panel.spec.ts's own equivalent test uses).
+  await page.getByLabel('URL', { exact: true }).fill('http://127.0.0.1:1/widgets')
+
+  // No schema authored -- the Schema tab's editor is left at its
+  // default blank operation, never given a path or a field.
+  const testButton = page.getByTestId('request-test-draft')
+  await expect(testButton).toBeEnabled()
+  await testButton.click()
+
+  const testPanel = page.getByTestId('request-test-panel')
+  await expect(testPanel).toBeVisible()
+  const logEntry = testPanel.getByTestId('request-test-log-entry').first()
+  await expect(logEntry).toBeVisible({ timeout: 30_000 })
+  await expect(logEntry.getByText('error', { exact: true })).toBeVisible()
+  await expect(testButton).toHaveText('Test')
+  // The Declare-a-Schema sentence is a hint under the result, never a
+  // gate that replaced the panel.
+  await expect(testPanel.getByTestId('declare-schema-hint')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Save integration' }).click()
+  await expect(requestRow(page, 'No Schema Draft Request')).toBeVisible()
+  await deleteRequest(page, 'No Schema Draft Request')
+})

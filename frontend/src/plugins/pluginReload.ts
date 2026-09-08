@@ -8,6 +8,7 @@ import { resetLazyArrays } from '../shared/lazySnapshot'
 import { unregisterThirdPartyNouns } from '../atlas/atlasNounRegistry'
 import { buildPluginAPI, collectFrameSurfaces } from './hostApi'
 import { collectReloadCommand, loadPluginStorage, pluginLoadStates, readPluginPolicy, resolveActivate } from './loader'
+import { captureSameDomExports, clearExports } from './extensionExports'
 import { unregisterPluginCaptures } from './pluginCaptures'
 import { unregisterPluginCommands } from './pluginCommands'
 import { notifyPluginReloaded } from './pluginReloadSignal'
@@ -52,6 +53,10 @@ function unregisterContributions(pluginId: string): void {
 	// framed or not (a no-op when it never had one) -- "unload/reload
 	// tears the frame down" (docs/goals/0375 S1b).
 	teardownActivationFrame(pluginId)
+	// Drops any captured export surface too (goal 0364): a dependant
+	// calling mid-reload sees "not running" rather than the PRIOR
+	// activation's stale exports.
+	clearExports(pluginId)
 }
 
 // currentInfo re-scans rather than reusing the boot-time record: a
@@ -110,7 +115,8 @@ export async function reloadPlugin(pluginId: string): Promise<void> {
 			const mod = (await import(/* @vite-ignore */ url)) as PluginModule
 			const activate = resolveActivate(mod)
 			if (!activate) throw new Error('main.js exports no activate() function')
-			await Promise.resolve(activate(buildPluginAPI(info.Manifest, millVersion, storage[pluginId] ?? {})))
+			const returned = await Promise.resolve(activate(buildPluginAPI(info.Manifest, millVersion, storage[pluginId] ?? {})))
+			captureSameDomExports(pluginId, info.Manifest.exports ?? [], returned)
 		}
 		pluginLoadStates().set(pluginId, { status: 'loaded', info })
 	} catch (err) {

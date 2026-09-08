@@ -12,6 +12,7 @@ import { RUNTIME_PLUGIN_FRAME_SERVER_BASE_PORT, RUNTIME_PLUGIN_FRAME_MCP_BASE_PO
 import { openSettings } from './fixtures/settingsNav'
 import { gotoAppReady, waitForAppReady } from './fixtures/appReady'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
+import { applyCpuThrottle } from './fixtures/throttle'
 
 const PORTS = { server: RUNTIME_PLUGIN_FRAME_SERVER_BASE_PORT, mcp: RUNTIME_PLUGIN_FRAME_MCP_BASE_PORT }
 const PLUGIN_STORAGE = 'github.com/alicoding/mill/internal/services/settingssvc.SettingsService.GetPluginStorage'
@@ -145,6 +146,7 @@ test('a framed plugin view runs its own page, reaches Mill only through the brid
 		// A theme change is pushed into the live page: the token block is
 		// swapped in place, with no reload of the page.
 		const settings = await page.context().newPage()
+		await applyCpuThrottle(settings)
 		await settings.goto('/')
 		await openSettings(settings, 'appearance')
 		await settings.getByRole('button', { name: 'Dark', exact: true }).click()

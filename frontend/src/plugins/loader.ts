@@ -4,10 +4,11 @@ import { SettingsService } from '../shared/bindings'
 import { refreshExtensionSettings } from '../shared/extensionSettingsStore'
 import { refreshSecretTitles } from '../shared/secretTitleCache'
 import { buildPluginAPI, collectFrameSurfaces } from './hostApi'
-import type { MillPluginAPI, PluginModule } from './sdk'
+import type { MillPluginAPI, PluginExports, PluginModule } from './sdk'
 import { pluginRunState, type PluginRunPolicy } from './pluginTrust'
 import { collectPluginCommand } from './pluginCommands'
 import { activateFramed, isFramedActivation } from './activation'
+import { captureSameDomExports } from './extensionExports'
 
 // The runtime plugin loader (docs/goals/0249). Runs BEFORE the app
 // module graph evaluates (main.tsx awaits it and only then
@@ -28,13 +29,21 @@ import { activateFramed, isFramedActivation } from './activation'
 
 // 'unallowed': installed after the run gate and not yet allowed by the
 // user (the install-time review, ADR-0051 §4); 'blocked': off the
-// administrator's allow-list. Neither runs any plugin code.
-export type PluginLoadStatus = 'loaded' | 'policy' | 'disabled' | 'unallowed' | 'blocked' | 'unsigned' | 'changed' | 'error'
+// administrator's allow-list. 'waits' (goal 0364): the plugin itself
+// passed every trust gate, but a manifest-declared dependency never
+// reached 'loaded' (not installed, disabled, or itself waiting) --
+// activation never runs, so the row names what it is waiting for
+// (waitsFor) rather than a reason it could fix by itself. None of
+// these run any plugin code.
+export type PluginLoadStatus = 'loaded' | 'policy' | 'disabled' | 'unallowed' | 'blocked' | 'unsigned' | 'changed' | 'error' | 'waits'
 
 export interface PluginLoadState {
 	status: PluginLoadStatus
 	error?: string
 	info: PluginInfo
+	// The dependency id this plugin is waiting on, set only when status
+	// is 'waits'.
+	waitsFor?: string
 }
 
 const loadStates = new Map<string, PluginLoadState>()
@@ -98,7 +107,7 @@ async function readIDs(read: () => Promise<string[] | null | undefined>): Promis
 	}
 }
 
-export function resolveActivate(mod: PluginModule): ((api: MillPluginAPI) => void | Promise<void>) | null {
+export function resolveActivate(mod: PluginModule): ((api: MillPluginAPI) => PluginExports | Promise<PluginExports>) | null {
 	if (typeof mod.activate === 'function') return mod.activate
 	if (typeof mod.default === 'function') return mod.default
 	if (mod.default && typeof mod.default.activate === 'function') return mod.default.activate.bind(mod.default)
@@ -167,6 +176,9 @@ export function collectReloadCommand(info: PluginInfo): void {
 // step, not nested inside the scan loop's own state machine.
 async function activateOne(info: PluginInfo, millVersion: string, storageSnapshot: Record<string, string>): Promise<void> {
 	if (isFramedActivation(!!info.Builtin, info.Manifest)) {
+		// A framed plugin's export capture happens inside activateFramed
+		// itself, at its own activation-done message -- the returned
+		// object never leaves that frame's realm.
 		await activateFramed(info, millVersion, storageSnapshot)
 		return
 	}
@@ -174,7 +186,48 @@ async function activateOne(info: PluginInfo, millVersion: string, storageSnapsho
 	const mod = (await import(/* @vite-ignore */ url)) as PluginModule
 	const activate = resolveActivate(mod)
 	if (!activate) throw new Error('main.js exports no activate() function')
-	await Promise.resolve(activate(buildPluginAPI(info.Manifest, millVersion, storageSnapshot)))
+	const returned = await Promise.resolve(activate(buildPluginAPI(info.Manifest, millVersion, storageSnapshot)))
+	captureSameDomExports(info.Manifest.id, info.Manifest.exports ?? [], returned)
+}
+
+// dependencyOrder answers `plugins` re-ordered so a dependency
+// activates before its dependant (a plain DFS topological sort): a
+// cycle among installed extensions cannot happen (standard rule 33
+// refuses one at install), but a folder dropped in by hand bypasses
+// that door, so a cycle here degrades to "already on the walk stack,
+// skip" rather than an infinite recursion.
+export function dependencyOrder(plugins: PluginInfo[]): PluginInfo[] {
+	const byID = new Map(plugins.map((p) => [p.Manifest.id, p]))
+	const visited = new Set<string>()
+	const visiting = new Set<string>()
+	const order: PluginInfo[] = []
+	const visit = (p: PluginInfo) => {
+		const id = p.Manifest.id
+		if (visited.has(id) || visiting.has(id)) return
+		visiting.add(id)
+		for (const dep of p.Manifest.dependencies ?? []) {
+			const depPlugin = byID.get(dep.id)
+			if (depPlugin) visit(depPlugin)
+		}
+		visiting.delete(id)
+		visited.add(id)
+		order.push(p)
+	}
+	for (const p of plugins) visit(p)
+	return order
+}
+
+// unmetDependency answers the first declared dependency that has not
+// reached 'loaded' yet -- called only after every dependency in
+// info.Manifest.dependencies has ALREADY been processed this boot
+// (dependencyOrder guarantees it), so a missing loadStates entry means
+// "not installed" exactly as a 'loaded' miss means "disabled, blocked,
+// erroring, or itself waiting".
+function unmetDependency(info: PluginInfo): string | undefined {
+	for (const dep of info.Manifest.dependencies ?? []) {
+		if (loadStates.get(dep.id)?.status !== 'loaded') return dep.id
+	}
+	return undefined
 }
 
 // loadPlugins scans, filters to enabled+valid, and activates each
@@ -205,7 +258,12 @@ export async function loadPlugins(): Promise<void> {
 	// answers the title from the first activate() on.
 	await refreshSecretTitles()
 	const storage = await loadPluginStorage()
-	for (const info of plugins) {
+	// A dependency activates before its dependant (goal 0364's design
+	// contract item 2): the ONLY reordering the loop below needs,
+	// since every other rule (trust gate, then dependency-satisfied
+	// check) reads loadStates entries the walk already guarantees are
+	// set for everything earlier in this order.
+	for (const info of dependencyOrder(plugins)) {
 		const id = info.Manifest.id
 		if (info.Error) {
 			loadStates.set(id, { status: 'error', error: info.Error, info })
@@ -219,6 +277,11 @@ export async function loadPlugins(): Promise<void> {
 		const state = pluginRunState(id, !!info.Builtin, policy, { contentHash: info.ContentHash ?? '', signingPolicy: !!info.SigningPolicy, signed: !!info.Signed, policyBlocked: info.PolicyBlocked ?? '' })
 		if (state !== 'run') {
 			loadStates.set(id, { status: state, info })
+			continue
+		}
+		const waitsFor = unmetDependency(info)
+		if (waitsFor) {
+			loadStates.set(id, { status: 'waits', info, waitsFor })
 			continue
 		}
 		// Framed views and captures are declared, not registered: they

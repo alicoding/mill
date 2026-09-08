@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -35,6 +36,7 @@ test('a run that needs a secret while the vault is locked waits in Review and co
       backupDir: path.join(dir, 'backups'),
     })
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
 
     // --- A vault with the seeded API-key credential adopted into it:
