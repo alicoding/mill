@@ -47,6 +47,7 @@ export function useAtlasSelectionRequests(handlers: {
   requestGroup: (cardIDs: string[], noteIDs: string[], objectIDs: string[], pos: Pos) => void
   deleteSelection: (cardIDs: string[], noteIDs: string[], objectIDs: string[]) => void
   dissolve: (frameID: string) => void
+  demote: (cardID: string) => void
   editLinkLabel: (linkID: string, pos: Pos) => void
   setMenu: (state: ContextMenuState | null) => void
   onError: (message: string) => void
@@ -77,6 +78,7 @@ function handle(req: AtlasSelectionRequest, h: Parameters<typeof useAtlasSelecti
     case 'group': h.requestGroup(req.cards, req.notes, req.objects, anchorFor(req.cards[0] ?? req.notes[0] ?? req.objects[0], req.pos)); return
     case 'delete': h.deleteSelection(req.cards, req.notes, req.objects); return
     case 'dissolve': h.dissolve(req.card); return
+    case 'demote': h.demote(req.card); return
     case 'editLinkLabel': h.editLinkLabel(req.link, anchorFor(undefined, req.pos)); return
     case 'editDiagram': {
       const object = h.allObjects.find((o) => o.ID === req.object)

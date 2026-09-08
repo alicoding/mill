@@ -226,7 +226,8 @@
         "fitToContent": "Fit card to content",
         "copyContext": "Copy card as context",
         "copyLink": "Copy card link",
-        "dissolve": "Dissolve area"
+        "dissolve": "Dissolve area",
+        "demote": "Turn back into object"
       },
       "focusNext": "Focus next card",
       "focusPrevious": "Focus previous card",

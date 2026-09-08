@@ -33,6 +33,7 @@ var journaledDoors = map[string]string{
 	"DeleteCard":             "delete family (tombstone)",
 	"DeleteLink":             "delete family (hard-delete, undo recreates with the same id)",
 	"DeleteNote":             "delete family (tombstone)",
+	"DemoteCard":             "promote family, reverse direction (demote/repromote, atlasservice_demote.go)",
 	"MoveBoardObject":        "move family",
 	"MoveCard":               "move family",
 	"MoveNote":               "move family",

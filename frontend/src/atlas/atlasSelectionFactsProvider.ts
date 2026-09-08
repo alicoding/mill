@@ -2,7 +2,7 @@ import i18n from 'i18next'
 import { installAtlasFacts } from '../shared/atlasSelectionFacts'
 import { useAtlasStore } from './atlasStore'
 import { isGroupCard } from './atlasBoardLayout'
-import { exportersForCard } from './atlasUnits'
+import { exportersForCard, isDemotableCard } from './atlasUnits'
 import { boardObjectContentFor, thirdPartyNounFor } from './atlasNounRegistry'
 import { resolveEditRoute } from './objectSeams'
 
@@ -24,6 +24,7 @@ installAtlasFacts({
       isGroup: isGroupCard(cards ?? [], card, notes ?? [], objects ?? []),
       projection: Boolean(card.ProjectionListID),
       root: card.ParentID === '',
+      demotable: isDemotableCard(card),
       exporters: exportersForCard(card, i18n.t('atlas:export.originalFile')).map((e) => ({ format: e.format, label: e.label })),
     }
   },

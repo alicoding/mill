@@ -2763,6 +2763,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.card.addLinkedCard` | Add linked card… | — | atlas | Acts on the board's current selection |
 | `atlas.card.copyContext` | Copy card as context | — | atlas | Acts on the board's current selection |
 | `atlas.card.copyLink` | Copy card link | — | atlas | Acts on the board's current selection |
+| `atlas.card.demote` | Turn back into object | — | atlas | Acts on the board's current selection |
 | `atlas.card.dissolve` | Dissolve area | — | atlas | Acts on the board's current selection |
 | `atlas.card.exportAs` | Export card as… | — | atlas | Conditional — available only in a matching state |
 | `atlas.card.fitToContent` | Fit card to content | — | atlas | Acts on the board's current selection |
