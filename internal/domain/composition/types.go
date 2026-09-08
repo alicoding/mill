@@ -81,6 +81,11 @@ const (
 	FieldNumber  = typedfield.TypeNumber
 	FieldBoolean = typedfield.TypeBoolean
 	FieldOptions = typedfield.TypeOptions
+	// FieldArray is consumed for the first time by apply-notify's
+	// "targets" field (docs/goals/0372): a multi-select over a
+	// runtime-enumerated OptionsSource, never a comma-separated text
+	// field.
+	FieldArray = typedfield.TypeArray
 )
 
 // ConfigField declares one configurable parameter a node type's nodes

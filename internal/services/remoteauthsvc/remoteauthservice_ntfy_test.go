@@ -296,3 +296,87 @@ func TestPhoneChannel_ShouldDeliver(t *testing.T) {
 		t.Fatalf("ShouldDeliver() = false with a paired device (Focused=true), want true -- a phone's delivery must never depend on a browser tab's focus")
 	}
 }
+
+// TestPhoneChannel_DeliverFiltersByTargets pins docs/goals/0372's
+// addressing half: evt.Targets naming one of two paired devices
+// reaches only that device, and an unknown id among the targets is
+// silently skipped rather than erroring.
+func TestPhoneChannel_DeliverFiltersByTargets(t *testing.T) {
+	s := newTestService(t)
+	if _, err := s.mintDevice("Phone A", "", KindDevice); err != nil {
+		t.Fatalf("mintDevice() = %v, want nil error", err)
+	}
+	if _, err := s.mintDevice("Phone B", "", KindDevice); err != nil {
+		t.Fatalf("mintDevice() = %v, want nil error", err)
+	}
+	idA, topicA := s.devices[0].ID, s.devices[0].Topic
+	topicB := s.devices[1].Topic
+
+	_, cancelA := context.WithCancel(context.Background())
+	defer cancelA()
+	subA := ntfySubscriber{ch: make(chan ntfyMessage, 1), cancel: cancelA}
+	s.addSubscriber(topicA, subA)
+	defer s.removeSubscriber(topicA, subA)
+
+	_, cancelB := context.WithCancel(context.Background())
+	defer cancelB()
+	subB := ntfySubscriber{ch: make(chan ntfyMessage, 1), cancel: cancelB}
+	s.addSubscriber(topicB, subB)
+	defer s.removeSubscriber(topicB, subB)
+
+	ch := s.NotificationChannel()
+	evt := notification.Event{Title: "Approval needed", Body: "x", Targets: []string{idA, "unknown-device-id"}}
+	if err := ch.Deliver(evt, notification.Record{ID: "rec-3", CreatedAt: time.Now()}); err != nil {
+		t.Fatalf("Deliver() = %v, want nil error", err)
+	}
+
+	select {
+	case <-subA.ch:
+	case <-time.After(streamSignalTimeout):
+		t.Fatal("targeted device A never received the delivery")
+	}
+	select {
+	case msg := <-subB.ch:
+		t.Fatalf("untargeted device B received a delivery it was never named in: %+v", msg)
+	case <-time.After(50 * time.Millisecond):
+	}
+}
+
+// TestPhoneChannel_DeliverEmptyTargetsReachesEveryDevice pins the
+// pre-existing broadcast behavior: an Event with no Targets still
+// reaches every paired device, unchanged.
+func TestPhoneChannel_DeliverEmptyTargetsReachesEveryDevice(t *testing.T) {
+	s := newTestService(t)
+	if _, err := s.mintDevice("Phone A", "", KindDevice); err != nil {
+		t.Fatalf("mintDevice() = %v, want nil error", err)
+	}
+	if _, err := s.mintDevice("Phone B", "", KindDevice); err != nil {
+		t.Fatalf("mintDevice() = %v, want nil error", err)
+	}
+	topicA, topicB := s.devices[0].Topic, s.devices[1].Topic
+
+	_, cancelA := context.WithCancel(context.Background())
+	defer cancelA()
+	subA := ntfySubscriber{ch: make(chan ntfyMessage, 1), cancel: cancelA}
+	s.addSubscriber(topicA, subA)
+	defer s.removeSubscriber(topicA, subA)
+
+	_, cancelB := context.WithCancel(context.Background())
+	defer cancelB()
+	subB := ntfySubscriber{ch: make(chan ntfyMessage, 1), cancel: cancelB}
+	s.addSubscriber(topicB, subB)
+	defer s.removeSubscriber(topicB, subB)
+
+	ch := s.NotificationChannel()
+	if err := ch.Deliver(notification.Event{Title: "t", Body: "b"}, notification.Record{ID: "rec-4", CreatedAt: time.Now()}); err != nil {
+		t.Fatalf("Deliver() = %v, want nil error", err)
+	}
+
+	for name, sub := range map[string]ntfySubscriber{"A": subA, "B": subB} {
+		select {
+		case <-sub.ch:
+		case <-time.After(streamSignalTimeout):
+			t.Fatalf("device %s never received the broadcast delivery", name)
+		}
+	}
+}
