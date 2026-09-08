@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -66,6 +67,7 @@ async function setUp(testInfo: { parallelIndex: number }): Promise<Fixture> {
   const browser = await chromium.launch()
   const context = await browser.newContext({ baseURL: server.baseURL })
   const page = await context.newPage()
+  await applyCpuThrottle(page)
   await page.goto(`${server.baseURL}/`)
   return { server, browser, page, dir }
 }

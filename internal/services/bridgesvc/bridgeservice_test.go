@@ -43,6 +43,22 @@ type stubAuth struct {
 	pairRequestCalls []string // one "label|source" entry per call
 	pairStatus       remoteauthsvc.PairingRequestStatus
 	pairStatusCalls  []string // one requestID per call
+
+	// revokeCalls pins the self-revoke door (goal 0379 S2): the exact
+	// device id RevokeDevice was called with, one entry per call --
+	// what proves the HTTP layer forwards the TOKEN-resolved id, never
+	// anything a request body could name.
+	revokeCalls []string
+	revokeErr   error
+}
+
+func (a *stubAuth) RevokeDevice(id string) error {
+	a.revokeCalls = append(a.revokeCalls, id)
+	if a.revokeErr != nil {
+		return a.revokeErr
+	}
+	a.revoked.Store(true)
+	return nil
 }
 
 func (a *stubAuth) PairBrowser(code, label, source string) (remoteauthsvc.BrowserPairing, error) {

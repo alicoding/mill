@@ -74,7 +74,7 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
     extra: (contributes?.mcpServers ?? []).length > 0
       ? <ExtensionsMCPServers pluginId={id} servers={contributes?.mcpServers ?? []} />
       : undefined,
-    status: <PluginStatusNote error={error} status={runtime?.status} policyReason={plugin.PolicyBlocked ?? ''} allowed={allowed} onAllow={onAllow} />,
+    status: <PluginStatusNote error={error} status={runtime?.status} policyReason={plugin.PolicyBlocked ?? ''} waitsFor={runtime?.waitsFor} allowed={allowed} onAllow={onAllow} />,
     actions: reloadCommand?.enabled?.() ? (
       <Button
         size="small"
@@ -196,14 +196,18 @@ function pluginClaims(plugin: PluginInfo, t: Translate): string[] {
 
 // What actually happened to this plugin this boot, stated in full --
 // including the two states that ask the user to act.
-function PluginStatusNote({ error, status, policyReason, allowed, onAllow }: {
+function PluginStatusNote({ error, status, policyReason, waitsFor, allowed, onAllow }: {
   error: string | undefined
   status: string | undefined
   policyReason: string
+  waitsFor: string | undefined
   allowed: boolean
   onAllow: () => void
 }) {
   const { t } = useTranslation('views')
+  if (status === 'waits') {
+    return <Text as="p" size="small" className={listStyles.muted} data-testid="extensions-plugin-waits">{t('settings.extensions.pluginWaitsNote', { id: waitsFor ?? '' })}</Text>
+  }
   if (status === 'policy') {
     return (
       <Stack direction="vertical" gap="none" data-testid="extensions-plugin-policy">
