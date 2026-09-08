@@ -466,15 +466,15 @@ installed build can catch, and exactly how to verify it there.
   path fills the Folder field; in Secrets, open Import… and press
   Choose — the real native file picker opens and the chosen file's
   entry count shows in the preview.
-- **The hook door's real OS-banner and phone fan-out** (goal 0368,
-  `bridgesvc/bridgeservice_hooks.go` + `triggersvc/triggerwebhook.go`)
+- **The webhook door's real OS-banner and phone fan-out** (goal 0368,
+  `bridgesvc/bridgeservice_webhook.go` + `triggersvc/triggerwebhook.go`)
   -- the door's auth/malformed-body/dispatch paths are Go-tested and
   the seeded workflow's title/body substitution is proven against a
   captured notifier, but a real OS banner and a real phone delivery
   are OS/vendor-bound. Verify on an installed build: add a webhook
   token in Settings > Connections > Webhooks (copy it at mint; it
   never shows again), then
-  `curl -s -X POST http://127.0.0.1:8092/__mill/hooks/event -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"source":"mytool","title":"Hook fired","body":"A test event."}'`
+  `curl -s -X POST http://127.0.0.1:8092/__mill/webhook -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"source":"mytool","title":"Webhook fired","body":"A test event."}'`
   -- the seeded "Notify when a webhook fires" workflow's run lands
   in the notification list with the posted title and body, a desktop
   banner fires, and a paired phone receives the notification. Then

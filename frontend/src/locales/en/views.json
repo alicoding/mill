@@ -185,7 +185,7 @@
       "devicesCaption": "Pair a device to reach Mill from your phone or another computer.",
       "contractTitle": "Contract",
       "browsersTitle": "Browsers",
-      "hooksTitle": "Webhooks",
+      "webhooksTitle": "Webhooks",
       "credentialsTitle": "Credentials",
       "credentialsCaption": "Credentials other tools use to reach Mill."
     },
@@ -366,24 +366,24 @@
       "exportEverything": "Export everything",
       "importEverything": "Import everything"
     },
-    "hooks": {
-      "description": "A tool on this Mac fires a workflow by posting to Mill's hook endpoint with one of these tokens.",
-      "docsLink": "How to wire up a tool's hook",
+    "webhooks": {
+      "description": "Any tool or service that can send an HTTP request can start a workflow by posting to Mill's webhook address with one of these tokens.",
+      "docsLink": "How to fire a workflow from a webhook",
       "mintAToken": "Add webhook token",
-      "mintLabelAriaLabel": "Hook token label",
+      "mintLabelAriaLabel": "Webhook token label",
       "mintLabelPlaceholder": "Label, like My build agent",
       "mintLabelCaption": "Name the tool that will send it",
       "mint": "Mint token",
       "mintCancelAriaLabel": "Cancel minting a token",
       "tokenShownOnce": "Copy this token now. Mill never shows it again.",
-      "tokenCopyAriaLabel": "Copy the new hook token",
-      "tokenCopiedAriaLabel": "Hook token copied",
-      "emptyHeading": "No hook tokens yet",
-      "emptyDescription": "Mint a token so a tool's hook config can fire your workflows.",
+      "tokenCopyAriaLabel": "Copy the new webhook token",
+      "tokenCopiedAriaLabel": "Webhook token copied",
+      "emptyHeading": "No webhook tokens yet",
+      "emptyDescription": "Add a token, then paste it into the sending tool's configuration.",
       "tokenMeta": "Minted {{created}}",
       "revoke": "Revoke",
       "revokeConfirmTitle": "Revoke {{label}}?",
-      "revokeConfirmBody": "{{label}} won't be able to post hook events until you mint a new token and update the tool's config."
+      "revokeConfirmBody": "{{label}} won't be able to post to the webhook until you mint a new token and update the tool's configuration."
     }
   },
   "keyboardShortcutsSection": {

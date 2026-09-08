@@ -97,15 +97,16 @@ func init() {
 	})
 }
 
-// DispatchWebhookEvent is the hook door's dispatch seam (the bridge's
-// hook route is wired to it from main.go, adapted to bridgesvc's own
-// WebhookWait/WebhookReply shape there -- bridgesvc never imports this
-// package, the dependency runs the other way, same injected-function
-// shape every other seam in this codebase uses). values is the posted
-// JSON object's scalar top-level fields, stringified; raw is the body
-// exactly as posted. Fires every workflow currently armed for an exact
-// source match PLUS every catch-all (source == "") arming; a values
-// map without a source fires the catch-alls only.
+// DispatchWebhookEvent is the webhook door's dispatch seam (the
+// bridge's webhook route is wired to it from main.go, adapted to
+// bridgesvc's own WebhookWait/WebhookReply shape there -- bridgesvc
+// never imports this package, the dependency runs the other way, same
+// injected-function shape every other seam in this codebase uses).
+// values is the posted JSON object's scalar top-level fields,
+// stringified; raw is the body exactly as posted. Fires every workflow
+// currently armed for an exact source match PLUS every catch-all
+// (source == "") arming; a values map without a source fires the
+// catch-alls only.
 //
 // Returns nil when no started listener's graph contains a
 // respond-webhook node -- the caller ACKs immediately, byte-identical

@@ -57,24 +57,26 @@ export function ListDevices(): $CancellablePromise<$models.DeviceInfo[] | null> 
 }
 
 /**
- * ListHooks returns every live hook token's read model, same order and
- * shape as ListBrowsers -- hook tokens appear in their own Settings
- * section, never mixed into the device or browser lists.
+ * ListWebhookTokens returns every live webhook token's read model,
+ * same order and shape as ListBrowsers -- webhook tokens appear in
+ * their own Settings section, never mixed into the device or browser
+ * lists.
  */
-export function ListHooks(): $CancellablePromise<$models.DeviceInfo[] | null> {
-    return $Call.ByID(2622304556);
+export function ListWebhookTokens(): $CancellablePromise<$models.DeviceInfo[] | null> {
+    return $Call.ByID(2647435175);
 }
 
 /**
- * MintHookToken pairs a new hook credential, returning its raw token
- * exactly once for the user to copy into a tool's hook config. There
- * is no pairing code or exchange: the consumer is a shell command in a
- * config file, so the credential itself is the whole ceremony. Minting
- * more than one is legitimate (one per tool, or a rotation) -- each is
- * its own Settings row with its own revoke, like a paired browser.
+ * MintWebhookToken pairs a new webhook credential, returning its raw
+ * token exactly once for the user to copy into a tool's configuration.
+ * There is no pairing code or exchange: the consumer is a shell
+ * command or an HTTP client in a config file, so the credential itself
+ * is the whole ceremony. Minting more than one is legitimate (one per
+ * tool, or a rotation) -- each is its own Settings row with its own
+ * revoke, like a paired browser.
  */
-export function MintHookToken(label: string): $CancellablePromise<$models.HookToken> {
-    return $Call.ByID(3786229052, label);
+export function MintWebhookToken(label: string): $CancellablePromise<$models.WebhookToken> {
+    return $Call.ByID(393984190, label);
 }
 
 /**
