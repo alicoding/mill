@@ -45,13 +45,14 @@ func yesNo(b bool) string {
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "capture-clipboard-info", Kind: KindCapture,
-		Effect:      guardrail.ClassRead,
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadNone},
-		Produces:    PayloadProduce{Kind: PayloadText},
-		Output:      "a summary of the clipboard's flavors",
-		Label:       "Inspect clipboard",
-		Description: "Reads the clipboard's own format report, listing which flavors (HTML, plain text, images) are present and their sizes, and summarizes whether HTML and plain text are available, followed by the raw report. A diagnostic for pastes that look right but convert wrong: see directly whether HTML was actually on the clipboard.",
+		PaletteGroup: PaletteGroupCapture,
+		Effect:       guardrail.ClassRead,
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadText},
+		Output:       "a summary of the clipboard's flavors",
+		Label:        "Inspect clipboard",
+		Description:  "Reads the clipboard's own format report, listing which flavors (HTML, plain text, images) are present and their sizes, and summarizes whether HTML and plain text are available, followed by the raw report. A diagnostic for pastes that look right but convert wrong: see directly whether HTML was actually on the clipboard.",
 	}, func(_ Node, ctx ExecContext) (ExecContext, error) {
 		raw, err := clipboardInfoFn()
 		if err != nil {

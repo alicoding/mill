@@ -113,7 +113,7 @@ func resolveDeclaredEntry(b DeclaredStepBinding) (nodeTypeEntry, bool) {
 		Consumes:     engine.nodeType.Consumes,
 		Produces:     engine.nodeType.Produces,
 		Declared:     true,
-		PaletteGroup: b.PaletteGroup,
+		PaletteGroup: PaletteGroup(b.PaletteGroup),
 		// Basic by construction (NodeType.Complexity's own doc comment,
 		// docs/goals/0047): a declaration exists specifically to curate
 		// the underlying engine's complexity away behind a fixed binding,

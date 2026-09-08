@@ -159,13 +159,14 @@ func singleOperation(specDoc string) (path, method string, ok bool) {
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "integration-http", Kind: KindProcess,
-		Effect:      guardrail.ClassExternal,
-		Complexity:  ComplexityAdvanced, // binding path/query/header/body values needs the integration's own API contract
-		Consumes:    []PayloadKind{PayloadAny},
-		Produces:    PayloadProduce{Kind: PayloadAny},
-		Output:      "HTTP response body",
-		Label:       "Call an API",
-		Description: "Calls a Configure-authored integration's API and replaces the payload with the response body. The step only picks WHICH integration and binds data. Method, endpoint path, and body all live on the integration itself (Configure > Integration). Legacy steps saved with their own path/method/bodyTemplate config keep working (those keys still win when present); they're just no longer authorable here.",
+		PaletteGroup: PaletteGroupActions,
+		Effect:       guardrail.ClassExternal,
+		Complexity:   ComplexityAdvanced, // binding path/query/header/body values needs the integration's own API contract
+		Consumes:     []PayloadKind{PayloadAny},
+		Produces:     PayloadProduce{Kind: PayloadAny},
+		Output:       "HTTP response body",
+		Label:        "Call an API",
+		Description:  "Calls a Configure-authored integration's API and replaces the payload with the response body. The step only picks WHICH integration and binds data. Method, endpoint path, and body all live on the integration itself (Configure > Integration). Legacy steps saved with their own path/method/bodyTemplate config keep working (those keys still win when present); they're just no longer authorable here.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "requestId", Label: "Integration",
