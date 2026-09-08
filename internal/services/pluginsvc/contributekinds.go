@@ -34,7 +34,9 @@ func contributionKinds(c ManifestContributes) []string {
 	out := []string{}
 	for i := 0; i < t.NumField(); i++ {
 		field := v.Field(i)
-		if field.Kind() != reflect.Slice || field.Len() == 0 {
+		// Menus is a map (menu id -> items); every other family is a
+		// slice. Both count as "filled" the same way, by length.
+		if (field.Kind() != reflect.Slice && field.Kind() != reflect.Map) || field.Len() == 0 {
 			continue
 		}
 		if name := jsonFieldName(t.Field(i)); name != "" {

@@ -162,6 +162,11 @@ var workflowProofRegistry = map[string]seedProof{
 		"bridgesvc.TestWebhook_BudgetElapsed_StandardBodyWithHeader",
 		"bridgesvc.TestWebhook_PromptNoReply_StandardBodyNoHeaderNoWait",
 	),
+	"example-tidy-unused-lists-workflow": proven(
+		"triggersvc.TestSeededTidyUnusedListsExample_EntityDereferenced_RunsToCompletion",
+		"triggersvc.TestSeededTidyUnusedListsExample_StillReferenced_SkipsNotify",
+		"manual-only remainder: the real OS banner (apply-notify's signed-bundle class, testing.md)",
+	),
 	"example-forward-approvals-workflow": proven(
 		"triggersvc.TestSeededForwardApprovalsExample_DecisionParked_PostsRealHTTPCall",
 		"triggersvc.TestSystemEvent_LoopRule_SystemEventTriggeredRunEmitsNothing",

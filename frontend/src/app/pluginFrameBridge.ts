@@ -76,6 +76,7 @@ export const FRAME_METHODS = [
   'content.setCardFields',
   'files.list',
   'convert.htmlToMarkdown',
+  'convert.markdownToHtml',
   'requestGuardedAction',
   'runCommand',
   'capture.done',
@@ -121,6 +122,7 @@ export async function callFrameMethod(api: MillPluginAPI, method: string, args: 
     case 'content.setCardFields': return api.content.setCardFields(String(first), second as Record<string, string>)
     case 'files.list': return api.files.list(String(first))
     case 'convert.htmlToMarkdown': return api.convert.htmlToMarkdown(String(first))
+    case 'convert.markdownToHtml': return api.convert.markdownToHtml(String(first))
     case 'requestGuardedAction': return api.requestGuardedAction(String(first), second as Record<string, string>, String(third))
     // The registry's own door, with the registry's own honest
     // enablement: an unknown id or a command whose enabled() says no

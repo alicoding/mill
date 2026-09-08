@@ -124,20 +124,29 @@ func init() {
 		Consumes:     []PayloadKind{PayloadNone},
 		Produces:     PayloadProduce{Kind: PayloadJSON},
 		Label:        "System event",
-		Output: "JSON payload: {event, runId, workflowId, workflowLabel, nodeId?, timestamp, version?, channel?}, " +
-			"the run/decision that caused this event. nodeId is only set for decision-parked (the " +
-			"parked step's ID); version/channel only for update-available.",
-		Description: "Fires when Mill's own engine emits an internal event (a run finishing, failing, or parking for approval), so a workflow can react to the platform itself, like forwarding pending approvals to another device.",
+		Output: "JSON payload, shaped by which event you picked. The run/decision events carry " +
+			"{event, runId, workflowId, workflowLabel, nodeId?, timestamp, version?, channel?}: nodeId only " +
+			"for decision-parked (the parked step's ID), version/channel only for update-available. The " +
+			"entity/object events carry {event, entityKind?, entityId?, by?, remaining?, boardId?, " +
+			"objectId?, kind?, entityRef?}. by names the board object (boardId, objectId) that referenced or " +
+			"dereferenced the entity. remaining, on entity dereferenced only, is how many references survive " +
+			"it; 0 means the entity is now unused anywhere. Every top-level scalar field also seeds an " +
+			"Attribute of the same name when this workflow declares one.",
+		Description: "Fires when Mill's own engine emits an internal event: a run finishing, failing, or parking for approval, or a Configure entity or board object being created, referenced, dereferenced, or deleted. React to the platform itself, like forwarding a pending approval to another device or flagging a list nobody references anymore.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "event", Label: "Event",
-				Description: "Which internal event fires this trigger. \"Decision parked\" fires when a guardrail ask or human-review checkpoint parks awaiting approval; the run events fire once a run reaches a terminal state; \"update-available\" fires when an update check finds a newer release on this install's channel.",
+				Description: "Which internal event fires this trigger. \"Decision parked\" fires when a guardrail ask or human-review checkpoint parks awaiting approval; the run events fire once a run reaches a terminal state; \"update-available\" fires when an update check finds a newer release on this install's channel. The entity/object events fire on a Configure entity or board object's own lifecycle. Pair \"entity dereferenced\" with a Branch step checking remaining == 0 to catch only the case where nothing references it anymore.",
 				Default:     "decision-parked", Type: FieldOptions,
-				Options: []string{"decision-parked", "run-completed", "run-failed", "run-cancelled", "update-available"},
+				Options: []string{
+					"decision-parked", "run-completed", "run-failed", "run-cancelled", "update-available",
+					"entity.created", "entity.referenced", "entity.dereferenced", "entity.deleted",
+					"object.created", "object.deleted",
+				},
 			},
 			{
 				Key: "workflowScope", Label: "Workflow scope",
-				Description: "Fire for every workflow's matching event, or scope to one specific workflow. Empty means all workflows.",
+				Description: "Fire for every workflow's matching event, or scope to one specific workflow. Empty means all workflows. Has no effect on an entity/object event, which carries no source workflow.",
 				Default:     "", Type: FieldText, RefKind: "workflow-scope",
 			},
 		},

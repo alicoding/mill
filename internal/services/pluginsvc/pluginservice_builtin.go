@@ -64,6 +64,7 @@ func scanBuiltin(id string, appVersion string) PluginInfo {
 		return info
 	}
 	info.Manifest = m
+	info.Warnings = manifestWarnings(m)
 	_, mainErr := fs.Stat(builtinPluginsFS, path.Join(builtinRoot, id, "main.js"))
 	info.Error = manifestProblem(m, id, mainErr == nil, appVersion)
 	if info.Error == "" {

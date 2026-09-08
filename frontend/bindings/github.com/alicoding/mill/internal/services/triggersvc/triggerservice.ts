@@ -29,6 +29,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 import * as trigger$0 from "../../domain/trigger/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as dataevent$0 from "../dataevent/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as time$0 from "../../../../../../time/models.js";
 
 /**
@@ -76,6 +79,30 @@ export function AssignHotkey(workflowID: string, mods: string[] | null, key: str
  */
 export function ClaimedCombos(): $CancellablePromise<trigger$0.HotkeyBinding[] | null> {
     return $Call.ByID(2202519334);
+}
+
+/**
+ * DispatchLifecycleEvent is dataevent's lifecycle sink (docs/goals/0392
+ * S2), wired from NewTriggerService itself (dataevent.SetLifecycleSink)
+ * rather than from main.go: unlike ExecutionService.SetSystemEventSink,
+ * triggersvc already imports dataevent (triggerhotkeyassignment.go), so
+ * there is no reverse-dependency problem to route around a setter for.
+ * 
+ * Reuses trigger-system-event's OWN registry (s.sysEvents, populated by
+ * triggersystemevent.go's starter for WHATEVER string a workflow's
+ * "event" config holds) rather than a second map: the entity/object
+ * event strings are just a wider vocabulary for the same "event" field,
+ * so no new NodeType or starter is needed for them to arm.
+ * 
+ * A lifecycle event carries no source workflow, so every armed binding
+ * fires regardless of its own Scope (workflowScope only means something
+ * for the run/decision system events, whose own ExtractTrigger-based
+ * loop guard also doesn't apply here: nothing about creating, deleting,
+ * or (de)referencing an entity or object can recurse into re-firing
+ * itself).
+ */
+export function DispatchLifecycleEvent(ev: dataevent$0.LifecycleEvent): $CancellablePromise<void> {
+    return $Call.ByID(4191289354, ev);
 }
 
 /**

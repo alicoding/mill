@@ -1,4 +1,4 @@
-import { chromium, expect, test, type Page } from '@playwright/test'
+import { chromium, expect, test, type Locator, type Page } from '@playwright/test'
 import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -14,6 +14,7 @@ import { connectFakeExtension, pairFakeExtension, type FakeExtension } from './f
 import { openSettings } from './fixtures/settingsNav'
 import { activePanel, workflowRow } from './fixtures/canvas'
 import { clickCanvasNode } from './fixtures/canvasNode'
+import { nonSeededBoardObjects } from './fixtures/atlasBoard'
 
 // The browser-replay step end to end (goal 0350 S2): import a recording
 // into the seeded example, bind a parameter to it, run it in a paired
@@ -101,7 +102,10 @@ test('a recorded flow becomes a step: import it, bind a parameter, replay it, re
 
     const editor = panel.getByTestId('composition-inspector').getByTestId('browser-replay-editor')
     await expect(editor).toBeVisible()
-    await expect(editor.getByTestId('browser-replay-recording-summary')).toContainText('4 steps')
+    // 5 steps: the seed's own recording now ends with a click on the
+    // test page's download link (goal 0350 S3), landed as a board
+    // object by the workflow's own next step.
+    await expect(editor.getByTestId('browser-replay-recording-summary')).toContainText('5 steps')
 
     // 3. Import a recording. The step describes what it read back, and
     //    the pickers below now list that recording's own steps.
@@ -158,6 +162,90 @@ test('a recorded flow becomes a step: import it, bind a parameter, replay it, re
   }
 })
 
+// The download half end to end (goal 0350 S3): the seed's OWN built-in
+// recording now ends by clicking the test page's download link, so
+// this test never imports a custom one -- it drives the workflow's own
+// default steps, in a paired browser, through the SAME stubbed wire
+// protocol (fakeExtension.ts's downloadFrom, which fetches the clicked
+// `<a download>`'s own address exactly like the real extension's own
+// download sink does, see that file for why a real unpacked extension
+// isn't in the suite's Chromium). What's proven here is the wire being
+// consumed correctly end to end (a board object lands, a second run
+// matches it); the exact checksum/dedupe logic is proven directly by
+// atlassvc's own Go tests.
+//
+// Reuses this file's own dedicated server/port pair: Playwright never
+// runs two tests from one file concurrently on the same worker, so a
+// second test spawning its own server on the identical ports is safe
+// sequenced after the first's has already stopped.
+test.setTimeout(240_000)
+
+// eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
+test('a browser-replay download lands as a board object, checksum-matched on a second run', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-replay-download-${idx}-`))
+  const port = BROWSER_REPLAY_SERVER_BASE_PORT + idx
+  const bridgePort = port + BRIDGE_PORT_OFFSET
+  const bridgeURL = `http://127.0.0.1:${bridgePort}`
+  const testPageURL = `${bridgeURL}/__mill/bridge/test-page`
+
+  let server: SpawnedServer | undefined
+  let extension: FakeExtension | undefined
+  const browser = await chromium.launch()
+  try {
+    server = await spawnMillServer({
+      port,
+      mcpPort: BROWSER_REPLAY_MCP_BASE_PORT + idx,
+      bridgePort,
+      settingsPath: path.join(dir, 'settings.json'),
+      executionDbPath: path.join(dir, 'execution.db'),
+      backupDir: path.join(dir, 'backups'),
+    })
+    const page = await browser.newPage()
+    await page.goto(`${server.baseURL}/`)
+
+    await openSettings(page, 'connections')
+    await page.getByTestId('pair-a-browser').click()
+    const code = (await page.getByTestId('browser-pairing-code').innerText()).trim()
+    const token = await pairFakeExtension(bridgeURL, code, 'Chrome')
+    const replayPage = await browser.newPage()
+    extension = connectFakeExtension(bridgeURL, token, replayPage)
+    await extension.ready
+
+    // 1. Run the seed's own recording -- unedited, so its own download
+    //    step runs -- and approve the park.
+    await runSeededWorkflow(page, testPageURL)
+    await approveTheParkedRun(page)
+    const fileObjectStep = await expandFileObjectStepOutput(page)
+    await expect(fileObjectStep).toContainText('mill-bridge-test.pdf', { timeout: 60_000 })
+    await expect(fileObjectStep).not.toContainText('Too large to keep with the run')
+
+    // 2. The download landed as a board object at the true top level
+    //    (apply-atlas-file-object never nests under "The engagement",
+    //    matching apply-atlas-card-create's own root-level placement) --
+    //    reached via the breadcrumb's own root crumb, same door
+    //    atlas-session-restore.spec.ts uses to leave the auto-entered
+    //    space.
+    await gotoAtlasRoot(page)
+    await expect(nonSeededBoardObjects(page, 'pdf')).toHaveCount(1)
+
+    // 3. Running it again brings back the exact same file -- matched by
+    //    content, not landed a second time -- and the run says when it
+    //    first landed.
+    await runSeededWorkflow(page, testPageURL)
+    await approveTheParkedRun(page)
+    await expect(await expandFileObjectStepOutput(page)).toContainText('Already on the board since run', { timeout: 60_000 })
+
+    await gotoAtlasRoot(page)
+    await expect(nonSeededBoardObjects(page, 'pdf')).toHaveCount(1)
+  } finally {
+    extension?.stop()
+    await browser.close()
+    await server?.stop()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 // Starts the seeded workflow from the Workflows list, filling this run's
 // two declared Attributes, and lands on its own Runs tab.
 async function runSeededWorkflow(page: Page, pageURL: string): Promise<void> {
@@ -191,4 +279,37 @@ async function approveTheParkedRun(page: Page): Promise<void> {
   // The run resumes asynchronously; nothing downstream is true until the
   // approval banner is gone.
   await expect(page.getByTestId('approval-banner')).toHaveCount(0, { timeout: 60_000 })
+}
+
+// Leaves the auto-entered "The engagement" for the true top level ("All
+// spaces"), where a root-level (ParentID=="") object actually lives.
+// The egocentric-root auto-entry (ADR-0038) can re-claim the landing on
+// a FRESH mount before this click's own suppressAutoEntry state has
+// taken effect (atlas-session-restore.spec.ts's own persisted-session
+// race) -- retried rather than a fixed wait, since the real signal is
+// the breadcrumb itself, not a guessed settle time.
+async function gotoAtlasRoot(page: Page): Promise<void> {
+  await page.getByRole('link', { name: 'Atlas' }).click()
+  await expect(async () => {
+    await page.getByTestId('atlas-breadcrumb-root').click()
+    await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('The engagement')
+  }).toPass({ timeout: 15_000 })
+}
+
+// The "Land downloads on the board" step's own output, expanded: its
+// JSON tree renders the downloads array's own entries collapsed by
+// default (OutputViewer.tsx), so a download's filename/note is only in
+// the DOM text once "Expand all" has run.
+function fileObjectStepOutput(page: Page): Locator {
+  const step = page.getByTestId('run-step').filter({ hasText: 'Land downloads on the board' })
+  return step.getByTestId('run-step-output')
+}
+
+async function expandFileObjectStepOutput(page: Page): Promise<Locator> {
+  const output = fileObjectStepOutput(page)
+  // The run resumes asynchronously after approval; this step's own
+  // output only renders once it has actually finished.
+  await expect(output).toBeVisible({ timeout: 60_000 })
+  await output.getByTestId('output-expand-all').click()
+  return output
 }

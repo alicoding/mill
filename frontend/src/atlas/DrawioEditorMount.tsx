@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { MirrorKind } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
 import { AtlasService } from '../shared/bindings'
+import { editorUrlFor } from './editorUrlFor'
 import { externalChangeActions, nextDrawioActions, type DrawioEmbedAction, type DrawioEmbedMessage } from './drawioEmbedProtocol'
 import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
 
@@ -8,8 +9,9 @@ import { useAtlasMirrorChanged } from './useAtlasMirrorChanged'
 // (goal 0237 S0 verdict: the locked-down-environment requirement forces
 // this iframe+documented-protocol path to exist regardless, so the
 // bundled copy rides it too -- one seam, zero reverse-engineered API).
-// spin=1 shows the editor's own loading spinner until 'init' fires.
-const EDITOR_URL = '/vendor/drawio/editor/index.html?embed=1&proto=json&spin=1'
+// spin=1 shows the editor's own loading spinner until 'init' fires;
+// editorUrlFor adds pages=1 for a multi-page file, the one signal
+// js/PreConfig.js reads before app.min.js ever loads (goal 0409).
 
 // Mounts draw.io's real editor and wires its documented postMessage
 // protocol to Mill's own save path (goal 0237 S1). initialXML is
@@ -99,7 +101,7 @@ export function DrawioEditorMount({ objectID, initialXML, onExit, onError }: {
   return (
     <iframe
       ref={iframeRef}
-      src={EDITOR_URL}
+      src={editorUrlFor(initialXML)}
       title="drawio-editor"
       data-testid="drawio-editor-frame"
       style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}

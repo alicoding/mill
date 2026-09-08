@@ -276,6 +276,18 @@ export function DeleteHTTPRequest(id: string): $CancellablePromise<void> {
     return $Call.ByID(1529049956, id);
 }
 
+/**
+ * DeleteList emits entity.deleted (goal 0392 S2) only on this call's OWN
+ * success -- never from the shared announce closure below, since
+ * deleteEntity's undo/registerEntityDelete also calls announce on
+ * RESTORE (a ⌘Z bringing the list back), and "deleted" must never fire
+ * for that. A redo-of-this-delete (entityDeleteRedo, driven from the
+ * undo journal directly) does not currently refire entity.deleted --
+ * deleteEntity is shared by every Configure entity kind, and wiring a
+ * second emission point into its generic body is left for the kind's
+ * own next touch, same deferral shape goal 0392 S1 already used for
+ * usage/orphans beyond List.
+ */
 export function DeleteList(id: string): $CancellablePromise<void> {
     return $Call.ByID(1223896803, id);
 }

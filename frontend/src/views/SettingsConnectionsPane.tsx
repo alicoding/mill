@@ -8,12 +8,10 @@ import BrowsersSection from './BrowsersSection'
 import WebhooksSection from './WebhooksSection'
 import ContractSection from './ContractSection'
 import { SettingsRow } from './SettingsRow'
+import { mustSetting } from '../shared/settingsRegistry'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './SettingsView.module.css'
 import { background } from '../shared/background'
-
-// Where the rest of the two trimmed MCP captions lives (goal 0321).
-const MCP_DOCS_PAGE = 'agents/connect-mcp.md'
 
 // Settings > Connections (goal 0321, regrouped goal 0369): the
 // converged noun-kind order -- Devices (a phone or computer paired to
@@ -78,9 +76,7 @@ export default function SettingsConnectionsPane() {
           </Text>
           <McpAddressField />
           <SettingsRow
-            label={t('settings.mcp.allowImportLabel')}
-            caption={t('settings.mcp.allowImportCaption')}
-            docsPage={MCP_DOCS_PAGE}
+            setting={mustSetting('connections.mcpAllowImport')}
             control={(labelId) => (
               <Checkbox
                 aria-labelledby={labelId}
@@ -96,9 +92,7 @@ export default function SettingsConnectionsPane() {
           />
           {mcpWriteEnabled && (
             <SettingsRow
-              label={t('settings.mcp.askBeforeImportLabel')}
-              caption={t('settings.mcp.askBeforeImportCaption')}
-              docsPage={MCP_DOCS_PAGE}
+              setting={mustSetting('connections.mcpAskBeforeImport')}
               control={(labelId) => (
                 <Checkbox
                   aria-labelledby={labelId}
