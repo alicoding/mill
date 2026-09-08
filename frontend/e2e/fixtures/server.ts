@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { applyCpuThrottle } from './throttle'
 
 // Every per-spec dedicated port pair lives in ./serverPorts.ts (split
 // out at the 500-line hand-written-file limit, .claude/rules/
@@ -378,16 +379,11 @@ export const test = base.extend<Record<string, never>, WorkerFixtures>({
     await use(workerServer.baseURL)
   },
 
-  // E2E_CPU_THROTTLE=<rate> slows the page's CPU through Chromium's own
-  // emulation (goal 0296): CI runners are a fraction of this machine,
-  // and the flakes that only reproduce there are load races. A 4x
-  // throttle locally reproduces the CI shard's timing without CI.
+  // fixtures/throttle.ts's applyCpuThrottle (goal 0358 S8): every
+  // dedicated-server spec's own page must apply the same rate, so the
+  // logic lives there and this fixture is one caller of it.
   page: async ({ page }, use) => {
-    const rate = Number(process.env.E2E_CPU_THROTTLE ?? '0')
-    if (rate > 1) {
-      const cdp = await page.context().newCDPSession(page)
-      await cdp.send('Emulation.setCPUThrottlingRate', { rate })
-    }
+    await applyCpuThrottle(page)
     // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(page)
   },

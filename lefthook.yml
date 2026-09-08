@@ -49,6 +49,13 @@ pre-commit:
       # framework-api-first-selftest.
       glob: "scripts/check-e2e-fixed-ports*.sh"
       run: ./scripts/check-e2e-fixed-ports-selftest.sh
+    - name: e2e-edge-hover
+      glob: "frontend/e2e/**/*.ts"
+      # A .react-flow__edge locator hovered/clicked directly (not
+      # through fixtures/atlasEdge.ts) lands on AtlasLinkEdge's own
+      # chip under load, retrying to the test timeout (goal 0358 S8).
+      # Grep-only, same shape as e2e-seed-literals.
+      run: ./scripts/check-e2e-edge-hover.sh
     - name: ui-copy
       glob: "frontend/src/locales/**/*.json"
       run: ./scripts/check-ui-copy.sh
@@ -155,6 +162,21 @@ pre-commit:
     - name: hook-command-guard
       glob: "scripts/hook-command-guard.sh"
       run: ./scripts/check-hook-command-guard.sh
+    - name: selftest-git-isolation
+      # Goal 0394: any scripts/*.sh creating a throwaway git repo must
+      # source scripts/lib/git-fixture.sh, which clears the calling
+      # process's git environment before touching the fixture -- a
+      # git-commit-invoked hook otherwise redirects that call at the
+      # REAL repo (this goal's Why: a flipped core.bare, ~7000 staged
+      # deletions on the real index, twice). No glob restriction to a
+      # single script -- ANY scripts/*.sh addition/edit can introduce
+      # an unisolated git call, so this runs on every commit like
+      # hook-command-guard/standing-context just above; it is fast
+      # (git ls-files + grep only).
+      run: ./scripts/check-selftest-git-isolation.sh
+    - name: selftest-git-isolation-selftest
+      glob: "scripts/check-selftest-git-isolation*.sh"
+      run: ./scripts/check-selftest-git-isolation-selftest.sh
     - name: review-report-selftest
       # Fixture-tests the pre-PR review gate itself (goal 0383) --
       # mirrors hook-command-guard's own probe-on-touch shape; the live

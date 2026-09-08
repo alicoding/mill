@@ -41,12 +41,13 @@ func init() {
 		Label: "Answer the webhook",
 		// ClassLocal: writes to an HTTP response Mill already holds
 		// open -- no external effect of its own.
-		Effect:      guardrail.ClassLocal,
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadNone},
-		Produces:    PayloadProduce{Passthrough: true},
-		Output:      "payload unchanged; the webhook's caller receives this step's status/body once",
-		Description: "Sends this run's reply to the tool that fired the webhook.",
+		Effect:       guardrail.ClassLocal,
+		PaletteGroup: PaletteGroupApply,
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadNone},
+		Produces:     PayloadProduce{Passthrough: true},
+		Output:       "payload unchanged; the webhook's caller receives this step's status/body once",
+		Description:  "Sends this run's reply to the tool that fired the webhook.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "status", Label: "Status code", Type: FieldNumber,

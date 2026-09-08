@@ -36,7 +36,13 @@ func newWebhookWorkflow(t *testing.T, comp *compositionsvc.CompositionService, l
 	return wf.ID
 }
 
-// completedRuns counts wfID's successful runs so far.
+// completedRuns counts wfID's runs that have reached a terminal state
+// so far -- RunSummary.StillRunning(), never a bare Error=="" check:
+// Error is empty for a run still PENDING/ENQUEUED just as much as for a
+// real success, so a caller that raced a fresh run's own DB row against
+// its later steps (goal 0395's TestWebhookDispatch_SecondRespondInSameRun
+// flake -- respond2's step read back "pending" the moment respond1's
+// alone had landed) would undercount how much of the graph actually ran.
 func completedRuns(t *testing.T, exec *executionsvc.ExecutionService, wfID string) int {
 	t.Helper()
 	runs, err := exec.ListRunsForWorkflow(wfID)
@@ -45,7 +51,7 @@ func completedRuns(t *testing.T, exec *executionsvc.ExecutionService, wfID strin
 	}
 	n := 0
 	for _, run := range runs {
-		if run.Error == "" {
+		if !run.StillRunning() {
 			n++
 		}
 	}

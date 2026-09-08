@@ -297,6 +297,29 @@ func TestPhoneChannel_ShouldDeliver(t *testing.T) {
 	}
 }
 
+// TestPhoneChannel_ExcludesBrowserPairRequest pins goal 0379 Decision
+// 3: even with a paired phone ready to receive, an incoming browser
+// pair-request never reaches it -- Accept only ever happens at the
+// desktop Mill the browser is trying to reach. S2: the exclusion rides
+// evt.Targets naming no real device id (browserPairRequestTargets, the
+// same value RequestPairing actually publishes), not a Type
+// comparison -- a workflow-notify event with no Targets set still
+// reaches every paired phone unaffected.
+func TestPhoneChannel_ExcludesBrowserPairRequest(t *testing.T) {
+	s := newTestService(t)
+	ch := s.NotificationChannel()
+	if _, err := s.mintDevice("Phone", "", KindDevice); err != nil {
+		t.Fatalf("mintDevice() = %v, want nil error", err)
+	}
+
+	if ch.ShouldDeliver(notification.Event{Type: browserPairRequestEventType, Targets: browserPairRequestTargets}) {
+		t.Fatalf("ShouldDeliver(browser-pair-request) = true with a paired phone, want false")
+	}
+	if !ch.ShouldDeliver(notification.Event{Type: "workflow-notify"}) {
+		t.Fatalf("ShouldDeliver(workflow-notify) = false with a paired phone, want true -- only browser-pair-request is excluded")
+	}
+}
+
 // TestPhoneChannel_DeliverFiltersByTargets pins docs/goals/0372's
 // addressing half: evt.Targets naming one of two paired devices
 // reaches only that device, and an unknown id among the targets is

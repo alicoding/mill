@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/settings"
+	"github.com/alicoding/mill/internal/services/notificationsvc"
 )
 
 // devicesSettingsKey persists the paired-device list as one atomic
@@ -90,6 +91,20 @@ type RemoteAuthService struct {
 	code    *pairingCode
 	limiter map[string]*rateLimitEntry
 
+	// pairRequest is the single in-memory, on-demand incoming pairing
+	// REQUEST (remoteauthservice_pairrequest.go, goal 0379) -- the
+	// numeric-comparison counterpart to code above: minted by a
+	// browser's popup, resolved only by a human Accept/Deny in Mill.
+	// Never persisted, same as code.
+	pairRequest *pairingRequest
+
+	// notif is the notification spine's Publish entry point, late-bound
+	// by SetNotificationService below (main.go constructs
+	// NotificationService independently) -- RequestPairing no-ops the
+	// Publish call while this is nil, the same "nil sink means dropped"
+	// posture settingssvc.SetNotificationService already documents.
+	notif *notificationsvc.NotificationService
+
 	// streamMu/streams back the phone channel's live subscribe
 	// connections (remoteauthservice_ntfy.go) -- a deliberately
 	// separate lock from mu: a connection's entry can live for the
@@ -97,6 +112,18 @@ type RemoteAuthService struct {
 	// while mu is held (every pairing/device operation needs mu).
 	streamMu sync.Mutex
 	streams  map[string][]ntfySubscriber
+}
+
+// SetNotificationService late-binds the notification spine's Publish
+// entry point (goal 0379) -- same late-bound-setter shape as
+// settingssvc.SetNotificationService, since NotificationService is
+// constructed independently in main.go.
+//
+//wails:ignore
+func (s *RemoteAuthService) SetNotificationService(n *notificationsvc.NotificationService) {
+	s.mu.Lock()
+	s.notif = n
+	s.mu.Unlock()
 }
 
 // New constructs a RemoteAuthService backed by store for persistence, loading

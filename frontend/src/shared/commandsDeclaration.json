@@ -672,6 +672,22 @@
     "needs": null
   },
   {
+    "id": "browser.pairRequest.accept",
+    "label": "Accept the browser's pairing request",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "browser.pairRequest.deny",
+    "label": "Deny the browser's pairing request",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "browser.revealExtension",
     "label": "Reveal the extension folder",
     "binding": null,
@@ -988,6 +1004,14 @@
     "needs": "entity"
   },
   {
+    "id": "configure.integration.testDraft",
+    "label": "Test",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "configure.list.delete",
     "label": "Delete",
     "binding": null,
@@ -1010,6 +1034,14 @@
     "surface": null,
     "enabled": true,
     "needs": "entity"
+  },
+  {
+    "id": "configure.lists.deleteUnused",
+    "label": "Delete {{count}} lists",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entitySelection"
   },
   {
     "id": "configure.mcpserver.delete",
@@ -1605,6 +1637,14 @@
     "binding": null,
     "surface": null,
     "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "panel.resetPosition",
+    "label": "Reset Quick Panel position",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
     "needs": null
   },
   {

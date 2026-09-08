@@ -6,14 +6,8 @@
 # needs its own tiny git repo (init + add is enough; no commit
 # required) rather than a bare fixture directory.
 set -euo pipefail
-
-# A git-commit-invoked pre-commit hook (unlike a bare `lefthook run`)
-# runs with GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE set to the repo being
-# committed; those env vars override `cd "$root"` for every git
-# subcommand below, redirecting `init`/`add` at the REAL repo's worktree
-# instead of the fixture. Clearing them scopes every git call here to
-# its own fixture dir regardless of the calling context.
-unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_CEILING_DIRECTORIES 2>/dev/null || true
+# shellcheck source=lib/git-fixture.sh
+source "$(dirname "$0")/lib/git-fixture.sh"
 
 gate="$(cd "$(dirname "$0")" && pwd)/check-e2e-fixed-ports.sh"
 fails=0
@@ -22,13 +16,10 @@ fails=0
 probe() {
   local want="$1" label="$2" line="$3" root got
   root="$(mktemp -d)"
+  git_fixture_init "$root"
   mkdir -p "$root/frontend/e2e/fixtures"
-  (
-    cd "$root"
-    git init -q
-    printf '%s\n' "$line" >frontend/e2e/fixtures/probe.spec.ts
-    git add -A
-  )
+  printf '%s\n' "$line" >"$root/frontend/e2e/fixtures/probe.spec.ts"
+  git -C "$root" add -A
   set +e
   (cd "$root" && "$gate" >/dev/null 2>&1)
   got=$?

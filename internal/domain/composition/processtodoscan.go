@@ -19,12 +19,13 @@ const defaultTodoMarkers = "TODO,FIXME,HACK,XXX"
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "process-todo-scan", Kind: KindProcess,
-		Label:      "Scan a folder for TODO markers",
-		Effect:     guardrail.ClassLocal,
-		Complexity: ComplexityAdvanced,
-		Consumes:   []PayloadKind{PayloadAny},
-		Produces:   PayloadProduce{Kind: PayloadText},
-		Output:     "a CSV table of every marker hit: file, line, marker, text",
+		PaletteGroup: PaletteGroupData,
+		Label:        "Scan a folder for TODO markers",
+		Effect:       guardrail.ClassLocal,
+		Complexity:   ComplexityAdvanced,
+		Consumes:     []PayloadKind{PayloadAny},
+		Produces:     PayloadProduce{Kind: PayloadText},
+		Output:       "a CSV table of every marker hit: file, line, marker, text",
 		Description: "Walks a folder and lists every TODO-style marker it finds as a table: one row per hit " +
 			"with the file, line, marker, and the text after it. Hidden folders, node_modules, vendor and " +
 			".git are skipped.",

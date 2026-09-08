@@ -79,6 +79,14 @@ type ntfySubscriber struct {
 // further lines until the client disconnects or RevokeDevice force-
 // closes it. poll=1 (the protocol's one-shot mode) returns right after
 // the open line -- Mill keeps no per-topic backlog to replay.
+//
+// The streaming case registers the subscriber BEFORE writing/flushing
+// the open line: a client can only observe "open" once those bytes
+// reach it, which is strictly after the subscriber registration below
+// (same goroutine, program order) -- so a RevokeDevice racing right
+// behind the client's own read of "open" always finds the subscriber
+// already in s.streams and force-closes it, never a window where the
+// registration hasn't landed yet.
 func (s *RemoteAuthService) handleNtfySubscribe(w http.ResponseWriter, r *http.Request, topic string) {
 	if !s.recordTopicSeen(topic, baseURLFor(r)) {
 		http.NotFound(w, r)
@@ -93,10 +101,11 @@ func (s *RemoteAuthService) handleNtfySubscribe(w http.ResponseWriter, r *http.R
 
 	w.Header().Set("Content-Type", "application/x-ndjson")
 	w.WriteHeader(http.StatusOK)
-	writeNtfyLine(w, ntfyMessage{ID: uuid.NewString(), Time: time.Now().Unix(), Event: "open", Topic: topic})
-	flusher.Flush()
+	openLine := ntfyMessage{ID: uuid.NewString(), Time: time.Now().Unix(), Event: "open", Topic: topic}
 
 	if r.URL.Query().Get("poll") == "1" {
+		writeNtfyLine(w, openLine)
+		flusher.Flush()
 		return
 	}
 
@@ -104,6 +113,9 @@ func (s *RemoteAuthService) handleNtfySubscribe(w http.ResponseWriter, r *http.R
 	sub := ntfySubscriber{ch: make(chan ntfyMessage, 8), cancel: cancel}
 	s.addSubscriber(topic, sub)
 	defer s.removeSubscriber(topic, sub)
+
+	writeNtfyLine(w, openLine)
+	flusher.Flush()
 
 	for {
 		select {
@@ -221,17 +233,31 @@ type phoneChannel struct{ s *RemoteAuthService }
 
 func (phoneChannel) Name() string { return "phone" }
 
-// ShouldDeliver is true whenever at least one paired device carries a
-// topic -- deliberately NOT consulting evt.Focused: a browser tab's
-// focus on one machine says nothing about a phone in a pocket (docs/
-// goals/0171's event/delivery layering).
-func (c phoneChannel) ShouldDeliver(notification.Event) bool {
+// ShouldDeliver is true exactly when Deliver would actually reach at
+// least one live phone: a paired device with a topic, and -- when
+// evt.Targets names specific device ids (docs/goals/0372) -- one of
+// THOSE ids specifically. Deliberately NOT consulting evt.Focused: a
+// browser tab's focus on one machine says nothing about a phone in a
+// pocket (docs/goals/0171's event/delivery layering).
+//
+// browserPairRequestEventType (goal 0379 Decision 3) is excluded by
+// this same Targets check, not a Type comparison: RequestPairing
+// publishes it with Targets naming no real device id (Accept/Deny only
+// ever happens at the desktop Mill the requesting browser is trying to
+// reach, so a phone notification for it would never lead anywhere a
+// person could act) -- the general "unmatched Targets never deliver"
+// rule already covers it with no Type-specific branch here.
+func (c phoneChannel) ShouldDeliver(evt notification.Event) bool {
 	c.s.mu.Lock()
 	defer c.s.mu.Unlock()
 	for _, d := range c.s.devices {
-		if d.Topic != "" {
-			return true
+		if d.Topic == "" {
+			continue
 		}
+		if len(evt.Targets) > 0 && !slices.Contains(evt.Targets, d.ID) {
+			continue
+		}
+		return true
 	}
 	return false
 }

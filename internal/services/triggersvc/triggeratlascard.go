@@ -86,7 +86,7 @@ func (s *TriggerService) DispatchAtlasCardChange(cardID, kindID, title, changeTy
 	// RunWorkflowWithPayload's values param already relies on.
 	values := map[string]string{"cardId": cardID, "kindId": kindID, "cardTitle": title, "changeType": changeType}
 	for _, wfID := range targets {
-		go s.fireAtlasCard(wfID, cardID, string(payload), values)
+		s.goFire(func() { s.fireAtlasCard(wfID, cardID, string(payload), values) })
 	}
 }
 

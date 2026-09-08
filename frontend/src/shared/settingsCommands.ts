@@ -6,6 +6,7 @@ import { SETTINGS_GROUPS, resolveGroupTitle } from './settingsGroups'
 import { useUpdateNoticeStore } from './updateNoticeStore'
 import { useUISignalStore } from './uiSignalStore'
 import { useBuildInfoStore } from './buildInfoStore'
+import { useQuickPanelPositionStore } from './quickPanelPositionStore'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import { downloadBlob } from './downloadBlob'
 
@@ -133,6 +134,22 @@ export const SETTINGS_COMMANDS: Command[] = [
     defaultBinding: null,
     enabled: () => useBuildInfoStore.getState().isDesktop,
     run: () => SettingsService.ShowPanel(),
+  },
+  {
+    // Recenters the Quick Panel and forgets a dragged position (goal
+    // 0377) -- the recovery command every draggable-launcher precedent
+    // ships (Raycast's own "Reset Raycast Window Position", macOS
+    // Spotlight's press-hold reset). Palette-only, deliberately not
+    // surfaced inside the Quick Panel's own row list (quickPanel: true
+    // omitted) -- resetting the panel's position from inside a panel
+    // that might be badly placed is circular; run it from the MAIN
+    // window instead. enabled() is honest: nothing to reset once the
+    // panel is already at its default centered position.
+    id: 'panel.resetPosition',
+    label: 'commands.panel.resetPosition',
+    defaultBinding: null,
+    enabled: () => useQuickPanelPositionStore.getState().hasCustomPosition,
+    run: () => SettingsService.ResetPanelPosition(),
   },
   {
     // Brings the run monitor window forward showing whatever it last

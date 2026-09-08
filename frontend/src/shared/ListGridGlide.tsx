@@ -9,13 +9,14 @@ import { useListSchemaEdits } from './useListSchemaEdits'
 import { optionsRenderer } from './listGridGlideCells'
 import { GLIDE_DEFAULT_COLUMN_WIDTH, GLIDE_HEADER_HEIGHT, GLIDE_HEADER_HEIGHT_COMPACT, GLIDE_ROW_HEIGHT, GLIDE_ROW_HEIGHT_COMPACT, useGridPalette } from './listGridGlideTheme'
 import { useDisplayDensity } from './density'
-import { anchorFromBounds, type Anchor } from './ListGridGlideMenus'
+import { anchorFromBounds } from './ListGridGlideMenus'
 import { AddColumnButton, AddColumnRail, GlideOverlays, menuProps, schemaEditorProps, useGlideCellEdits, useGlideColumns, useRowTint, type GlideMenuState } from './ListGridGlideOverlays'
 import { ListGridGlideToolbar } from './ListGridGlideToolbar'
 import { filterGridRows, nextSortDirection, sortGridRows, type GridColumnFilter, type GridColumnFilters, type GridColumnSort, type GridSortDirection } from './listStandard'
 import { findCommand, runCommand } from './commands'
 import { comboFromEvent, comboKey, isUndoJournalCombo } from './keybinding'
 import { useListGridSearchFocusStore } from './listGridSearchFocus'
+import { useListGridGlideRename } from './useListGridGlideRename'
 import styles from './ListGrid.module.css'
 
 // The adopted grid (ADR-0049, goals 0287 / 0349 S4): Glide Data Grid as
@@ -107,7 +108,6 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
   const renderers = useMemo(() => [optionsRenderer(palette)], [palette])
   const [widths, setWidths] = useState<Record<string, number>>(() => readWidths(listID))
   const [menu, setMenu] = useState<GlideMenuState>(null)
-  const [renaming, setRenaming] = useState<{ key: string; at: Anchor } | null>(null)
   const [sort, setSort] = useState<GridColumnSort | null>(null)
   const [filters, setFilters] = useState<GridColumnFilters>({})
   const [selection, setSelection] = useState<GridSelection>(EMPTY_SELECTION)
@@ -185,43 +185,20 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
     setFilters((prev) => ({ ...prev, [key]: next }))
   }, [])
 
-  // The header's rectangle comes from the grid's own layout; on a
-  // first mount (an empty List's first column) it is not there for a
-  // few frames yet, so the lookup retries briefly instead of giving up.
-  const openRename = useCallback((col: number, at?: Anchor) => {
-    const column = columns[col]
-    if (!column) return
-    setMenu(null)
-    if (at) {
-      setRenaming({ key: column.Key, at })
-      return
-    }
-    let tries = 0
-    const attempt = () => {
-      const bounds = gridRef.current?.getBounds(col, -1)
-      if (bounds && bounds.width > 0) {
-        setRenaming({ key: column.Key, at: toAnchor(bounds) })
-        return
-      }
-      if (++tries < 30) window.requestAnimationFrame(attempt)
-    }
-    attempt()
-  }, [columns, toAnchor])
-
-  // A fresh column goes straight into rename once its insert LANDED,
-  // at the header the new column now occupies (the grid lays it out
-  // on its next frame).
-  const pendingRenameKey = useRef<string | null>(null)
+  // The rename overlay's open/close (goal 0390 amendment 2, split into
+  // its own hook at the 500-line convention): a menu click's real
+  // anchor opens it directly; a fresh column's own arrival opens it
+  // once the grid's own onVisibleRegionChanged reports the column
+  // inside its visible range -- never a bounds probe or a timer -- and
+  // survives an empty-list mount/unmount and an off-screen column past
+  // an unsized table object's width cap (useListGridGlideRename.ts).
+  // closeMenu is memoized (a stable setState identity) so openRename's
+  // own memoization inside the hook isn't defeated every render.
+  const closeMenu = useCallback(() => setMenu(null), [])
+  const { renaming, closeRename, openRename, armPendingRename, onVisibleRegionChanged } = useListGridGlideRename(gridRef, columns, toAnchor, closeMenu)
   const insertColumn = (index: number) => {
-    void edits.insertColumnAt(index).then((key) => { pendingRenameKey.current = key ?? null })
+    void edits.insertColumnAt(index).then((key) => armPendingRename(key ?? null))
   }
-  useEffect(() => {
-    const col = columns.findIndex((c) => c.Key === pendingRenameKey.current)
-    if (col === -1) return
-    pendingRenameKey.current = null
-    const id = window.setTimeout(() => openRename(col), 0)
-    return () => window.clearTimeout(id)
-  }, [columns, openRename])
 
   // The handle every listGrid.search AND listGrid.addColumn invocation
   // acts through (listGridSearchFocus.ts): published whenever focus
@@ -390,6 +367,9 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
             onCellActivated={() => reportEditing(true)}
             onFinishedEditing={() => reportEditing(false)}
             onHeaderClicked={cycleSort}
+            // The grid's own readiness report a pending column rename
+            // waits on -- see onVisibleRegionChanged above.
+            onVisibleRegionChanged={onVisibleRegionChanged}
             smoothScrollX
             smoothScrollY
             onColumnResize={onColumnResize}
@@ -424,7 +404,7 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
         onCloseMenu={() => setMenu(null)}
         onRename={(col) => openRename(col, menu?.at)}
         onInsertColumn={(index) => { setMenu(null); insertColumn(index) }}
-        onCloseRename={() => setRenaming(null)}
+        onCloseRename={closeRename}
         onSort={applySort}
         onFilter={applyFilter}
       />

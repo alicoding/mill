@@ -21,6 +21,7 @@ down at end (`e2e/fixtures/server.ts`). Shared-pool specs import
 **Specs with their own dedicated server** call `spawnMillServer`
 themselves (e.g. `atlas-authoring.spec.ts`).
 - Within-file cleanup: delete what you create.
+- A script creating a git fixture sources `scripts/lib/git-fixture.sh`.
 - Tests/e2e default to memory (`MILL_CLIPBOARD=memory`); a real-pasteboard test spawns `host` under the lock (`withClipboardLock`).
 - `e2e/persistence.spec.ts` is the only spec allowed its own server pair.
 - **Servers bind OS-assigned ports, never a literal port** —
@@ -31,8 +32,8 @@ themselves (e.g. `atlas-authoring.spec.ts`).
 
 **A UI feature isn't verified by narrow assertions alone.** Restate the
 underlying task in one sentence and check that, not the elements the
-diff touched. A save/submit handler depending on a value computed just before it
-fires should pass it directly, not round-trip through state.
+diff touched. A save/submit handler depending on a just-computed value
+passes it directly, never round-trips through state.
 
 **Every capability ships with a seeded example that exercises it — the
 seed IS the proof.** Seeding is top-up with delete-tombstones
@@ -103,8 +104,8 @@ resort carrying a same-line comment naming why.
 
 A spec reading GLOBAL app state (e.g. queue/filter contents) runs on a
 DEDICATED server pair, named in its
-header comment. Shared pool is for specs scoped to entities they create
-and delete themselves. No test may depend on state an earlier test left — seed it inline.
+header comment. Shared pool is for specs scoped to entities they own.
+No test may depend on state an earlier test left — seed it inline.
 
 ## The installed app is the verification driver
 Every user-facing or windowing change is driven on the REAL installed app before its PR merges: build and install the PR's app (`task install:app` from the worktree, after quitting the running Mill by its own PID — never `pkill -f`), launch `/Applications/Mill.app` by path, exercise the changed surface for real (hotkeys via `osascript`, drags via `cliclick`, `screencapture` for evidence), then relaunch — no permission asked. Server-mode Playwright and the seeded proofs are automated evidence, never a substitute for this pass, whose screenshots are reviewed against the design contract before the PR opens.

@@ -90,7 +90,11 @@ fi
 # by `go generate ./internal/docsgen` into userdocs/reference/. Not
 # present before the first generate (or in a checkout that predates
 # this goal) -- degrades to a "not generated yet" marker, the same
-# never-fatal shape DISPATCH.md's own absence gets above.
+# never-fatal shape DISPATCH.md's own absence gets above. The
+# committed ledger itself carries no git-derived field any more (goal
+# 0397 -- it would make two branches conflict by construction), so
+# code/docs currency is merged in below from a live read of this
+# checkout's own git history instead.
 maturity_file="$repo_root/userdocs/reference/plugin-api-maturity.json"
 if [[ -f "$maturity_file" ]]; then
   maturity_json="$(cat "$maturity_file")"
@@ -98,8 +102,40 @@ else
   maturity_json='{"generated":false}'
 fi
 
+# --- currency: each family's code/docs git dates, read live from this
+# checkout (goal 0397) via the docsgen generator's own -currency entry
+# point, then merged into the maturity rows above by family. A `go`
+# toolchain miss or any failure here just leaves the maturity rows
+# without currency fields -- never a failed derive, the same
+# best-effort shape every other section above takes.
+if [[ -f "$maturity_file" ]]; then
+  currency_file="$tmp_dir/currency.json"
+  if (cd "$repo_root/internal/docsgen" && go run ./gen -currency) >"$currency_file" 2>/dev/null; then
+    maturity_json="$(python3 - "$maturity_file" "$currency_file" <<'PY'
+import json, sys
+
+maturity_path, currency_path = sys.argv[1:3]
+with open(maturity_path) as fh:
+    maturity = json.load(fh)
+with open(currency_path) as fh:
+    currency_by_family = {row["family"]: row for row in json.load(fh)}
+
+for row in maturity.get("rows", []):
+    currency = currency_by_family.get(row["family"])
+    if not currency:
+        continue
+    for key in ("codeCommit", "codeChangedAt", "docsCommit", "docsChangedAt"):
+        if key in currency:
+            row[key] = currency[key]
+
+print(json.dumps(maturity))
+PY
+)"
+  fi
+fi
+
 # --- repo: current main sha + open PRs (gh optional, never fatal) ---
-main_sha="$(git -C "$repo_root" rev-parse origin/main 2>/dev/null || git -C "$repo_root" rev-parse HEAD)"
+main_sha="$(git -C "$repo_root" rev-parse origin/main 2>/dev/null || git -C "$repo_root" rev-parse HEAD)"  # git-isolation:allow -- reads the real checkout's own sha, not a fixture
 prs_json="[]"
 gh_unavailable="true"
 if command -v gh >/dev/null 2>&1; then

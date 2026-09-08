@@ -62,6 +62,16 @@ type TokenAuthority interface {
 	PairBrowser(code, label, source string) (remoteauthsvc.BrowserPairing, error)
 	ValidateBrowserToken(token string) (remoteauthsvc.DeviceInfo, bool)
 	ValidateWebhookToken(token string) (remoteauthsvc.DeviceInfo, bool)
+	// RequestPairing and PairingStatus back the nearby discovery flow
+	// (goal 0379): a popup-minted request, confirmed by a human
+	// Accept/Deny in Mill, never a code typed out of band.
+	RequestPairing(label, source string) (remoteauthsvc.PairingRequestInfo, error)
+	PairingStatus(requestID string) remoteauthsvc.PairingRequestStatus
+	// RevokeDevice backs the self-revoke door (goal 0379 S2): a paired
+	// browser presenting its own bearer token ends its own pairing
+	// through the SAME door Settings' own revoke uses -- never a
+	// second trust model.
+	RevokeDevice(id string) error
 }
 
 // client is one browser holding a stream open.

@@ -1,4 +1,5 @@
 import { chromium, expect, test, type Browser, type Page } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -58,6 +59,7 @@ async function openDedicatedServer(namePrefix: string, offset: number, idx: numb
   // resolve against this test's own dedicated server, not Playwright's
   // (unset, since this file never uses the standard workerServer fixture).
   const page = await browser.newPage({ baseURL: server.baseURL })
+  await applyCpuThrottle(page)
   return { server, browser, page, dir }
 }
 
