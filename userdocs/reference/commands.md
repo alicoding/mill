@@ -94,6 +94,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `backup.export` | Export everything | — | Global | Always available |
 | `backup.now` | Back up now | — | Global | Always available |
 | `browser.pair` | Pair a browser | — | Global | Always available |
+| `browser.pairRequest.accept` | Accept the browser's pairing request | — | Global | Conditional — available only in a matching state |
+| `browser.pairRequest.deny` | Deny the browser's pairing request | — | Global | Conditional — available only in a matching state |
 | `browser.revealExtension` | Reveal the extension folder | — | Global | Always available |
 | `browser.test` | Test the browser connection | — | Global | Conditional — available only in a matching state |
 | `canvas.addNote` | Add note | — | Global | Acts on the item you clicked |
@@ -132,9 +134,11 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.execenv.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.execenv.export` | Export | — | Global | Acts on the selected entity |
 | `configure.execenv.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.integration.testDraft` | Test | — | Global | Conditional — available only in a matching state |
 | `configure.list.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.list.export` | Export | — | Global | Acts on the selected entity |
 | `configure.list.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.lists.deleteUnused` | Delete {{count}} lists | — | Global | Acts on the selected entitySelection |
 | `configure.mcpserver.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.mcpserver.export` | Export | — | Global | Acts on the selected entity |
 | `configure.mcpserver.listTools` | List tools | — | Global | Acts on the selected entity |

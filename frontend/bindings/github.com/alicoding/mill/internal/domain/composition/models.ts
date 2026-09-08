@@ -288,16 +288,18 @@ export interface NodeType {
     "Declared": boolean;
 
     /**
-     * PaletteGroup is the frontend display-group id (composition/
-     * paletteGroups.ts's PaletteGroupId) a declared step type was
-     * authored under -- empty for every built-in, whose group instead
-     * comes from paletteGroups.ts's own compile-time NODE_TYPE_GROUP map.
-     * A declared type has no compile-time map entry (it doesn't exist
-     * until a user creates it), so this is the only channel carrying its
-     * author-chosen group from the Configure-authored DeclaredStepType
-     * (ADR-0037) into the palette at all.
+     * PaletteGroup is the frontend display-group id (frontend/src/shared/
+     * paletteGroups.ts's PaletteGroupId, exported through contract.json)
+     * -- required for every NodeType, no exception (TestNodeTypes
+     * enforces it with no pureNodeTypes-style allow-list, the same bar
+     * Complexity holds below): the palette derives its grouping from
+     * this field directly, never from a hand-kept frontend map keyed by
+     * ID, which drifted silently whenever a new NodeType shipped without
+     * a matching map entry. A declared step type (ADR-0037) carries its
+     * author's own chosen group here via DeclaredStepBinding.PaletteGroup,
+     * resolved at synthesis time (resolveDeclaredEntry, declaredsteptype.go).
      */
-    "PaletteGroup": string;
+    "PaletteGroup": PaletteGroup;
 
     /**
      * Complexity is the node type's audience/complexity facet
@@ -352,6 +354,32 @@ export enum NoteColor {
     NoteColorBlue = "blue",
     NoteColorGreen = "green",
     NoteColorPink = "pink",
+};
+
+/**
+ * PaletteGroup is NodeType's frontend display-group facet -- see
+ * NodeType.PaletteGroup's own doc comment. The 10 values below are
+ * exactly frontend/src/shared/paletteGroups.ts's PaletteGroupId union;
+ * the two lists are meant to stay identical, never independently
+ * extended (a new group needs a matching frontend PALETTE_GROUP_ORDER
+ * entry, and vice versa).
+ */
+export enum PaletteGroup {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    PaletteGroupTriggers = "triggers",
+    PaletteGroupCapture = "capture",
+    PaletteGroupTransform = "transform",
+    PaletteGroupAI = "ai",
+    PaletteGroupData = "data",
+    PaletteGroupActions = "actions",
+    PaletteGroupBrowser = "browser",
+    PaletteGroupFlow = "flow",
+    PaletteGroupGuardrails = "guardrails",
+    PaletteGroupApply = "apply",
 };
 
 /**

@@ -13,6 +13,13 @@ export interface PendingUndo {
   count: number
   linksRemoved: number
   childrenPromoted: number
+  // The deleted board object's own entity-reference outcome (goal 0392
+  // S1) -- objectKind/entityRefKind are both '' for a card/note delete
+  // or a board-object kind with no declared entityRef, in which case
+  // AtlasUndoToast renders no entity-outcome segment at all.
+  objectKind: string
+  entityRefKind: string
+  entityStillUsed: boolean
 }
 
 // Owns the quick-delete undo toast's whole lifecycle (goal 0093): one
@@ -52,6 +59,9 @@ export function useAtlasUndoToast() {
       count: cardIDs.length + noteIDs.length + objectIDs.length,
       linksRemoved: result.LinksRemoved ?? 0,
       childrenPromoted: result.ChildrenPromoted ?? 0,
+      objectKind: result.ObjectKind ?? '',
+      entityRefKind: result.EntityRefKind ?? '',
+      entityStillUsed: result.EntityStillUsed ?? false,
     })
     timerRef.current = setTimeout(() => setPending(null), TOAST_DURATION_MS)
   }

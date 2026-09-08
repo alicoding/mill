@@ -49,6 +49,13 @@ func newSystemEventHarness(t *testing.T) (*compositionsvc.CompositionService, *T
 	exec.SetSystemEventSink(trig.DispatchSystemEvent)
 	t.Cleanup(func() {
 		trig.Sync(nil) // stop every listener this test starts
+		// Every fire this test dispatched must have returned from its
+		// own ExecutionService call before Shutdown tears that context
+		// down -- a fire still in flight racing Shutdown is exactly the
+		// goal-0395 class this Drain call exists to close.
+		if !trig.Drain(5 * time.Second) {
+			t.Error("triggersvc: fire goroutines still in flight past the drain budget")
+		}
 		_ = exec.Shutdown(2 * time.Second)
 	})
 	return comp, trig, exec, guard

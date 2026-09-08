@@ -14,9 +14,10 @@ var readFile = fileread.Read
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "capture-file", Kind: KindCapture,
-		Effect:     guardrail.ClassRead,
-		Complexity: ComplexityBasic,
-		Consumes:   []PayloadKind{PayloadText, PayloadNone},
+		PaletteGroup: PaletteGroupCapture,
+		Effect:       guardrail.ClassRead,
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadText, PayloadNone},
 		// The file's content kind is unknowable statically (the
 		// saved-page seed reads .html files through this step) -- any,
 		// honestly.

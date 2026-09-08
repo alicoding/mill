@@ -31,7 +31,8 @@ func SetNotifier(fn func(title, body, runID string, targets []string) error) {
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-notify", Kind: KindApply,
-		Label: "Notify me",
+		PaletteGroup: PaletteGroupApply,
+		Label:        "Notify me",
 		// ClassLocal: a local side effect on the user's own machine and
 		// their own paired devices, same class as the clipboard writes.
 		Effect:     guardrail.ClassLocal,

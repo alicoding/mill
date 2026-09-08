@@ -25,13 +25,14 @@ func SetClipboardHistoryAppender(fn func(string) error) {
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-clipboard-history-store", Kind: KindApply,
-		Effect:      guardrail.ClassLocal,
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadText},
-		Produces:    PayloadProduce{Passthrough: true},
-		Output:      "the text it stored",
-		Label:       "Save to clipboard history",
-		Description: "Scrubs any known secret value out of the payload, then adds what's left to Clipboard history. Confidential-marked content and Mill's own clipboard writes never reach this step.",
+		PaletteGroup: PaletteGroupApply,
+		Effect:       guardrail.ClassLocal,
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadText},
+		Produces:     PayloadProduce{Passthrough: true},
+		Output:       "the text it stored",
+		Label:        "Save to clipboard history",
+		Description:  "Scrubs any known secret value out of the payload, then adds what's left to Clipboard history. Confidential-marked content and Mill's own clipboard writes never reach this step.",
 	}, func(_ Node, ctx ExecContext) (ExecContext, error) {
 		redacted := redactSecretsFn(ctx.Payload)
 		if err := appendClipboardHistoryFn(redacted); err != nil {

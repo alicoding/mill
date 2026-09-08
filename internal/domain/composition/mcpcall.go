@@ -84,13 +84,14 @@ func SetSecretRedactor(fn func(string) string) {
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "mcp-tool-call", Kind: KindProcess,
-		Effect:      guardrail.ClassExternal,
-		Complexity:  ComplexityAdvanced, // argumentsJSON needs the target tool's own input schema
-		Consumes:    []PayloadKind{PayloadAny},
-		Produces:    PayloadProduce{Kind: PayloadAny},
-		Output:      "the tool's text result",
-		Label:       "Call an MCP tool",
-		Description: "Calls one tool on a configured MCP server and replaces the payload with its text result. The tool is picked from the server's live tool list, with typed-name fallback when the server can't be reached.",
+		PaletteGroup: PaletteGroupActions,
+		Effect:       guardrail.ClassExternal,
+		Complexity:   ComplexityAdvanced, // argumentsJSON needs the target tool's own input schema
+		Consumes:     []PayloadKind{PayloadAny},
+		Produces:     PayloadProduce{Kind: PayloadAny},
+		Output:       "the tool's text result",
+		Label:        "Call an MCP tool",
+		Description:  "Calls one tool on a configured MCP server and replaces the payload with its text result. The tool is picked from the server's live tool list, with typed-name fallback when the server can't be reached.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "mcpServerId", Label: "MCP Server ID",
