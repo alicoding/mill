@@ -121,6 +121,11 @@ var registry = []check{
 		run:    checkAtlasBoardRenders,
 	},
 	{
+		name:   "run-command-opens-settings",
+		reason: "goal 0381's runCommand door (window.__millRunCommand) is the highest-abstraction way to drive Mill -- the same findCommand+run path a real click/keystroke/palette entry already goes through. Proves the door end to end: drives settings.open and asserts the same DOM effect a real click produces.",
+		run:    checkRunCommandOpensSettings,
+	},
+	{
 		name:   "note-card-commit-interaction",
 		reason: "a real WKWebView pointer event round-trips into React state -- click-select then click-commit (the goal 0102 model: two plain clicks open a leaf's page) is Atlas's most basic interaction, gates everything after it.",
 		run:    checkNoteCardCommit,
