@@ -127,6 +127,18 @@ export interface PluginFetchResult {
     headers: Record<string, string>;
     body: string;
 }
+/** api.fetchJSON's answer: never throws, not for a denied request, a
+ * non-2xx status, or a body that isn't JSON. Check ok before reading
+ * data; it carries the same non-throwing contract PluginFetchResult
+ * itself does. errorText names what went wrong when ok is false: the
+ * rule that denied the request, the status, or that the body wasn't
+ * valid JSON. */
+export interface PluginFetchJSONResult<T = unknown> {
+    ok: boolean;
+    status: number;
+    data?: T;
+    errorText?: string;
+}
 /** The outcome of a guarded write through api.content: a denied write
  * resolves with approved: false and the rule's label; an approved one
  * carries the created (or updated) entity's id. */
@@ -211,8 +223,11 @@ export interface PluginFilesAPI {
 }
 /** Pure transforms Mill already implements, offered to a plugin as-is.
  * htmlToMarkdown is the exact conversion every paste and every
- * workflow convert step uses. No capability required — a transform
- * reaches nothing outside the input you pass it. */
+ * workflow convert step uses; markdownToHtml is its reverse, the same
+ * sanitized renderer a mirrored file's markdown preview uses. No
+ * capability required — a transform reaches nothing outside the input
+ * you pass it. */
 export interface PluginConvertAPI {
     htmlToMarkdown: (html: string) => Promise<string>;
+    markdownToHtml: (markdown: string) => Promise<string>;
 }

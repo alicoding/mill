@@ -10,3 +10,12 @@ import "github.com/alicoding/mill/internal/adapters/markdown"
 func (p *PluginService) ConvertHTMLToMarkdown(html string) (string, error) {
 	return markdown.ToMarkdown(html)
 }
+
+// ConvertMarkdownToHTML is the convert door's reverse direction (goal
+// 0386 S1): the same sanitized CommonMark+GFM renderer a mirrored
+// file's markdown preview already uses, offered to a plugin as a pure
+// transform. No capability gates it, for the same reason
+// ConvertHTMLToMarkdown needs none.
+func (p *PluginService) ConvertMarkdownToHTML(md string) (string, error) {
+	return markdown.RenderHTML(md)
+}

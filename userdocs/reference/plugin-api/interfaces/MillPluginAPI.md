@@ -57,11 +57,71 @@ contract.
 
 ***
 
+### fetchJSON
+
+```ts
+fetchJSON: <T>(url, init?) => Promise<PluginFetchJSONResult<T>>;
+```
+
+Sugar over fetch for a JSON API: parses the body and never
+throws, not even for a denied request, a non-2xx status or a body
+that isn't JSON — see PluginFetchJSONResult.
+
+#### Type Parameters
+
+##### T
+
+`T` = `unknown`
+
+#### Parameters
+
+##### url
+
+`string`
+
+##### init?
+
+[`PluginFetchInit`](PluginFetchInit.md)
+
+#### Returns
+
+`Promise`\<[`PluginFetchJSONResult`](PluginFetchJSONResult.md)\<`T`\>\>
+
+***
+
 ### files
 
 ```ts
 files: PluginFilesAPI;
 ```
+
+***
+
+### formatDate
+
+```ts
+formatDate: (iso, style?) => string;
+```
+
+Formats an ISO timestamp the way Mill's own interface does:
+'relative' (the default) reads "2m ago"/"yesterday", falling back
+to a short date beyond about a week; 'short' is a locale date;
+'long' is a locale date and time. An unparseable iso answers
+'—'.
+
+#### Parameters
+
+##### iso
+
+`string`
+
+##### style?
+
+`"relative"` \| `"short"` \| `"long"`
+
+#### Returns
+
+`string`
 
 ***
 
