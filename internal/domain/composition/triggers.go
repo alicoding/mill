@@ -30,30 +30,33 @@ package composition
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "trigger-manual", Kind: KindTrigger,
-		Label:       "Manual run",
-		Output:      "empty payload — the run starts here",
-		Description: "Fires on-demand when a user clicks Run/Test. No listener process.",
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadNone},
-		Produces:    PayloadProduce{Kind: PayloadNone},
+		PaletteGroup: PaletteGroupTriggers,
+		Label:        "Manual run",
+		Output:       "empty payload — the run starts here",
+		Description:  "Fires on-demand when a user clicks Run/Test. No listener process.",
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadNone},
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-hotkey", Kind: KindTrigger,
-		Label:       "Hotkey pressed",
-		Output:      "empty payload — the run starts here",
-		Description: "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here.",
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadNone},
-		Produces:    PayloadProduce{Kind: PayloadNone},
+		PaletteGroup: PaletteGroupTriggers,
+		Label:        "Hotkey pressed",
+		Output:       "empty payload — the run starts here",
+		Description:  "Fires on a global keyboard shortcut, even when Mill isn't focused. Bound via TriggerService, not a config field here.",
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadNone},
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-schedule", Kind: KindTrigger,
-		Label:       "On a schedule",
-		Output:      "empty payload — the run starts here",
-		Description: "Fires on a cron schedule.",
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadNone},
-		Produces:    PayloadProduce{Kind: PayloadNone},
+		PaletteGroup: PaletteGroupTriggers,
+		Label:        "On a schedule",
+		Output:       "empty payload — the run starts here",
+		Description:  "Fires on a cron schedule.",
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadNone},
 		ConfigFields: []ConfigField{
 			{
 				Key: "cron", Label: "Cron expression",
@@ -64,30 +67,33 @@ func init() {
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-clipboard-watch", Kind: KindTrigger,
-		Label:       "Clipboard changed",
-		Output:      "the clipboard text that changed",
-		Description: "Fires whenever the clipboard's content changes.",
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadNone},
-		Produces:    PayloadProduce{Kind: PayloadText},
+		PaletteGroup: PaletteGroupTriggers,
+		Label:        "Clipboard changed",
+		Output:       "the clipboard text that changed",
+		Description:  "Fires whenever the clipboard's content changes.",
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadText},
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-clipboard-change", Kind: KindTrigger,
-		Label:       "Clipboard captured",
-		Output:      "the clipboard text that changed, already screened for confidential content and Mill's own writes",
-		Description: "Fires when you copy something new. It skips content marked confidential by the app you copied it from, and skips text Mill itself just wrote back to the clipboard.",
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadNone},
-		Produces:    PayloadProduce{Kind: PayloadText},
+		PaletteGroup: PaletteGroupTriggers,
+		Label:        "Clipboard captured",
+		Output:       "the clipboard text that changed, already screened for confidential content and Mill's own writes",
+		Description:  "Fires when you copy something new. It skips content marked confidential by the app you copied it from, and skips text Mill itself just wrote back to the clipboard.",
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadText},
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-filesystem-watch", Kind: KindTrigger,
-		Label:       "File changed",
-		Output:      "the changed file path",
-		Description: "Fires when a file or folder under the configured path is added, changed, or deleted.",
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadNone},
-		Produces:    PayloadProduce{Kind: PayloadText},
+		PaletteGroup: PaletteGroupTriggers,
+		Label:        "File changed",
+		Output:       "the changed file path",
+		Description:  "Fires when a file or folder under the configured path is added, changed, or deleted.",
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadText},
 		ConfigFields: []ConfigField{
 			{
 				Key: "path", Label: "Path to watch",
@@ -103,19 +109,21 @@ func init() {
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-callable", Kind: KindTrigger,
-		Label:       "Called by another workflow",
-		Output:      "the caller's typed input",
-		Description: "Fires only when another workflow invokes this one with its Child Workflow step, never by an outside event. A workflow starting here declares itself callable: it appears in the Child Workflow step's picker and nowhere else.",
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadNone},
-		Produces:    PayloadProduce{Kind: PayloadAny},
+		PaletteGroup: PaletteGroupTriggers,
+		Label:        "Called by another workflow",
+		Output:       "the caller's typed input",
+		Description:  "Fires only when another workflow invokes this one with its Child Workflow step, never by an outside event. A workflow starting here declares itself callable: it appears in the Child Workflow step's picker and nowhere else.",
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadAny},
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-system-event", Kind: KindTrigger,
-		Complexity: ComplexityBasic,
-		Consumes:   []PayloadKind{PayloadNone},
-		Produces:   PayloadProduce{Kind: PayloadJSON},
-		Label: "System event",
+		PaletteGroup: PaletteGroupTriggers,
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadJSON},
+		Label:        "System event",
 		Output: "JSON payload, shaped by which event you picked. The run/decision events carry " +
 			"{event, runId, workflowId, workflowLabel, nodeId?, timestamp, version?, channel?}: nodeId only " +
 			"for decision-parked (the parked step's ID), version/channel only for update-available. The " +
@@ -145,10 +153,11 @@ func init() {
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-webhook", Kind: KindTrigger,
-		Complexity: ComplexityBasic,
-		Consumes:   []PayloadKind{PayloadNone},
-		Produces:   PayloadProduce{Kind: PayloadJSON},
-		Label:      "Webhook fired",
+		PaletteGroup: PaletteGroupTriggers,
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadJSON},
+		Label:        "Webhook fired",
 		Output: "JSON payload: the raw body the external tool posted. Every top-level scalar field it " +
 			"carries (a string, number, or true/false) also seeds an Attribute of the same name when " +
 			"this workflow declares one",
@@ -168,10 +177,11 @@ func init() {
 	}, nil)
 	RegisterNodeType(NodeType{
 		ID: "trigger-atlas-card", Kind: KindTrigger,
-		Complexity: ComplexityBasic,
-		Consumes:   []PayloadKind{PayloadNone},
-		Produces:   PayloadProduce{Kind: PayloadText},
-		Label:      "Atlas card changed",
+		PaletteGroup: PaletteGroupTriggers,
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadText},
+		Label:        "Atlas card changed",
 		Output: "the changed card's id; also seeds cardId/kindId/cardTitle/changeType as typed " +
 			"Attributes when this workflow declares them",
 		Description: "Fires when a card of the chosen kind is created or updated in Atlas. A run started by this trigger never re-fires itself from a write it makes to its own source card, so a workflow that both reacts to and updates a card can't loop.",

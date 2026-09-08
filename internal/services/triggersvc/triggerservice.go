@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/alicoding/mill/internal/adapters/filewatch"
 	"github.com/alicoding/mill/internal/adapters/hotkey"
@@ -154,6 +155,46 @@ type TriggerService struct {
 	// on Sync's listener-rebuild lock.
 	fwMu       sync.Mutex
 	fileWrites map[string]fileWriteRecord
+	// fireWG tracks every goroutine a dispatch (DispatchWebhookEvent,
+	// DispatchSystemEvent, DispatchAtlasCardChange) has started via
+	// goFire -- each keeps calling into ExecutionService (RunWorkflow*)
+	// after the fire that started it is already visible as a completed
+	// Record, so a caller tearing ExecutionService down right after
+	// observing that completion has no guarantee the goroutine itself
+	// has returned. Drain closes that window.
+	fireWG sync.WaitGroup
+}
+
+// goFire starts fn in its own goroutine, tracked by fireWG so Drain can
+// wait for it. Every trigger fire (fire, fireWebhookEvent, fireAtlasCard,
+// fireRespondingTarget) is dispatched through this, never a bare `go`.
+func (s *TriggerService) goFire(fn func()) {
+	s.fireWG.Add(1)
+	go func() {
+		defer s.fireWG.Done()
+		fn()
+	}()
+}
+
+// Drain blocks until every fire goroutine started through goFire has
+// returned, or until timeout elapses -- the completion handshake a
+// caller uses to know it's safe to shut down ExecutionService without
+// racing a fire still inside a RunWorkflow* call on the same durable
+// context. Returns false if the timeout elapsed with fires still
+// outstanding (never blocks forever: a caller with a bounded teardown
+// budget needs a bounded answer, not a hang).
+func (s *TriggerService) Drain(timeout time.Duration) bool {
+	done := make(chan struct{})
+	go func() {
+		s.fireWG.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
 }
 
 // SetExecutionService wires the durable-execution runtime a headless fire

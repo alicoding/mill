@@ -10,7 +10,7 @@ import { OutputViewer } from '../shared/OutputViewer'
 import { contentTypeOf } from '../shared/payloadShape'
 import type { AuthConfig, AuthType, JOSEConfig } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import type { TestHTTPRequestResult } from '../shared/bindings'
-import type { ManualOperation } from './openapiSynth'
+import { synthesizeOpenAPISpec, type ManualOperation } from './openapiSynth'
 import { generateOperationSample } from './testPayload'
 import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
@@ -50,6 +50,10 @@ export const RequestTestPanel = forwardRef<RequestTestPanelHandle, {
   effectiveSpec: string
   label: string
   baseURL: string
+  // The draft's own HTTP method (goal 0370 S2) -- read only when
+  // operations is empty, to build the implicit method+URL-only call a
+  // schema-less draft still needs to run.
+  method: string
   authType: AuthType
   // ADR-0015's non-secret Auth config (OAuth2/HMAC/OAuth1) -- passed
   // through to TestHTTPRequestOperation unchanged, same "test the draft
@@ -74,7 +78,7 @@ export const RequestTestPanel = forwardRef<RequestTestPanelHandle, {
   hideRunButton?: boolean
   onRunningChange?: (running: boolean) => void
 }>(function RequestTestPanel({
-  operations, effectiveSpec, label, baseURL, authType, auth, jose, headers, secretRef, requestID, hideRunButton, onRunningChange,
+  operations, effectiveSpec, label, baseURL, method, authType, auth, jose, headers, secretRef, requestID, hideRunButton, onRunningChange,
 }, ref) {
   const { t } = useTranslation('configure')
   const [selectedKey, setSelectedKey] = useState('')
@@ -92,6 +96,18 @@ export const RequestTestPanel = forwardRef<RequestTestPanelHandle, {
   const [jsonText, setJsonText] = useState('')
   const [jsonError, setJsonError] = useState('')
 
+  // No declared operation is a real, supported state (goal 0370 S2),
+  // not an error: the converged API-client contract runs a bare
+  // method+URL call and a schema only adds typed extraction on top.
+  // path stays the "/" placeholder JoinRequestURL already treats as a
+  // no-op when BaseURL is the complete URL (composition.go's own
+  // one-URL model, also used at Save time by RequestForm's
+  // toSchemaOps) -- never rendered, only sent.
+  const noSchema = operations.length === 0
+  const implicitOperation: ManualOperation = {
+    path: '/', method: (method || 'GET').toUpperCase(), summary: '', inputFields: [], outputFields: [],
+  }
+
   // A dropdown with only one real choice is friction, not a control
   // (docs/SPEC.md §3.5's "no UI for a decision that doesn't exist"
   // discipline) -- auto-selected directly, no state or effect needed
@@ -100,7 +116,7 @@ export const RequestTestPanel = forwardRef<RequestTestPanelHandle, {
   // concretely visible in the live app.
   const selected = operations.length === 1
     ? operations[0]
-    : (operations.find((op) => `${op.method} ${op.path}` === selectedKey) ?? null)
+    : (operations.find((op) => `${op.method} ${op.path}` === selectedKey) ?? (noSchema ? implicitOperation : null))
 
   const selectOperation = (key: string) => {
     setSelectedKey(key)
@@ -147,9 +163,20 @@ export const RequestTestPanel = forwardRef<RequestTestPanelHandle, {
   // (goal 0370) the SAME function a click on this panel's own Run-test
   // button already calls, never a second, divergent code path.
   const runTest = useCallback(async () => {
-    if (!selected || effectiveSpec.trim() === '') return
+    // The only reason an enabled Test click can't run: no URL. Every
+    // other precondition (an operation to call) is satisfied here --
+    // selected falls back to the implicit method+URL operation when
+    // the draft declares no schema.
+    if (!selected || baseURL.trim() === '') return
     setRunning(true)
     try {
+      // TestHTTPRequestOperation always parses an OpenAPI document
+      // (its one door for both the declared-schema and no-schema
+      // cases) -- a schema-less draft's implicit operation is
+      // synthesized into a minimal one-op spec here, in-memory only,
+      // never persisted and never written back into the draft's own
+      // OpenAPISpec.
+      const openAPISpec = effectiveSpec.trim() !== '' ? effectiveSpec : synthesizeOpenAPISpec([selected])
       const result = await ConfigureService.TestHTTPRequestOperation({
         RequestID: requestID ?? '',
         Label: label,
@@ -159,7 +186,7 @@ export const RequestTestPanel = forwardRef<RequestTestPanelHandle, {
         JOSE: jose,
         Headers: headers,
         SecretRef: secretRef,
-        OpenAPISpec: effectiveSpec,
+        OpenAPISpec: openAPISpec,
         Path: selected.path,
         Method: selected.method,
         Values: values,
@@ -183,16 +210,15 @@ export const RequestTestPanel = forwardRef<RequestTestPanelHandle, {
   useImperativeHandle(ref, () => ({ trigger: () => { void runTest() } }), [runTest])
   useEffect(() => { onRunningChange?.(running) }, [running, onRunningChange])
 
-  if (effectiveSpec.trim() === '') {
-    return <Text as="p" size="small" className={styles.muted}>{t('requestTestPanel.declareSchemaFirst')}</Text>
-  }
-  if (operations.length === 0) {
-    return <Text as="p" size="small" className={styles.muted}>{t('requestTestPanel.noOperationsYet')}</Text>
-  }
+  // baseURL empty means truly nothing to test -- the button reachable
+  // from here (this panel's own, when hideRunButton is false) carries
+  // the same reason via its own disabled+title/aria-description below;
+  // the outer form's Test button does too (RequestForm.tsx).
+  const runDisabledReason = baseURL.trim() === '' ? t('requestTestPanel.urlRequiredToTest') : undefined
 
   return (
     <Stack direction="vertical" gap="normal" data-testid="request-test-panel">
-      {operations.length > 1 ? (
+      {operations.length > 1 && (
         <FormControl>
           <FormControl.Label>{t('requestTestPanel.operation')}</FormControl.Label>
           <Select value={selectedKey} onChange={(e) => selectOperation(e.target.value)} data-testid="test-operation-select">
@@ -203,10 +229,17 @@ export const RequestTestPanel = forwardRef<RequestTestPanelHandle, {
             })}
           </Select>
         </FormControl>
-      ) : (
+      )}
+      {operations.length === 1 && (
         <Stack direction="horizontal" gap="condensed" align="center">
           <Text size="small" weight="semibold">{t('requestTestPanel.operation')}</Text>
           <Label variant="secondary" size="small" data-testid="test-operation-single">{`${operations[0].method} ${operations[0].path}`}</Label>
+        </Stack>
+      )}
+      {noSchema && baseURL.trim() !== '' && (
+        <Stack direction="horizontal" gap="condensed" align="center">
+          <Text size="small" weight="semibold">{t('requestTestPanel.operation')}</Text>
+          <Label variant="secondary" size="small" data-testid="test-operation-implicit">{`${implicitOperation.method} ${baseURL}`}</Label>
         </Stack>
       )}
 
@@ -256,7 +289,16 @@ export const RequestTestPanel = forwardRef<RequestTestPanelHandle, {
           )}
 
           {!hideRunButton && (
-            <Button variant="primary" size="small" leadingVisual={PlayIcon} onClick={() => { void runTest() }} disabled={running} data-testid="run-request-test">
+            <Button
+              variant="primary"
+              size="small"
+              leadingVisual={PlayIcon}
+              onClick={() => { void runTest() }}
+              disabled={running || Boolean(runDisabledReason)}
+              title={runDisabledReason}
+              aria-description={runDisabledReason}
+              data-testid="run-request-test"
+            >
               {running ? t('requestTestPanel.running') : t('requestTestPanel.runTest')}
             </Button>
           )}
@@ -317,6 +359,12 @@ export const RequestTestPanel = forwardRef<RequestTestPanelHandle, {
             </div>
           ))}
         </Stack>
+      )}
+
+      {noSchema && (
+        <Text as="p" size="small" className={styles.muted} data-testid="declare-schema-hint">
+          {t('requestTestPanel.declareSchemaHint')}
+        </Text>
       )}
     </Stack>
   )

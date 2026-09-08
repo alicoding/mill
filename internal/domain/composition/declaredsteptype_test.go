@@ -41,6 +41,7 @@ func findNodeType(t *testing.T, id string) NodeType {
 func TestDeclaredNodeType_SynthesizedView_SatisfiesNodeStandard(t *testing.T) {
 	withDeclaredNodeTypeLookup(t, DeclaredStepBinding{
 		ID: "declared-check-httpbin", Label: "Check httpbin", Description: "Calls the seeded httpbin integration.",
+		PaletteGroup:     "actions",
 		EngineNodeTypeID: "integration-http",
 		PinnedConfig:     map[string]string{"requestId": "example-none-httpbin"},
 		HiddenFields:     []string{"requestId"},
@@ -95,6 +96,7 @@ func TestDeclaredNodeType_PaletteGroupCarriedThrough(t *testing.T) {
 func TestDeclaredNodeType_EffectInheritedVerbatim_NeverWeakensGating(t *testing.T) {
 	withDeclaredNodeTypeLookup(t, DeclaredStepBinding{
 		ID: "declared-external-call", Label: "External call", Description: "d",
+		PaletteGroup:     "actions",
 		EngineNodeTypeID: "integration-http",
 		PinnedConfig:     map[string]string{"requestId": "x"},
 		HiddenFields:     []string{"requestId"},
@@ -121,6 +123,7 @@ func TestDeclaredNodeType_EffectInheritedVerbatim_NeverWeakensGating(t *testing.
 func TestDeclaredNodeType_HiddenFieldsRemoved_PinnedFieldsKeptAsDefaults(t *testing.T) {
 	withDeclaredNodeTypeLookup(t, DeclaredStepBinding{
 		ID: "declared-mcp-ping", Label: "Ping", Description: "d",
+		PaletteGroup:     "actions",
 		EngineNodeTypeID: "mcp-tool-call",
 		PinnedConfig:     map[string]string{"mcpServerId": "s1", "toolName": "ping", "argumentsJSON": `{"n":1}`},
 		HiddenFields:     []string{"mcpServerId", "toolName"},
@@ -156,6 +159,31 @@ func TestDeclaredNodeType_UnresolvableEngine_SilentlySkipped(t *testing.T) {
 	}
 }
 
+// TestDeclaredNodeType_InvalidPaletteGroup_SilentlySkipped proves a
+// binding whose PaletteGroup isn't one of the 10 declared values is
+// skipped the same way an unresolvable engine is (goal 0389): the
+// declaredsteptype domain's own Validate rejects this before a real
+// binding is ever persisted, so this only guards against a caller of
+// SetDeclaredNodeTypeLookup that bypasses that gate.
+func TestDeclaredNodeType_InvalidPaletteGroup_SilentlySkipped(t *testing.T) {
+	withDeclaredNodeTypeLookup(t, DeclaredStepBinding{
+		ID: "declared-bad-group", Label: "Bad group", Description: "d",
+		PaletteGroup:     "not-a-real-group",
+		EngineNodeTypeID: "integration-http",
+		PinnedConfig:     map[string]string{"requestId": "x"},
+		HiddenFields:     []string{"requestId"},
+	})
+
+	for _, nt := range NodeTypes() {
+		if nt.ID == "declared-bad-group" {
+			t.Fatal("NodeTypes() includes a declared type with an invalid PaletteGroup -- want it silently skipped")
+		}
+	}
+	if _, ok := nodeType("declared-bad-group"); ok {
+		t.Error(`nodeType("declared-bad-group") = ok, want not found`)
+	}
+}
+
 // TestDeclaredNodeType_Exec_DelegatesToEngineWithPinnedConfigWinning
 // proves ExecuteWorkflow running a declared-type node genuinely
 // delegates to the underlying engine's real exec (a real HTTP round
@@ -179,6 +207,7 @@ func TestDeclaredNodeType_Exec_DelegatesToEngineWithPinnedConfigWinning(t *testi
 	})
 	withDeclaredNodeTypeLookup(t, DeclaredStepBinding{
 		ID: "declared-check", Label: "Check", Description: "d",
+		PaletteGroup:     "actions",
 		EngineNodeTypeID: "integration-http",
 		PinnedConfig:     map[string]string{"requestId": "pinned-request"},
 		HiddenFields:     []string{"requestId"},

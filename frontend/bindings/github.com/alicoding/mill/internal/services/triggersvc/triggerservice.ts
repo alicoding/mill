@@ -30,6 +30,9 @@ import * as trigger$0 from "../../domain/trigger/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as dataevent$0 from "../dataevent/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as time$0 from "../../../../../../time/models.js";
 
 /**
  * ArmedWorkflows returns the workflow IDs that currently have a live
@@ -100,6 +103,19 @@ export function ClaimedCombos(): $CancellablePromise<trigger$0.HotkeyBinding[] |
  */
 export function DispatchLifecycleEvent(ev: dataevent$0.LifecycleEvent): $CancellablePromise<void> {
     return $Call.ByID(4191289354, ev);
+}
+
+/**
+ * Drain blocks until every fire goroutine started through goFire has
+ * returned, or until timeout elapses -- the completion handshake a
+ * caller uses to know it's safe to shut down ExecutionService without
+ * racing a fire still inside a RunWorkflow* call on the same durable
+ * context. Returns false if the timeout elapsed with fires still
+ * outstanding (never blocks forever: a caller with a bounded teardown
+ * budget needs a bounded answer, not a hang).
+ */
+export function Drain(timeout: time$0.Duration): $CancellablePromise<boolean> {
+    return $Call.ByID(1195611610, timeout);
 }
 
 /**
