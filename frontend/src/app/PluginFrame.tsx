@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Text } from '@primer/react'
 import { Events } from '@wailsio/runtime'
 import { pluginAPIFor } from '../plugins/hostApi'
-import { usePluginTheme } from '../plugins/pluginTheme'
+import { pluginThemeAttrs, usePluginTheme } from '../plugins/pluginTheme'
 import { attachFrameBridge, sendFrameEvent, sendFrameMessage, type CaptureControls, type FaceControls } from './pluginFrameBridge'
 import { buildFrameSrcdoc, frameBootstrapUrl, hostTokenReader, millTokenCss, pluginAssetBase } from './pluginFrameBootstrap'
 import listStyles from '../shared/ListCard.module.css'
@@ -65,7 +65,7 @@ export function PluginFrame(props: PluginFrameProps) {
       const html = await response.text()
       if (!live) return
       const state = api?.storage.get(stateKey)
-      setSrcdoc(buildFrameSrcdoc(pluginAssetBase(pluginId), frameBootstrapUrl(), html, { theme, state, context }, millTokenCss(hostTokenReader())))
+      setSrcdoc(buildFrameSrcdoc(pluginAssetBase(pluginId), [frameBootstrapUrl()], html, { theme, state, context }, millTokenCss(hostTokenReader())))
     }
     load().catch((err: unknown) => {
       if (!live) return
@@ -148,6 +148,11 @@ export function PluginFrame(props: PluginFrameProps) {
       data-testid={testId}
       data-plugin-id={pluginId}
       data-surface-id={props.surfaceId}
+      // Same theming contract as every other plugin host element (goal
+      // 0349 S1): the resolved theme rides the host node's attributes so
+      // a stylesheet outside the frame (and the theme conformance check)
+      // can read it with no JavaScript.
+      {...pluginThemeAttrs(theme)}
       // The frame fills the box its host hands it. An iframe's own
       // intrinsic height is 150px, so the host must give it a definite
       // one; flex is how every other filling surface here does it.

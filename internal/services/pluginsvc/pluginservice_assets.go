@@ -44,6 +44,14 @@ func (p *PluginService) AssetMiddleware() func(http.Handler) http.Handler {
 			// The loader appends the plugin version as a query param, so
 			// a reinstall busts any intermediary cache naturally.
 			w.Header().Set("Cache-Control", "no-cache")
+			// The activation frame's document has an OPAQUE origin (no
+			// allow-same-origin, docs/goals/0375 S1b), so its own dynamic
+			// import() of main.js is a cross-origin module fetch and needs
+			// this to succeed at all -- module fetches are CORS-mode
+			// unconditionally, even same-server. Not a new exposure: this
+			// route already serves the same bytes, unauthenticated, to
+			// every same-origin caller.
+			w.Header().Set("Access-Control-Allow-Origin", "*")
 			_, _ = w.Write(data) // #nosec G705 -- served under the allowlisted Content-Type set above, from the user's own plugins directory or the embedded bundle
 		})
 	}

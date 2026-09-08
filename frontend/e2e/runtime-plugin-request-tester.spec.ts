@@ -8,6 +8,11 @@ import { openPluginDetail } from './fixtures/settingsNav'
 // The Request tester example plugin (goal 0291) and its secretRef
 // door (goal 0281, ADR-0048), split from runtime-plugin-doors.spec.ts
 // at the file-size convention. Dedicated server per test, offsets 24+.
+//
+// The view activates framed (docs/goals/0375 S1b, no canvas object):
+// its own page (tester.html/tester.js) is the whole UI, reached only
+// through a frameLocator on the SAME plugin-view-<id>-<id> testid a
+// same-DOM view would carry.
 
 // The Request tester example (goal 0291): a useful extension on
 // nothing but the doors -- a work tab, any-host guarded fetch (every
@@ -28,10 +33,11 @@ test('the Request tester sends to a host you approve in Review, shows the respon
 		await runFromPalette(page, 'Request tester')
 		const view = page.getByTestId('plugin-view-mill-request-tester-tester')
 		await expect(view).toBeVisible()
-		await expect(view.getByTestId('tester-method')).toHaveValue('GET')
-		await view.getByTestId('tester-url').fill(`http://127.0.0.1:${port}/ping`)
-		await view.getByTestId('tester-send').click()
-		await expect(view.getByTestId('tester-status')).toContainText('needs your approval')
+		const frame = page.frameLocator('[data-testid="plugin-view-mill-request-tester-tester"]')
+		await expect(frame.getByTestId('tester-method')).toHaveValue('GET')
+		await frame.getByTestId('tester-url').fill(`http://127.0.0.1:${port}/ping`)
+		await frame.getByTestId('tester-send').click()
+		await expect(frame.getByTestId('tester-status')).toContainText('needs your approval')
 
 		const reviewPage = await page.context().newPage()
 		await reviewPage.goto('/')
@@ -44,20 +50,16 @@ test('the Request tester sends to a host you approve in Review, shows the respon
 		await expect(parked).toHaveCount(0)
 		await reviewPage.close()
 
-		await expect(view.getByTestId('tester-status')).toContainText('200')
-		// The plugin asked Mill to draw the response (api.ui.renderOutput,
-		// goal 0326): a JSON Content-Type opens as a tree, and Raw on the
-		// same toolbar still holds the exact body.
-		const response = view.getByTestId('tester-response')
-		await expect(response.getByTestId('json-tree-leaf').filter({ hasText: 'pong' })).toContainText('true')
-		await response.getByTestId('output-view-raw').click()
-		await expect(response.getByTestId('plugin-output-mill-request-tester-raw')).toContainText('{"pong":true}')
-		await expect(view.getByTestId('tester-history-item')).toHaveCount(1)
+		await expect(frame.getByTestId('tester-status')).toContainText('200')
+		// The response is the page's own rendering (docs/goals/0375 S1b):
+		// pretty-printed JSON, no dependency on Mill's own output viewer.
+		await expect(frame.getByTestId('tester-response')).toContainText('"pong": true')
+		await expect(frame.getByTestId('tester-history-item')).toHaveCount(1)
 
 		// History is plugin storage: it survives a reload of the restored tab.
 		await page.reload()
 		await page.getByRole('tab', { name: /Request tester/ }).click()
-		await expect(page.getByTestId('plugin-view-mill-request-tester-tester').getByTestId('tester-history-item')).toContainText(`GET http://127.0.0.1:${port}/ping → 200`)
+		await expect(page.frameLocator('[data-testid="plugin-view-mill-request-tester-tester"]').getByTestId('tester-history-item')).toContainText(`GET http://127.0.0.1:${port}/ping → 200`)
 	} finally {
 		await close()
 		await new Promise<void>((resolve) => http.close(() => resolve()))
@@ -98,11 +100,11 @@ test('a secretRef setting picks a vault entry; the request parks naming it, send
 		await page.getByRole('link', { name: 'Atlas' }).click()
 		await expect(page.getByTestId('atlas-board')).toBeVisible()
 		await runFromPalette(page, 'Request tester')
-		const view = page.getByTestId('plugin-view-mill-request-tester-tester')
-		await expect(view.getByTestId('tester-auth')).toContainText('E2E API token')
-		await view.getByTestId('tester-url').fill(`http://127.0.0.1:${port}/me`)
-		await view.getByTestId('tester-send').click()
-		await expect(view.getByTestId('tester-status')).toContainText('needs your approval')
+		const frame = page.frameLocator('[data-testid="plugin-view-mill-request-tester-tester"]')
+		await expect(frame.getByTestId('tester-auth')).toContainText('E2E API token')
+		await frame.getByTestId('tester-url').fill(`http://127.0.0.1:${port}/me`)
+		await frame.getByTestId('tester-send').click()
+		await expect(frame.getByTestId('tester-status')).toContainText('needs your approval')
 
 		const reviewPage = await page.context().newPage()
 		await reviewPage.goto('/')
@@ -116,10 +118,10 @@ test('a secretRef setting picks a vault entry; the request parks naming it, send
 		await expect(parked).toHaveCount(0)
 		await reviewPage.close()
 
-		await expect(view.getByTestId('tester-status')).toContainText('200')
+		await expect(frame.getByTestId('tester-status')).toContainText('200')
 		expect(seenAuth).toBe('Bearer tok-e2e-0281-value')
-		await expect(view.getByTestId('tester-response')).toContainText('[redacted]')
-		await expect(view.getByTestId('tester-response')).not.toContainText('tok-e2e')
+		await expect(frame.getByTestId('tester-response')).toContainText('[redacted]')
+		await expect(frame.getByTestId('tester-response')).not.toContainText('tok-e2e')
 	} finally {
 		await close()
 		await new Promise<void>((resolve) => http.close(() => resolve()))
