@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { cpSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -90,6 +91,7 @@ test('a guarded action parks for the human, renders in Review, and the approve/d
 		// same-tab navigation would unmount it, which is why the
 		// approval surfaces are separate windows in the real app).
 		const reviewPage = await page.context().newPage()
+		await applyCpuThrottle(reviewPage)
 		await reviewPage.goto('/')
 		await reviewPage.getByRole('link', { name: 'Review' }).click()
 		const row = reviewPage.locator('[data-testid="review-guarded-action-item"]')
@@ -235,6 +237,7 @@ test('a plugin object placed before its plugin is removed stays visible, honest,
 		const first = await spawnMillServer({ ...spawnOpts, extraEnv: { MILL_PLUGINS_DIR: pluginsDir } })
 		servers.push(first)
 		const page1 = await browser.newPage({ baseURL: first.baseURL })
+		await applyCpuThrottle(page1)
 		await page1.goto('/')
 		await page1.getByRole('link', { name: 'Atlas' }).click()
 		const board = page1.getByTestId('atlas-board')
@@ -251,6 +254,7 @@ test('a plugin object placed before its plugin is removed stays visible, honest,
 		const second = await spawnMillServer({ ...spawnOpts, extraEnv: { MILL_PLUGINS_DIR: emptyPluginsDir } })
 		servers.push(second)
 		const page2 = await browser.newPage({ baseURL: second.baseURL })
+		await applyCpuThrottle(page2)
 		await page2.goto('/')
 		await page2.getByRole('link', { name: 'Atlas' }).click()
 		const face = page2.getByTestId('atlas-unknown-kind-face')
