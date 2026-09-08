@@ -162,6 +162,40 @@ export interface Field {
      * existed.
      */
     "RollupDoneValues"?: string[] | null;
+
+    /**
+     * Items declares one TypeArray field's element shape (docs/goals/
+     * 0372's array consumption): only meaningful when Type == TypeArray,
+     * nil otherwise. The element Field's own Key is ignored (an array
+     * has one shape for every element, not a name per slot) -- only its
+     * Type/Options/OptionsSource/Needs are read. JSON-tagged omitempty
+     * so a non-array field marshals byte-identical to before this facet
+     * existed.
+     */
+    "Items"?: Field | null;
+
+    /**
+     * OptionsSource marks a TypeOptions field (ordinarily meaningful
+     * only nested inside another field's Items, docs/goals/0372) whose
+     * legal values are enumerated at RUNTIME by a named source ("devices"
+     * is the first) rather than declared statically in Options -- Options
+     * stays empty for such a field since nothing here can list live
+     * paired devices. The frontend resolves a source name to a live
+     * picker (EntityRefField's RefKind dispatch is the same "one
+     * mechanism, parameterized by a string name" shape); this package
+     * never resolves it itself and never validates a value against it,
+     * the same posture RefKind already takes toward Configure-entity
+     * existence. Empty means Options (or "any value") governs as usual.
+     */
+    "OptionsSource"?: string;
+
+    /**
+     * Needs names the capability tags an OptionsSource item must carry
+     * at least one of to be offered (device.Ref.Accepts is the first
+     * producer) -- meaningless without OptionsSource. Empty means no
+     * filter: every item the source can produce is offered.
+     */
+    "Needs"?: string[] | null;
 }
 
 /**

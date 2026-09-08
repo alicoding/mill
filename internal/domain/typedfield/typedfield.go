@@ -25,6 +25,7 @@
 package typedfield
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strconv"
@@ -198,6 +199,31 @@ type Field struct {
 	// declaring no rollup marshals byte-identical to before this facet
 	// existed.
 	RollupDoneValues []string `json:"RollupDoneValues,omitempty"`
+	// Items declares one TypeArray field's element shape (docs/goals/
+	// 0372's array consumption): only meaningful when Type == TypeArray,
+	// nil otherwise. The element Field's own Key is ignored (an array
+	// has one shape for every element, not a name per slot) -- only its
+	// Type/Options/OptionsSource/Needs are read. JSON-tagged omitempty
+	// so a non-array field marshals byte-identical to before this facet
+	// existed.
+	Items *Field `json:"Items,omitempty"`
+	// OptionsSource marks a TypeOptions field (ordinarily meaningful
+	// only nested inside another field's Items, docs/goals/0372) whose
+	// legal values are enumerated at RUNTIME by a named source ("devices"
+	// is the first) rather than declared statically in Options -- Options
+	// stays empty for such a field since nothing here can list live
+	// paired devices. The frontend resolves a source name to a live
+	// picker (EntityRefField's RefKind dispatch is the same "one
+	// mechanism, parameterized by a string name" shape); this package
+	// never resolves it itself and never validates a value against it,
+	// the same posture RefKind already takes toward Configure-entity
+	// existence. Empty means Options (or "any value") governs as usual.
+	OptionsSource string `json:"OptionsSource,omitempty"`
+	// Needs names the capability tags an OptionsSource item must carry
+	// at least one of to be offered (device.Ref.Accepts is the first
+	// producer) -- meaningless without OptionsSource. Empty means no
+	// filter: every item the source can produce is offered.
+	Needs []string `json:"Needs,omitempty"`
 }
 
 // Validate checks a Field is well-formed -- same "never store an
@@ -221,6 +247,38 @@ func Validate(f Field) error {
 			}
 		}
 	}
+	if err := validateOptionsSource(f.Type, f.OptionsSource, f.Needs); err != nil {
+		return fmt.Errorf("field %q: %w", f.Key, err)
+	}
+	if f.Items != nil {
+		if f.Type != TypeArray {
+			return fmt.Errorf("field %q declares Items but is not a TypeArray field", f.Key)
+		}
+		// Items' own Key is deliberately unchecked -- an array element
+		// has one shape for every slot, not a per-slot name (see Items'
+		// own doc comment), so the full Key-required Validate would
+		// reject the exact shape callers are meant to declare.
+		if !validType(f.Items.Type) {
+			return fmt.Errorf("field %q's Items has an invalid type %q", f.Key, f.Items.Type)
+		}
+		if err := validateOptionsSource(f.Items.Type, f.Items.OptionsSource, f.Items.Needs); err != nil {
+			return fmt.Errorf("field %q's Items: %w", f.Key, err)
+		}
+	}
+	return nil
+}
+
+// validateOptionsSource enforces OptionsSource/Needs' shared
+// constraint wherever they appear -- a top-level field, or an array
+// field's Items -- without duplicating the two checks at each call
+// site.
+func validateOptionsSource(t Type, source string, needs []string) error {
+	if source != "" && t != TypeOptions {
+		return fmt.Errorf("declares OptionsSource but is not a TypeOptions field")
+	}
+	if len(needs) > 0 && source == "" {
+		return fmt.Errorf("declares Needs but no OptionsSource to filter")
+	}
 	return nil
 }
 
@@ -237,7 +295,12 @@ func Validate(f Field) error {
 // yet means nothing to check against); every other Type not
 // explicitly handled below (TypeObject/TypeArray/TypeMap/TypeDate/
 // TypeDatetime -- ADR-0029's declared-but-not-yet-consumed superset)
-// passes unchecked, same as TypeText.
+// passes unchecked, same as TypeText. TypeArray expects raw to parse as
+// a JSON array of strings (docs/goals/0372: structured text parsed,
+// never matched) -- each element is then checked against f.Items when
+// declared; an OptionsSource item (its Options is empty by
+// construction) accepts any string, since only the live source, never
+// this package, knows the legal set.
 func ValidateValue(f Field, raw string) error {
 	if raw == "" {
 		return nil
@@ -258,6 +321,18 @@ func ValidateValue(f Field, raw string) error {
 	case TypeOptions:
 		if len(f.Options) > 0 && !slices.Contains(f.Options, raw) {
 			return fmt.Errorf("field %q must be one of %v, got %q", f.Key, f.Options, raw)
+		}
+	case TypeArray:
+		var items []string
+		if err := json.Unmarshal([]byte(raw), &items); err != nil {
+			return fmt.Errorf("field %q expects a JSON array of strings, got %q", f.Key, raw)
+		}
+		if f.Items != nil {
+			for _, item := range items {
+				if err := ValidateValue(*f.Items, item); err != nil {
+					return fmt.Errorf("field %q: %w", f.Key, err)
+				}
+			}
 		}
 	}
 	return nil

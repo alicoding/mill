@@ -43,7 +43,7 @@ func TestWireNotify_PublishesThroughTheSpine(t *testing.T) {
 
 	WireNotify(notif)
 	t.Cleanup(func() {
-		composition.SetNotifier(func(title, body, _ string) error {
+		composition.SetNotifier(func(title, body, _ string, _ []string) error {
 			return fmt.Errorf("no notifier registered (yet)")
 		})
 	})
