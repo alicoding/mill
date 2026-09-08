@@ -1,5 +1,6 @@
 import type { Command } from './commands'
 import { entityRowCommands, type EntityRowFamily, type EntityRowItem } from './entityRowCommands'
+import { CONFIGURE_LISTS_BULK_COMMANDS } from './configureListsBulkCommands'
 import { ConfigureService } from './bindings'
 import { listMCPServerTools } from './mcpToolsStore'
 import {
@@ -199,3 +200,9 @@ export const CONFIGURE_ROW_COMMANDS: Command[] = [
   requests, lists, mcpServers, decisions, execEnvs, environments, aiProviders,
   stepTypes, conversionProfiles, secretSources, clientCerts,
 ].flatMap((family) => entityRowCommands(family as EntityRowFamily<EntityRowItem>))
+  // The Unused-lists bulk delete (goal 0392 S1) is a page-local
+  // multi-select, not a per-row family action -- folded in here rather
+  // than a new top-level entry in shared/commands.ts (CLAUDE.md's
+  // 500-line file cap), since this is already the one file every
+  // Configure-page command spreads from.
+  .concat(CONFIGURE_LISTS_BULK_COMMANDS)

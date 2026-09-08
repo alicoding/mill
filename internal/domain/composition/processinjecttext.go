@@ -14,12 +14,13 @@ const injectSeparator = "\n\n"
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "process-inject-text", Kind: KindProcess,
-		Label:       "Add text",
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadText, PayloadNone},
-		Produces:    PayloadProduce{Kind: PayloadText},
-		Output:      "payload with text injected",
-		Description: "Prepends or appends configured static text to the payload, e.g. a fixed hint or instruction pasted alongside a workflow's real output.",
+		PaletteGroup: PaletteGroupTransform,
+		Label:        "Add text",
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadText, PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadText},
+		Output:       "payload with text injected",
+		Description:  "Prepends or appends configured static text to the payload, e.g. a fixed hint or instruction pasted alongside a workflow's real output.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "text", Label: "Text to inject",

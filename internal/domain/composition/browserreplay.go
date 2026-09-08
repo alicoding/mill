@@ -60,7 +60,8 @@ const browserMostRecent = "Most recently connected"
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "process-browser-replay", Kind: KindProcess,
-		Effect: guardrail.ClassExternal,
+		PaletteGroup: PaletteGroupBrowser,
+		Effect:       guardrail.ClassExternal,
 		// Advanced: the recording comes from another tool's export, and
 		// a parameter has to name a step inside it.
 		Complexity:  ComplexityAdvanced,
