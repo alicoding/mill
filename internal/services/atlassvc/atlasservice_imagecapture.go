@@ -92,6 +92,41 @@ func (a *AtlasService) SaveImageBytes(base64Data, ext, title string) (string, er
 	return path, nil
 }
 
+// SaveFileBytes is SaveImageBytes' extension-agnostic sibling (goal
+// 0350 S3): a caller with arbitrary bytes and no reason to believe
+// they're an image (a browser download can be anything a site serves)
+// still needs the SAME mirror-write shape -- a fresh file under the
+// captures directory, never a second writer. ext must include its
+// leading "." and is never validated against an allow-list here: the
+// caller already resolved which board-object Kind (and therefore which
+// renderer) the file becomes, and that resolution is what actually
+// gates what Mill can usefully do with the bytes, not the extension
+// string itself.
+func (a *AtlasService) SaveFileBytes(base64Data, ext, title string) (string, error) {
+	data, err := base64.StdEncoding.DecodeString(base64Data)
+	if err != nil {
+		return "", fmt.Errorf("atlas file capture: decode: %w", err)
+	}
+
+	a.mu.RLock()
+	dir := a.capturesDir
+	a.mu.RUnlock()
+	if dir == "" {
+		return "", fmt.Errorf("atlas file capture: no captures directory configured")
+	}
+	// 0o750, not 0o755 -- this repo's gosec gate (G301) caps created-
+	// directory permissions, matching SaveImageBytes' own creation.
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return "", fmt.Errorf("atlas file capture: %w", err)
+	}
+
+	path := filepath.Join(dir, seeding.NewSlugID(title, "file")+ext)
+	if err := os.WriteFile(path, data, 0o600); err != nil { //nolint:gosec // the filename is a minted seeding.NewSlugID, never the raw title/caller-supplied path
+		return "", fmt.Errorf("atlas file capture: write: %w", err)
+	}
+	return path, nil
+}
+
 // testImagePickPathEnv mirrors testFolderPickPathEnv's own e2e bypass
 // (atlasservice_folderscan.go): server-mode Playwright has no display a
 // real NSOpenPanel could render into, so every spawned e2e server sets

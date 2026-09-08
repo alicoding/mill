@@ -23,7 +23,7 @@ import { background } from '../shared/background'
 // deliberate atlas.up/breadcrumb navigation on landing, re-trapping a
 // lone space with no way out). suppressAutoEntry is set by
 // navigate/drill in AtlasView exactly when a real card is deliberately
-// left FOR the meta level -- never by a delete/promote landing there
+// left FOR the meta level -- never by a delete/dissolve landing there
 // as its aftermath, which stays eligible to auto-resolve like any
 // other viewedID==="" arrival.
 //

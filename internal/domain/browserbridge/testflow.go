@@ -15,6 +15,15 @@ const (
 	// against a page that cannot change under them.
 	TestPageInputID = "mill-bridge-input"
 	TestPageEchoID  = "mill-bridge-echo"
+	// TestPageDownloadLinkID is the seeded "Replay a browser flow"
+	// example's own download proof (goal 0350 S3): a link the flow
+	// clicks, landing the file the bridge serves at
+	// bridgesvc.TestDownloadPath as a board object.
+	TestPageDownloadLinkID = "mill-bridge-download"
+	// TestDownloadFilename is the browser's own name for that file --
+	// the same name the example's apply-atlas-file-object step sees on
+	// the wire, and what the board object's title/mirror name read.
+	TestDownloadFilename = "mill-bridge-test.pdf"
 )
 
 // TestFlowSteps is how many steps the connection test replays -- the

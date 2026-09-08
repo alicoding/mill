@@ -231,6 +231,25 @@ func RequestVarRefs(rc ResolvedHTTPRequest) []string {
 	return gaps.list
 }
 
+// maxMergedMapEntries bounds any two counts this package combines
+// into a single make(map[string]string, ...) capacity hint. Both
+// operands come from workflow/run data (attribute counts, unresolved-
+// reference counts, config field counts) that no legitimate workflow
+// approaches; refusing past it means the sum can never overflow int
+// (CWE-190, go/allocation-size-overflow) while still sizing the map
+// correctly for every real case.
+const maxMergedMapEntries = 1 << 16
+
+// boundedMapCapacity validates a and b before summing them for a
+// map's capacity hint, refusing with a typed error rather than
+// letting an oversized input drive the sum past what int can hold.
+func boundedMapCapacity(a, b int, context string) (int, error) {
+	if a < 0 || b < 0 || a > maxMergedMapEntries || b > maxMergedMapEntries {
+		return 0, fmt.Errorf("%s: too many entries to merge (max %d)", context, maxMergedMapEntries)
+	}
+	return a + b, nil
+}
+
 // gapSet accumulates unresolved (or referenced) variable names in
 // first-appearance order without repeating one.
 type gapSet struct {

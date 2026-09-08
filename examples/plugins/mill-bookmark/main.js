@@ -76,31 +76,21 @@ export function activate(api) {
 	})
 
 	function render(el, ctx) {
-		// Rebuild the face from the object's current data. All text
-		// lands via textContent/value -- never markup -- so a URL can
+		// Rebuild the face from the object's current data. api.ui.el is
+		// text-safe by construction -- never innerHTML -- so a URL can
 		// never inject anything.
 		el.replaceChildren()
 		el.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:10px 12px;font:12px system-ui;height:100%;box-sizing:border-box'
 
-		const title = document.createElement('div')
-		title.style.cssText = 'display:flex;align-items:center;gap:6px;font-weight:600'
-		const glyph = document.createElement('span')
-		glyph.textContent = '🔖'
-		const titleText = document.createElement('span')
-		titleText.textContent = titleFor((ctx.object.Payload.url || '').trim())
-		titleText.setAttribute('data-testid', 'bookmark-title')
-		title.append(glyph, titleText)
+		const title = api.ui.el('div', { style: 'display:flex;align-items:center;gap:6px;font-weight:600' }, [
+			api.ui.el('span', {}, ['🔖']),
+			api.ui.el('span', { 'data-testid': 'bookmark-title' }, [titleFor((ctx.object.Payload.url || '').trim())]),
+		])
 
-		const input = document.createElement('input')
-		input.type = 'text'
-		input.placeholder = 'https://…'
-		input.value = ctx.object.Payload.url || ''
-		input.setAttribute('data-testid', 'bookmark-url-input')
-		input.style.cssText = 'font:11px ui-monospace,monospace;padding:4px 6px;border:1px solid var(--borderColor-default);border-radius:6px;width:100%;box-sizing:border-box'
 		// Commit on Enter/blur, not per keystroke -- each payload
 		// write re-renders this face, which would rebuild the input
 		// under the caret mid-word.
-		const commit = () => {
+		function commit() {
 			const next = input.value.trim()
 			if (next === (ctx.object.Payload.url || '')) return
 			void ctx.updatePayload({ url: next, title: next ? new URL(withScheme(next)).hostname : '' }).catch(() => {
@@ -109,24 +99,27 @@ export function activate(api) {
 				api.notify({ level: 'error', text: 'Could not save the bookmark address.' })
 			})
 		}
-		input.addEventListener('keydown', (e) => {
-			if (e.key === 'Enter') { e.preventDefault(); commit() }
-			e.stopPropagation() // board shortcuts stay out of typing
+		const input = api.ui.el('input', {
+			type: 'text',
+			placeholder: 'https://…',
+			value: ctx.object.Payload.url || '',
+			'data-testid': 'bookmark-url-input',
+			style: 'font:11px ui-monospace,monospace;padding:4px 6px;border:1px solid var(--borderColor-default);border-radius:6px;width:100%;box-sizing:border-box',
+			onkeydown: (e) => {
+				if (e instanceof KeyboardEvent && e.key === 'Enter') { e.preventDefault(); commit() }
+				e.stopPropagation() // board shortcuts stay out of typing
+			},
+			onblur: commit,
 		})
-		input.addEventListener('blur', commit)
 
-		const row = document.createElement('div')
-		row.style.cssText = 'display:flex;align-items:center;gap:8px'
-		const open = document.createElement('button')
-		open.type = 'button'
-		open.textContent = 'Open'
-		open.setAttribute('data-testid', 'bookmark-open')
-		open.style.cssText = 'font:11px system-ui;padding:3px 10px;border:1px solid var(--borderColor-default);border-radius:6px;background:var(--bgColor-muted);cursor:pointer'
-		const status = document.createElement('span')
-		status.setAttribute('data-testid', 'bookmark-status')
-		status.style.cssText = 'font:11px system-ui;color:var(--fgColor-muted)'
-		open.addEventListener('click', () => { void openGuarded(ctx, (text) => { status.textContent = text }) })
-		row.append(open, status)
+		const status = api.ui.el('span', { 'data-testid': 'bookmark-status', style: 'font:11px system-ui;color:var(--fgColor-muted)' })
+		const open = api.ui.el('button', {
+			type: 'button',
+			'data-testid': 'bookmark-open',
+			style: 'font:11px system-ui;padding:3px 10px;border:1px solid var(--borderColor-default);border-radius:6px;background:var(--bgColor-muted);cursor:pointer',
+			onclick: () => { void openGuarded(ctx, (text) => { status.textContent = text }) },
+		}, ['Open'])
+		const row = api.ui.el('div', { style: 'display:flex;align-items:center;gap:8px' }, [open, status])
 
 		el.append(title, input, row)
 	}

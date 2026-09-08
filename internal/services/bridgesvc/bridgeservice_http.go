@@ -38,7 +38,12 @@ const (
 	PairRequestPath = "/__mill/bridge/pair-request"
 	PairStatusPath  = "/__mill/bridge/pair-status"
 	TestPagePath    = "/__mill/bridge/test-page"
-	RootPath        = "/"
+	// TestDownloadPath serves the fixture file the test page's own
+	// download link points at (goal 0350 S3) -- same loopback-only, no-
+	// token gate as TestPagePath, for the same reason: a browser
+	// following a link cannot carry an Authorization header.
+	TestDownloadPath = "/__mill/bridge/test-download"
+	RootPath         = "/"
 )
 
 // maxResultBytes caps a result POST. A step result carries a status, a
@@ -71,6 +76,7 @@ func (s *BridgeService) Handler() http.Handler {
 	mux.HandleFunc(PairRequestPath, s.handlePairRequest)
 	mux.HandleFunc(PairStatusPath, s.handlePairStatus)
 	mux.HandleFunc(TestPagePath, s.handleTestPage)
+	mux.HandleFunc(TestDownloadPath, s.handleTestDownload)
 	mux.HandleFunc(WebhookPath, s.handleWebhook)
 	// "{$}" (Go 1.22+ ServeMux) matches ONLY the exact root path -- a
 	// bare "/" pattern would instead catch every unmatched path on this

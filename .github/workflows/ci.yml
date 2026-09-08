@@ -147,6 +147,26 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-framework-api-first-selftest.sh
 
+  # Mirrors lefthook.yml's own bash-portability job -- same script (goal
+  # 0403 S2e: a scripts/**/*.sh or build/**/*.sh file using a bash-4-only
+  # construct is a latent exit 127/2 on GitHub's own macOS runner).
+  # Grep-only, so like comment-hygiene it needs no build setup.
+  bash-portability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-bash-portability.sh
+
+  # Fixture-tests the gate above, same shape as
+  # framework-api-first-selftest.
+  bash-portability-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-bash-portability-selftest.sh
+
   # Mirrors lefthook.yml's own test-side-effects job -- same script
   # (goal 0356: tests and e2e servers never touch the host pasteboard).
   # Grep-only, so like comment-hygiene it needs no build setup.
@@ -167,6 +187,24 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-e2e-seed-literals.sh
+
+  # Mirrors lefthook.yml's own e2e-fixed-ports job -- same script (goal
+  # 0358 S6: an e2e server binds an OS-assigned port, never a literal
+  # one). Grep-only, so like comment-hygiene it needs no build setup.
+  e2e-fixed-ports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-e2e-fixed-ports.sh
+
+  # Fixture-tests the gate above, same shape as framework-api-first-selftest.
+  e2e-fixed-ports-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-e2e-fixed-ports-selftest.sh
 
   # Mirrors lefthook.yml's own e2e-edge-hover job -- same script (goal
   # 0358 S8: an Atlas link edge's hover/click is routed through
@@ -1031,8 +1069,12 @@ jobs:
       - comment-hygiene
       - framework-api-first
       - framework-api-first-selftest
+      - bash-portability
+      - bash-portability-selftest
       - test-side-effects
       - e2e-seed-literals
+      - e2e-fixed-ports
+      - e2e-fixed-ports-selftest
       - e2e-edge-hover
       - sdk-comments
       - ui-copy
@@ -1165,18 +1207,51 @@ jobs:
             echo "::notice::no open release-please PR (or unparseable title) -- falling back to minor-bumped $NEXT_VERSION from millVersion $BASE_VERSION"
           fi
           echo "BETA_VERSION=${NEXT_VERSION}-beta.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
-      # task package already ad-hoc codesigns (build/darwin/Taskfile.yml's
-      # create:app:bundle -> codesign:adhoc) -- goal 0100's own DoR
-      # research confirmed ad-hoc signing + a documented first-run
-      # `xattr -dr com.apple.quarantine` step is the converged practice
-      # for distributing unsigned CI-built macOS apps, same as
-      # release.yml's own unsigned/ad-hoc posture (no paid Developer ID
-      # cert exists; notarization stays out of scope for either channel).
+      # task package ad-hoc codesigns by default (build/darwin/
+      # Taskfile.yml's create:app:bundle -> codesign:identity, SIGN_IDENTITY
+      # unset) -- goal 0100's own DoR research confirmed ad-hoc signing + a
+      # documented first-run `xattr -dr com.apple.quarantine` step is the
+      # converged practice for distributing unsigned CI-built macOS apps,
+      # same as release.yml's own unsigned/ad-hoc posture (no paid
+      # Developer ID cert exists; notarization stays out of scope for
+      # either channel). Goal 0363 S1b adds a STABLE identity option on
+      # top of that ad-hoc baseline (below): an ad-hoc signature's
+      # default designated requirement pins the build's own cdhash, a
+      # fresh value on every rebuild, so macOS TCC re-keys and drops the
+      # Accessibility/Input-Monitoring grant on every beta update; the
+      # steps below sign with the same self-signed certificate every
+      # time instead, whose default DR pins the certificate leaf hash
+      # -- constant across rebuilds -- while never becoming a hard
+      # requirement: absent the two secrets below, this job still ad-hoc
+      # signs exactly as before (a fork's CI, or this repo before the
+      # secrets are set, keeps working unchanged).
+      # The `secrets` context is unavailable in `if:` (actionlint /
+      # GitHub Actions both reject it there), so this step converts
+      # secret presence into a plain env var the next two steps' `if:`
+      # can read -- the only way to make signing conditional on the
+      # secrets existing at all.
+      - name: Check beta signing secrets
+        env:
+          MILL_BETA_SIGNING_P12: ${{ secrets.MILL_BETA_SIGNING_P12 }}
+          MILL_BETA_SIGNING_P12_PASSWORD: ${{ secrets.MILL_BETA_SIGNING_P12_PASSWORD }}
+        run: |
+          if [ -n "$MILL_BETA_SIGNING_P12" ] && [ -n "$MILL_BETA_SIGNING_P12_PASSWORD" ]; then
+            echo "HAS_BETA_SIGNING_SECRETS=true" >> "$GITHUB_ENV"
+          fi
+      - name: Import beta signing certificate
+        if: ${{ env.HAS_BETA_SIGNING_SECRETS == 'true' }}
+        env:
+          MILL_BETA_SIGNING_P12: ${{ secrets.MILL_BETA_SIGNING_P12 }}
+          MILL_BETA_SIGNING_P12_PASSWORD: ${{ secrets.MILL_BETA_SIGNING_P12_PASSWORD }}
+        run: |
+          echo "SIGNING_KEYCHAIN_PATH=$(scripts/import-beta-signing-cert.sh)" >> "$GITHUB_ENV"
+          echo "SIGN_IDENTITY=Mill Beta Signing" >> "$GITHUB_ENV"
       - run: task package
         env:
           MILL_SKIP_BINDINGS: "1"
           MILL_CHANNEL: beta
           MILL_UPDATE_VERSION: ${{ env.BETA_VERSION }}
+          SIGN_IDENTITY: ${{ env.SIGN_IDENTITY }}
       # Guard: the beta version stamp must actually be IN the binary.
       # The ldflags -X value embeds the literal string, so a plain
       # binary grep proves the build consumed MILL_UPDATE_VERSION --
@@ -1188,6 +1263,30 @@ jobs:
         run: |
           BIN="bin/mill.app/Contents/MacOS/mill"
           grep -aqF "$BETA_VERSION" "$BIN" || { echo "::error::binary at $BIN does not contain $BETA_VERSION -- MILL_UPDATE_VERSION was not stamped"; exit 1; }
+      # Proves the signed bundle's designated requirement actually pins
+      # the certificate leaf that was just imported -- the identity
+      # goal 0363 S1b exists to keep constant across every beta build --
+      # rather than trusting that `task package SIGN_IDENTITY=...` did
+      # what it claims. The expected DR is built from the imported
+      # certificate's OWN fingerprint (re-read from the keychain, not a
+      # value hardcoded here), so a future certificate rotation needs no
+      # matching edit to this step.
+      - name: Verify beta signing identity
+        if: ${{ env.HAS_BETA_SIGNING_SECRETS == 'true' }}
+        run: |
+          FP="$(security find-certificate -c "Mill Beta Signing" -Z "$SIGNING_KEYCHAIN_PATH" | sed -n 's/^SHA-1 hash: //p' | tr '[:upper:]' '[:lower:]')"
+          EXPECTED='designated => identifier "com.alicoding.mill" and certificate leaf = H"'"$FP"'"'
+          ACTUAL="$(codesign -d -r- bin/mill.app 2>&1 | grep '^designated =>')"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::beta signing identity mismatch -- expected [$EXPECTED], got [$ACTUAL]"
+            exit 1
+          fi
+      - name: Delete signing keychain
+        if: always()
+        run: |
+          if [ -n "${SIGNING_KEYCHAIN_PATH:-}" ]; then
+            security delete-keychain "$SIGNING_KEYCHAIN_PATH" || true
+          fi
       # scripts/package-macos-zip.sh: the same asset-naming contract
       # release.yml's build-macos job uses -- one definition, so a beta
       # and a real release can never drift in asset naming. Staged into

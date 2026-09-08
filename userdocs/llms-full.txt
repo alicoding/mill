@@ -2150,6 +2150,18 @@ checked against its published digest and refused on mismatch, and a
 backup snapshot is taken before any install. A copy built from
 source never self-updates.
 
+**Beta builds carry one stable signing identity.** Every beta is
+signed with the same self-signed certificate, so permissions like
+Accessibility stay granted across updates instead of asking again.
+First launch still needs the Gatekeeper override
+([Install](../start-here/install.md)) — the certificate isn't from
+Apple. A paid Developer ID certificate and notarization, which would
+remove that step entirely, are a future path. To allow-list by
+certificate instead: SHA-1 fingerprint
+`65:9A:26:7D:8A:23:52:36:90:39:E9:C2:45:64:F3:C7:46:A8:C6:22`,
+designated requirement `identifier "com.alicoding.mill" and
+certificate leaf = H"659a267d8a2352369039e9c24564f3c746a8c622"`.
+
 **When something breaks, you get the truth.** Every failure you can
 see — a crash, a failed run, a bad connector save, an update that
 didn't install — shows a Copy details button that copies the exact
@@ -2231,13 +2243,13 @@ Fires on a cron schedule.
 
 ### System event
 
-Fires when Mill's own engine emits an internal event (a run finishing, failing, or parking for approval), so a workflow can react to the platform itself, like forwarding pending approvals to another device.
+Fires when Mill's own engine emits an internal event: a run finishing, failing, or parking for approval, or a Configure entity or board object being created, referenced, dereferenced, or deleted. React to the platform itself, like forwarding a pending approval to another device or flagging a list nobody references anymore.
 
 - Takes: nothing — Produces: JSON
 - Effect: none — pure computation
 - Settings:
-  - **Event** — Which internal event fires this trigger. "Decision parked" fires when a guardrail ask or human-review checkpoint parks awaiting approval; the run events fire once a run reaches a terminal state; "update-available" fires when an update check finds a newer release on this install's channel.
-  - **Workflow scope** — Fire for every workflow's matching event, or scope to one specific workflow. Empty means all workflows.
+  - **Event** — Which internal event fires this trigger. "Decision parked" fires when a guardrail ask or human-review checkpoint parks awaiting approval; the run events fire once a run reaches a terminal state; "update-available" fires when an update check finds a newer release on this install's channel. The entity/object events fire on a Configure entity or board object's own lifecycle. Pair "entity dereferenced" with a Branch step checking remaining == 0 to catch only the case where nothing references it anymore.
+  - **Workflow scope** — Fire for every workflow's matching event, or scope to one specific workflow. Empty means all workflows. Has no effect on an entity/object event, which carries no source workflow.
 
 ### Webhook fired
 
@@ -2555,6 +2567,13 @@ Creates Atlas records from an accepted clipboard reply's items: an item with a "
   - **Landing space attribute (optional)** — Which Attributes field carries the target space's card id. New cards land there instead of the board root.
   - **Output attribute (optional)** — Which Attributes field receives a summary of what was created.
 
+### Land downloads on the board
+
+Turns every download a browser-replay step brought back into a file-backed board object, mirror-checksummed so a file already landed before is matched, never duplicated.
+
+- Takes: JSON — Produces: its input, unchanged
+- Effect: changes something on this machine
+
 ### Link Atlas cards
 
 Creates a typed relation between two existing Atlas cards. "From"/"To" are each a literal card id or attr:<name>.
@@ -2609,10 +2628,10 @@ Shows a notification when the workflow reaches this step. "Title attribute" and 
 - Takes: nothing — Produces: its input, unchanged
 - Effect: changes something on this machine
 - Settings:
-  - **Title** — The notification's first line.
-  - **Title attribute (optional)** — Which Attributes field replaces the fixed title, when set.
-  - **Message** — What the notification says.
-  - **Body attribute (optional)** — Which Attributes field replaces the fixed message, when set.
+  - **Title** — The notification's first line. Use {{attribute}} to include a value.
+  - **Title attribute (optional)** — Which Attributes field replaces the fixed title, when set. Prefer {{attribute}} in the text.
+  - **Message** — What the notification says. Use {{attribute}} to include a value.
+  - **Body attribute (optional)** — Which Attributes field replaces the fixed message, when set. Prefer {{attribute}} in the text.
   - **Send to** — Leave empty to reach every paired device.
 
 ### Save list row
@@ -2744,6 +2763,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.card.addLinkedCard` | Add linked card… | — | atlas | Acts on the board's current selection |
 | `atlas.card.copyContext` | Copy card as context | — | atlas | Acts on the board's current selection |
 | `atlas.card.copyLink` | Copy card link | — | atlas | Acts on the board's current selection |
+| `atlas.card.demote` | Turn back into object | — | atlas | Acts on the board's current selection |
 | `atlas.card.dissolve` | Dissolve area | — | atlas | Acts on the board's current selection |
 | `atlas.card.exportAs` | Export card as… | — | atlas | Conditional — available only in a matching state |
 | `atlas.card.fitToContent` | Fit card to content | — | atlas | Acts on the board's current selection |
@@ -3459,6 +3479,15 @@ run.
 The step leaves a result you can read in the run's receipt: every step
 with its outcome, the text you extracted, and any file the browser
 saved while the flow ran.
+
+Add a **Land downloads on the board** step after it to turn what the
+browser downloaded into an Atlas object — a PDF, image, CSV/Excel
+sheet, JSON export or diagram file each land as their matching object
+type; anything else stays on disk with a note saying Mill can't show
+that file type yet. A file already on the board is matched by its
+content rather than landed a second time, and the note says when it
+first landed. A download over 10 MB stays on disk too, with a note
+saying where.
 
 Driving a live site is an external effect, so a run parks for your
 approval before the browser is touched, the same as an outgoing HTTP
@@ -4360,12 +4389,16 @@ real branches worth pinning. `commandsDeclaration.json` regenerates via
 
 Every plugin that ships with Mill follows these rules, and the
 conformance check enforces the ones a machine can. Follow them and
-your plugin feels like part of Mill.
+your plugin feels like part of Mill. Bringing a plugin over from
+another platform? Start with [Port an extension from another
+platform](port-a-vscode-extension.md).
 
 ## Configuration
 
-1. Declare every setting in the manifest with a type, a default and a
-   one-sentence description. (checked)
+1. Declare every setting in the manifest's `configuration` key, with a
+   type, a default and a one-sentence description. (checked) `settings`
+   still loads as a deprecated alias; renaming to `configuration` clears
+   the warning.
 2. Settings render in Mill's Settings; a plugin never builds its own
    settings page. (review)
 3. Request only the capabilities and hosts you use. (checked: an
@@ -4378,7 +4411,11 @@ your plugin feels like part of Mill.
    reference declared commands. (checked) A command may also seat
    itself in Mill's menu bar with `menu: { path, group?, order? }` --
    `path` is `"workflow"`, `"atlas"` or `"help"` only, never one of
-   Mill's own menus. (checked)
+   Mill's own menus. (checked) A ported manifest's own
+   `contributes.menus` is accepted too, mapped onto whichever of
+   Mill's seats it names; see [the porting
+   guide](port-a-vscode-extension.md#menu-ids-and-mills-seats).
+   (checked)
 5. Ship no default hotkey; people bind their own in Settings ›
    Shortcuts. (checked: the SDK has no hotkey field; this rule
    documents why)
@@ -4524,69 +4561,23 @@ your plugin feels like part of Mill.
     `registerCapture` work the same either way — write one `main.js`
     for both. (checked: refuses the install)
 
-## Extension interop
+## SDK conveniences
 
-33. An extension that needs another installed extension's capability
-    declares it in `dependencies: [{ "id", "version" }]` (a semver
-    range) rather than reaching into it directly — never
-    `app.plugins[id]`-style reach. The loader activates a dependency
-    before its dependant; a dependant whose dependency never activates
-    shows *Waits for `<id>`* on its Extensions row instead of running.
-    Installing an extension whose `dependencies` name an id that is
-    not installed, a version outside the declared range, or a mutual
-    dependency cycle refuses the install, naming what is missing.
-    (checked: refuses the install)
-
-## Depending on another extension
-
-Declare the id and the version range you need:
-
-```json
-{
-  "id": "my-consumer",
-  "dependencies": [{ "id": "my-provider", "version": ">=1.0.0" }]
-}
-```
-
-Reach it through `api.extensions.get`, never through a live handle you
-found some other way:
-
-```js
-export async function activate(api) {
-  const provider = await api.extensions.get('my-provider')
-  if (provider) {
-    const result = await provider.someMethod('argument')
-  }
-}
-```
-
-`api.extensions.get(id)` resolves to `undefined` for any id not in
-your own manifest's `dependencies`, and again for a declared
-dependency that has not activated yet.
-
-The other half of the door is `exports`: name the methods on your own
-`activate()`'s returned object a dependant may call.
-
-```json
-{
-  "id": "my-provider",
-  "exports": ["someMethod"]
-}
-```
-
-```js
-export function activate(api) {
-  return {
-    someMethod(argument) { return `did something with ${argument}` },
-  }
-}
-```
-
-Only the methods you list in `exports` are callable, and only by an
-extension that declares you as a dependency; every other property on
-the returned object is plain data, readable by any declared dependant
-without an allowlist entry. Calling a method you did not list throws
-*Method `<name>` is not exported by `<id>`.*
+The SDK carries a few small helpers so a plugin never re-invents them:
+`api.ui.el(tag, attrs, children)` builds one DOM element the safe way —
+never `innerHTML`, so nothing you pass can inject markup — for the
+rest of your face's own layout (rule 10 still governs presenting a
+*result*, through `api.ui.renderOutput`). `api.fetchJSON(url, init?)`
+is `api.fetch` plus a JSON parse, answering `{ ok, status, data,
+errorText }` and never throwing, not even for a denied request or a
+non-2xx response. `api.storage.pushList(key, item, { dedupeBy?, max?
+})` and `api.storage.getList(key)` are sugar over `get`/`set` for a
+request-history or cache-list. `api.convert.markdownToHtml(markdown)`
+is `htmlToMarkdown`'s reverse direction, the same sanitized renderer.
+`api.formatDate(iso, style)` formats a timestamp the way Mill's own
+interface does (`'relative'`, `'short'` or `'long'`) instead of a
+plugin's own `Date` math. Every one of these is optional — hand-rolling
+the same shape yourself still works, it's just more code.
 
 ## Checking your own plugin
 
@@ -4605,6 +4596,117 @@ guide and [the plugin API reference](plugin-api/index.md) for every
 type. [Plugin API maturity](plugin-api-maturity.md) lists each
 contribution family's current level and its evidence, generated fresh
 from this repository on every build.
+
+---
+
+
+# Port an extension from another platform
+
+This guide names VS Code because its manifest vocabulary is the one
+Mill's own manifest deliberately reads close to. The pattern applies
+just as well coming from any extension platform: some of what an
+extension declares is pure data and reads straight in; the code
+behind a declaration is always rewritten against Mill's own plugin
+API, because no other platform's extension host runs inside Mill.
+
+## How much of an extension actually ports
+
+Classify each piece of what you are bringing over before you start
+rewriting anything:
+
+1. **Pure data, no rewrite** — a settings schema, a color theme, is
+   plain JSON with nothing running behind it. Read it directly into
+   Mill's manifest; there is no code to port because there was never
+   any code to begin with.
+2. **A declared field with code behind it** — a command, a
+   configuration entry — the field NAME maps across, but the function
+   that runs when it fires does not exist on this platform. You write
+   that function against Mill's own plugin API; the manifest only
+   tells Mill the function exists and what it is called.
+3. **Logic with no declarative shape at all** — parsing a file format,
+   rendering a live-editing surface — has nothing to map. It is
+   rewritten from nothing against Mill's own SDK, because the source
+   manifest was never doing that work either.
+4. **No plugin at all** — sometimes an extension's entire job reduces
+   to "call one API with these saved settings." That is a Configure
+   entity plus a workflow step, not an extension, on either platform.
+
+## Field by field
+
+| Source field | Mill field | Treatment | Why |
+| --- | --- | --- | --- |
+| `contributes.configuration` | `contributes.configuration` | Accepted as-is | Same shape: a typed setting with a default and a description. |
+| `contributes.commands` | `contributes.commands` | Accepted as-is | Same shape: an id and a label. The function it runs is rewritten (see below). |
+| `contributes.menus` | `contributes.menus` | Mapped | Foreign menu ids land on the Mill surface that plays the same role — see the seat table below. An id with no equivalent is accepted and ignored, never a load failure. |
+| `contributes.views` | `contributes.views` | Mapped, narrower | Both declare an id, a title, and where the page's own code lives; Mill has no nested view-container tree — every view is a flat work tab. |
+| `contributes.viewsContainers` | — | Not supported | Mill's own chrome (the sidebar's fixed sections) is not a plugin-extensible tree; a view still declares which existing tab it opens in. |
+| `contributes.themes` | `contributes.themes` | Accepted as-is | Both are a CSS/JSON color file with no code behind it. |
+| `activationEvents` | — | Not supported, by design | Mill activates every enabled extension at boot, always. There is no lazy-activation contract to port; see below. |
+| `keybindings` | — | Not supported, by design | Mill never ships a default hotkey with an extension; the person using Mill binds their own in Settings. See below. |
+| `contributes.languages` / `grammars` | — | Not supported | Mill has no text-editor surface an extension can extend syntax highlighting inside. |
+| `contributes.debuggers` / `taskDefinitions` | — | Not supported | No matching surface exists in Mill today. |
+
+### Menu ids and Mill's seats
+
+| Source menu id | Mill seat |
+| --- | --- |
+| `commandPalette` | Already true for every command Mill knows about; declaring it does nothing extra. |
+| `editor/context` | The canvas object's own right-click menu. |
+| `view/title` | The work tab's title area. |
+| any other id | Accepted and ignored — named once in the extension's status so you know it was silently dropped, never a load failure. |
+
+## Three ported jobs, classified
+
+- **A request-and-response extension** (send an HTTP request, apply
+  saved headers and a timeout, show the response): its settings and
+  its command are field 2 above — the names carry over, the send/parse/
+  render logic is written fresh against Mill's own guarded fetch and
+  output viewer. Mill ships exactly this rewrite as one of its own
+  bundled examples, so you can read a finished one rather than
+  starting from a blank file.
+- **A single command with no interface of its own**, whose entire job
+  is "call this one API using a saved setting": this is field 4 —
+  build a Configure connector entity and a workflow step instead of an
+  extension. Nothing about it needs plugin code on either platform.
+- **A plugin whose whole job is reformatting text live inside another
+  app's own text editor**, with full access to that editor's internal
+  state: there is no equivalent surface to extend inside Mill, so
+  nothing here maps or ports. If the underlying job is spreadsheet- or
+  table-shaped, check whether Mill's own sheet object already covers
+  it before writing anything.
+
+## What stays deliberately absent
+
+**Keybindings.** Mill never ships a default hotkey for anything it
+runs, extensions included — every shortcut in Mill is bound by the
+person using it, in Settings, and an extension's own commands bind the
+same way. Bringing over a suggested keybinding would be the one thing
+in the whole manifest that quietly overrides someone's own keyboard,
+so it is left out on purpose.
+
+**Lazy activation.** Some platforms only start an extension once its
+declared trigger fires (opening a matching file, running its command
+for the first time). Mill activates every enabled extension once, at
+boot, and keeps it running — there is no partial-boot state for a
+manifest to declare into, so `activationEvents` has nothing to map
+onto.
+
+## What the code side is reauthored against
+
+Whichever surface the extension's code targeted, the replacement is
+written against one of three doors, never a copy of the original
+runtime:
+
+- **`activate(api)`** — the entry point every extension's `main.js`
+  exports, receiving the one object every capability arrives through
+  (registering commands, views, canvas objects, reading settings,
+  making a guarded request).
+- **A declared script module** (`steps.js`, `secrets.js`) — for a
+  workflow step or a secret source the extension contributes, run in
+  Mill's own sandboxed engine rather than the extension's own process.
+- **A framed entry page** — for a view, a capture, or a canvas
+  object's own face, an ordinary HTML/JS page mounted in its own
+  sandbox, talking back to Mill only through the same `api` handle.
 
 ---
 
@@ -4881,7 +4983,7 @@ A refused install leaves nothing on disk.
 
 # Plugin API maturity
 
-3 of 11 contribution families are stable; 0 ready to promote; 0 regressed.
+3 of 13 contribution families are stable; 0 ready to promote; 0 regressed.
 
 | Family | Level | Conformance | Example | E2E | Docs | SDK types | MCP | Flags |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -4889,6 +4991,8 @@ A refused install leaves nothing on disk.
 | steps | experimental | no | yes | yes | yes | no | yes | — |
 | captures | experimental | no | no | yes | yes | yes | n/a | — |
 | settings | stable | yes | yes | yes | yes | yes | n/a | — |
+| configuration | experimental | no | yes | no | yes | no | no | — |
+| menus | experimental | no | no | no | yes | no | no | — |
 | network | experimental | no | yes | yes | yes | yes | n/a | — |
 | views | experimental | no | yes | yes | yes | yes | n/a | — |
 | commands | stable | yes | yes | yes | yes | yes | yes | — |

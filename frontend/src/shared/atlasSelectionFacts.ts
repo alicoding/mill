@@ -21,6 +21,11 @@ export interface AtlasCardFacts {
   projection: boolean
   // Root-level: the card IS a space.
   root: boolean
+  // A mirror/list backing "Turn back into object" can hand back
+  // unchanged (goal 0410 Decision 3) -- true for a List projection or
+  // an image/drawio/mermaid mirror, false for every other card
+  // (plain, markdown, PDF, ...) that has nothing to demote to.
+  demotable: boolean
   exporters: { format: string; label: string }[]
 }
 

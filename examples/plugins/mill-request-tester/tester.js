@@ -53,7 +53,9 @@ async function renderHistory() {
 		b.type = 'button'
 		b.className = 'history-item'
 		b.setAttribute('data-testid', 'tester-history-item')
-		b.textContent = item.method + ' ' + item.url + (item.status ? ' → ' + item.status : '')
+		// mill.formatDate (goal 0386 S1): the same relative-time phrasing
+		// Mill's own interface renders everywhere, not hand-rolled Date math.
+		b.textContent = item.method + ' ' + item.url + (item.status ? ' → ' + item.status : '') + (item.at ? ' · ' + mill.formatDate(item.at, 'relative') : '')
 		b.addEventListener('click', () => { methodEl.value = item.method; urlEl.value = item.url; bodyEl.value = item.body || '' })
 		historyEl.append(b)
 	}

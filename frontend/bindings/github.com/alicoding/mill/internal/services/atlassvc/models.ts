@@ -205,6 +205,25 @@ export interface FileDropRoute {
 }
 
 /**
+ * FileObjectResult is what landing (or matching) one downloaded file
+ * as a board object reports back to the apply step that asked.
+ */
+export interface FileObjectResult {
+    /**
+     * ObjectID is empty when Mill could not place the download at all
+     * (no Kind resolved for its extension).
+     */
+    "ObjectID": string;
+
+    /**
+     * Note is set whenever the run should hear something beyond "it
+     * landed": a duplicate match (names the run and time it first
+     * landed), or an unresolvable Kind.
+     */
+    "Note": string;
+}
+
+/**
  * FolderImportSummary counts what ImportFolderSuggestions actually
  * created (never what it merely reused/refreshed on a re-import).
  */
@@ -453,7 +472,7 @@ export interface TableProjectionExportResult {
  * CardIDs, DeleteNote only NoteIDs, DeleteBoardObject only ObjectIDs,
  * so the frontend's undo toast can pass this straight back to
  * UndoDelete without re-deriving what it touched. LinksRemoved and
- * ChildrenPromoted are the delete's blast radius, counted against the
+ * ChildrenReparented are the delete's blast radius, counted against the
  * state immediately BEFORE this call's own tombstone lands: links that
  * were visible and now touch a tombstoned endpoint, and direct live
  * children (cards + notes) whose effective parent is about to shift
@@ -465,7 +484,7 @@ export interface TombstoneResult {
     "NoteIDs": string[] | null;
     "ObjectIDs": string[] | null;
     "LinksRemoved": number;
-    "ChildrenPromoted": number;
+    "ChildrenReparented": number;
 
     /**
      * EntityRefKind (goal 0392 S1) is the deleted board object's own

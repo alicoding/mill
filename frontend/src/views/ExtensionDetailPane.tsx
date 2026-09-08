@@ -118,7 +118,7 @@ export function ExtensionDetailPane({ detail, showBackLink, onClose, tabStrip, b
           {t('settings.extensions.backToList')}
         </Button>
       )}
-      <Stack direction="horizontal" justify="space-between" align="start" gap="condensed">
+      <Stack direction="horizontal" justify="space-between" align="start" gap="condensed" className={styles.detailChrome}>
         <Stack direction="horizontal" gap="condensed" align="center">
           <detail.icon size={16} />
           <Stack direction="vertical" gap="none">
@@ -155,7 +155,7 @@ export function ExtensionDetailPane({ detail, showBackLink, onClose, tabStrip, b
 
       {tabStrip}
 
-      {detail.status}
+      <div className={styles.detailChrome}>{detail.status}</div>
 
       {body}
 
