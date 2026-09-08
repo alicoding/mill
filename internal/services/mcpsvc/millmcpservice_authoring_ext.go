@@ -125,7 +125,8 @@ func (m *MillMCPService) registerTestRequestTool() {
 	m.registerWriteExecutor("test_request", m.executeTestRequest)
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "test_request",
-		Description: "Execute ONE real HTTP call to test an Integration draft (pass baseUrl/authType/secret/openApiSpec inline) or an existing Integration (pass requestId; stored config and keychain secret fill in). Nothing is persisted -- this is the Configure Try-it panel's agent twin. Requires the human-set 'Allow MCP clients to import data' toggle (default off) and parks pending human approval like every write; poll check_write_status with the returned id -- the approved result carries statusCode/body/headers.",
+		Description: "Execute ONE real HTTP call to test an Integration draft (pass baseUrl/authType/secret/openApiSpec inline) or an existing Integration (pass requestId; stored config and keychain secret fill in). Nothing is persisted -- this is the Configure Try-it panel's agent twin. Requires the human-set 'Allow MCP clients to change content' toggle (default off) and parks pending human approval like every write; poll check_write_status with the returned id -- the approved result carries statusCode/body/headers.",
+		Annotations: executeAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in testRequestArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err
@@ -155,6 +156,7 @@ func (m *MillMCPService) registerKindWriteTool() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "atlas_propose_kind_write",
 		Description: "Propose creating a new Atlas Kind (label required, plus optional description/icon/fields), updating an existing one (kindId; omit fields to keep them; a provided list must retain every saved key -- removals are refused by the schema-evolution guard), or deleting one (kindId + delete:true; refused while any live card uses it). Same gate and approval queue as every write; poll atlas_get_write_status or check_write_status.",
+		Annotations: mixedAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasProposeKindWriteArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err

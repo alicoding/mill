@@ -20,7 +20,7 @@ import (
 // approvalPollNote is the shared tail every gated diagram tool's
 // description carries -- one statement of the toggle and the poll
 // contract, so the four descriptions stay about what the tool DOES.
-const approvalPollNote = "Requires the human-set 'Allow MCP clients to import data' toggle in Mill's Settings " +
+const approvalPollNote = "Requires the human-set 'Allow MCP clients to change content' toggle in Mill's Settings " +
 	"(default off); may park pending human approval -- poll check_write_status with the returned id. Parks for approval."
 
 type atlasDiagramAddArgs struct {
