@@ -218,6 +218,20 @@ export function GetAttentionIdleThreshold(): $CancellablePromise<number> {
 }
 
 /**
+ * GetAuditRetentionEntries returns the persisted cap, defaulting to
+ * AuditRetentionEntriesDefault when unset or set to a non-positive
+ * value (a cap of zero or less would prune the trail to nothing). A
+ * value set THIS run reads back as the int SetAuditRetentionEntries
+ * stored (kvstore.Set keeps it as-is in memory); a value loaded from a
+ * PRIOR run's settings.json reads back as float64 (JSON numbers decode
+ * to float64 into an `any` -- kvstore.Load's own json.Unmarshal target)
+ * -- both are handled so the setting survives a restart unchanged.
+ */
+export function GetAuditRetentionEntries(): $CancellablePromise<number> {
+    return $Call.ByID(1291345361);
+}
+
+/**
  * GetBuildInfo reports which commit this running instance was actually
  * built from (settingsservice_buildinfo.go) -- surfaced in the footer
  * so a stale, still-running process (e.g. a desktop app left open
@@ -691,6 +705,15 @@ export function SaveTextFile(suggestedName: string, content: string): $Cancellab
  */
 export function SetAttentionIdleThreshold(seconds: number): $CancellablePromise<void> {
     return $Call.ByID(454955395, seconds);
+}
+
+/**
+ * SetAuditRetentionEntries persists the cap. Rejects a non-positive
+ * value so the trail can never be configured to prune itself to
+ * nothing.
+ */
+export function SetAuditRetentionEntries(n: number): $CancellablePromise<void> {
+    return $Call.ByID(755143933, n);
 }
 
 /**

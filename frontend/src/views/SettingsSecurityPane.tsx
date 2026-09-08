@@ -4,13 +4,15 @@ import { Heading, Stack, Text } from '@primer/react'
 import { SecretService } from '../shared/bindings'
 import { refreshVaultStatus, useVaultStatusStore } from '../shared/vaultStatusStore'
 import SecretsLockingSettings from './SecretsLockingSettings'
+import SettingsAuditRetention from './SettingsAuditRetention'
 import SettingsExtensionPolicy from './SettingsExtensionPolicy'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './SettingsView.module.css'
 
 // Settings > Security (goal 0360 S1 follow-up): the vault's lock
-// policy, and the organisation's extension policy (goal 0349 S6) as
-// the second section, read-only. 1Password,
+// policy, the organisation's extension policy (goal 0349 S6) as
+// the second section, read-only, and the shared audit trail's own
+// retention cap (goal 0351 Decision 4) as the third. 1Password,
 // Bitwarden and KeePassXC all keep lock policy under a Security
 // settings page rather than inside the credential list itself; the
 // Secrets page still opens/browses/edits vault entries, and links here
@@ -62,6 +64,7 @@ export default function SettingsSecurityPane() {
       />
       {error && <Text as="p" size="small" className={listStyles.error} data-testid="settings-security-error">{error}</Text>}
       <SettingsExtensionPolicy />
+      <SettingsAuditRetention />
     </>
   )
 }

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/alicoding/mill/internal/domain/audit"
 	"github.com/alicoding/mill/internal/domain/usererror"
 )
 
@@ -50,13 +51,17 @@ func (s *BridgeService) handleHookEvent(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if _, ok := s.auth.ValidateHookToken(bearerToken(r)); !ok {
+	device, ok := s.auth.ValidateHookToken(bearerToken(r))
+	if !ok {
+		s.recordCommand(r.Context(), "hook-event", audit.Target{}, "hook:"+sourceKey(r), "rejected", "unauthorized", http.StatusUnauthorized, "")
 		writeUserError(w, http.StatusUnauthorized, usererror.New("bad-hook-token", "That hook token didn't work. Mint a new one in Settings and try again."))
 		return
 	}
+	actorSource := "hook:" + device.ID
 
 	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxResultBytes))
 	if err != nil {
+		s.recordCommand(r.Context(), "hook-event", audit.Target{}, actorSource, "rejected", "", http.StatusBadRequest, "")
 		writeUserError(w, http.StatusBadRequest, usererror.New("bad-hook-event", "That hook event wasn't readable. Post a JSON object."))
 		return
 	}
@@ -64,6 +69,7 @@ func (s *BridgeService) handleHookEvent(w http.ResponseWriter, r *http.Request) 
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
 	if err := decoder.Decode(&fields); err != nil {
+		s.recordCommand(r.Context(), "hook-event", audit.Target{}, actorSource, "rejected", "", http.StatusBadRequest, "")
 		writeUserError(w, http.StatusBadRequest, usererror.New("bad-hook-event", "That hook event wasn't readable. Post a JSON object."))
 		return
 	}
@@ -98,9 +104,19 @@ func (s *BridgeService) handleHookEvent(w http.ResponseWriter, r *http.Request) 
 		// Unreachable in a wired app -- main.go sets the sink at
 		// startup -- so this reads as the wiring fault it is rather
 		// than as a client error.
+		s.recordCommand(r.Context(), "hook-event", audit.Target{}, actorSource, "error", "", http.StatusInternalServerError, "")
 		writeUserError(w, http.StatusInternalServerError, usererror.New("hook-not-wired", "The hook door isn't wired up. Restart Mill and try again."))
 		return
 	}
 
+	target := audit.Target{}
+	if source, ok := values["source"]; ok {
+		target = audit.Target{Kind: "trigger-source", ID: source, Label: source}
+	}
+	// "accepted" records the intake succeeding (credential + shape
+	// checks passed, dispatched into the trigger layer) -- independent
+	// of what a respond-webhook step later replies with, the same way
+	// the pre-goal-0373 always-202 response never varied on that either.
+	s.recordCommand(r.Context(), "hook-event", target, actorSource, "accepted", "", http.StatusAccepted, "")
 	s.answerHookEvent(w, sink(values, raw))
 }
