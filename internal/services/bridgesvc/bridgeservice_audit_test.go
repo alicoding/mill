@@ -109,21 +109,22 @@ func TestHandleResult_UnauthorizedToken_RecordsRejectedRow(t *testing.T) {
 	}
 }
 
-// TestHandleHookEvent_Success_RecordsAcceptedRow posts the EXACT body
-// shape userdocs/agents/agent-hooks.md's own documented curl example
+// TestHandleWebhook_Success_RecordsAcceptedRow posts the EXACT body
+// shape userdocs/how-to/webhooks.md's own documented curl example
 // sends (the seeded webhook workflow's real intake) -- goal 0351 PR2
-// item 11's seeded proof that a real hook POST leaves a bridge-command
-// row, through the real handler rather than a synthetic call.
-func TestHandleHookEvent_Success_RecordsAcceptedRow(t *testing.T) {
-	auth := &stubAuth{hookToken: "hook-secret"}
+// item 11's seeded proof that a real webhook POST leaves a
+// bridge-command row, through the real handler rather than a synthetic
+// call.
+func TestHandleWebhook_Success_RecordsAcceptedRow(t *testing.T) {
+	auth := &stubAuth{webhookToken: "webhook-secret"}
 	svc, srv, reader := newAuditedService(t, auth)
 	svc.SetWebhookEventSink(func(values map[string]string, raw []byte) *bridgesvc.WebhookWait { return nil })
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL+bridgesvc.HookEventPath,
-		strings.NewReader(`{"source":"claude-code","title":"Agent finished","body":"A task completed."}`))
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL+bridgesvc.WebhookPath,
+		strings.NewReader(`{"source":"mytool","title":"Build finished","body":"A task completed."}`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.Header.Set("Authorization", "Bearer hook-secret")
+	req.Header.Set("Authorization", "Bearer webhook-secret")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -134,25 +135,25 @@ func TestHandleHookEvent_Success_RecordsAcceptedRow(t *testing.T) {
 	}
 
 	row := latestBridgeCommand(t, reader)
-	if row.Action != "hook-event" || row.Outcome != "accepted" {
-		t.Errorf("row = %+v, want action=hook-event outcome=accepted", row)
+	if row.Action != "webhook" || row.Outcome != "accepted" {
+		t.Errorf("row = %+v, want action=webhook outcome=accepted", row)
 	}
-	if row.Actor.Source != "hook:hook-1" {
-		t.Errorf("row Actor.Source = %q, want hook:hook-1", row.Actor.Source)
+	if row.Actor.Source != "webhook:webhook-1" {
+		t.Errorf("row Actor.Source = %q, want webhook:webhook-1", row.Actor.Source)
 	}
-	if row.Target.ID != "claude-code" {
-		t.Errorf("row Target.ID = %q, want claude-code (the posted source)", row.Target.ID)
+	if row.Target.ID != "mytool" {
+		t.Errorf("row Target.ID = %q, want mytool (the posted source)", row.Target.ID)
 	}
 }
 
-// TestHandleHookEvent_UnauthorizedToken_RecordsRejectedRowWithFailureKind
+// TestHandleWebhook_UnauthorizedToken_RecordsRejectedRowWithFailureKind
 // is the seeded webhook workflow's own shape: a curl with a wrong or
 // missing bearer token against the real handler leaves exactly one
 // rejected bridge-command row -- goal 0351 PR2 item 11's seeded proof.
-func TestHandleHookEvent_UnauthorizedToken_RecordsRejectedRowWithFailureKind(t *testing.T) {
-	auth := &stubAuth{hookToken: "hook-secret"}
+func TestHandleWebhook_UnauthorizedToken_RecordsRejectedRowWithFailureKind(t *testing.T) {
+	auth := &stubAuth{webhookToken: "webhook-secret"}
 	_, srv, reader := newAuditedService(t, auth)
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL+bridgesvc.HookEventPath, strings.NewReader(`{"source":"github"}`))
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL+bridgesvc.WebhookPath, strings.NewReader(`{"source":"mytool"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,8 +168,8 @@ func TestHandleHookEvent_UnauthorizedToken_RecordsRejectedRowWithFailureKind(t *
 	}
 
 	row := latestBridgeCommand(t, reader)
-	if row.Action != "hook-event" || row.Outcome != "rejected" || row.FailureKind != "unauthorized" {
-		t.Errorf("row = %+v, want action=hook-event outcome=rejected failureKind=unauthorized", row)
+	if row.Action != "webhook" || row.Outcome != "rejected" || row.FailureKind != "unauthorized" {
+		t.Errorf("row = %+v, want action=webhook outcome=rejected failureKind=unauthorized", row)
 	}
 }
 

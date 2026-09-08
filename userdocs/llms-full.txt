@@ -262,6 +262,139 @@ The vault is locked. Open **Secrets** and press **Unlock**, or search
 ---
 
 
+# Fire a workflow from a webhook
+
+Any tool or service that can send an HTTP request can start a
+workflow: post JSON to Mill's webhook address with a token from
+Settings.
+
+## Add a token
+
+Settings → Connections → **Webhooks** → *Add webhook token*. Give it
+a label naming the tool, copy the token the moment it appears — Mill
+shows it exactly once — and paste it into the sending tool's own
+configuration. Mint one per tool; revoke any of them from the same
+list.
+
+Mill binds the door to this Mac only; the token is the credential,
+even from this Mac. The notification reaches a paired phone only if
+one is paired (Settings → Connections → Remote access).
+
+## Post an event
+
+Replace `<token>` with the minted token:
+
+```
+curl -s -X POST http://127.0.0.1:8092/__mill/webhook \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"source":"<tool>","title":"...","body":"..."}'
+```
+
+Any JSON object is accepted — a wrong or revoked token answers 401,
+anything that isn't a JSON object answers 400. `source` names which
+tool posted (lowercase, exact); the seeded **Notify when a webhook
+fires** workflow catches every source and notifies on every channel,
+including a paired phone. Scope a workflow to one tool by setting the
+trigger's Source field.
+
+Any JSON fields you post become attributes the catching workflow
+declares by name — a workflow that declares `title` and `body`
+attributes receives the posted `title` and `body`, and a sender can
+carry whatever else it needs (`run`, `duration`, `url`) for a workflow
+declaring those to use. The posted body also arrives whole as the
+run's payload.
+
+## Examples
+
+- **A CI job**: a build or deploy step posts on success or failure.
+- **A shell script**: any command that can shell out to `curl` at the
+  point it wants to fire a workflow.
+- **A monitoring alert**: an alerting rule posts when a threshold
+  trips.
+- **An agent tool's hook configuration**: some tools let you declare a
+  command to run at a lifecycle point without writing a script
+  yourself — the declared command is the same curl above:
+
+  ```json
+  {"command": "curl -s -X POST http://127.0.0.1:8092/__mill/webhook -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"source\":\"<tool>\"}'"}
+  ```
+
+## Reply to the caller
+
+A workflow can also answer the tool that posted, rather than only
+reacting to it — see [Reply to a webhook](reply-to-a-webhook.md).
+
+---
+
+
+# Reply to a webhook
+
+A workflow that starts from **Webhook fired** can answer the tool that
+posted the event, not just react to it. Add an **Answer the webhook**
+step, and Mill holds the caller's connection open until that step
+runs, then sends its status, body, and content type back verbatim.
+
+## Add the step
+
+Drag **Answer the webhook** onto the canvas from the Apply group and
+connect it after whatever steps decide what to say. Set:
+
+- **Status code** — the HTTP status the caller receives.
+- **Reply body** — usually JSON, in the calling tool's own schema. Use
+  `{{attributeName}}` to drop in a value the trigger or an earlier step
+  captured.
+- **Content type** — the reply's Content-Type header.
+
+Set **Reply within (seconds)** on the trigger's own **Webhook fired**
+step to how long the caller should wait. The sending tool's own
+timeout must be longer than this — a caller that gives up first never
+sees the reply Mill sends.
+
+## The sender reads the response body
+
+Some tools post an event and read the decision straight from the
+response, no script in between — a configuration entry pointing
+directly at a URL, rather than running a command:
+
+```json
+{"url": "http://127.0.0.1:8092/__mill/webhook", "headers": {"Authorization": "Bearer <token>", "Content-Type": "application/json"}}
+```
+
+A tool that only runs a command reads the same reply from the curl
+response instead:
+
+```
+curl -s -X POST http://127.0.0.1:8092/__mill/webhook \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d @-
+```
+
+Either way, whatever the Answer the webhook step sent — status, body,
+content type — is what the sending tool receives.
+
+## A quiet failure proceeds, at the sender
+
+If nothing answers, if the reply is malformed for what the tool
+expects, or if the sending tool's own timeout runs out first, most
+tools treat that as a non-blocking failure and let the action proceed
+anyway. A workflow meant to gate a tool call needs to say so plainly
+in its own reply body, in the tool's own schema — Mill never assumes
+what "allow" or "deny" look like on the other end.
+
+## Order decides what a run answers with
+
+Only the FIRST Answer the webhook step to run in a given execution
+sends anything; every one after it is skipped; a step's own run notes
+say so ("Reply already sent by step …"). Put the steps that decide
+WHAT to say — a Branch, a lookup, a guardrail check — before the
+Answer the webhook step, not after it. A reply step placed too early
+answers before that evaluation ever runs.
+
+---
+
+
 # Install a plugin
 
 Read the [plugin standard](plugin-standard.md) first.
@@ -2105,7 +2238,7 @@ Fires when Mill's own engine emits an internal event (a run finishing, failing, 
 
 ### Webhook fired
 
-Fires when a tool on this machine posts to Mill's hook endpoint, so a workflow can react to what an agent or script just did, like showing a notification on every channel including a paired phone. Any fields the tool posts become attributes the workflow declares by name. Point the tool at the hook endpoint with a token from Settings.
+Runs when a request arrives at Mill's webhook address.
 
 - Takes: nothing — Produces: JSON
 - Effect: none — pure computation
@@ -4294,8 +4427,9 @@ your plugin feels like part of Mill.
     acquireMillApi()` is its door back to Mill. Styles may stay
     inline. A canvas object's page receives the object as its context
     and writes back through `object.updatePayload`; its face is
-    always interactive. A surface that draws into Mill's own document
-    instead still works; `renderFace` is the deprecated form. (checked)
+    always interactive. A canvas object may still draw into Mill's own
+    document instead (`renderFace`, the deprecated form) — see rule 32
+    for why a view or capture may not. (checked)
 
 22. A canvas object whose face reports an open editor declares
     `content: "interactive"` on the same object. `content` says what
@@ -4367,6 +4501,18 @@ your plugin feels like part of Mill.
     (`"placement": "board-switcher"`) that writes card fields through
     `api.content.setCardFields` declares the `edit-card-fields`
     capability. (checked)
+
+## Sandboxed activation
+
+32. `main.js` itself activates inside a sandboxed frame, the same
+    isolation an entry page gets — unless your manifest declares a
+    canvas object, which still activates alongside Mill's own document
+    until Mill ships a framed canvas API. Because of that, a view or
+    capture must declare an entry page (rule 21): Mill can no longer
+    draw one in its own document, so a view or capture with no entry
+    page refuses the install. `registerCommand`, `registerView` and
+    `registerCapture` work the same either way — write one `main.js`
+    for both. (checked: refuses the install)
 
 ## Checking your own plugin
 
@@ -4722,6 +4868,12 @@ or a workflow calling a connected server — with who called what, when,
 and whether it succeeded. Filter by direction or tool name to find one
 fast; a failed call's error is copyable in one click.
 
+## No MCP connection available
+
+A tool that can't hold an MCP connection open can still start a
+workflow over a plain HTTP request — see [Fire a workflow from a
+webhook](../how-to/webhooks.md).
+
 ## Teach your agent
 
 `skills/mill-use` in the repository is a ready-made agent skill:
@@ -5067,203 +5219,3 @@ tool answers straight away and never parks.
 A plugin's own guarded actions — opening a URL, reading a folder,
 writing content — still take their own guardrail check when they run.
 Being reachable by an agent never widens what a plugin may do.
-
----
-
-
-# Fire a workflow from a webhook
-
-An agent tool's hook config (a Stop hook, a build step, any script that
-can run curl) can POST an event to Mill, and a workflow starting from
-the **Webhook fired** trigger runs in response — the hook door, not
-MCP, so the tool never holds an agent session open to reach Mill.
-
-## Add a token
-
-Settings → Connections → **Webhooks** → *Add webhook token*. Give it
-a label naming the tool, copy the token the moment it appears — Mill
-shows it exactly once — and paste it into the tool's hook config.
-Mint one per tool; revoke any of them from the same list.
-
-Mill binds the door to this Mac only; the token is the credential,
-even from this Mac. The notification reaches a paired phone only if
-one is paired (Settings → Connections → Remote access).
-
-## Post an event
-
-Replace `<token>` with the minted token:
-
-```
-curl -s -X POST http://127.0.0.1:8092/__mill/hooks/event \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"source":"<tool>","title":"...","body":"..."}'
-```
-
-Any JSON object is accepted — a wrong or revoked token answers 401,
-anything that isn't a JSON object answers 400. `source` names which
-tool posted (lowercase, exact); the seeded **Notify when a webhook
-fires** workflow catches every source and notifies on every channel,
-including a paired phone. Scope a workflow to one tool by setting the
-trigger's Source field.
-
-Any JSON fields you post become attributes the catching workflow
-declares by name — a workflow that declares `title` and `body`
-attributes receives the posted `title` and `body`, and a sender can
-carry whatever else it needs (`run`, `duration`, `url`) for a workflow
-declaring those to use. The posted body also arrives whole as the
-run's payload.
-
-For a hook config in an agent tool, the entry is the same curl — for
-example a coding agent's own `Stop` hook:
-
-```json
-{
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "curl -s -X POST http://127.0.0.1:8092/__mill/hooks/event -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"source\":\"my-coding-agent\",\"title\":\"Agent finished\",\"body\":\"A task completed.\"}'"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-Some tools hand their hook command the event JSON on stdin instead of
-letting the command build its own body. Pipe it straight through with
-`-d @-` and the workflow declares attributes by that tool's own field
-names, unchanged:
-
-```json
-{
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "curl -s -X POST http://127.0.0.1:8092/__mill/hooks/event -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d @-"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-Some agent tools accept a hook handler of `type: "http"` instead of a
-command — declared as JSON config with the door's `url` and an
-`Authorization: Bearer <token>` header, no curl wrapper at all:
-
-```json
-{
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "http",
-            "url": "http://127.0.0.1:8092/__mill/hooks/event",
-            "headers": {
-              "Authorization": "Bearer <token>",
-              "Content-Type": "application/json"
-            }
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-Either form is fire-and-forget: Mill acknowledges a well-formed post
-and never asks the tool to wait for, or read, anything back.
-
----
-
-
-# Reply to a webhook
-
-A workflow that starts from **Webhook fired** can answer the tool that
-posted the event, not just react to it. Add an **Answer the webhook**
-step, and Mill holds the caller's connection open until that step
-runs, then sends its status, body, and content type back verbatim.
-
-## Add the step
-
-Drag **Answer the webhook** onto the canvas from the Apply group and
-connect it after whatever steps decide what to say. Set:
-
-- **Status code** — the HTTP status the caller receives.
-- **Reply body** — usually JSON, in the calling tool's own schema. Use
-  `{{attributeName}}` to drop in a value the trigger or an earlier step
-  captured.
-- **Content type** — the reply's Content-Type header.
-
-Set **Reply within (seconds)** on the trigger's own **Webhook fired**
-step to how long the caller should wait. The tool's own hook timeout
-must be longer than this — a hook that gives up first never sees the
-reply Mill sends.
-
-## The sender reads the response body
-
-Some tools' hook config posts an event and reads the decision straight
-from the response, no script in between. For example, a coding agent's
-own `type: "http"` hook posts and reads back this way:
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "http",
-            "url": "http://127.0.0.1:8092/__mill/hooks/event",
-            "headers": {
-              "Authorization": "Bearer <token>",
-              "Content-Type": "application/json"
-            }
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-A hook config that only runs a command reads the same reply from the
-curl response instead:
-
-```
-curl -s -X POST http://127.0.0.1:8092/__mill/hooks/event \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d @-
-```
-
-Either way, whatever the Answer the webhook step sent — status, body,
-content type — is what the tool's hook receives.
-
-## A quiet failure proceeds, at the sender
-
-If nothing answers, if the reply is malformed for what the tool
-expects, or if the tool's own hook times out first, most tools treat
-that as a non-blocking failure and let the action proceed anyway. A
-workflow meant to gate a tool call needs to say so plainly in its own
-reply body, in the tool's own schema — Mill never assumes what
-"allow" or "deny" look like on the other end.
-
-## Order decides what a run answers with
-
-Only the FIRST Answer the webhook step to run in a given execution
-sends anything; every one after it is skipped; a step's own run notes
-say so ("Reply already sent by step …"). Put the steps that decide
-WHAT to say — a Branch, a lookup, a guardrail check — before the
-Answer the webhook step, not after it. A reply step placed too early
-answers before that evaluation ever runs.

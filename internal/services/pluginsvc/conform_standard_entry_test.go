@@ -98,15 +98,38 @@ func TestConformStandard_Rule21_EntryPageLoadsOnlyFolderFiles(t *testing.T) {
 	}
 }
 
-func TestConformStandard_Rule21_SameDOMSurfaceWarns(t *testing.T) {
-	manifest := validIconManifest("legacy-view", "Legacy view", `"contributes":{"views":[{"id":"panel","title":"Panel"}]}`)
-	dir := newFixture(t, "legacy-view", manifest, map[string]string{"main.js": "export function activate() {}"})
+// A canvas object is the one surface family still allowed to skip an
+// entry page (the "canvas-host" grant, docs/goals/0375 S1b): it warns
+// under rule 21 but still conforms.
+func TestConformStandard_Rule21_SameDOMCanvasObjectWarns(t *testing.T) {
+	manifest := validIconManifest("legacy-face", "Legacy face", `"contributes":{"canvasObjects":[{"kind":"legacy"}]}`)
+	dir := newFixture(t, "legacy-face", manifest, map[string]string{"main.js": "export function activate() {}"})
 	warnings := strings.Join(ConformStandardWarnings(dir), "\n")
-	if !strings.Contains(warnings, "standard rule 21: view \"panel\" declares no entry page") {
+	if !strings.Contains(warnings, `standard rule 21: canvas object "legacy" declares no entry page`) {
 		t.Fatalf("want the rule 21 warning, got %v", warnings)
 	}
 	if problems := ConformDir(dir, ""); len(problems) != 0 {
-		t.Fatalf("the legacy form still conforms, got %v", problems)
+		t.Fatalf("the same-DOM canvas object still conforms, got %v", problems)
+	}
+}
+
+// A view or capture with no entry page cannot activate framed at all
+// (docs/goals/0375 S1b), so it is a hard refusal (rule 32) rather than
+// rule 21's advisory warning -- passing and failing manifests.
+func TestConformStandard_Rule32_ViewsAndCapturesNeedAnEntryPage(t *testing.T) {
+	missingView := validIconManifest("no-entry-view", "No entry view", `"contributes":{"views":[{"id":"panel","title":"Panel"}]}`)
+	dir := newFixture(t, "no-entry-view", missingView, map[string]string{"main.js": "export function activate() {}"})
+	wantRule(t, dir, `standard rule 32: view "panel" needs an entry page; Mill runs it in a sandbox`)
+
+	missingCapture := validIconManifest("no-entry-capture", "No entry capture", `"contributes":{"captures":[{"id":"jot","label":"Jot"}]}`)
+	dirC := newFixture(t, "no-entry-capture", missingCapture, map[string]string{"main.js": "export function activate() {}"})
+	wantRule(t, dirC, `standard rule 32: capture "jot" needs an entry page; Mill runs it in a sandbox`)
+
+	dirOK := newFixture(t, "has-entry-view", viewEntryManifest("has-entry-view"), map[string]string{
+		"main.js": "export function activate() {}", "view.html": entryPage, "view.js": "", "view.css": "",
+	})
+	if problems := ConformDir(dirOK, ""); len(problems) != 0 {
+		t.Fatalf("a view with an entry page should conform, got %v", problems)
 	}
 }
 

@@ -181,7 +181,13 @@ func hasE2E(repoRoot, family string) bool {
 		}
 	}
 
-	tokens := []string{"contributes." + family}
+	// family + ": [" is the manifest's own declarative shape
+	// (`contributes: { views: [{ id: ..., entry: ... }] }`), the ONLY
+	// evidence an entry-declared view/capture/canvas object leaves
+	// behind (docs/goals/0375 S1b): such a surface opens straight off
+	// the manifest, with no registerX call of its own at all, so the
+	// register-token route below proves nothing for it.
+	tokens := []string{"contributes." + family, family + ": ["}
 	if tok, ok := e2eRegisterTokenByFamily[family]; ok {
 		tokens = append(tokens, tok)
 	}

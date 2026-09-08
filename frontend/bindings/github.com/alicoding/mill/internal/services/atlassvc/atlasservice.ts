@@ -221,9 +221,9 @@ export function CreateCardLinkedFrom(fromCardID: string, linkKindID: string, kin
 
 /**
  * CreateFileObjectFromDownload lands base64Data as a file-backed board
- * object, or -- unchanged, per the owner's own "if I had it before"
- * case -- reports the object that already carries the same content.
- * filename is the browser's own download name (the object's title and
+ * object, or -- when the same content already landed -- reports that
+ * existing object unchanged, never a duplicate. filename is the
+ * browser's own download name (the object's title and
  * its file extension both read from it); sourceRunID is the writing
  * run's own id, stamped onto a NEW object's Payload so a later
  * duplicate hit can name which run first landed it.

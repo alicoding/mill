@@ -231,6 +231,17 @@ jobs:
       - run: python3 -m pip install semgrep==1.176.0
       - run: ./scripts/check-vendor-names-selftest.sh
 
+  # Goal 0387: scripts/check-webhook-naming.sh's own header comment
+  # carries why this stays a narrower, separate gate from vendor-names
+  # above rather than folded into it. Grep-only, so like comment-hygiene
+  # it needs no build setup.
+  webhook-naming:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-webhook-naming.sh
+
   # Goal 0366 (reimplementation-audit Class A): semgrep/no-raf-retry-loop.yml
   # flags a NEW requestAnimationFrame retry loop polling for a
   # library's layout instead of its own readiness signal -- its own
@@ -847,6 +858,7 @@ jobs:
       - drag-regions-selftest
       - vendor-names
       - vendor-names-selftest
+      - webhook-naming
       - no-raf-retry-loop
       - no-raf-retry-loop-selftest
       - fuzzy-search-surfaces

@@ -258,7 +258,7 @@ func main() {
 
 	remoteAuthService := wiring.WireRemoteAuth(settingsStore, logger)                                                                                                  // docs/goals/0132-remote-access.md SLICE 1
 	bridgeService := wiring.WireBrowserBridge(remoteAuthService, logger, browserExtensionFS, filepath.Dir(settingsPath), backupsvc.SQLiteDBPath(executionDatabaseURL)) // the browser bridge's own loopback listener (docs/goals/0350) and audit connection (goal 0351 S2)
-	wiring.WireWebhookRespond(bridgeService, triggerService)                                                                                                          // goal 0368: the hook door fires a trigger, never a pipe. goal 0373: it can wait for a reply.
+	wiring.WireWebhookRespond(bridgeService, triggerService)                                                                                                          // goal 0368: the webhook door fires a trigger, never a pipe. goal 0373: it can wait for a reply.
 
 	settingsService := settingssvc.NewSettingsService(settingsStore, triggerService, settingsPath != defaultSettingsPath)
 	auditService := wiring.WireAuditExport(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsService.GetAuditRetentionEntries(), logger) // goal 0351 S2: export/retention over the shared audit trail

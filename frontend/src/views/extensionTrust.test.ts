@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { InstallPreview } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
-import { capabilityDeedKey, permissionLines, tierLabelKey, tierVariant, verificationKey, withoutRuleNumber } from './extensionTrust'
+import { capabilityDeedKey, hasCanvasHostGrant, permissionLines, tierLabelKey, tierVariant, verificationKey, withoutRuleNumber } from './extensionTrust'
 
 function preview(overrides: Partial<InstallPreview>): InstallPreview {
   return {
@@ -66,6 +66,14 @@ describe('permissionLines', () => {
 
   it('has nothing to say without a preview', () => {
     expect(permissionLines(null)).toEqual([])
+  })
+})
+
+describe('hasCanvasHostGrant', () => {
+  it('shows the label only for a plugin the host recorded the canvas-host grant for', () => {
+    expect(hasCanvasHostGrant({ Grants: ['canvas-host'] })).toBe(true)
+    expect(hasCanvasHostGrant({ Grants: [] })).toBe(false)
+    expect(hasCanvasHostGrant({ Grants: null })).toBe(false)
   })
 })
 
