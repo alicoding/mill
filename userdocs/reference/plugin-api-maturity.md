@@ -9,12 +9,12 @@ kind: reference
 | Family | Level | Conformance | Example | E2E | Docs | SDK types | MCP | Code changed | Docs changed | Flags |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | canvasObjects | experimental | no | yes | yes | yes | yes | yes | 2026-09-07 | 2026-09-06 | — |
-| steps | experimental | no | yes | yes | yes | no | yes | 2026-09-07 | 2026-09-07 | — |
+| steps | experimental | no | yes | yes | yes | no | yes | 2026-09-07 | 2026-09-08 | — |
 | captures | experimental | no | no | yes | yes | yes | n/a | 2026-09-07 | 2026-09-07 | — |
 | settings | stable | yes | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-08 | — |
 | network | experimental | no | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-07 | — |
 | views | experimental | no | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-07 | — |
-| commands | stable | yes | yes | yes | yes | yes | yes | 2026-09-07 | 2026-09-07 | — |
+| commands | stable | yes | yes | yes | yes | yes | yes | 2026-09-07 | 2026-09-08 | — |
 | themes | stable | yes | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-05 | — |
 | secretSources | experimental | no | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-07 | — |
 | tools | experimental | no | yes | no | yes | no | yes | 2026-09-07 | 2026-09-07 | — |

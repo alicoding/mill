@@ -51,6 +51,27 @@ export async function pairFakeExtension(bridgeURL: string, code: string, label =
   return body.token
 }
 
+/** Mints a nearby-flow pairing request (goal 0379): the popup's own
+ * "Pair with Mill" call, before any human has accepted anything. */
+export async function requestPairing(bridgeURL: string, label = 'Chrome'): Promise<{ requestId: string; code: string; expiresAt: string }> {
+  const response = await fetch(`${bridgeURL}/__mill/bridge/pair-request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label }),
+  })
+  if (!response.ok) {
+    throw new Error(`pair-request refused (${response.status}): ${await response.text()}`)
+  }
+  return (await response.json()) as { requestId: string; code: string; expiresAt: string }
+}
+
+/** Polls a nearby-flow pairing request's status -- the popup's own
+ * pair-status call. */
+export async function pairRequestStatus(bridgeURL: string, requestId: string): Promise<{ status: string; token?: string; deviceId?: string; label?: string }> {
+  const response = await fetch(`${bridgeURL}/__mill/bridge/pair-status?requestId=${encodeURIComponent(requestId)}`)
+  return (await response.json()) as { status: string; token?: string; deviceId?: string; label?: string }
+}
+
 /**
  * Connects to the bridge and replays every flow it receives in `page`.
  * The caller owns `page`; this never closes it.

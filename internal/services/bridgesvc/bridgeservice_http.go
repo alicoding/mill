@@ -15,18 +15,26 @@ import (
 	"github.com/alicoding/mill/internal/services/remoteauthsvc"
 )
 
-// The bridge's four browser routes. Everything lives under one prefix
-// so a future mount alongside other handlers can never collide with an
-// app route. The webhook door's own route constant lives with its
-// handler in bridgeservice_webhook.go. RootPath is the exception: it is the
+// The bridge's browser routes. Everything lives under one prefix so a
+// future mount alongside other handlers can never collide with an app
+// route. The webhook door's own route constant lives with its handler
+// in bridgeservice_webhook.go. RootPath is the exception: it is the
 // listener's own address, answered for a human who pastes it into a
-// browser rather than a tool that reads it (goal 0369).
+// browser rather than a tool that reads it (goal 0369). DiscoverPath,
+// PairRequestPath and PairStatusPath are goal 0379's Bluetooth-style
+// nearby flow: a browser's popup finds Mill and requests pairing
+// without typing anything, confirmed by a matching code Accept/Deny in
+// Mill resolves -- PairPath's typed exchange stays as the Passkey-
+// Entry-equivalent fallback.
 const (
-	EventsPath   = "/__mill/bridge/events"
-	ResultPath   = "/__mill/bridge/result"
-	PairPath     = "/__mill/bridge/pair"
-	TestPagePath = "/__mill/bridge/test-page"
-	RootPath     = "/"
+	EventsPath      = "/__mill/bridge/events"
+	ResultPath      = "/__mill/bridge/result"
+	PairPath        = "/__mill/bridge/pair"
+	DiscoverPath    = "/__mill/bridge/discover"
+	PairRequestPath = "/__mill/bridge/pair-request"
+	PairStatusPath  = "/__mill/bridge/pair-status"
+	TestPagePath    = "/__mill/bridge/test-page"
+	RootPath        = "/"
 )
 
 // maxResultBytes caps a result POST. A step result carries a status, a
@@ -54,6 +62,9 @@ func (s *BridgeService) Handler() http.Handler {
 	mux.HandleFunc(EventsPath, s.handleEvents)
 	mux.HandleFunc(ResultPath, s.handleResult)
 	mux.HandleFunc(PairPath, s.handlePair)
+	mux.HandleFunc(DiscoverPath, s.handleDiscover)
+	mux.HandleFunc(PairRequestPath, s.handlePairRequest)
+	mux.HandleFunc(PairStatusPath, s.handlePairStatus)
 	mux.HandleFunc(TestPagePath, s.handleTestPage)
 	mux.HandleFunc(WebhookPath, s.handleWebhook)
 	// "{$}" (Go 1.22+ ServeMux) matches ONLY the exact root path -- a
@@ -105,6 +116,84 @@ func pairFailureKind(err error) string {
 	return "unauthorized"
 }
 
+// discoverResponse is what a browser's popup learns before typing
+// anything (goal 0379): Mill is here, and whether THIS caller is
+// already paired.
+type discoverResponse struct {
+	Name   string `json:"name"`
+	Paired bool   `json:"paired"`
+}
+
+// handleDiscover answers the Bluetooth-style nearby flow's first
+// question, loopback-gated and token-free like handlePair and
+// handleTestPage -- a popup that has never paired has no bearer to
+// send. Paired reflects THIS caller specifically: any bearer token it
+// already holds is checked against the live paired list, so a popup
+// that still has a good token skips straight to "Connected to Mill"
+// without a second round trip, and one whose token was since revoked
+// learns that too rather than reading a stale local flag.
+func (s *BridgeService) handleDiscover(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !isLoopback(r) {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	_, paired := s.auth.ValidateBrowserToken(bearerToken(r))
+	writeJSON(w, http.StatusOK, discoverResponse{Name: "Mill", Paired: paired})
+}
+
+// handlePairRequest mints a pairing REQUEST -- not a credential -- for
+// the nearby flow's numeric-comparison step: the same code goes to the
+// caller here and to Settings > Connections > Browsers' own
+// incoming-request card, and only a human clicking Accept there ever
+// turns it into a token (goal 0379). Loopback-gated and token-free
+// like handlePair, and shares handlePair's own rate-limit bucket via
+// sourceKey so a lockout from repeated bad pairing codes also blocks a
+// flood of pairing requests from the same source.
+func (s *BridgeService) handlePairRequest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !isLoopback(r) {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	var body struct {
+		Label string `json:"label"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxResultBytes)).Decode(&body); err != nil {
+		writeUserError(w, http.StatusBadRequest, usererror.New("bad-pairing-request", "That pairing request wasn't readable."))
+		return
+	}
+	info, err := s.auth.RequestPairing(body.Label, sourceKey(r))
+	if err != nil {
+		writeUserError(w, http.StatusUnauthorized, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, info)
+}
+
+// handlePairStatus is what a popup polls once a second while a request
+// is pending (goal 0379): pending/accepted/denied/expired, the SAME
+// shape PairBrowser's response takes on acceptance. A stale or unknown
+// requestId reads exactly like "expired" -- handled entirely inside
+// PairingStatus, never distinguished here, so a guess learns nothing.
+func (s *BridgeService) handlePairStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !isLoopback(r) {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	writeJSON(w, http.StatusOK, s.auth.PairingStatus(r.URL.Query().Get("requestId")))
+}
+
 // rootPageHTML is what a human meets pasting the bridge's own address
 // into a browser instead of the extension's popup, rather than Go's
 // bare "404 page not found". No token, no external assets: whoever
@@ -122,7 +211,7 @@ const rootPageHTML = `<!doctype html>
 <body>
 <h1>Mill's connection endpoint</h1>
 <p>This is Mill's local connection endpoint. It only answers requests from this computer.</p>
-<p>The browser extension and webhook recipes talk to it here.</p>
+<p>The browser extension's discovery check, its pairing, and webhook recipes all talk to it here.</p>
 <p>Open Mill, then go to Settings &gt; Connections.</p>
 </body>
 </html>
