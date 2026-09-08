@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, FormControl, IconButton, Label, Select, SegmentedControl, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { StatusStamp } from '../shared/StatusStamp'
@@ -29,6 +29,15 @@ interface LogEntry extends TestHTTPRequestResult {
   at: string
 }
 
+// Exposed so the author form's primary Test button (goal 0370,
+// configure/RequestForm.tsx via useRequestFormTestDispatch.ts) triggers
+// exactly the same runTest a click on this panel's own Run-test button
+// would, without lifting selected/values state out of this component --
+// same shape as composition/LiveRunControls.tsx's RunButtonHandle.
+export interface RequestTestPanelHandle {
+  trigger: () => void
+}
+
 // docs/adr/0013: tests the request draft currently on screen -- no
 // save required. `effectiveSpec`/`operations` are computed by
 // RequestForm from whichever schema-authoring mode is actually
@@ -36,9 +45,7 @@ interface LogEntry extends TestHTTPRequestResult {
 // "compute once, pass down, never re-derive from possibly-stale state"
 // discipline handleSave already uses for the identical stale-state risk
 // (see RequestForm.tsx's own comment on that bug).
-export function RequestTestPanel({
-  operations, effectiveSpec, label, baseURL, authType, auth, jose, headers, secretRef, requestID,
-}: {
+export const RequestTestPanel = forwardRef<RequestTestPanelHandle, {
   operations: ManualOperation[]
   effectiveSpec: string
   label: string
@@ -59,7 +66,16 @@ export function RequestTestPanel({
   // auth/jose, exactly as they do on a saved request.
   secretRef: string
   requestID: string | null
-}) {
+  // The author form (goal 0370) drives Run exclusively through its own
+  // outer primary Test button -- never two buttons doing the same
+  // thing on one screen (.claude/rules/frontend.md's one-primary-per-
+  // region convention). The saved record's own Testing tab omits this,
+  // keeping its existing in-panel Run test button unchanged.
+  hideRunButton?: boolean
+  onRunningChange?: (running: boolean) => void
+}>(function RequestTestPanel({
+  operations, effectiveSpec, label, baseURL, authType, auth, jose, headers, secretRef, requestID, hideRunButton, onRunningChange,
+}, ref) {
   const { t } = useTranslation('configure')
   const [selectedKey, setSelectedKey] = useState('')
   const [values, setValues] = useState<Record<string, string>>({})
@@ -126,7 +142,11 @@ export function RequestTestPanel({
     }
   }
 
-  const runTest = async () => {
+  // useCallback (not a plain closure): useImperativeHandle below needs
+  // a stable-enough identity to hand the author form's Test button
+  // (goal 0370) the SAME function a click on this panel's own Run-test
+  // button already calls, never a second, divergent code path.
+  const runTest = useCallback(async () => {
     if (!selected || effectiveSpec.trim() === '') return
     setRunning(true)
     try {
@@ -158,7 +178,10 @@ export function RequestTestPanel({
     } finally {
       setRunning(false)
     }
-  }
+  }, [selected, effectiveSpec, requestID, label, baseURL, authType, auth, jose, headers, secretRef, values])
+
+  useImperativeHandle(ref, () => ({ trigger: () => { void runTest() } }), [runTest])
+  useEffect(() => { onRunningChange?.(running) }, [running, onRunningChange])
 
   if (effectiveSpec.trim() === '') {
     return <Text as="p" size="small" className={styles.muted}>{t('requestTestPanel.declareSchemaFirst')}</Text>
@@ -232,9 +255,11 @@ export function RequestTestPanel({
             </Stack>
           )}
 
-          <Button variant="primary" size="small" leadingVisual={PlayIcon} onClick={runTest} disabled={running} data-testid="run-request-test">
-            {running ? t('requestTestPanel.running') : t('requestTestPanel.runTest')}
-          </Button>
+          {!hideRunButton && (
+            <Button variant="primary" size="small" leadingVisual={PlayIcon} onClick={() => { void runTest() }} disabled={running} data-testid="run-request-test">
+              {running ? t('requestTestPanel.running') : t('requestTestPanel.runTest')}
+            </Button>
+          )}
         </>
       )}
 
@@ -295,4 +320,4 @@ export function RequestTestPanel({
       )}
     </Stack>
   )
-}
+})

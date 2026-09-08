@@ -234,6 +234,16 @@ func (s *SettingsService) SetupAwayAttention() error {
 			}
 			return
 		}
+		if kind == "browser-pair-request" {
+			// The numeric-comparison trust decision itself needs
+			// Settings open with the request card in view -- a bare
+			// ShowWindow (the generic fallback below) would land on
+			// whatever view was last open, leaving the human comparison
+			// step to a second, unprompted navigation (goal 0379).
+			s.ShowWindow()
+			windowing.Emit("mill-navigate", "browser:pair-request")
+			return
+		}
 		// A guardrail/human-review park's action button, or any
 		// default-click -- typed input may be required to actually
 		// resolve one of these, so the notification only ever opens

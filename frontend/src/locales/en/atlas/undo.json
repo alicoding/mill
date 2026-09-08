@@ -1,0 +1,6 @@
+{
+  "undo": {
+    "tableRemovedListStays": "Table removed from the board. The list stays in Configure.",
+    "tableRemovedListUnused": "Table removed from the board. The list is now unused in Configure."
+  }
+}

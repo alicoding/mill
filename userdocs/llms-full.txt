@@ -2803,6 +2803,8 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `backup.export` | Export everything | — | Global | Always available |
 | `backup.now` | Back up now | — | Global | Always available |
 | `browser.pair` | Pair a browser | — | Global | Always available |
+| `browser.pairRequest.accept` | Accept the browser's pairing request | — | Global | Conditional — available only in a matching state |
+| `browser.pairRequest.deny` | Deny the browser's pairing request | — | Global | Conditional — available only in a matching state |
 | `browser.revealExtension` | Reveal the extension folder | — | Global | Always available |
 | `browser.test` | Test the browser connection | — | Global | Conditional — available only in a matching state |
 | `canvas.addNote` | Add note | — | Global | Acts on the item you clicked |
@@ -2841,9 +2843,11 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.execenv.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.execenv.export` | Export | — | Global | Acts on the selected entity |
 | `configure.execenv.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.integration.testDraft` | Test | — | Global | Conditional — available only in a matching state |
 | `configure.list.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.list.export` | Export | — | Global | Acts on the selected entity |
 | `configure.list.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.lists.deleteUnused` | Delete {{count}} lists | — | Global | Acts on the selected entitySelection |
 | `configure.mcpserver.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.mcpserver.export` | Export | — | Global | Acts on the selected entity |
 | `configure.mcpserver.listTools` | List tools | — | Global | Acts on the selected entity |
@@ -3384,16 +3388,32 @@ and reload the extension.
 
 A browser has to be paired before Mill will send it anything, and that
 holds even when both are on the same computer. Anything running locally
-could otherwise drive your tabs.
+could otherwise drive your tabs. Pairing works the way Bluetooth does:
+the same code shows on both sides, and you confirm the match once.
+
+1. Open the extension's popup and press **Pair with Mill**. A 6-digit
+   code appears in the popup.
+2. Open **Settings › Connections › Browsers** in Mill. The browser's
+   request shows there with the same code.
+3. Check the two codes match, then press **Accept**.
+4. The popup shows **Connected to Mill**, and the browser appears in the
+   Browsers list.
+
+If the popup can't reach Mill this way — a remote Mill, or Mill still
+starting up — press **Enter a code instead** in the popup:
 
 1. Open **Settings › Connections › Browsers**. Note the **Mill address**
    shown there.
 2. Press **Pair a browser**. An eight-character code appears, good for
    five minutes and usable once.
-3. Open the extension's popup, check the address matches, type the code,
-   and press **Pair**.
+3. In the popup's **Enter a code instead** form, check the address
+   matches, type the code, and press **Pair**.
 4. The popup shows **Connected to Mill**, and the browser appears in the
    Browsers list.
+
+Once paired, the popup shows **Connected to Mill** with the address kept
+behind a **Show details** disclosure — **Disconnect** clears the popup's
+own credential without revoking the browser in Mill's list.
 
 ## Test it
 
@@ -4800,17 +4820,17 @@ A refused install leaves nothing on disk.
 
 | Family | Level | Conformance | Example | E2E | Docs | SDK types | MCP | Code changed | Docs changed | Flags |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| canvasObjects | experimental | no | yes | yes | yes | yes | yes | 2026-09-07 | 2026-09-06 | — |
-| steps | experimental | no | yes | yes | yes | no | yes | 2026-09-07 | 2026-09-07 | — |
-| captures | experimental | no | no | yes | yes | yes | n/a | 2026-09-07 | 2026-09-07 | — |
-| settings | stable | yes | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-08 | — |
-| network | experimental | no | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-07 | — |
-| views | experimental | no | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-07 | — |
-| commands | stable | yes | yes | yes | yes | yes | yes | 2026-09-07 | 2026-09-07 | — |
-| themes | stable | yes | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-05 | — |
-| secretSources | experimental | no | yes | yes | yes | yes | n/a | 2026-09-07 | 2026-09-07 | — |
-| tools | experimental | no | yes | no | yes | no | yes | 2026-09-07 | 2026-09-07 | — |
-| mcpServers | experimental | no | yes | no | yes | no | no | 2026-09-07 | — | — |
+| canvasObjects | experimental | no | yes | yes | yes | yes | yes | 2026-09-08 | 2026-09-06 | — |
+| steps | experimental | no | yes | yes | yes | no | yes | 2026-09-08 | 2026-09-08 | — |
+| captures | experimental | no | no | yes | yes | yes | n/a | 2026-09-08 | 2026-09-07 | — |
+| settings | stable | yes | yes | yes | yes | yes | n/a | 2026-09-08 | 2026-09-08 | — |
+| network | experimental | no | yes | yes | yes | yes | n/a | 2026-09-08 | 2026-09-07 | — |
+| views | experimental | no | yes | yes | yes | yes | n/a | 2026-09-08 | 2026-09-07 | — |
+| commands | stable | yes | yes | yes | yes | yes | yes | 2026-09-08 | 2026-09-08 | — |
+| themes | stable | yes | yes | yes | yes | yes | n/a | 2026-09-08 | 2026-09-05 | — |
+| secretSources | experimental | no | yes | yes | yes | yes | n/a | 2026-09-08 | 2026-09-07 | — |
+| tools | experimental | no | yes | no | yes | no | yes | 2026-09-08 | 2026-09-07 | — |
+| mcpServers | experimental | no | yes | no | yes | no | no | 2026-09-08 | — | — |
 
 ## How a family moves
 
