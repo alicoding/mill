@@ -123,6 +123,12 @@ func WireAtlasProjections(atlas *atlassvc.AtlasService, cfg *configuresvc.Config
 		}
 		return proj, true
 	})
+	// The object<->entity reference index (goal 0392 S1): each side
+	// wired with the other's own reader, so a Configure entity delete
+	// (refIntegrityError) and a board-object delete's own toast copy
+	// both consult the identical combined answer.
+	cfg.WireBoardReferenceLookup(atlas.ObjectsReferencing)
+	atlas.WireEntityReferenceIndex(cfg.References)
 }
 
 // WirePasteConversion connects the board's paste-understanding table

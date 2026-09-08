@@ -99,6 +99,10 @@
     "seedRevision": 1,
     "fingerprint": "1e55d1591c9b7a0f98a7cd22d2de9940b4d3fa2a8094a8fd9496870e500b549a"
   },
+  "atlasobject:atlas-object-example-table": {
+    "seedRevision": 1,
+    "fingerprint": "bb724969a63b09e791e2f0d8cedce088182a685a6b91a2775aa977a81480e561"
+  },
   "atlasobject:atlas-object-example-yaml": {
     "seedRevision": 1,
     "fingerprint": "0e728bb7741d0e1d18aa6fa3df09c5a3e2d80472ed9fbc3518f69d71b7ffca49"
@@ -194,6 +198,10 @@
   "list:example-task-tracker-list": {
     "seedRevision": 4,
     "fingerprint": "145a6b39ce02f5f72ed7b06aefa6ef1dac02930119fa6df0074dc43392da5fc4"
+  },
+  "list:example-unused-list": {
+    "seedRevision": 1,
+    "fingerprint": "7189cddf25ec5bcc9578f233a9a5105a49b80f1928252aa4645425ec2699c1fe"
   },
   "mcpserver:example-reference-mcpserver": {
     "seedRevision": 1,

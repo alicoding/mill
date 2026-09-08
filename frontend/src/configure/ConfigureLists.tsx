@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, FormControl, Heading, IconButton, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
+import { Button, Checkbox, FormControl, Heading, IconButton, Select, Stack, Text, TextInput, VisuallyHidden } from '@primer/react'
 import { DownloadIcon, ListUnorderedIcon, PencilIcon, PlusIcon, TrashIcon, UploadIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { StatusStamp } from '../shared/StatusStamp'
@@ -12,14 +12,14 @@ import type { GridColumn, GridRow } from '../shared/listGridTypes'
 import { ListRowImport } from './ListRowImport'
 import { NewListFromFile } from './NewListFromFile'
 import { ListVersionsSection } from './ListVersionsSection'
-import { refreshLists, useConfigureEntityStore } from '../shared/configureEntityStore'
+import { refreshListUsage, refreshLists, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
 import { useViewMode } from '../shared/viewMode'
 import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { entityRowContext } from '../shared/entityRowCommands'
 import { useEntityActionError } from '../shared/entityActionErrorStore'
-import { runCommand } from '../shared/commands'
+import { commandLabel, findCommand, runCommand } from '../shared/commands'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useImportConfirm } from '../shared/useImportConfirm'
@@ -29,6 +29,7 @@ import { RestoreExamplesButton } from '../shared/RestoreExamplesButton'
 import styles from '../shared/ListCard.module.css'
 import { PaneLoading } from './PaneLoading'
 import PageContainer from '../shared/PageContainer'
+import { isUnusedList, usageLineFor } from './configureListUsageCopy'
 
 // Configure's Lists section (docs/SPEC.md §3.5): CRUD over
 // ConfigureService's typed Lists. Schema AND data edit in the ONE
@@ -47,6 +48,21 @@ export function ConfigureLists() {
   // live update lands here even when this tab is already open,
   // mounted, and idle (goal 0017 P1-1).
   const lists = useConfigureEntityStore((s) => s.lists)
+  // The combined board+workflow reference index (goal 0392 S1), keyed
+  // by List.ID -- shared/configureEntityStore.ts's own refreshListUsage
+  // is what keeps this current.
+  const listUsage = useConfigureEntityStore((s) => s.listUsage)
+  // Unused filter + its own multi-select (Decision 3): the checkbox
+  // column and the bulk-delete button both only apply while filtered
+  // to Unused -- selecting, then switching back to All, would leave a
+  // selection over rows no longer even shown, so the filter change
+  // clears it.
+  const [usageFilter, setUsageFilter] = useState<'all' | 'unused'>('all')
+  const [selectedUnusedIDs, setSelectedUnusedIDs] = useState<Set<string>>(new Set())
+  const setUsageFilterAndClearSelection = (next: 'all' | 'unused') => {
+    setUsageFilter(next)
+    setSelectedUnusedIDs(new Set())
+  }
   const [editingID, setEditingID] = useState<string | null>(null)
   const [label, setLabel] = useState('')
   const [description, setDescription] = useState('')
@@ -98,6 +114,7 @@ export function ConfigureLists() {
   useEffect(() => {
     refetch()
     refreshSeedLifecycle()
+    void refreshListUsage()
   }, [])
 
   const editingList = lists?.find((l) => l.ID === editingID) ?? null
@@ -178,8 +195,25 @@ export function ConfigureLists() {
   // Last-updated-first, applied once so both view modes render the
   // same order (docs/SPEC.md §3.8's InventoryList entry).
   const sortedLists = useMemo(() => sortByUpdatedDesc(lists ?? [], (l) => l.UpdatedAt), [lists])
+  // The Unused filter (Decision 3): applied before the row list is
+  // built, so every downstream consumer (the row count, search inside
+  // InventoryList) already sees only what the toolbar's own count line
+  // claims to show.
+  const visibleLists = useMemo(
+    () => (usageFilter === 'unused' ? sortedLists.filter((l) => isUnusedList(listUsage[l.ID])) : sortedLists),
+    [sortedLists, usageFilter, listUsage],
+  )
 
-  const listItems: InventoryItem[] = sortedLists.map((l) => {
+  const toggleUnusedSelected = (id: string, checked: boolean) => {
+    setSelectedUnusedIDs((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
+  const listItems: InventoryItem[] = visibleLists.map((l) => {
     const seedReset = describeSeedReset(l.Seed, seedRevisions[l.ID] ?? l.Seed.SeedRevision)
     return {
       id: l.ID,
@@ -194,7 +228,22 @@ export function ConfigureLists() {
       // fully editable/deletable (docs/SPEC.md §2.2's Update note), same
       // as ConfigureRequests.tsx's identical badge.
       labelBadges: l.BuiltIn ? <StatusStamp variant="identity">{t('builtIn')}</StatusStamp> : undefined,
-      description: t('configureLists.columnsRowsSummary', { columns: (l.Columns ?? []).length, rows: (l.Rows ?? []).length }),
+      description: `${t('configureLists.columnsRowsSummary', { columns: (l.Columns ?? []).length, rows: (l.Rows ?? []).length })} · ${usageLineFor(t, listUsage[l.ID])}`,
+      // The Unused filter's own multi-select (Decision 3): a checkbox
+      // per row, present only while filtered -- the kit's own Checkbox,
+      // never a hand-rolled toggle. Wrapped so a click never also fires
+      // the row's onOpen (InventoryRow's own trailing-cluster guard
+      // covers meta the same way it covers primaryAction).
+      meta: usageFilter === 'unused'
+        ? (
+          <Checkbox
+            checked={selectedUnusedIDs.has(l.ID)}
+            onChange={(e) => toggleUnusedSelected(l.ID, e.target.checked)}
+            aria-label={t('configureLists.unusedSelectAriaLabel', { label: l.Label })}
+            data-testid="unused-list-select"
+          />
+          )
+        : undefined,
       onOpen: () => startEdit(l),
       menuActions: [
         { commandId: 'configure.list.export', ctx: entityRowContext('list', l.ID) },
@@ -206,6 +255,12 @@ export function ConfigureLists() {
       ],
     }
   })
+
+  const deleteUnusedCommand = findCommand('configure.lists.deleteUnused')
+  const deleteUnusedCtx = { kind: 'entitySelection' as const, entity: 'list', ids: [...selectedUnusedIDs] }
+  const runDeleteUnused = () => {
+    void runCommand('configure.lists.deleteUnused', deleteUnusedCtx).then(() => setSelectedUnusedIDs(new Set()))
+  }
 
   return (
     <PageContainer data-testid="configure-lists">
@@ -319,17 +374,39 @@ export function ConfigureLists() {
         </ResizableTableContainer>
       )}
       {lists !== null && viewMode === 'rows' && !(formOpen && lists.length === 0) && (
-        <InventoryList
-          listId="configure.lists"
-          items={listItems}
-          searchPlaceholder={t('configureLists.searchPlaceholder')}
-          emptyState={{
-            icon: ListUnorderedIcon,
-            heading: t('configureLists.emptyHeading'),
-            description: t('configureLists.emptyDescription'),
-            action: <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate}>{t('configureLists.newList')}</Button>,
-          }}
-        />
+        usageFilter === 'unused' && visibleLists.length === 0 && lists.length > 0
+          ? <Text as="p" size="small" className={styles.muted} data-testid="unused-lists-empty">{t('configureLists.unusedEmpty')}</Text>
+          : (
+          <InventoryList
+            listId="configure.lists"
+            items={listItems}
+            searchPlaceholder={t('configureLists.searchPlaceholder')}
+            filters={
+              <Stack direction="horizontal" gap="condensed" align="center">
+                <Select
+                  value={usageFilter}
+                  onChange={(e) => setUsageFilterAndClearSelection(e.target.value as 'all' | 'unused')}
+                  aria-label={t('configureLists.usageFilterAriaLabel')}
+                  data-testid="list-usage-filter"
+                >
+                  <Select.Option value="all">{t('configureLists.usageFilterAll')}</Select.Option>
+                  <Select.Option value="unused">{t('configureLists.usageFilterUnused')}</Select.Option>
+                </Select>
+                {usageFilter === 'unused' && selectedUnusedIDs.size > 0 && deleteUnusedCommand && (
+                  <Button variant="danger" size="small" onClick={runDeleteUnused} data-testid="delete-unused-lists">
+                    {commandLabel(deleteUnusedCommand, deleteUnusedCtx)}
+                  </Button>
+                )}
+              </Stack>
+            }
+            emptyState={{
+              icon: ListUnorderedIcon,
+              heading: t('configureLists.emptyHeading'),
+              description: t('configureLists.emptyDescription'),
+              action: <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate}>{t('configureLists.newList')}</Button>,
+            }}
+          />
+            )
       )}
       {importConfirm.dialog}
     </PageContainer>

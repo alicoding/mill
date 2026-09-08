@@ -333,6 +333,10 @@
         "export": "Export",
         "reset": "Reset to shipped example"
       },
+      "lists": {
+        "deleteUnusedOne": "Delete 1 list",
+        "deleteUnusedOther": "Delete {{count}} lists"
+      },
       "mcpserver": {
         "delete": "Delete",
         "export": "Export",
