@@ -29,6 +29,13 @@
 # reports). Called by the orchestrator's tick, not by any automatic
 # hook. Always exits 0; `--dry-run` prints verdicts without removing.
 #
+# Last step: a guarded Go build-cache trim (goal 0403 S2f), so a tick
+# that doesn't land on the LaunchAgent's own 30-minute cadence still
+# gets a chance at it. gocache-trim.sh no-ops on its own when hardcache
+# isn't installed or a go build/test/vet/generate/install/run,
+# golangci-lint, wails3 or lefthook process is running anywhere on the
+# machine.
+#
 # A git-commit-invoked pre-commit hook exports GIT_DIR/GIT_WORK_TREE/
 # GIT_INDEX_FILE (and the rest of git's local-repo environment) for the
 # repo being committed; those override every `-C <path>` call below,
@@ -177,5 +184,14 @@ git worktree list --porcelain | awk '/^worktree /{print $2}' | while read -r wt;
       ;;
   esac
 done
+
+trim_script="$(dirname "$0")/dev/gocache-trim.sh"
+if [ -x "$trim_script" ]; then
+  if [ $dry -eq 1 ]; then
+    "$trim_script" --dry-run || true
+  else
+    "$trim_script" || true
+  fi
+fi
 
 exit 0
