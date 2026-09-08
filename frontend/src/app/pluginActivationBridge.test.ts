@@ -151,6 +151,59 @@ describe('callActivationMethod', () => {
     const result = await callActivationMethod(ctx, api, 'subscribe', [{ topic: 'settings', key: 'missing' }])
     expect(result).toEqual({ subId: 1 })
   })
+
+  // dispatchLifecycleEvent simulates the backend's own mill-lifecycle-event
+  // emission (docs/goals/0392 S2) through @wailsio/runtime's real test hook
+  // -- the same window._wails.dispatchWailsEvent path the generated
+  // runtime itself calls on a real backend Emit, so this proves the whole
+  // wire round-trip, not just this module's own filtering logic.
+  function dispatchLifecycleEvent(data: Record<string, unknown>): void {
+    const wails = (window as unknown as { _wails: { dispatchWailsEvent: (e: { name: string; data: unknown }) => void } })._wails
+    wails.dispatchWailsEvent({ name: 'mill-lifecycle-event', data })
+  }
+
+  it('subscribe on entity.* forwards a matching lifecycle firing as a lifecycle.event message', async () => {
+    const api = fakeApi()
+    const { frame, post } = fakeFrame()
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const { subId } = await callActivationMethod(ctx, api, 'subscribe', [{ topic: 'entity.*' }]) as { subId: number }
+
+    dispatchLifecycleEvent({ event: 'entity.dereferenced', entityKind: 'list', entityId: 'list-1', remaining: 0 })
+
+    expect(post).toHaveBeenCalledWith({
+      mill: 1, kind: 'event', event: 'lifecycle.event',
+      payload: { subId, event: 'entity.dereferenced', entityKind: 'list', entityId: 'list-1', remaining: 0 },
+    }, '*')
+  })
+
+  it('subscribe on object.* ignores an entity.* firing, and kinds narrows within the family', async () => {
+    const api = fakeApi()
+    const { frame, post } = fakeFrame()
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    await callActivationMethod(ctx, api, 'subscribe', [{ topic: 'object.*', kinds: ['table'] }])
+
+    dispatchLifecycleEvent({ event: 'entity.created', entityKind: 'list', entityId: 'list-1' })
+    expect(post).not.toHaveBeenCalled()
+
+    dispatchLifecycleEvent({ event: 'object.created', boardId: 'b1', objectId: 'o1', kind: 'image' })
+    expect(post).not.toHaveBeenCalled()
+
+    dispatchLifecycleEvent({ event: 'object.created', boardId: 'b1', objectId: 'o2', kind: 'table', entityRef: 'list' })
+    expect(post).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'lifecycle.event', payload: expect.objectContaining({ event: 'object.created', kind: 'table' }),
+    }), '*')
+  })
+
+  it('unsubscribe on entity.*/object.* stops further delivery', async () => {
+    const api = fakeApi()
+    const { frame, post } = fakeFrame()
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const { subId } = await callActivationMethod(ctx, api, 'subscribe', [{ topic: 'entity.*' }]) as { subId: number }
+    await callActivationMethod(ctx, api, 'unsubscribe', [{ subId }])
+
+    dispatchLifecycleEvent({ event: 'entity.created', entityKind: 'list', entityId: 'list-1' })
+    expect(post).not.toHaveBeenCalled()
+  })
 })
 
 describe('attachActivationBridge', () => {
