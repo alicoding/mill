@@ -97,6 +97,7 @@ func PageIndex() []DocPage {
 		{"agents/lists.md", "Add a row with an agent", "reading a List's columns and rows and appending a new row to an existing one", KindHowTo},
 		{"agents/plugins.md", "What plugins expose to agents", "listing installed plugins, calling a plugin's declared tools, and how a plugin write parks", KindHowTo},
 		{"agents/agent-hooks.md", "Fire a workflow from an agent's hook", "minting a hook token and posting to the hook endpoint so a tool's hook fires a workflow", KindHowTo},
+		{"agents/webhook-reply.md", "Reply to a webhook", "the Answer the webhook step, reading the reply from a native http hook or curl, and why step order decides what a run answers with", KindHowTo},
 	}
 }
 
