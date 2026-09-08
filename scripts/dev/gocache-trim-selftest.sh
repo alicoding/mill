@@ -1,11 +1,24 @@
 #!/usr/bin/env bash
 # Proves gocache-trim.sh's safety properties: the busy-process guard
-# skips for a real go BUILD-shaped subcommand but never for gopls (the
-# permanently-running language server) or a bare `go env`, --dry-run
-# never requires hardcache to be installed, and the LaunchAgent plist
+# skips for a real go BUILD-shaped subcommand, even on a bare runner
+# with no hardcache installed (the guard runs before the hardcache
+# lookup, never after); the regex it matches on excludes gopls (the
+# permanently-running language server) and a bare `go env`; --dry-run
+# never requires hardcache to be installed; and the LaunchAgent plist
 # gocache-trim-setup.sh writes is well-formed. The launchd/plutil half
 # is macOS-only; a Linux runner (CI's non-macOS jobs) SKIPs it with a
 # clear line rather than failing.
+#
+# The gopls/go-env exclusion is asserted as a pure string match against
+# the script's own computed regex (MILL_GOCACHE_PRINT_REGEX=1), never
+# by spawning a fake process and reading the live process table: this
+# machine routinely has real `go build`/`go test` processes running
+# from unrelated concurrent work, which would make a live-process
+# assertion here fail for a reason unrelated to the property under
+# test (the real ambient process, not the fake one, triggering the
+# guard). The positive case (a fake `go build` blocks) doesn't have
+# this problem -- an ambient real match would only make it pass for an
+# equally-valid reason -- so it stays a live integration check.
 set -uo pipefail
 
 cd "$(git rev-parse --show-toplevel)" || exit 1
@@ -18,7 +31,7 @@ fails=0
 # as argv[0], including one with an internal space, which is the
 # simplest portable way to make a throwaway `sleep` process show up in
 # `ps`/`pgrep -f` output as if its full command line were e.g. "go
-# build" or "gopls" without actually invoking either binary.
+# build" without actually invoking the go tool.
 fake_pid=""
 spawn_fake() {
   exec -a "$1" sleep 20 &
@@ -35,42 +48,50 @@ kill_fake() {
 }
 trap kill_fake EXIT
 
-# 1. A fake `go build` blocks the trim. MILL_GOCACHE_GUARD_NAMED_PROCS=""
-# excludes only the named-binary guard (golangci-lint/wails3/lefthook):
-# this selftest itself typically runs AS a lefthook pre-commit job, so
-# a real lefthook process is always present in that context and would
-# otherwise mask which guard actually fired. The go-subcommand regex
-# stays at its real default -- that's the behavior under test.
-spawn_fake "go build"
-out="$(MILL_GOCACHE_GUARD_NAMED_PROCS="" bash "$trim" 2>&1)"
-if echo "$out" | grep -q "skipping -- a go build/test/vet/generate/install/run is running"; then
-  echo "PASS: guard skips while a go build/test/.../run subcommand is running"
-else
-  echo "FAIL: guard did not skip for a fake 'go build' process -- got: $out" >&2
-  fails=$((fails + 1))
-fi
-kill_fake
-
-# 1b. gopls -- which runs permanently on a dev machine (the IDE) --
-# and a bare `go env` must NEVER block: the guard fired above must be
-# skip-shaped, not a symptom of matching every process named/prefixed
-# "go". Both cases route to the no-hardcache path via HOME=scratch, so
-# any output other than the install-missing line proves the guard
-# incorrectly blocked.
+# 1. A fake `go build` blocks the trim, EVEN WHEN hardcache isn't
+# installed (HOME points at an empty scratch dir, same trick check 2
+# below uses) -- proves the guard runs before, not after, the
+# hardcache lookup: skip is the right answer either way.
+# MILL_GOCACHE_GUARD_NAMED_PROCS="" excludes only the named-binary
+# guard (golangci-lint/wails3/lefthook): this selftest itself typically
+# runs AS a lefthook pre-commit job, so a real lefthook process is
+# always present in that context and would otherwise mask which guard
+# actually fired. The go-subcommand regex stays at its real default --
+# that's the behavior under test.
 scratch="$(mktemp -d)"
 clean_path="$(printf '%s' "$PATH" | tr ':' '\n' | grep -v '/go/bin$' | paste -sd: -)"
-for fake_cmd in gopls "go env"; do
-  spawn_fake "$fake_cmd"
-  out="$(HOME="$scratch" PATH="$clean_path" MILL_GOCACHE_GUARD_NAMED_PROCS="" bash "$trim" --dry-run 2>&1)"
-  kill_fake
-  if echo "$out" | grep -q "not installed"; then
-    echo "PASS: guard does not block on a fake '$fake_cmd' process"
+spawn_fake "go build"
+out="$(HOME="$scratch" PATH="$clean_path" MILL_GOCACHE_GUARD_NAMED_PROCS="" bash "$trim" 2>&1)"
+kill_fake
+if echo "$out" | grep -q "skipping -- a go build/test/vet/generate/install/run is running"; then
+  echo "PASS: guard skips while a go build/test/.../run subcommand is running, hardcache installed or not"
+else
+  echo "FAIL: guard did not skip for a fake 'go build' process without hardcache -- got: $out" >&2
+  fails=$((fails + 1))
+fi
+rm -rf "$scratch"
+
+# 1b. gopls -- which runs permanently on a dev machine (the IDE) -- and
+# a bare `go env` must NEVER match the go-subcommand regex. Pure string
+# assertion against the script's own computed pattern (see the header
+# comment for why this isn't a live-process check).
+regex="$(MILL_GOCACHE_PRINT_REGEX=1 bash "$trim")"
+for cmdline in "go build ./..." "go test ./..."; do
+  if printf '%s' "$cmdline" | grep -qE "$regex"; then
+    echo "PASS: the go-subcommand regex matches '$cmdline'"
   else
-    echo "FAIL: guard incorrectly blocked on a fake '$fake_cmd' process -- got: $out" >&2
+    echo "FAIL: the go-subcommand regex does not match '$cmdline'" >&2
     fails=$((fails + 1))
   fi
 done
-rm -rf "$scratch"
+for cmdline in "gopls" "go env GOCACHE" "go version"; do
+  if printf '%s' "$cmdline" | grep -qE "$regex"; then
+    echo "FAIL: the go-subcommand regex incorrectly matches '$cmdline'" >&2
+    fails=$((fails + 1))
+  else
+    echo "PASS: the go-subcommand regex does not match '$cmdline'"
+  fi
+done
 
 # 2. --dry-run exits 0 and prints the install line when hardcache is
 # not on PATH -- simulate by pointing HOME at an empty scratch dir (so

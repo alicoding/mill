@@ -257,11 +257,13 @@ tasks:
   setup:gocache-trim:
     summary: Installs a LaunchAgent that trims the Go build cache to a size cap every 30 minutes (macOS)
     desc: |
-      go install's hardcache at the pinned version, writes
-      ~/Library/LaunchAgents/com.alicoding.mill.gocache-trim.plist (StartInterval
-      1800s) and loads it. Idempotent -- rerun after a repo move to
-      refresh the plist's baked-in script path. `task
-      setup:gocache-trim:remove` unloads and deletes it.
+      go install's hardcache at the pinned version, copies
+      scripts/dev/gocache-trim.sh to ~/go/bin/mill-gocache-trim.sh (so the
+      running job survives this worktree/checkout being removed later),
+      writes ~/Library/LaunchAgents/com.alicoding.mill.gocache-trim.plist
+      (StartInterval 1800s) pointing at that copy, and loads it. Idempotent
+      -- rerun after any change to gocache-trim.sh to refresh the copy.
+      `task setup:gocache-trim:remove` unloads and deletes both.
     cmds:
       - './scripts/dev/gocache-trim-setup.sh'
 

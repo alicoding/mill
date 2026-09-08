@@ -31,6 +31,17 @@ log_file="$HOME/Library/Logs/mill-gocache-trim.log"
 named_guard_procs="${MILL_GOCACHE_GUARD_NAMED_PROCS-golangci-lint wails3 lefthook}"
 go_build_regex="${MILL_GOCACHE_GUARD_GO_REGEX-(^|/| )go[[:space:]]+(build|test|vet|generate|install|run)([[:space:]]|$)}"
 
+# Selftest-only: print the computed regex and exit, so the selftest can
+# assert what it matches/excludes by string comparison instead of
+# duplicating this literal (which would drift silently).
+if [ "${MILL_GOCACHE_PRINT_REGEX:-0}" = "1" ]; then
+  echo "$go_build_regex"
+  exit 0
+fi
+
+# The busy-process guard runs unconditionally before any hardcache
+# lookup: whether or not hardcache is even installed, a live build in
+# progress is always the reason to do nothing this cycle.
 for proc in $named_guard_procs; do
   if pgrep -x "$proc" >/dev/null 2>&1; then
     echo "gocache-trim: skipping -- $proc is running"
