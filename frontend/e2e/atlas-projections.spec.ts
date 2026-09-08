@@ -72,15 +72,19 @@ test('a card with a Mirror path pointing at a markdown file renders its content 
   await expect(newCard).not.toBeVisible()
 })
 
+// Matrix is the bundled mill-matrix plugin (goal 0357 S2): its pane is
+// a sandboxed iframe (PluginFrame), reached through a FrameLocator
+// rather than a plain page/pane Locator.
 test('the traceability matrix pivots a space\'s cards by kind against link kinds, with an absent cell shown explicitly', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
   await groupCard(page, 'Client records').getByTestId('atlas-group-header').click()
   await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Client records')
 
-  await openToolbarAction(page, 'atlas-open-matrix')
-  const dialog = page.locator('[data-component="atlas-matrix-pane"]')
-  await expect(dialog).toBeVisible()
+  await openToolbarAction(page, 'atlas-open-plugin-mill-matrix-matrix')
+  const host = page.getByTestId('plugin-view-mill-matrix-matrix')
+  await expect(host).toBeVisible()
+  const dialog = page.frameLocator('[data-testid="plugin-view-mill-matrix-matrix"]')
 
   // Row kind "Contact" -- the seeded "Jordan Reyes" card has an
   // outgoing "relates to" link to "Statement of work", so its cell names
@@ -96,7 +100,7 @@ test('the traceability matrix pivots a space\'s cards by kind against link kinds
   await expect(dialog.getByTestId('atlas-matrix-absent-cell')).toHaveText('None')
 
   await page.keyboard.press('Escape')
-  await expect(dialog).not.toBeVisible()
+  await expect(host).not.toBeVisible()
 })
 
 // Roadmap is the bundled mill-roadmap plugin (goal 0357): its pane is a
@@ -133,6 +137,9 @@ test('the roadmap swimlanes a space\'s cards by kind against horizon tags, with 
   await page.keyboard.press('Escape')
 })
 
+// Coverage is the bundled mill-coverage plugin (goal 0357 S2): its
+// pane is a sandboxed iframe (PluginFrame), reached through a
+// FrameLocator rather than a plain page/pane Locator.
 test('coverage counts a space\'s cards missing a link and missing a mirror, with the missing list navigating to a card', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Atlas' }).click()
@@ -145,9 +152,10 @@ test('coverage counts a space\'s cards missing a link and missing a mirror, with
   // hand-countable 1/4 linked. None carries a mirror directly at THIS
   // level (the seeded mirror lives one level deeper, on "Statement of
   // work") -- a hand-countable 0/4 mirrored.
-  await openToolbarAction(page, 'atlas-open-coverage')
-  const dialog = page.locator('[data-component="atlas-coverage-pane"]')
-  await expect(dialog).toBeVisible()
+  await openToolbarAction(page, 'atlas-open-plugin-mill-coverage-coverage')
+  const host = page.getByTestId('plugin-view-mill-coverage-coverage')
+  await expect(host).toBeVisible()
+  const dialog = page.frameLocator('[data-testid="plugin-view-mill-coverage-coverage"]')
 
   await expect(dialog.getByTestId('atlas-coverage-link-value')).toHaveText('1/4 linked')
   await expect(dialog.getByTestId('atlas-coverage-mirror-value')).toHaveText('0/4 mirrored')
@@ -162,7 +170,7 @@ test('coverage counts a space\'s cards missing a link and missing a mirror, with
   await expect(missingItem).toBeVisible()
   await missingItem.click()
 
-  await expect(dialog).not.toBeVisible()
+  await expect(host).not.toBeVisible()
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay).toBeVisible()
   await expect(overlay.getByTestId('atlas-page-title')).toHaveValue('Discovery workstream')

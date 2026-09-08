@@ -397,18 +397,6 @@
   },
   {
     "menu": "Atlas",
-    "item": "Open traceability matrix",
-    "shortcut": "",
-    "command": "atlas.matrix"
-  },
-  {
-    "menu": "Atlas",
-    "item": "Open coverage",
-    "shortcut": "",
-    "command": "atlas.coverage"
-  },
-  {
-    "menu": "Atlas",
     "item": "Auto-arrange",
     "shortcut": "",
     "command": "atlas.arrange"

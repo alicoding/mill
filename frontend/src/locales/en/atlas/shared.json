@@ -91,9 +91,7 @@
   "viewSwitcher": {
     "ariaLabel": "Board view",
     "board": "Board",
-    "list": "List",
-    "matrix": "Matrix",
-    "coverage": "Coverage"
+    "list": "List"
   },
   "morePanel": {
     "trigger": "More tools",
@@ -226,25 +224,6 @@
       "statusCaption": "Your files don't carry it. Re-importing never overwrites what you set.",
       "statusValuesLabel": "Status values"
     }
-  },
-  "matrix": {
-    "title": "Traceability matrix",
-    "cardColumn": "Card",
-    "rowKindLabel": "Kind",
-    "columnFilterLabel": "Link kind",
-    "anyLinkKind": "Any",
-    "absentCell": "None",
-    "empty": "No cards of this kind in this space yet."
-  },
-  "coverage": {
-    "title": "Coverage",
-    "linkKindLabel": "Link kind",
-    "linkedStat": "{{covered}}/{{total}} linked",
-    "mirrorHeading": "Mirrors",
-    "mirroredStat": "{{covered}}/{{total}} mirrored",
-    "noLinkKinds": "No link kinds are declared yet.",
-    "viewMissing": "View missing ({{count}})",
-    "hideMissing": "Hide missing"
   },
   "contents": {
     "title": "Contents",

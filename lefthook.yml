@@ -124,17 +124,29 @@ pre-commit:
       # A hand-edited userdocs page without a docsgen regeneration
       # fails only in CI (TestUserDocs_MatchCommitted) -- run the same
       # freshness test here so the fix is one local `go generate
-      # ./internal/docsgen` away, not a failed PR round trip.
+      # ./internal/docsgen` away, not a failed PR round trip. A commit
+      # touching userdocs/reference/plugin-api/** triggers this AND
+      # sdk-freshness below together; sdk-freshness's typedoc run does
+      # a full wipe-then-regenerate of that tree (verified: even an
+      # unrelated page's mtime moves on every run), so the two gates
+      # race on the same files when lefthook's `parallel: true` runs
+      # them at once -- this test reads that tree mid-wipe and sees a
+      # different family's evidence between two calls a few ms apart
+      # (goal 0357 S2 hit it repeatably). A dedicated lock (never the
+      # default with-gate-lock.sh path go-test/vitest use, so this
+      # never waits behind an unrelated heavy suite) serializes the
+      # two against each other instead.
       glob: "{userdocs/**,internal/docsgen/**,README.md}"
-      run: go test ./internal/docsgen/
+      run: MILL_GATE_LOCK_DIR="${TMPDIR:-/tmp}/mill-docs-freshness-gate.lock" ./scripts/with-gate-lock.sh go test ./internal/docsgen/
     - name: sdk-freshness
       # The plugin SDK's committed type package and its generated API
       # reference both derive from frontend/src/plugins/sdk.ts and its
       # sdk/ contribution-kind files -- same commit-and-verify shape as
       # docsgen-freshness just above, one script CI's own sdk-freshness
-      # job also calls.
+      # job also calls. Same dedicated lock as docsgen-freshness above
+      # -- see that job's comment for the race it closes.
       glob: "{frontend/src/plugins/sdk.ts,frontend/src/plugins/sdk/**,frontend/plugin-sdk/**,frontend/typedoc.json,userdocs/reference/plugin-api/**}"
-      run: ./scripts/check-sdk-freshness.sh
+      run: MILL_GATE_LOCK_DIR="${TMPDIR:-/tmp}/mill-docs-freshness-gate.lock" ./scripts/with-gate-lock.sh ./scripts/check-sdk-freshness.sh
     - name: sdk-comments
       # The generated SDK types/reference must read as author-facing
       # documentation, never repository internals -- one script CI's

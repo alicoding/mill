@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { SegmentedControl } from '@primer/react'
-import { ChecklistIcon, ListUnorderedIcon, ProjectIcon, TableIcon } from '@primer/octicons-react'
+import { ListUnorderedIcon, ProjectIcon } from '@primer/octicons-react'
 import type { Icon } from '@primer/octicons-react'
 import { runCommand } from '../shared/commands'
 import type { AtlasBoardView } from '../shared/viewKinds'
@@ -25,8 +25,6 @@ export type { AtlasBoardView }
 const CORE_VIEWS: { view: AtlasBoardView; icon: Icon; labelKey: string; commandId: string | null; testId: string }[] = [
   { view: 'board', icon: ProjectIcon, labelKey: 'viewSwitcher.board', commandId: null, testId: 'atlas-open-board' },
   { view: 'list', icon: ListUnorderedIcon, labelKey: 'viewSwitcher.list', commandId: 'atlas.contents.open', testId: 'atlas-open-contents' },
-  { view: 'matrix', icon: TableIcon, labelKey: 'viewSwitcher.matrix', commandId: 'atlas.matrix', testId: 'atlas-open-matrix' },
-  { view: 'coverage', icon: ChecklistIcon, labelKey: 'viewSwitcher.coverage', commandId: 'atlas.coverage', testId: 'atlas-open-coverage' },
 ]
 
 interface SwitcherEntry {
@@ -42,7 +40,7 @@ interface SwitcherEntry {
 }
 
 // contributedEntries appends every board-switcher-placed plugin view
-// after the core four (goal 0357), in collection order. The registry
+// after the core entries (goal 0357), in collection order. The registry
 // is populated before the app module graph evaluates (loader.ts's own
 // boot-order contract), so a plain read at render time is the honest
 // enumeration -- no subscription to invent.

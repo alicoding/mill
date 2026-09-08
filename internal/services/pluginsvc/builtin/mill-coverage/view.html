@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Coverage</title>
+    <style>
+      /* Mill injects its own palette as custom properties on :root and
+         updates them in place, so plain CSS follows the user's theme.
+         Only the documented frame vocabulary (userdocs plugin-theming
+         reference) is used; sizes the palette never promised are
+         literal. */
+      html, body {
+        margin: 0;
+        height: 100%;
+        font: 13px system-ui, sans-serif;
+        color: var(--fgColor-default);
+        background: var(--bgColor-default);
+      }
+      /* The pane's own pad: the same inset the host gave this view as
+         Mill's own component (PageContainer's "wide" variant, on every
+         side). */
+      #pane {
+        height: 100%;
+        box-sizing: border-box;
+        padding: 26px 42px 68px;
+        overflow: auto;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 20px;
+        max-width: 260px;
+      }
+      .field label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--fgColor-muted);
+      }
+      .field select {
+        font: inherit;
+        color: var(--fgColor-default);
+        background: var(--bgColor-default);
+        border: 1px solid var(--borderColor-default);
+        border-radius: 6px;
+        padding: 5px 8px;
+      }
+      .section {
+        margin-bottom: 20px;
+      }
+      .sectionHeading {
+        font-weight: 600;
+        margin: 0 0 8px;
+      }
+      .emptyState {
+        color: var(--fgColor-muted);
+        font-size: 12px;
+      }
+      .statRow {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .toggle {
+        border: none;
+        background: transparent;
+        color: var(--mill-accent-emphasis);
+        font: inherit;
+        font-size: 12px;
+        padding: 2px 4px;
+        cursor: pointer;
+      }
+      .missingList {
+        margin-top: 8px;
+        border: 1px solid var(--borderColor-default);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .missingItem {
+        display: block;
+        width: 100%;
+        text-align: left;
+        border: none;
+        border-bottom: 1px solid var(--borderColor-default);
+        background: var(--bgColor-default);
+        color: var(--fgColor-default);
+        font: inherit;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      .missingItem:last-child { border-bottom: none; }
+      .missingItem:hover { background: var(--bgColor-muted); }
+    </style>
+  </head>
+  <body>
+    <div id="pane" data-component="atlas-coverage-pane"></div>
+    <script src="view.js"></script>
+  </body>
+</html>

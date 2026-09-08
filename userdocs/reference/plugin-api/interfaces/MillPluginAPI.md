@@ -140,6 +140,42 @@ values read against.
 
 ***
 
+### linkKinds
+
+```ts
+linkKinds: () => Promise<LinkKindInfo[]>;
+```
+
+Lists the board's relation kinds: the labels a link's own `kind`
+id reads against.
+
+#### Returns
+
+`Promise`\<[`LinkKindInfo`](LinkKindInfo.md)[]\>
+
+***
+
+### links
+
+```ts
+links: (q?) => Promise<LinkInfo[]>;
+```
+
+Lists the board's typed relations between cards — always the
+current state, never a cache.
+
+#### Parameters
+
+##### q?
+
+[`LinkQuery`](LinkQuery.md)
+
+#### Returns
+
+`Promise`\<[`LinkInfo`](LinkInfo.md)[]\>
+
+***
+
 ### millVersion
 
 ```ts
