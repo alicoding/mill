@@ -446,8 +446,8 @@
   "requestTestPanel": {
     "mustBeJsonObject": "Must be a JSON object, e.g. {\"id\": \"123\"}.",
     "notValidJson": "Not valid JSON.",
-    "declareSchemaFirst": "Declare a Schema first (Schema tab).",
-    "noOperationsYet": "The Schema tab doesn't declare any operations yet.",
+    "declareSchemaHint": "Declare a schema to read fields from this response.",
+    "urlRequiredToTest": "Enter a URL to test this request.",
     "operation": "Operation",
     "selectOperation": "Select an operation…",
     "exampleValues": "Example values",
@@ -542,7 +542,8 @@
     "millsPrivateKeyCaption": "Mill's own private key, used to decrypt what comes back.",
     "test": "Test",
     "testing": "Testing…",
-    "testCaption": "Runs this draft for real and shows what comes back."
+    "testCaption": "Runs this draft for real and shows what comes back.",
+    "urlRequiredToTest": "Enter a URL to test this request."
   },
   "openapiSynth": {
     "csvRowError": "Row {{row}}: {{message}}",

@@ -110,6 +110,12 @@ export function RequestForm({
   const [testing, setTesting] = useState(false)
   useRequestFormTestDispatch(tabKey, testPanelRef)
 
+  // The one reason an enabled Test click could do nothing: no URL to
+  // call. Named here so the button can carry it as both a visible
+  // disabled state and its own reason (title/aria-description) rather
+  // than disabling silently.
+  const testDisabledReason = draft.baseURL.trim() === '' ? t('requestForm.urlRequiredToTest') : undefined
+
   // Mirrored into the store (shared/requestFormTabState.ts) so
   // configure.integration.testDraft's enabled() can read whether THIS
   // tab's draft has a URL without importing configure/ (dependency-
@@ -359,7 +365,9 @@ export function RequestForm({
               size="small"
               leadingVisual={PlayIcon}
               onClick={() => { void findCommand('configure.integration.testDraft')?.run() }}
-              disabled={testing || draft.baseURL.trim() === ''}
+              disabled={testing || testDisabledReason !== undefined}
+              title={testDisabledReason}
+              aria-description={testDisabledReason}
               data-testid="request-test-draft"
             >
               {testing ? t('requestForm.testing') : t('requestForm.test')}
@@ -370,6 +378,7 @@ export function RequestForm({
               effectiveSpec={effectiveSpec}
               label={draft.label}
               baseURL={draft.baseURL}
+              method={draft.method}
               authType={draft.authType}
               auth={auth}
               jose={jose}
