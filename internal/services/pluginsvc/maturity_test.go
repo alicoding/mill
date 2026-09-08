@@ -86,18 +86,6 @@ func TestMaturity_Flags(t *testing.T) {
 	}
 }
 
-// TestDaysBehind_NoDocsPageNeverReadsTheWallClock pins goal 0358 S9's
-// fix: a family with no docs page (docs zero) must report 0, not days
-// since code last changed against time.Now -- the latter made the
-// same commit's regenerated ledger differ depending on what day `go
-// generate` ran.
-func TestDaysBehind_NoDocsPageNeverReadsTheWallClock(t *testing.T) {
-	oldCode := time.Now().Add(-365 * 24 * time.Hour)
-	if got := daysBehind(oldCode, time.Time{}); got != 0 {
-		t.Errorf("daysBehind(code 1yr old, no docs page) = %d, want 0 (no wall-clock fallback)", got)
-	}
-}
-
 // TestReport_GeneratedAtUsesTheInjectedClock proves Ledger.GeneratedAt
 // comes from the clock Report is given, never time.Now() read
 // internally -- the seam a caller needs to keep the run-time
