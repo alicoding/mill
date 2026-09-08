@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { BridgeService, RemoteAuthService } from './bindings'
-import type { BridgeStatusInfo, DeviceInfo, PairingCodeInfo } from './bindings'
+import type { BridgeStatusInfo, DeviceInfo, PairingCodeInfo, PendingPairingRequest } from './bindings'
 import { background } from './background'
 import { messageFor, appTranslate } from './userError'
 
@@ -13,6 +13,11 @@ interface BrowserBridgeState {
   status: BridgeStatusInfo | null
   browsers: DeviceInfo[] | null
   pairing: PairingCodeInfo | null
+  // The Bluetooth-style incoming request a browser's popup minted
+  // (goal 0379) -- null when nothing is pending. Mill has no server
+  // push for "a browser just asked to pair", so this is read back on
+  // the same poll the outgoing code card already runs.
+  incomingRequest: PendingPairingRequest | null
   // How many browsers were paired the moment this code was minted --
   // the code card clears itself once `browsers` grows past this count,
   // the only pairing-succeeded signal available without a server push
@@ -32,12 +37,15 @@ interface BrowserBridgeState {
   runTest: () => Promise<void>
   revealExtension: () => Promise<void>
   revoke: (id: string) => Promise<void>
+  acceptPairRequest: () => Promise<void>
+  denyPairRequest: () => Promise<void>
 }
 
 export const useBrowserBridgeStore = create<BrowserBridgeState>()((set, get) => ({
   status: null,
   browsers: null,
   pairing: null,
+  incomingRequest: null,
   pairingBaselineCount: 0,
   test: 'idle',
   testSteps: 0,
@@ -45,8 +53,12 @@ export const useBrowserBridgeStore = create<BrowserBridgeState>()((set, get) => 
   extensionPath: '',
   error: '',
   refresh: async () => {
-    const [status, browsers] = await Promise.all([BridgeService.BridgeStatus(), RemoteAuthService.ListBrowsers()])
-    set({ status, browsers: browsers ?? [] })
+    const [status, browsers, incoming] = await Promise.all([
+      BridgeService.BridgeStatus(),
+      RemoteAuthService.ListBrowsers(),
+      RemoteAuthService.PendingPairingRequest(),
+    ])
+    set({ status, browsers: browsers ?? [], incomingRequest: incoming?.requestId ? incoming : null })
   },
   pair: async () => {
     set({ error: '' })
@@ -79,6 +91,19 @@ export const useBrowserBridgeStore = create<BrowserBridgeState>()((set, get) => 
     // the list both change -- read both back rather than editing the
     // list in place and leaving the count stale.
     await get().refresh()
+  },
+  acceptPairRequest: async () => {
+    const request = get().incomingRequest
+    if (!request) return
+    await RemoteAuthService.AcceptPairingRequest(request.requestId)
+    set({ incomingRequest: null })
+    await get().refresh()
+  },
+  denyPairRequest: async () => {
+    const request = get().incomingRequest
+    if (!request) return
+    await RemoteAuthService.DenyPairingRequest(request.requestId)
+    set({ incomingRequest: null })
   },
 }))
 

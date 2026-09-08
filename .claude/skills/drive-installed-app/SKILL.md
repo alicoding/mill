@@ -102,6 +102,13 @@ regenerated (a new machine, or the keychain item was deleted).
    AppKit lifecycle, no stripped-down context); the direct binary above
    is still preferred as the simpler, one-fewer-moving-part form and
    the one this skill's own examples use throughout.
+   **Never `TaskStop`/kill the shell that launched Mill for you** -- a
+   plain trailing `&` still ties the process to that shell, and ending
+   or recycling it takes Mill down too. Prefix with `nohup` (e.g.
+   `nohup /Applications/Mill.app/Contents/MacOS/mill … &` or `nohup
+   open /Applications/Mill.app &`) so Mill fully detaches, and quit it
+   only through step 2's `DevBridgeQuit` door, never by stopping the
+   launching shell.
 5. **Wait for the bridge**, then drive command-first:
    ```
    until curl -sS -m 2 -X POST http://127.0.0.1:9199/mcp -H 'Content-Type: application/json' \
@@ -118,9 +125,14 @@ regenerated (a new machine, or the keychain item was deleted).
      `isError` JSON-RPC envelope means the command itself threw.
    - **Native gestures second**, only for what `runCommand` genuinely
      can't reach (a real global hotkey, a real window drag): `cliclick`
-     for drags/clicks (`cliclick dd:x,y` ... `du:x,y`), `osascript` for
-     a global hotkey (`tell application "System Events" to keystroke
-     "k" using {command down, shift down}` -- needs the driving
+     for drags/clicks (`cliclick dd:x,y` ... `du:x,y`); for a global
+     hotkey, `osascript`'s **`key code`, never `keystroke`** -- tested
+     live: `tell application "System Events" to keystroke "0" using
+     {command down, shift down}` delivered to whatever app was
+     frontmost as literal text instead of firing Mill's registered
+     global hotkey, while the raw-keycode form actually triggered it:
+     `tell application "System Events" to key code 29 using {command
+     down, shift down}` (key code 29 is `0`; needs the driving
      terminal's own Accessibility grant, step 3 of setup).
    - **`screencapture -x`** for evidence, into the session scratchpad.
 6. **Relaunch** (step 2's quit door, then steps 3-5 again) to confirm a

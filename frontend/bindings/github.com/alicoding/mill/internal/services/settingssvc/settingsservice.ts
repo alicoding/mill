@@ -406,6 +406,20 @@ export function GetWorkflowMinutesSaved(workflowID: string): $CancellablePromise
 }
 
 /**
+ * HasCustomPanelPosition reports whether a dragged position is
+ * currently saved -- panel.resetPosition's own enabled() predicate
+ * (shared/settingsCommands.ts): the command only offers to reset a
+ * position that differs from the default centered one. Bound so the
+ * MAIN window's command palette (a separate JS context from the panel
+ * that did the dragging) can read it; kept current there via the
+ * mill-data-changed announcement persistPanelGeometry/
+ * ResetPanelPosition below both emit.
+ */
+export function HasCustomPanelPosition(): $CancellablePromise<boolean> {
+    return $Call.ByID(3816406024);
+}
+
+/**
  * HideCapture is the window's own Save/Cancel hand-off.
  */
 export function HideCapture(): $CancellablePromise<void> {
@@ -618,6 +632,19 @@ export function RemovePlugin(id: string): $CancellablePromise<string> {
  */
 export function ReportIssue(): $CancellablePromise<void> {
     return $Call.ByID(956761945);
+}
+
+/**
+ * ResetPanelPosition recenters the Quick Panel and clears its saved
+ * position -- panel.resetPosition's run() (shared/settingsCommands.ts).
+ * Center() (internal/adapters/windowing) issues its own WindowDidMove,
+ * which WatchPanelGeometry's debounced listener re-persists moments
+ * later with the recentered coordinate -- clearing the key here makes
+ * a re-summon inside that debounce window read as centered too, rather
+ * than depending on the debounce alone.
+ */
+export function ResetPanelPosition(): $CancellablePromise<void> {
+    return $Call.ByID(2346052452);
 }
 
 /**

@@ -45,11 +45,10 @@ import (
 // mitigation directly rather than waiting for ApplicationStarted --
 // OnWindowEvent only registers a Go-side callback, no native run loop
 // dependency, same as WatchWindowGeometry's own direct-call timing.
-//
-// Deliberately never passed to WatchWindowGeometry -- the panel is a
-// fixed-size, fixed-position (WindowCentered) utility window, not
-// something whose geometry should persist across restarts the way the
-// main window's does.
+// Position persistence is wired separately, by wireAuxWindows calling
+// WatchPanelGeometry right after this (settingsservice_panelgeometry.go,
+// goal 0377) -- kept out of this method so the two independent
+// concerns (dismiss mitigation, geometry) stay in their own files.
 //
 //wails:ignore
 func (s *SettingsService) SetPanelWindow(w *windowing.Window) {
@@ -200,12 +199,13 @@ func (s *SettingsService) TogglePanel() {
 	}
 	s.hideMainForSummon(main)
 	s.beginSummonGrace()
-	// bringFloatingToFront (settingsservice_presence.go) activates the
-	// app before showing the panel: macOS refuses key status to a
-	// non-active app's window, and an unfocused floating panel dies
+	// presentPanel (settingsservice_panelgeometry.go) applies the saved/
+	// clamped position (or centers) before bringFloatingToFront
+	// activates the app and shows the window: macOS refuses key status
+	// to a non-active app's window, and an unfocused floating panel dies
 	// instantly to its own HideOnFocusLost (goal 0151). App-level Show
 	// doesn't reverse the window-level Hide above.
-	bringFloatingToFront(p)
+	s.presentPanel(p)
 }
 
 // hideMainForSummon runs summonShouldHideMain's guard and records the
@@ -257,10 +257,9 @@ func (s *SettingsService) ShowPanel() {
 	}
 	s.hideMainForSummon(main)
 	s.beginSummonGrace()
-	// See TogglePanel's identical show branch above for why
-	// bringFloatingToFront (settingsservice_presence.go) un-hides the
-	// app first.
-	bringFloatingToFront(p)
+	// See TogglePanel's identical show branch above for why presentPanel
+	// (settingsservice_panelgeometry.go) un-hides the app first.
+	s.presentPanel(p)
 }
 
 // DismissPanel hides the Quick Panel and applies the focus-yield

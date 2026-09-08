@@ -9,7 +9,7 @@ import {
   spawnMillServer,
   type SpawnedServer,
 } from './fixtures/server'
-import { connectFakeExtension, pairFakeExtension } from './fixtures/fakeExtension'
+import { connectFakeExtension, pairFakeExtension, pairRequestStatus, requestPairing } from './fixtures/fakeExtension'
 import { openSettings } from './fixtures/settingsNav'
 
 // The browser bridge end to end (goal 0350 S1): pair a browser with a
@@ -109,6 +109,69 @@ test('browser bridge: pair a browser, see it connect, test the connection, revok
     await expect(page.getByTestId('test-browser-connection')).toBeDisabled()
   } finally {
     extension?.stop()
+    await browser.close()
+    await server?.stop()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+// The nearby flow's own round trip (goal 0379): a request minted
+// straight against the bridge's HTTP door -- the popup's own call --
+// shows Mill's incoming-request card the moment it exists (no reload),
+// and each button drives pair-status to the SAME outcome a real popup
+// would see.
+// eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
+test('browser bridge: a nearby pairing request shows Mill\'s card, Accept and Deny both resolve it', async ({}, testInfo) => {
+  const idx = testInfo.parallelIndex
+  const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-bridge-request-${idx}-`))
+  const port = BROWSER_BRIDGE_SERVER_BASE_PORT + idx
+  const bridgePort = port + BRIDGE_PORT_OFFSET
+  const bridgeURL = `http://127.0.0.1:${bridgePort}`
+
+  let server: SpawnedServer | undefined
+  const browser = await chromium.launch()
+  try {
+    server = await spawnMillServer({
+      port,
+      mcpPort: BROWSER_BRIDGE_MCP_BASE_PORT + idx,
+      bridgePort,
+      settingsPath: path.join(dir, 'settings.json'),
+      executionDbPath: path.join(dir, 'execution.db'),
+      backupDir: path.join(dir, 'backups'),
+    })
+    const page = await browser.newPage()
+    await page.goto(`${server.baseURL}/`)
+    await openSettings(page, 'connections')
+    await expect(page.getByTestId('browser-pair-request-card')).toBeHidden()
+
+    // 1. A request minted via the API -- exactly what the popup's own
+    //    "Pair with Mill" button does -- shows the card without a
+    //    reload, the same code on both sides.
+    const request = await requestPairing(bridgeURL, 'Chrome')
+    expect(request.code).toHaveLength(6)
+    await expect(page.getByTestId('browser-pair-request-card')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByTestId('browser-pair-request-title')).toHaveText('Chrome wants to pair')
+    await expect(page.getByTestId('browser-pair-request-code')).toHaveText(request.code)
+
+    // 2. Accept mints a real token -- the popup's next poll would see
+    //    it, the same BrowserPairing shape the typed path returns.
+    await page.getByTestId('browser-pair-request-accept').click()
+    await expect(page.getByTestId('browser-pair-request-card')).toBeHidden()
+    const accepted = await pairRequestStatus(bridgeURL, request.requestId)
+    expect(accepted.status).toBe('accepted')
+    expect(accepted.token).toBeTruthy()
+    await expect(page.getByTestId('paired-browser-row')).toContainText('Chrome')
+
+    // 3. A second request, denied this time: pair-status fails closed,
+    //    never a token, and the card clears on Mill's side too.
+    const second = await requestPairing(bridgeURL, 'Firefox')
+    await expect(page.getByTestId('browser-pair-request-card')).toBeVisible({ timeout: 5_000 })
+    await page.getByTestId('browser-pair-request-deny').click()
+    await expect(page.getByTestId('browser-pair-request-card')).toBeHidden()
+    const denied = await pairRequestStatus(bridgeURL, second.requestId)
+    expect(denied.status).toBe('denied')
+    expect(denied.token).toBeFalsy()
+  } finally {
     await browser.close()
     await server?.stop()
     rmSync(dir, { recursive: true, force: true })
