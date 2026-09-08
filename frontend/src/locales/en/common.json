@@ -322,6 +322,9 @@
         "certificates": "New client certificate"
       },
       "openKind": "Configure › {{label}}",
+      "integration": {
+        "testDraft": "Test"
+      },
       "request": {
         "delete": "Delete",
         "edit": "Edit",
@@ -406,7 +409,11 @@
     "browser": {
       "pair": "Pair a browser",
       "test": "Test the browser connection",
-      "revealExtension": "Reveal the extension folder"
+      "revealExtension": "Reveal the extension folder",
+      "pairRequest": {
+        "accept": "Accept the browser's pairing request",
+        "deny": "Deny the browser's pairing request"
+      }
     },
     "webhook": {
       "mint": "Add webhook token"

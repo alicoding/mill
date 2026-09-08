@@ -236,8 +236,16 @@ func (phoneChannel) Name() string { return "phone" }
 // ShouldDeliver is true whenever at least one paired device carries a
 // topic -- deliberately NOT consulting evt.Focused: a browser tab's
 // focus on one machine says nothing about a phone in a pocket (docs/
-// goals/0171's event/delivery layering).
-func (c phoneChannel) ShouldDeliver(notification.Event) bool {
+// goals/0171's event/delivery layering). One Type is excluded outright:
+// browserPairRequestEventType's Accept/Deny decision only ever happens
+// at the desktop Mill the requesting browser is trying to reach, so a
+// phone notification for it would never lead anywhere a person could
+// act (goal 0379 Decision 3; there is no Targets field on
+// notification.Event yet to express this declaratively).
+func (c phoneChannel) ShouldDeliver(evt notification.Event) bool {
+	if evt.Type == browserPairRequestEventType {
+		return false
+	}
 	c.s.mu.Lock()
 	defer c.s.mu.Unlock()
 	for _, d := range c.s.devices {
