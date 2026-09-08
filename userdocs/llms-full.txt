@@ -2111,6 +2111,7 @@ Fires when a tool on this machine posts to Mill's hook endpoint, so a workflow c
 - Effect: none — pure computation
 - Settings:
   - **Source (optional)** — Fire only for events whose source field matches this exactly, in lowercase. Leave empty to fire on any source, or on an event with no source at all.
+  - **Reply within (seconds)** — How long the caller waits for a reply before Mill answers for it. Only matters when this workflow has an Answer the webhook step.
 
 ## Capture
 
@@ -2374,6 +2375,17 @@ Validates the data flowing through this step against a set of named rules (busin
 - Effect: none — pure computation
 
 ## Act
+
+### Answer the webhook
+
+Sends this run's reply to the tool that fired the webhook.
+
+- Takes: nothing — Produces: its input, unchanged
+- Effect: changes something on this machine
+- Settings:
+  - **Status code** — The HTTP status code the caller receives.
+  - **Reply body** — Usually JSON in the calling tool's own schema.
+  - **Content type** — The reply's Content-Type header.
 
 ### Back up Mill data
 
@@ -5003,3 +5015,87 @@ command — declared as JSON config with the door's `url` and an
 
 Either form is fire-and-forget: Mill acknowledges a well-formed post
 and never asks the tool to wait for, or read, anything back.
+
+---
+
+
+# Reply to a webhook
+
+A workflow that starts from **Webhook fired** can answer the tool that
+posted the event, not just react to it. Add an **Answer the webhook**
+step, and Mill holds the caller's connection open until that step
+runs, then sends its status, body, and content type back verbatim.
+
+## Add the step
+
+Drag **Answer the webhook** onto the canvas from the Apply group and
+connect it after whatever steps decide what to say. Set:
+
+- **Status code** — the HTTP status the caller receives.
+- **Reply body** — usually JSON, in the calling tool's own schema. Use
+  `{{attributeName}}` to drop in a value the trigger or an earlier step
+  captured.
+- **Content type** — the reply's Content-Type header.
+
+Set **Reply within (seconds)** on the trigger's own **Webhook fired**
+step to how long the caller should wait. The tool's own hook timeout
+must be longer than this — a hook that gives up first never sees the
+reply Mill sends.
+
+## The sender reads the response body
+
+Some tools' hook config posts an event and reads the decision straight
+from the response, no script in between. For example, a Claude Code
+`type: "http"` hook posts and reads back this way:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "http://127.0.0.1:8092/__mill/hooks/event",
+            "headers": {
+              "Authorization": "Bearer <token>",
+              "Content-Type": "application/json"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+A hook config that only runs a command reads the same reply from the
+curl response instead:
+
+```
+curl -s -X POST http://127.0.0.1:8092/__mill/hooks/event \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d @-
+```
+
+Either way, whatever the Answer the webhook step sent — status, body,
+content type — is what the tool's hook receives.
+
+## A quiet failure proceeds, at the sender
+
+If nothing answers, if the reply is malformed for what the tool
+expects, or if the tool's own hook times out first, most tools treat
+that as a non-blocking failure and let the action proceed anyway. A
+workflow meant to gate a tool call needs to say so plainly in its own
+reply body, in the tool's own schema — Mill never assumes what
+"allow" or "deny" look like on the other end.
+
+## Order decides what a run answers with
+
+Only the FIRST Answer the webhook step to run in a given execution
+sends anything; every one after it is skipped; a step's own run notes
+say so ("Reply already sent by step …"). Put the steps that decide
+WHAT to say — a Branch, a lookup, a guardrail check — before the
+Answer the webhook step, not after it. A reply step placed too early
+answers before that evaluation ever runs.
