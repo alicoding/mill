@@ -60,6 +60,12 @@ pre-commit:
     - name: vendor-names-selftest
       glob: "{semgrep/**,scripts/check-vendor-names-selftest.sh}"
       run: ./scripts/check-vendor-names-selftest.sh
+    - name: webhook-naming
+      # Goal 0387: scripts/check-webhook-naming.sh's own header comment
+      # carries why this stays a narrower, separate gate from
+      # vendor-names above rather than folded into it.
+      glob: "{internal/services/bridgesvc/**,internal/services/remoteauthsvc/**,internal/services/triggersvc/triggerwebhook.go,internal/services/triggersvc/webhook_seed_test.go,internal/domain/composition/builtinworkflows_webhook.go,internal/domain/composition/builtinworkflows.go,internal/domain/composition/triggers.go,internal/domain/composition/seedproof_test.go,internal/domain/composition/notifystep_test.go,internal/services/wiring/wiring_webhookrespond.go,internal/domain/audit/audit.go,main.go,frontend/src/shared/webhookTokensStore.ts,frontend/src/shared/webhookCommands.ts,frontend/src/shared/bindings.ts,frontend/src/views/WebhooksSection.tsx,frontend/src/views/SettingsConnectionsPane.tsx,frontend/src/locales/en/views.json,userdocs/how-to/webhooks.md,scripts/check-webhook-naming.sh}"
+      run: ./scripts/check-webhook-naming.sh
     - name: no-raf-retry-loop
       # Goal 0366 Class A: semgrep/no-raf-retry-loop.yml's own header
       # comment carries the shape and the ListGridGlide.tsx exclusion's

@@ -735,9 +735,12 @@ export function SetAttentionIdleThreshold(seconds: number): $CancellablePromise<
 }
 
 /**
- * SetAuditRetentionEntries persists the cap. Rejects a non-positive
- * value so the trail can never be configured to prune itself to
- * nothing.
+ * SetAuditRetentionEntries persists the cap and, once wired
+ * (SetAuditRetentionChanged), prunes the shared trail to it
+ * immediately -- the setting's own caption promises entries are
+ * "removed automatically", which a restart-only prune would not honor.
+ * Rejects a non-positive value so the trail can never be configured to
+ * prune itself to nothing.
  */
 export function SetAuditRetentionEntries(n: number): $CancellablePromise<void> {
     return $Call.ByID(755143933, n);

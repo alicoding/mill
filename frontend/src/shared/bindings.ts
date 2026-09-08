@@ -96,9 +96,10 @@ export { NotificationService } from '../../bindings/github.com/alicoding/mill/in
 export type { PublishResult } from '../../bindings/github.com/alicoding/mill/internal/services/notificationsvc'
 export type { Event as NotificationEvent, Record as NotificationRecord } from '../../bindings/github.com/alicoding/mill/internal/domain/notification/models'
 export { RemoteAuthService } from '../../bindings/github.com/alicoding/mill/internal/services/remoteauthsvc'
+export type { Kind as DeviceRefKind, Ref as DeviceRef } from '../../bindings/github.com/alicoding/mill/internal/domain/device/models'
 export type {
   DeviceInfo,
-  HookToken,
+  WebhookToken,
   PairingCodeInfo,
 } from '../../bindings/github.com/alicoding/mill/internal/services/remoteauthsvc'
 export { SecretService } from '../../bindings/github.com/alicoding/mill/internal/services/secretsvc'
