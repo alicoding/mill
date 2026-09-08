@@ -67,6 +67,7 @@ func (m *MillMCPService) registerDebugTools() {
 			"inherently an inspection/debug surface (a human or agent watching each step one at a time), never a " +
 			"production invocation, so it always stays out of Home's automation metrics by default (goal 0021 Phase 3; " +
 			"use run_workflow with test:false for a real production run). Requires the MCP-writes toggle.",
+		Annotations: executeAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in runWorkflowSteppedArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err
@@ -93,6 +94,7 @@ func (m *MillMCPService) registerDebugTools() {
 			"next one -- a stepped run keeps stepping; a plain breakpoint park just resumes once. Only operates on " +
 			"breakpoint/step-mode (debug) parks -- rejects a policy or human-review approval with a clear error. " +
 			"Requires the MCP-writes toggle; no per-write approval prompt (a per-step prompt would defeat stepping).",
+		Annotations: executeAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in runIDArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err
@@ -113,6 +115,7 @@ func (m *MillMCPService) registerDebugTools() {
 		Description: "Resume a paused debug run (breakpoint or stepped run) to completion -- for a stepped run this " +
 			"clears step mode so it runs straight through (any per-step breakpoints still hit independently). Only " +
 			"operates on breakpoint/step-mode (debug) parks. Requires the MCP-writes toggle; no per-write approval prompt.",
+		Annotations: executeAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in runIDArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err
@@ -133,6 +136,7 @@ func (m *MillMCPService) registerDebugTools() {
 		Description: "Stop a paused debug run (breakpoint or stepped run) -- denies the pending step, failing the run " +
 			"closed (docs/adr/0031's Stop control). Only operates on breakpoint/step-mode (debug) parks. Requires the " +
 			"MCP-writes toggle; no per-write approval prompt.",
+		Annotations: executeAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in runIDArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err

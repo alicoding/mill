@@ -76,7 +76,7 @@ func (m *MillMCPService) resolveDiagram(objectID string) (resolvedDiagram, error
 	case mc.TooLarge:
 		return resolvedDiagram{}, fmt.Errorf("the file behind diagram %q is too large to read", objectID)
 	}
-	return resolvedDiagram{object: o, title: diagramTitle(o, path), format: format, text: mc.Content}, nil
+	return resolvedDiagram{object: o, title: mirrorObjectTitle(o, path), format: format, text: mc.Content}, nil
 }
 
 func diagramFormatOf(path string) (string, error) {
@@ -89,10 +89,11 @@ func diagramFormatOf(path string) (string, error) {
 	return "", fmt.Errorf("%q is not a diagram source Mill can edit (draw.io and Mermaid files only)", filepath.Base(path))
 }
 
-// diagramTitle is what an approval prompt names: the object's own
-// title when it has one, otherwise the file's name -- never an
-// opaque id.
-func diagramTitle(o atlas.BoardObject, path string) string {
+// mirrorObjectTitle is what an approval prompt names a file-backed
+// object by: the object's own title when it has one, otherwise the
+// file's name -- never an opaque id. Shared by every file-backed
+// content contract (diagram, sheet), not diagram-specific.
+func mirrorObjectTitle(o atlas.BoardObject, path string) string {
 	if t := o.Payload["title"]; t != "" {
 		return t
 	}
@@ -162,6 +163,7 @@ func (m *MillMCPService) registerAtlasDiagramTools() {
 			"edge (connector) with its id, label, style, parent, endpoints and geometry. A Mermaid diagram " +
 			"has no cell ids, so it returns its source text instead. Read this before writing anything: an " +
 			"edit names cells by the ids reported here. Read-only.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasReadDiagramArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireAtlas(); err != nil {
 			return nil, nil, err

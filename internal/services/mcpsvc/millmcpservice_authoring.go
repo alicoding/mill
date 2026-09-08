@@ -197,15 +197,18 @@ func (m *MillMCPService) registerAuthoringTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "list_step_types",
 		Description: "The step-type catalog an authored workflow composes from: ID, kind, label, description, effect class (none/read/local/external -- external steps require human approval by default), and each config field's key/type/options/reference kind. A step a plugin contributes carries source \"plugin:<pluginId>\" (see list_plugins); Mill's own steps carry no source. Optional kind filters to one kind (trigger/capture/process/apply/decision); omit for the full catalog. Read this before authoring; step type IDs and config keys must match it exactly.",
+		Annotations: readOnlyAnnotations,
 	}, listStepTypes)
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "list_node_types",
 		Description: "Deprecated name of list_step_types, kept working for existing callers -- returns the identical catalog. Prefer list_step_types in new integrations.",
+		Annotations: readOnlyAnnotations,
 	}, listStepTypes)
 
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "list_runs",
 		Description: "Recent run history (durable, all workflows or one workflow when id is given): status, kind, output, pending-approval state. The inspect half of the author-run-inspect loop.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in struct {
 		WorkflowID string `json:"workflowId,omitempty" jsonschema:"optional: only this workflow's runs"`
 	}) (*mcp.CallToolResult, any, error) {
@@ -231,6 +234,7 @@ func (m *MillMCPService) registerAuthoringTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "get_run",
 		Description: "One run's full per-step breakdown: each step's status, output, error, and recorded guardrail verdict. Use after run_workflow to see exactly what happened.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in runIDArgs) (*mcp.CallToolResult, any, error) {
 		if m.exec == nil {
 			return nil, nil, fmt.Errorf("execution service not wired")
@@ -247,6 +251,7 @@ func (m *MillMCPService) registerAuthoringTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "validate_workflow",
 		Description: "Validate a workflow definition (exported-workflow JSON) without saving. Returns the FULL issue list (docs/adr/0028), not just the first problem: every graph rule Mill checks (trigger root, reachability, Decision edge conditions, secret-output guardrail, dangling Capture/Process leaves, unset entity references), each labeled 'error' or 'warning'. 'valid' is true iff no error-severity issue is present -- warnings never block update_workflow, they're informational only. Iterate here before update_workflow.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in validateWorkflowArgs) (*mcp.CallToolResult, any, error) {
 		_, nodes, edges, attributes, err := compositionsvc.DecodeWorkflowGraph(in.JSON)
 		if err != nil {
@@ -292,6 +297,7 @@ func (m *MillMCPService) registerAuthoringTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "update_workflow",
 		Description: "Replace a workflow's DRAFT definition with exported-workflow JSON. The current draft is auto-snapshotted as a version first, so the change is always revertible from the workflow's Versions tab. Never touches the published version (publish_workflow is the separate go-live act). Requires the MCP-writes toggle; each write asks the human in Mill's window unless they relaxed per-write approval, and may park pending approval -- see import_workflow's description for the poll contract.",
+		Annotations: replaceAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in updateWorkflowArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err
@@ -329,6 +335,7 @@ func (m *MillMCPService) registerAuthoringTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "publish_workflow",
 		Description: "Publish a workflow's current draft as the new live version (docs/adr/0021: triggers and child calls execute only the published snapshot). Requires the MCP-writes toggle + per-write approval; may park pending approval -- see import_workflow's description for the poll contract.",
+		Annotations: editAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in workflowIDArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err
@@ -364,6 +371,7 @@ func (m *MillMCPService) registerAuthoringTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "delete_workflow",
 		Description: "Delete a workflow entirely (definition, versions, hotkey binding). Requires the MCP-writes toggle + per-write approval; may park pending approval -- see import_workflow's description for the poll contract.",
+		Annotations: deleteAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in workflowIDArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err
@@ -392,6 +400,7 @@ func (m *MillMCPService) registerAuthoringTools() {
 			"a manual authoring/debug click) -- either way the executed graph is identical. External-effect steps " +
 			"(HTTP, MCP tool calls) pause in the human's Review queue for approval; the run may return " +
 			"still-pending. Use get_run to inspect the result. Requires the MCP-writes toggle.",
+		Annotations: executeAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in runWorkflowArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err
