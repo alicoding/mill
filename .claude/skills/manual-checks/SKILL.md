@@ -12,6 +12,12 @@ OS/hardware behavior a harness can't drive (a system dialog, a native drag, a
 login-item cycle) — name what's proven at another layer, what only an
 installed build can catch, and exactly how to verify it there.
 
+Whether the packaged app launches at all and stays alive long enough to
+render a window is NOT on this list — the `desktop-launch` job
+(`.github/workflows/ci.yml`, goal 0384) already proves that on every PR
+on a GitHub-hosted macOS runner, with no Accessibility/TCC grant needed.
+This registry stays the ONLY list of checks that need this Mac specifically.
+
 - **Quick Panel drag/reset** (goal 0377, `--wails-draggable` on
   `QuickPanel.module.css`'s facet-chip row and search-input header) --
   a real native drag of a frameless WKWebView window is OS-bound the
