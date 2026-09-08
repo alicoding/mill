@@ -204,7 +204,11 @@ jobs:
   # (confirmed against its own repo before use, not assumed); the CLI
   # needs no account/token for local rule files, so it runs directly,
   # version-pinned the same way a pip/brew tool would be anywhere else
-  # in this repo.
+  # in this repo. Pinned to 1.176.0 (Homebrew's current stable, what
+  # this rule file was verified against locally) rather than the
+  # earlier-researched 1.160.0 -- Homebrew keeps only the latest
+  # formula version, so `brew install semgrep` (CLAUDE.md's task
+  # setup:hooks) always resolves to the same release this pin names.
   vendor-names:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -396,6 +400,11 @@ jobs:
         working-directory: frontend
       - run: npm run lint
         working-directory: frontend
+      # Fixture-tests the NoticeAction inline-onClick ban (goal 0385) --
+      # reuses the npm ci above's installed eslint; see the script's own
+      # header for why the fixture is a real, transient file.
+      - run: ../scripts/check-notice-action-eslint-selftest.sh
+        working-directory: frontend
       - run: npm run boundaries
         working-directory: frontend
       - run: npm run test
@@ -452,6 +461,11 @@ jobs:
       # mirrors the gocognit-new invocation immediately above exactly,
       # see lefthook.yml's depguard-new job for the full reasoning.
       - run: golangci-lint run . ./internal/... --build-tags=server --enable-only depguard --new-from-merge-base=origin/main --tests=false
+      # Fixture-tests the gomodguard_v2 wiring in .golangci.yml (goal
+      # 0385) -- reuses the golangci-lint binary the action above
+      # installed onto PATH, same shape as the gocognit/depguard checks
+      # just above.
+      - run: ./scripts/check-gomodguard-selftest.sh
 
   build-go:
     needs: [changes, frontend]
