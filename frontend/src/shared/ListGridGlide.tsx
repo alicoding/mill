@@ -16,6 +16,7 @@ import { filterGridRows, nextSortDirection, sortGridRows, type GridColumnFilter,
 import { findCommand, runCommand } from './commands'
 import { comboFromEvent, comboKey, isUndoJournalCombo } from './keybinding'
 import { useListGridSearchFocusStore } from './listGridSearchFocus'
+import { resolvePendingRename } from './listGridGlideRename'
 import styles from './ListGrid.module.css'
 
 // The adopted grid (ADR-0049, goals 0287 / 0349 S4): Glide Data Grid as
@@ -185,9 +186,18 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
     setFilters((prev) => ({ ...prev, [key]: next }))
   }, [])
 
-  // The header's rectangle comes from the grid's own layout; on a
-  // first mount (an empty List's first column) it is not there for a
-  // few frames yet, so the lookup retries briefly instead of giving up.
+  // Bounds are valid only after the grid reports the region: getBounds
+  // on a column the grid has not yet painted returns a zero-width
+  // rectangle (getBoundsForItem scales against the canvas's own
+  // measured clientRect, which is 0 before the grid's first layout
+  // pass -- confirmed against the vendored source). This never opens
+  // on that invalid rectangle; a caller whose column may not be ready
+  // yet goes through tryOpenPendingRename below instead.
+  const getColumnBounds = useCallback((col: number) => {
+    const bounds = gridRef.current?.getBounds(col, -1)
+    return bounds && bounds.width > 0 ? bounds : undefined
+  }, [])
+
   const openRename = useCallback((col: number, at?: Anchor) => {
     const column = columns[col]
     if (!column) return
@@ -196,32 +206,28 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
       setRenaming({ key: column.Key, at })
       return
     }
-    let tries = 0
-    const attempt = () => {
-      const bounds = gridRef.current?.getBounds(col, -1)
-      if (bounds && bounds.width > 0) {
-        setRenaming({ key: column.Key, at: toAnchor(bounds) })
-        return
-      }
-      if (++tries < 30) window.requestAnimationFrame(attempt)
-    }
-    attempt()
-  }, [columns, toAnchor])
+    const bounds = getColumnBounds(col)
+    if (bounds) setRenaming({ key: column.Key, at: toAnchor(bounds) })
+  }, [columns, toAnchor, getColumnBounds])
 
-  // A fresh column goes straight into rename once its insert LANDED,
-  // at the header the new column now occupies (the grid lays it out
-  // on its next frame).
+  // A fresh column opens its rename once BOTH signals the grid reports
+  // independently have landed (resolvePendingRename): `columns`
+  // includes the new key (the insert round-tripped) and the grid has
+  // reported a region since (only then is a bounds lookup for it
+  // valid, per getColumnBounds above). Re-checked on every columns
+  // change and on every onVisibleRegionChanged report (wired on the
+  // grid below) -- never polled.
   const pendingRenameKey = useRef<string | null>(null)
   const insertColumn = (index: number) => {
     void edits.insertColumnAt(index).then((key) => { pendingRenameKey.current = key ?? null })
   }
-  useEffect(() => {
-    const col = columns.findIndex((c) => c.Key === pendingRenameKey.current)
-    if (col === -1) return
+  const tryOpenPendingRename = useCallback(() => {
+    const resolved = resolvePendingRename(columns, pendingRenameKey.current, getColumnBounds)
+    if (!resolved) return
     pendingRenameKey.current = null
-    const id = window.setTimeout(() => openRename(col), 0)
-    return () => window.clearTimeout(id)
-  }, [columns, openRename])
+    openRename(resolved.col)
+  }, [columns, getColumnBounds, openRename])
+  useEffect(tryOpenPendingRename, [tryOpenPendingRename])
 
   // The handle every listGrid.search AND listGrid.addColumn invocation
   // acts through (listGridSearchFocus.ts): published whenever focus
@@ -390,6 +396,9 @@ export function ListGridGlide({ listID, columns, rows, density, schemaEditing = 
             onCellActivated={() => reportEditing(true)}
             onFinishedEditing={() => reportEditing(false)}
             onHeaderClicked={cycleSort}
+            // The grid's own readiness report a pending column rename
+            // waits on -- see tryOpenPendingRename above.
+            onVisibleRegionChanged={tryOpenPendingRename}
             smoothScrollX
             smoothScrollY
             onColumnResize={onColumnResize}
