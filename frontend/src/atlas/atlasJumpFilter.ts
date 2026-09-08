@@ -1,4 +1,5 @@
 import type { BoardObject, Card, Kind, Note } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import { fuzzyMatches } from '../shared/fuzzyFilter'
 import { buildBreadcrumbPath, singleRootCard } from './atlasGrouping'
 import { isGroupCard } from './atlasBoardLayout'
 
@@ -40,15 +41,17 @@ function stableSortResults(results: AtlasJumpResult[]): AtlasJumpResult[] {
   })
 }
 
-// filterJumpCards: case-insensitive substring match, title first (rank
-// 0) then note (rank 1), title-ascending within a rank, capped at the
-// dialog's own max visible rows. An empty, unscoped query returns no
-// results -- the dialog has nothing useful to show until the user
-// types or picks a facet. `scopeKey` narrows the candidate set FIRST
-// (goal 0086's faceted search: a Kind's ID, or AREA_FACET_KEY for
-// group-card "areas") -- once scoped, an empty query still lists every
-// candidate of that scope (title-ascending), since the facet itself is
-// already a specific enough ask.
+// filterJumpCards: case-insensitive substring-or-typo match (goal 0366
+// Class B: the shared fuzzysort fallback tolerates a dropped/swapped
+// letter), title first (rank 0) then note (rank 1), title-ascending
+// within a rank, capped at the dialog's own max visible rows. An
+// empty, unscoped query returns no results -- the dialog has nothing
+// useful to show until the user types or picks a facet. `scopeKey`
+// narrows the candidate set FIRST (goal 0086's faceted search: a
+// Kind's ID, or AREA_FACET_KEY for group-card "areas") -- once scoped,
+// an empty query still lists every candidate of that scope
+// (title-ascending), since the facet itself is already a specific
+// enough ask.
 export function filterJumpCards(cards: Card[], kinds: Kind[], query: string, scopeKey?: string, allNotes: Note[] = [], allObjects: BoardObject[] = []): AtlasJumpResult[] {
   const q = query.trim().toLowerCase()
   if (!q && !scopeKey) return []
@@ -67,7 +70,7 @@ export function filterJumpCards(cards: Card[], kinds: Kind[], query: string, sco
 
   const byRank: AtlasJumpResult[][] = [[], []]
   for (const card of candidates) {
-    const rank = card.Title.toLowerCase().includes(q) ? 0 : (card.Note ?? '').toLowerCase().includes(q) ? 1 : null
+    const rank = fuzzyMatches(q, card.Title.toLowerCase()) ? 0 : fuzzyMatches(q, (card.Note ?? '').toLowerCase()) ? 1 : null
     if (rank === null) continue
     byRank[rank].push({ card, kind: kindByID.get(card.KindID), path: ancestorPathLabel(cards, card) })
   }
@@ -108,16 +111,17 @@ function stableSortObjectResults(results: AtlasJumpObjectResult[]): AtlasJumpObj
 }
 
 // filterJumpObjects: the object half of the jump dialog's results
-// (goal 0265) -- same case-insensitive substring match over the
-// label, same cap. Facet scopes stay card-vocabulary (Kind IDs and
-// the area role), so a scoped query returns no objects by design.
+// (goal 0265) -- same case-insensitive substring-or-typo match over
+// the label (goal 0366 Class B), same cap. Facet scopes stay
+// card-vocabulary (Kind IDs and the area role), so a scoped query
+// returns no objects by design.
 export function filterJumpObjects(objects: BoardObject[], cards: Card[], query: string, scopeKey?: string): AtlasJumpObjectResult[] {
   const q = query.trim().toLowerCase()
   if (!q || scopeKey) return []
   const matches: AtlasJumpObjectResult[] = []
   for (const object of objects) {
     const label = objectJumpLabel(object)
-    if (!label.toLowerCase().includes(q)) continue
+    if (!fuzzyMatches(q, label.toLowerCase())) continue
     matches.push({
       object,
       label,

@@ -1,0 +1,45 @@
+# Goal 0366 (Class A of the reimplementation audit): a function that
+# both calls requestAnimationFrame and re-invokes itself through a
+# bounded counter is polling for a library's layout to settle instead
+# of using the library's own readiness signal (glide-data-grid's
+# DataEditorRef.onVisibleRegionChanged, an @xyflow/react ref's own
+# settled-viewport event) -- the exact shape goal 0390 / PR #793
+# replaces in ListGridGlide.tsx's openRename. This rule stops a NEW
+# instance from shipping; it does not require that fix to land first.
+#
+# A single one-shot requestAnimationFrame (deferring focus/paint to
+# the next frame, or a continuous per-frame tick during an active
+# drag/gesture) is the converged, accepted shape and stays unflagged --
+# only a numeric-bounded counter guarding a repeat call into the same
+# rAF callback matches.
+rules:
+  - id: no-raf-retry-loop
+    languages: [typescript]
+    severity: ERROR
+    message: >-
+      A requestAnimationFrame call gated by a bounded retry counter
+      (`if (++tries < N) requestAnimationFrame(...)`) polls for a
+      library's layout to settle instead of using the library's own
+      readiness signal -- e.g. glide-data-grid's
+      DataEditorRef.onVisibleRegionChanged, or an @xyflow/react ref's
+      own settled-viewport event. See .claude/rules/adopt-converged-patterns.md
+      and goal 0366/0390.
+    patterns:
+      - pattern-either:
+          - pattern: if (++$TRIES < $N) $RAF($CB)
+          - pattern: if ($TRIES++ < $N) $RAF($CB)
+          - pattern: if ($TRIES < $N) { $TRIES = $TRIES + 1; $RAF($CB) }
+          - pattern: if ($N > $TRIES++) $RAF($CB)
+      - metavariable-regex:
+          metavariable: $RAF
+          regex: ^(window\.)?requestAnimationFrame$
+    paths:
+      include:
+        - '**/frontend/src/**'
+      exclude:
+        - '**/*.test.ts'
+        - '**/*.test.tsx'
+        # The one confirmed pre-existing instance (goal 0366 inventory
+        # #1): migrated by goal 0390 / PR #793, not yet merged as of
+        # this rule landing. Remove this exclusion once that PR merges.
+        - '**/frontend/src/shared/ListGridGlide.tsx'

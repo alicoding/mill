@@ -267,7 +267,10 @@
       "exportError": "Couldn't export the contract. Try again.",
       "exportSkillDescription": "How to work with Mill, for an agent that can't read it over MCP.",
       "exportSkillButton": "Export skill doc",
-      "exportSkillError": "Couldn't export the skill doc. Try again."
+      "exportSkillError": "Couldn't export the skill doc. Try again.",
+      "exportAuditDescription": "Every MCP call, secret read and browser bridge action Mill recorded, in one file.",
+      "exportAuditButton": "Export audit trail",
+      "exportAuditError": "Couldn't export the audit trail. Try again."
     },
     "notifications": {
       "awayAfterLabel": "Away after (seconds)",

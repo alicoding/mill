@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Stack, Text } from '@primer/react'
-import { SettingsService } from '../shared/bindings'
+import { AuditService, SettingsService } from '../shared/bindings'
 import styles from '../shared/ListCard.module.css'
 
 // Settings → Contract: the two machine-readable exports for an agent
@@ -16,6 +16,7 @@ export default function ContractSection() {
   const { t } = useTranslation('views')
   const [contractExportError, setContractExportError] = useState('')
   const [skillExportError, setSkillExportError] = useState('')
+  const [auditExportError, setAuditExportError] = useState('')
 
   // Same fetch-JSON-then-download-a-blob shape as CompositionView's own
   // exportWorkflow -- one file, no server round trip beyond the RPC
@@ -50,6 +51,24 @@ export default function ContractSection() {
       .catch(() => setSkillExportError(t('settings.contract.exportSkillError')))
   }
 
+  // The one export door over EVERY guarded surface's shared trail
+  // (goal 0351 Decision 5) -- kinds=[] means every kind, same
+  // fetch-then-download shape as the two exports above.
+  const exportAuditTrail = () => {
+    setAuditExportError('')
+    AuditService.ExportAuditTrail([])
+      .then((jsonLines) => {
+        const blob = new Blob([jsonLines], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'mill-audit-trail.jsonl'
+        a.click()
+        URL.revokeObjectURL(url)
+      })
+      .catch(() => setAuditExportError(t('settings.contract.exportAuditError')))
+  }
+
   return (
     <>
       <Text as="p" size="small" className={styles.muted}>
@@ -73,6 +92,17 @@ export default function ContractSection() {
       </Stack>
       {skillExportError && (
         <Text as="p" size="small" className={styles.error}>{skillExportError}</Text>
+      )}
+      <Text as="p" size="small" className={styles.muted} style={{ marginTop: 'var(--base-size-16)' }}>
+        {t('settings.contract.exportAuditDescription')}
+      </Text>
+      <Stack direction="horizontal" gap="condensed" align="center" style={{ marginTop: 'var(--base-size-8)' }}>
+        <Button size="small" onClick={exportAuditTrail} data-testid="export-audit-trail">
+          {t('settings.contract.exportAuditButton')}
+        </Button>
+      </Stack>
+      {auditExportError && (
+        <Text as="p" size="small" className={styles.error}>{auditExportError}</Text>
       )}
     </>
   )

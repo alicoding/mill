@@ -17,6 +17,7 @@ export type {
   FolderScanResult,
   ImportFolderSuggestionsRequest,
 } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc'
+export { AuditService } from '../../bindings/github.com/alicoding/mill/internal/services/auditsvc'
 export { BackupService } from '../../bindings/github.com/alicoding/mill/internal/services/backupsvc'
 export type {
   BackupStatus,
