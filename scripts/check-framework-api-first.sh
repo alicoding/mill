@@ -4,9 +4,12 @@
 # for cgo/Objective-C to talk to the OS directly must carry a comment
 # stating what the current Wails v3 API was checked for and found to
 # lack -- so a future capability the SDK gains doesn't sit hand-rolled
-# next to it unnoticed. Run by lefthook (pre-commit) and CI's
-# framework-api-first job -- one script both call, same non-drift shape
-# as check-comment-hygiene.sh.
+# next to it unnoticed -- AND must live under internal/adapters/**, the
+# one location every such file is audited from (goal 0385's focus case
+# a: the audit-comment check alone never verified the audit-LOCATION,
+# so a new cgo path dropped elsewhere would still pass). Run by lefthook
+# (pre-commit) and CI's framework-api-first job -- one script both call,
+# same non-drift shape as check-comment-hygiene.sh.
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
@@ -36,6 +39,11 @@ while IFS= read -r -d '' file; do
   fi
   if ! grep -qE "$cgo_marker" "$file"; then
     continue
+  fi
+
+  if [[ "$file" != internal/adapters/* ]]; then
+    echo "framework-api-first: $file: cgo/Objective-C marker outside internal/adapters/** -- every OS-native reach lives behind an adapter (.claude/rules/architecture.md)"
+    violations=$((violations + 1))
   fi
 
   found=0

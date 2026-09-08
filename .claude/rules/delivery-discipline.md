@@ -17,9 +17,7 @@ No `paths` frontmatter — applies to every goal, every language.
   `spec_refs [..]`) — source data for the delivery-evidence ledger.
 - Bug-shaped goals also carry `defect_class: <kebab-slug>` — ONE axis.
   Grep `defect_class` across `goals/` before coining a new slug. **Two
-  strikes: second occurrence makes the goal about the CLASS.** Older
-  archived goals without the field are classified lazily, when a grep
-  for a new bug surfaces them — never by bulk archaeology.
+  strikes: second occurrence makes the goal about the CLASS.**
 - **One strike makes a class.** A CI or review finding is never fixed
   as an instance: the same PR fixes the class — adds or confirms the
   gate/rule that catches every occurrence and sweeps the existing
@@ -43,6 +41,12 @@ Before a capability's goal starts, answer EVERY line in the goal file —
 11. **Interaction primitives** — event primitives per transition; focus/
     blur transitions justified.
 12. **Command registry** — a registered command with honest `enabled()`.
+13. **Platform vs extension** — PLATFORM when ≥2 extensions would
+    re-implement it, or it touches the content plane, guardrails,
+    secrets, identity or Mill's own chrome, or a converged external
+    contract already owns it declaratively; EXTENSION otherwise. The
+    orchestrator answers and records it; an agent meeting an undecided
+    case stops.
 
 ## Definition of Done — before archive/
 - Local lefthook suite green, never bypassed.
@@ -80,10 +84,8 @@ A BACKLOG.md entry with the same DoR/DoD as any goal — never a bare
 TODO.
 
 ## Deferrals need a home
-A gap between a researched precedent and what Mill has today is NOT
-deferrable — build it in the goal that found it; an agent that would
-defer it reports it instead, including gaps found by any review. A
-deferral is legal only when the same sentence names its tracking home:
-a goal number, BACKLOG line, SPEC `OPEN` item, or revisit trigger —
-never standing alone. Goal files carry a "Deferred from this goal"
-section when scope was narrowed.
+A gap against a researched precedent is NOT deferrable — build it in
+the goal that found it; an agent that would defer it reports it
+instead. Legal only when the same sentence names its tracking home: a
+goal number, BACKLOG line, SPEC `OPEN` item, or revisit trigger — never
+standing alone.

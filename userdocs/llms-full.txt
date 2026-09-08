@@ -4647,10 +4647,10 @@ A refused install leaves nothing on disk.
 
 | Family | Level | Conformance | Example | E2E | Docs | SDK types | MCP | Docs behind code (days) | Flags |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| canvasObjects | experimental | no | yes | yes | yes | yes | yes | 0 | — |
+| canvasObjects | experimental | no | yes | yes | yes | yes | yes | 1 | — |
 | steps | experimental | no | yes | yes | yes | no | yes | 0 | — |
 | captures | experimental | no | no | yes | yes | yes | n/a | 0 | — |
-| settings | stable | yes | yes | yes | yes | yes | n/a | 1 | — |
+| settings | stable | yes | yes | yes | yes | yes | n/a | 0 | — |
 | network | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
 | views | experimental | no | yes | yes | yes | yes | n/a | 0 | — |
 | commands | stable | yes | yes | yes | yes | yes | yes | 0 | — |
@@ -4678,7 +4678,7 @@ would hit.
 
 Settings → MCP access shows the address your agent connects to and
 whether the server is enabled. Point any MCP-capable client at it —
-for example, a Claude Code MCP entry:
+for example, an MCP client's own server-list entry:
 
 ```
 { "mcpServers": { "mill": { "url": "http://127.0.0.1:8090/mcp" } } }
@@ -4947,7 +4947,7 @@ declaring those to use. The posted body also arrives whole as the
 run's payload.
 
 For a hook config in an agent tool, the entry is the same curl — for
-example a Claude Code `Stop` hook:
+example a coding agent's own `Stop` hook:
 
 ```json
 {
@@ -4957,7 +4957,7 @@ example a Claude Code `Stop` hook:
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://127.0.0.1:8092/__mill/hooks/event -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"source\":\"claude-code\",\"title\":\"Agent finished\",\"body\":\"A task completed.\"}'"
+            "command": "curl -s -X POST http://127.0.0.1:8092/__mill/hooks/event -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"source\":\"my-coding-agent\",\"title\":\"Agent finished\",\"body\":\"A task completed.\"}'"
           }
         ]
       }
@@ -5045,8 +5045,8 @@ reply Mill sends.
 ## The sender reads the response body
 
 Some tools' hook config posts an event and reads the decision straight
-from the response, no script in between. For example, a Claude Code
-`type: "http"` hook posts and reads back this way:
+from the response, no script in between. For example, a coding agent's
+own `type: "http"` hook posts and reads back this way:
 
 ```json
 {
