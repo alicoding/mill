@@ -3,22 +3,17 @@ import { openToolbarAction } from './fixtures/toolbarActions'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import {
-  SCALE_MCP_BASE_PORT,
-  SCALE_SERVER_BASE_PORT,
-  spawnMillServer,
-  type SpawnedServer,
-} from './fixtures/server'
+import { spawnMillServer, type SpawnedServer } from './fixtures/server'
 import { waitForViewportStable } from './fixtures/animation'
 import { clickBreadcrumbSegment, clickFrameGutter } from './fixtures/atlasBoard'
 
 // Atlas at real-world density (goal 0073): the one-map board against
 // the deterministic dense fixture (61 cards, 25 links, nested areas)
 // rather than the five-card seed every other atlas spec runs on.
-// Spawns its own server (persistence.spec's own-server pattern, its
-// own disjoint port range) because the MILL_TEST_DENSE_ATLAS env gate
-// must not leak a second board's worth of cards into the standard
-// workers' seeded assertions.
+// Spawns its own server (persistence.spec's own-server pattern, an
+// OS-assigned port pair -- goal 0358 S6) because the MILL_TEST_DENSE_ATLAS
+// env gate must not leak a second board's worth of cards into the
+// standard workers' seeded assertions.
 // A page's own child-entry count: exactly the "atlas-page-child"/
 // "atlas-page-child-group" rows, never a prefix-matched selector --
 // a mirrored leaf's own inline preview wrapper carries the sibling
@@ -38,8 +33,6 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
   const browser = await chromium.launch()
   try {
     server = await spawnMillServer({
-      port: SCALE_SERVER_BASE_PORT + idx,
-      mcpPort: SCALE_MCP_BASE_PORT + idx,
       settingsPath: path.join(dir, 'settings.json'),
       executionDbPath: path.join(dir, 'execution.db'),
       backupDir: path.join(dir, 'backups'),
@@ -224,7 +217,7 @@ test('a dense area previews bounded: capped tiles, region chips, a truthful ghos
     await page.close()
   } finally {
     await browser.close()
-    server?.stop()
+    await server?.stop()
     rmSync(dir, { recursive: true, force: true })
   }
 })

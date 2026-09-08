@@ -39,7 +39,7 @@ test('Running a test against an unreachable address logs a deterministic error',
   await page.getByLabel('Label').fill('Test Panel Request')
   // Port 1 is reserved and essentially never bound -- a connection
   // refused, not a DNS lookup or a real remote host.
-  await page.getByLabel('URL', { exact: true }).fill('http://127.0.0.1:1/widgets')
+  await page.getByLabel('URL', { exact: true }).fill('http://127.0.0.1:1/widgets') // port-literal: reserved, essentially never bound -- deliberately unreachable
 
   // The manual editor is always visible, pre-seeded with the request's
   // one implicit operation (1:1 model) -- Method is the request's own

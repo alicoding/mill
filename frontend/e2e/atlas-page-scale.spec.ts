@@ -4,12 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import {
-  MIRROR_MCP_BASE_PORT,
-  MIRROR_SERVER_BASE_PORT,
-  spawnMillServer,
-  type SpawnedServer,
-} from './fixtures/server'
+import { spawnMillServer, type SpawnedServer } from './fixtures/server'
 import { clickFrameGutter } from './fixtures/atlasBoard'
 
 // The card PAGE at scale (goal 0073 slice B): a card holding many
@@ -17,10 +12,9 @@ import { clickFrameGutter } from './fixtures/atlasBoard'
 // frame already caps its preview slots (goal 0073 slice A), and
 // mirror previews must stay bounded rather than fetching-and-rendering
 // every child's content at once. Spawns its own server (atlas-
-// scale.spec.ts's own-server pattern) because its own
-// MILL_TEST_FOLDER_PICK_PATH override must never leak into the
-// standard workers' seeded assertions -- own disjoint port range for
-// the same reason.
+// scale.spec.ts's own-server pattern, an OS-assigned port pair -- goal
+// 0358 S6) because its own MILL_TEST_FOLDER_PICK_PATH override must
+// never leak into the standard workers' seeded assertions.
 //
 // The fixture folder (mirror-dense/Mirror Stack/, 5 flat one-line real
 // .md files) is scanned and imported in ONE recursive
@@ -50,8 +44,6 @@ test('a card page at scale caps its entries with an honest expander and lazy-loa
   const browser = await chromium.launch()
   try {
     server = await spawnMillServer({
-      port: MIRROR_SERVER_BASE_PORT + idx,
-      mcpPort: MIRROR_MCP_BASE_PORT + idx,
       settingsPath: path.join(dir, 'settings.json'),
       executionDbPath: path.join(dir, 'execution.db'),
       backupDir: path.join(dir, 'backups'),
@@ -107,10 +99,7 @@ test('a card page at scale caps its entries with an honest expander and lazy-loa
     await page.close()
   } finally {
     await browser.close()
-    server?.stop()
-    // maxRetries: the just-stopped server can still be flushing its
-    // settings/db files when cleanup runs -- a bare rmSync races it
-    // to ENOTEMPTY.
-    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+    await server?.stop()
+    rmSync(dir, { recursive: true, force: true })
   }
 })

@@ -20,11 +20,12 @@ down at end (`e2e/fixtures/server.ts`). Shared-pool specs import
 `test`/`expect` from that fixture, never `@playwright/test` directly.
 **Specs with their own dedicated server** call `spawnMillServer`
 themselves (e.g. `atlas-authoring.spec.ts`).
-- Within-file cleanup discipline applies — delete what you create.
+- Within-file cleanup: delete what you create.
 - Tests/e2e default to memory (`MILL_CLIPBOARD=memory`); a real-pasteboard test spawns `host` under the lock (`withClipboardLock`).
 - `e2e/persistence.spec.ts` is the only spec allowed its own server pair.
-- Never spawn on the LaunchAgent's ports (8080 Tailscale, 127.0.0.1:8090)
-  — worker ranges 9400+/9500+ (persistence 9600+/9650+).
+- **Servers bind OS-assigned ports, never a literal port** —
+  `spawnMillServer` defaults to `:0`; `serverPorts.ts` is the
+  gate-enforced exception.
 - Local Playwright runs take a machine-wide slot lock
   (`fixtures/e2eSlotLock.ts`), waiting ≤45 min; CI bypasses it.
 

@@ -361,7 +361,7 @@ test('Review kind filter narrows pending rows by kind, and the Blankslate empty 
     const mcpSourceRow = page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText('E2E kind-filter MCP source', { exact: true }) })
     await expect(mcpSourceRow).toBeVisible()
 
-    const client = await connectMCPClient(testInfo.parallelIndex, GUARDRAIL_REVIEW_MCP_BASE_PORT + 70 + testInfo.parallelIndex)
+    const client = await connectMCPClient(GUARDRAIL_REVIEW_MCP_BASE_PORT + 70 + testInfo.parallelIndex)
     const sourceId = await findWorkflowIdByLabel(client, 'E2E kind-filter MCP source')
     const exported = await exportWorkflowViaMCP(client, sourceId)
     // ADR-0036: strip the source's real id so this exercises the create

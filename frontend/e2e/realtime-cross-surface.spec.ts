@@ -53,7 +53,7 @@ async function restoreMCPWriteDefaults(page: Page): Promise<void> {
   }
 }
 
-test('Configure > Lists open: an MCP-authored import_list appears live, no reload (P0-2/P1-1)', async ({ page }, testInfo) => {
+test('Configure > Lists open: an MCP-authored import_list appears live, no reload (P0-2/P1-1)', async ({ page, workerServer }) => {
   await enableUnattendedMCPWrites(page)
 
   await page.getByRole('link', { name: 'Configure' }).click()
@@ -64,7 +64,7 @@ test('Configure > Lists open: an MCP-authored import_list appears live, no reloa
   const row = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText(label, { exact: true }) })
   await expect(row).toHaveCount(0)
 
-  const client = await connectMCPClient(testInfo.parallelIndex)
+  const client = await connectMCPClient(workerServer.mcpPort)
   try {
     const result = await client.callTool({
       name: 'import_list',

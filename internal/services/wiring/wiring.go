@@ -380,9 +380,10 @@ func WireMillMCPService(mill *mcpsvc.MillMCPService, settingsService *settingssv
 	mill.SetGuardrailService(guard)
 	if err := mill.Start(addr); err != nil {
 		logger.Error("mill MCP server", "error", err)
-	} else {
-		logger.Info("mill MCP server listening", "addr", addr)
+		return
 	}
+	logger.Info("mill MCP server listening", "addr", mill.BoundAddr())
+	announceServerReady(mill.BoundAddr(), logger)
 }
 
 // WireWorkflowLifecycle connects CompositionService's workflow

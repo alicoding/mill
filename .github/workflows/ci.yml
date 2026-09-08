@@ -168,6 +168,24 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-e2e-seed-literals.sh
 
+  # Mirrors lefthook.yml's own e2e-fixed-ports job -- same script (goal
+  # 0358 S6: an e2e server binds an OS-assigned port, never a literal
+  # one). Grep-only, so like comment-hygiene it needs no build setup.
+  e2e-fixed-ports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-e2e-fixed-ports.sh
+
+  # Fixture-tests the gate above, same shape as framework-api-first-selftest.
+  e2e-fixed-ports-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-e2e-fixed-ports-selftest.sh
+
   # Mirrors lefthook.yml's own ui-copy job -- same script
   # (.claude/rules/ux-writing.md is the standard it enforces).
   ui-copy:
@@ -852,6 +870,8 @@ jobs:
       - framework-api-first-selftest
       - test-side-effects
       - e2e-seed-literals
+      - e2e-fixed-ports
+      - e2e-fixed-ports-selftest
       - sdk-comments
       - ui-copy
       - drag-regions

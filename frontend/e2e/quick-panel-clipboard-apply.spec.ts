@@ -161,7 +161,7 @@ test('a valid workflow export creates a new workflow, visible live with no reloa
     const createdLabel = 'ZzE2eClipboardApplyCreated'
     await createSimpleWorkflow(page, sourceLabel)
 
-    const client = await connectMCPClient(testInfo.parallelIndex, f.mcpPort)
+    const client = await connectMCPClient(f.mcpPort)
     let exported: string
     try {
       const sourceId = await findWorkflowIdByLabel(client, sourceLabel)
@@ -218,7 +218,7 @@ test('an export with a matching id updates the existing workflow instead of crea
     const updatedLabel = 'ZzE2eClipboardApplyUpdated'
     await createSimpleWorkflow(page, targetLabel)
 
-    const client = await connectMCPClient(testInfo.parallelIndex, f.mcpPort)
+    const client = await connectMCPClient(f.mcpPort)
     let payload: string
     let targetId: string
     try {
@@ -285,7 +285,7 @@ test('a dangling entity reference is listed in the preview but confirm still suc
     const createdLabel = 'ZzE2eClipboardApplyDanglingCreated'
     await createSimpleWorkflow(page, sourceLabel)
 
-    const client = await connectMCPClient(testInfo.parallelIndex, f.mcpPort)
+    const client = await connectMCPClient(f.mcpPort)
     let payload: string
     try {
       const sourceId = await findWorkflowIdByLabel(client, sourceLabel)
