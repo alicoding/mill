@@ -1,163 +1,150 @@
 #!/usr/bin/env bash
 # Probes scripts/list-affected-go-packages.sh's per-event diff-base
-# resolution against two real commits on this branch (CI run
-# 34249279901, job 102149916582): a merge_group run failed with
-# `mapfile: command not found` -- CI's test-go-affected job runs on
-# macos-latest, whose system /bin/bash is 3.2 and predates the
-# mapfile/readarray builtin -- and, separately, the script only ever
-# resolved a diff base for pull_request explicitly; merge_group's
-# GITHUB_BASE_REF is always empty, so it silently fell through to the
-# "compare to parent commit" branch instead of the merge queue's own
-# base. This script itself avoids every bash-4-only construct for the
-# same reason: it runs on the same macos-latest runner.
+# resolution (CI run 34249279901, job 102149916582): a merge_group run
+# failed with a bash-4-only builtin not found on CI's macos-latest
+# system /bin/bash (3.2), and separately the script only ever resolved a
+# base for pull_request explicitly -- merge_group's GITHUB_BASE_REF is
+# always empty, so it silently fell through to "compare to parent
+# commit" instead of the merge queue's own base.
 #
-# Invokes the real script via the LITERAL /bin/bash path, not a `bash`
-# PATH lookup -- CI's default `shell: bash` step invokes that literal
-# path (confirmed against the failed run's own "shell: /bin/bash -e
-# {0}" log line), which is exactly what let the mapfile regression
-# through un-caught locally.
+# Builds its own throwaway Go module as two REAL commits (via
+# scripts/lib/git-fixture.sh, goal 0394's isolation helper -- never the
+# real mill checkout or a ref borrowed from the real `origin` remote,
+# which a shallow/queue checkout on the CI runner doesn't carry: a
+# fabricated `refs/remotes/origin/<name>` ref survived locally but a
+# real `git fetch origin <name>` against the genuine GitHub remote
+# during CI's own checkout state pruned or otherwise never resolved it,
+# job 102168238051's actual failure) and asserts the exact base SHA and
+# package selection the target script computes against them. Invokes
+# the target script via the LITERAL /bin/bash path, not a `bash` PATH
+# lookup -- CI's default `shell: bash` step invokes that literal path
+# (the failed run's own "shell: /bin/bash -e {0}" log line) -- so a
+# bash-4-only regression fails here the same way it failed in CI.
+# Bash-3.2-safe throughout (scripts/check-bash-portability.sh): this
+# selftest itself runs on the same macos-latest runner.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
-target="$repo_root/scripts/list-affected-go-packages.sh"
-cd "$repo_root"
+# shellcheck source=lib/git-fixture.sh
+source "$repo_root/scripts/lib/git-fixture.sh"
+
+fixture="$(mktemp -d)"
+cleanup() { rm -rf "$fixture"; }
+trap cleanup EXIT
+
+git_fixture_init "$fixture"
+
+mkdir -p "$fixture/pkga" "$fixture/pkgb" "$fixture/scripts"
+
+# A trivial, dependency-free module: root package imports neither pkga
+# nor pkgb (so it never gets selected), pkgb imports pkga (so a change
+# to pkga alone must also select pkgb via the transitive-Deps rule).
+cat >"$fixture/go.mod" <<'EOF'
+module fixture.example/affectedselftest
+
+go 1.21
+EOF
+cat >"$fixture/main.go" <<'EOF'
+package main
+
+func main() {}
+EOF
+cat >"$fixture/pkga/a.go" <<'EOF'
+package pkga
+
+func A() string { return "a" }
+EOF
+cat >"$fixture/pkgb/b.go" <<'EOF'
+package pkgb
+
+import "fixture.example/affectedselftest/pkga"
+
+func B() string { return pkga.A() }
+EOF
+
+cp "$repo_root/scripts/list-affected-go-packages.sh" "$fixture/scripts/list-affected-go-packages.sh"
+chmod +x "$fixture/scripts/list-affected-go-packages.sh"
+
+git_fixture_commit_all "$fixture" "initial"
+BASE_COMMIT="$(git -C "$fixture" rev-parse HEAD)"
+
+# A real, known diff: only pkga's file changes.
+cat >"$fixture/pkga/a.go" <<'EOF'
+package pkga
+
+func A() string { return "a2" }
+EOF
+git_fixture_commit_all "$fixture" "change pkga"
+HEAD_COMMIT="$(git -C "$fixture" rev-parse HEAD)"
+
+# Stands in for the real `git fetch origin <base>` a pull_request run
+# does -- entirely inside the isolated fixture repo, which carries no
+# real `origin` remote to fetch from or collide with.
+PR_BASE_REF_NAME="fixture-base"
+git -C "$fixture" update-ref "refs/remotes/origin/$PR_BASE_REF_NAME" "$BASE_COMMIT"
+
+PKG_ROOT="fixture.example/affectedselftest"
+PKG_A="$PKG_ROOT/pkga"
+PKG_B="$PKG_ROOT/pkgb"
+
+# The real script's own summary format (list-affected-go-packages.sh):
+# one directly-changed package (pkga), two selected once pkgb's
+# transitive dependency on it is followed.
+expected_real_diff="$(printf '### test-go-affected\nDiff base `%s`: 1 package(s) directly changed, 2 selected with dependents:\n```\n%s\n%s\n```' \
+  "$BASE_COMMIT" "$PKG_A" "$PKG_B")"
+
+# The fallback summary format when no base could be resolved: all 3
+# fixture packages (root, pkga, pkgb) selected, never a false "nothing
+# changed".
+expected_fallback="$(printf '### test-go-affected\nDiff base could not be determined for event `merge_group` -- running the full 3-package set as a safe fallback.')"
 
 fails=0
 
-# The root package's //go:embed all:frontend/dist needs at least one
-# file present to type-check -- a stub is enough for the target script's
-# own `go list -json ./...`. Removed again only if this probe created
-# it: a developer's real build stays untouched.
-dist_created=false
-if [ ! -d frontend/dist ] || [ -z "$(ls -A frontend/dist 2>/dev/null)" ]; then
-  mkdir -p frontend/dist
-  : >frontend/dist/.affected-selftest-stub
-  dist_created=true
-fi
-
-pr_base_ref="mill-affected-selftest-base-$$"
-
-cleanup() {
-  if [ "$dist_created" = true ]; then
-    rm -rf frontend/dist
-  fi
-  git update-ref -d "refs/remotes/origin/$pr_base_ref" >/dev/null 2>&1 || true
-}
-trap cleanup EXIT
-
-# Two real, adjacent commits on this branch where the later one touched
-# Go files -- BASE_COMMIT...HEAD_COMMIT is a real, known diff, not a
-# fixture repo.
-HEAD_COMMIT="$(git log -1 --format=%H -- '*.go')"
-BASE_COMMIT="$(git rev-parse "${HEAD_COMMIT}^")"
-
-if [ -z "$HEAD_COMMIT" ] || [ -z "$BASE_COMMIT" ]; then
-  echo "check-affected-selftest: could not find a commit pair with a Go-file diff to probe against" >&2
-  exit 1
-fi
-
-# A fabricated remote-tracking ref stands in for the real `git fetch
-# origin <base>` a pull_request run would do -- resolve_base's own `git
-# fetch --quiet origin "$GITHUB_BASE_REF" || true` tolerates the fetch
-# failing against a branch name that only exists locally.
-git update-ref "refs/remotes/origin/$pr_base_ref" "$BASE_COMMIT"
-
+# run <event> [EXTRA_ENV=val ...] -- invokes the fixture's own copy of
+# the target script via the literal /bin/bash path, dry-run (no `go
+# test -race`), and prints its stdout.
 run() {
-  # run <event> [EXTRA_ENV=val ...] -- invokes the target script via the
-  # literal /bin/bash path in dry-run mode (no `go test -race`) and
-  # prints its stdout (the selection summary; command substitution
-  # already excludes stderr, where a benign `git fetch` failure against
-  # the fabricated pull_request base ref below would otherwise land).
   local event="$1"
   shift
   env GITHUB_EVENT_NAME="$event" LIST_AFFECTED_HEAD_REF="$HEAD_COMMIT" LIST_AFFECTED_DRY_RUN=1 \
-    "$@" /bin/bash "$target"
+    "$@" /bin/bash "$fixture/scripts/list-affected-go-packages.sh"
 }
 
-# probe <label> <want-exit> <want-substring> <event> [extra env...]
+# probe <label> <want-output> <event> [extra env...]
 probe() {
-  local label="$1" want_exit="$2" want_substr="$3" event="$4" out rc
-  shift 4
+  local label="$1" want="$2" event="$3" out rc
+  shift 3
   set +e
   out="$(run "$event" "$@")"
   rc=$?
   set -e
-  if [ "$rc" != "$want_exit" ]; then
-    echo "FAIL: $label: want exit $want_exit, got $rc" >&2
+  if [ "$rc" != 0 ]; then
+    echo "FAIL: $label: exited $rc" >&2
     echo "$out" >&2
     fails=$((fails + 1))
     return
   fi
-  case "$out" in
-  *"$want_substr"*) ;;
-  *)
-    echo "FAIL: $label: expected output to contain: $want_substr" >&2
+  if [ "$out" != "$want" ]; then
+    echo "FAIL: $label: output mismatch" >&2
+    echo "--- want ---" >&2
+    echo "$want" >&2
+    echo "--- got ---" >&2
     echo "$out" >&2
     fails=$((fails + 1))
-    ;;
-  esac
-  PROBE_OUTPUT="$out"
+  fi
 }
 
-# pull_request: a real merge-base diff against the fabricated origin ref.
-probe "pull_request resolves the real base" 0 "Diff base \`$BASE_COMMIT\`" \
-  pull_request "GITHUB_BASE_REF=$pr_base_ref"
-pr_output="$PROBE_OUTPUT"
-case "$pr_output" in
-*"no changed Go files"* | *"could not be determined"*)
-  echo "FAIL: pull_request: expected a real package selection, got a fallback/empty result" >&2
-  echo "$pr_output" >&2
-  fails=$((fails + 1))
-  ;;
-esac
+probe "pull_request resolves the merge-base against its own origin ref" \
+  "$expected_real_diff" pull_request "GITHUB_BASE_REF=$PR_BASE_REF_NAME"
 
-# merge_group: MERGE_GROUP_BASE_SHA (ci.yml threads in
-# github.event.merge_group.base_sha) is the only source of truth --
-# GITHUB_BASE_REF is unset here, matching the real event.
-probe "merge_group resolves its own base_sha" 0 "Diff base \`$BASE_COMMIT\`" \
-  merge_group "MERGE_GROUP_BASE_SHA=$BASE_COMMIT"
-mg_output="$PROBE_OUTPUT"
+probe "merge_group resolves MERGE_GROUP_BASE_SHA, not github.base_ref" \
+  "$expected_real_diff" merge_group "MERGE_GROUP_BASE_SHA=$BASE_COMMIT"
 
-# The three events, given the same two real commits, must select the
-# EXACT SAME package set -- this is the "packages touched between two
-# real commits on this branch" assertion, cross-checked against
-# pull_request's independently-resolved base instead of a hand-kept list
-# of package names that would drift as the import graph changes.
-if [ "$pr_output" != "$mg_output" ]; then
-  echo "FAIL: merge_group's selection differs from pull_request's for the same commit pair" >&2
-  echo "--- pull_request ---" >&2
-  echo "$pr_output" >&2
-  echo "--- merge_group ---" >&2
-  echo "$mg_output" >&2
-  fails=$((fails + 1))
-fi
+probe "push compares against the immediate parent commit" \
+  "$expected_real_diff" push
 
-# push (and local/manual runs): no GITHUB_BASE_REF, no
-# MERGE_GROUP_BASE_SHA -- falls back to comparing against the immediate
-# parent commit, which for this exact HEAD_COMMIT/BASE_COMMIT pair is the
-# same diff as the two probes above.
-probe "push compares against the parent commit" 0 "Diff base \`$BASE_COMMIT\`" push
-push_output="$PROBE_OUTPUT"
-if [ "$push_output" != "$pr_output" ]; then
-  echo "FAIL: push's selection differs from pull_request's for the same commit pair" >&2
-  echo "--- pull_request ---" >&2
-  echo "$pr_output" >&2
-  echo "--- push ---" >&2
-  echo "$push_output" >&2
-  fails=$((fails + 1))
-fi
-
-# merge_group with an unresolvable base (no MERGE_GROUP_BASE_SHA, e.g. a
-# workflow wiring regression) must fall back to "everything affected",
-# never a false "nothing changed" that would silently skip coverage.
-probe "merge_group with no base_sha falls back to everything-affected" 0 "could not be determined" merge_group
-case "$PROBE_OUTPUT" in
-*"no changed Go files"*)
-  echo "FAIL: merge_group with no base_sha read as an empty diff instead of an unresolvable base" >&2
-  echo "$PROBE_OUTPUT" >&2
-  fails=$((fails + 1))
-  ;;
-esac
+probe "merge_group with no base_sha falls back to every package, never a false nothing-changed" \
+  "$expected_fallback" merge_group
 
 if [ "$fails" -ne 0 ]; then
   echo "check-affected-selftest: $fails probe(s) failed" >&2

@@ -12,9 +12,9 @@
 #
 # Writes a human-readable selection summary to GITHUB_STEP_SUMMARY (stdout
 # when unset, e.g. local runs) and, unless nothing was selected, runs
-# `go test -race` on the selected packages. No bash-4-only construct
-# (mapfile/readarray): CI's macos-latest runner's system /bin/bash is
-# 3.2, which predates them.
+# `go test -race` on the selected packages. Bash-3.2-safe throughout
+# (scripts/check-bash-portability.sh): CI's macos-latest runner's system
+# /bin/bash predates bash 4's array-reading builtins.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

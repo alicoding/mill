@@ -535,19 +535,22 @@ jobs:
       - run: go mod tidy -diff
 
   # Goal 0401 hotfix: proves scripts/list-affected-go-packages.sh's
-  # per-event base resolution against real commits, and that it carries
-  # no bash-4-only construct -- macos-latest to match test-go-affected's
+  # per-event base resolution and its dry-run package selection against
+  # two commits in a throwaway fixture module the selftest builds itself
+  # (scripts/lib/git-fixture.sh) -- never a ref borrowed from the real
+  # `origin` remote or this checkout's own history, which job
+  # 102168238051 showed doesn't survive a real CI checkout the way a
+  # dev machine's local clone tolerates. Default (shallow) checkout is
+  # deliberate: the selftest carries its own commit pair, so it must
+  # pass without full history. macos-latest to match test-go-affected's
   # own runner, whose system /bin/bash (3.2) is what actually caught the
-  # `mapfile` regression this selftest now pins down; a ubuntu runner's
-  # newer bash would never re-catch it. fetch-depth: 0 for the real
-  # commit history the script's own resolve_base diffs against.
+  # bash-4-only regression this selftest now pins down; a ubuntu
+  # runner's newer bash would never re-catch it.
   affected-selftest:
     runs-on: macos-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.26'
