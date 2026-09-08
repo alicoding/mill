@@ -254,6 +254,22 @@ tasks:
     cmds:
       - lefthook install
 
+  setup:gocache-trim:
+    summary: Installs a LaunchAgent that trims the Go build cache to a size cap every 30 minutes (macOS)
+    desc: |
+      go install's hardcache at the pinned version, writes
+      ~/Library/LaunchAgents/com.alicoding.mill.gocache-trim.plist (StartInterval
+      1800s) and loads it. Idempotent -- rerun after a repo move to
+      refresh the plist's baked-in script path. `task
+      setup:gocache-trim:remove` unloads and deletes it.
+    cmds:
+      - './scripts/dev/gocache-trim-setup.sh'
+
+  setup:gocache-trim:remove:
+    summary: Unloads and removes the Go build cache trim LaunchAgent
+    cmds:
+      - './scripts/dev/gocache-trim-setup.sh --remove'
+
   build:server:
     summary: Builds the application in server mode (no GUI, HTTP server only)
     deps: [clean]

@@ -58,6 +58,9 @@ pre-commit:
     - name: drag-regions-selftest
       glob: "scripts/check-drag-regions*.sh"
       run: ./scripts/check-drag-regions-selftest.sh
+    - name: gocache-trim-selftest
+      glob: "scripts/dev/gocache-trim*.sh"
+      run: ./scripts/dev/gocache-trim-selftest.sh
     - name: vendor-names
       # Goal 0385: semgrep/vendor-names.yml's own header comment carries
       # the value-vs-concept rule and the case-sensitivity split.
