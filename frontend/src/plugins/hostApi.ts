@@ -17,7 +17,7 @@ import { buildPluginStorage } from './pluginStorage'
 import { pushNotice } from '../shared/noticeStore'
 import { getExtensionExports } from './extensionExports'
 import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/extensionSettingsStore'
-import type { CanvasObjectDecl, ContentQuery, MillPluginAPI, PluginFetchInit, PluginOutputOptions } from './sdk'
+import type { CanvasObjectDecl, ContentQuery, LifecycleEventPayload, MillPluginAPI, PluginFetchInit, PluginOutputOptions } from './sdk'
 import type { MenuPath } from '../shared/menuSkeleton'
 import type { Command } from '../shared/commands'
 
@@ -191,13 +191,29 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			htmlToMarkdown: (html: string) => PluginService.ConvertHTMLToMarkdown(html),
 		}),
 		on: (event, handler, filter) => {
-			if (event !== 'contents:changed') throw new Error(`plugin ${pluginId}: unknown event "${String(event)}"`)
-			return Events.On('mill-data-changed', (evt) => {
-				const data = evt.data as { entity?: string; id?: string; kind?: string } | undefined
-				if (data?.entity !== 'atlas') return
-				if (filter?.kinds && !filter.kinds.includes(data.kind ?? '')) return
-				handler({ id: data.id ?? '', kind: data.kind })
-			})
+			if (event === 'contents:changed') {
+				return Events.On('mill-data-changed', (evt) => {
+					const data = evt.data as { entity?: string; id?: string; kind?: string } | undefined
+					if (data?.entity !== 'atlas') return
+					if (filter?.kinds && !filter.kinds.includes(data.kind ?? '')) return
+					handler({ id: data.id ?? '', kind: data.kind } as never)
+				})
+			}
+			// entity.*/object.* (docs/goals/0392 S2): one wire event carries
+			// the whole lifecycle family, discriminated by its own `event`
+			// field; kinds narrows by entityKind for entity.* and by the
+			// object's own kind for object.*.
+			if (event === 'entity.*' || event === 'object.*') {
+				const prefix = event === 'entity.*' ? 'entity.' : 'object.'
+				const kindField = event === 'entity.*' ? 'entityKind' : 'kind'
+				return Events.On('mill-lifecycle-event', (evt) => {
+					const data = evt.data as LifecycleEventPayload | undefined
+					if (!data?.event.startsWith(prefix)) return
+					if (filter?.kinds && !filter.kinds.includes(data[kindField] ?? '')) return
+					handler(data as never)
+				})
+			}
+			throw new Error(`plugin ${pluginId}: unknown event "${String(event)}"`)
 		},
 		registerCanvasObject: (decl: CanvasObjectDecl) => {
 			if (!KIND_PATTERN.test(decl.kind)) throw new Error(`plugin ${pluginId}: canvas object kind "${decl.kind}" must be a lowercase slug`)

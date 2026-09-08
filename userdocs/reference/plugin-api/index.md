@@ -20,6 +20,7 @@
 - [GuardedActionResult](interfaces/GuardedActionResult.md)
 - [KindFieldInfo](interfaces/KindFieldInfo.md)
 - [KindInfo](interfaces/KindInfo.md)
+- [LifecycleEventPayload](interfaces/LifecycleEventPayload.md)
 - [MCPServerContribution](interfaces/MCPServerContribution.md)
 - [MillFrameApi](interfaces/MillFrameApi.md)
 - [MillPluginAPI](interfaces/MillPluginAPI.md)

@@ -419,6 +419,10 @@
     "seedRevision": 2,
     "fingerprint": "aa775e5fc052bc02953048fc21320f72c192e0ed72bc606db2e04f6a1ac2df09"
   },
+  "workflow:example-tidy-unused-lists-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "ef64572d1f29ea187a8fcbaff8efcbbcc698b81d95aa7a05d4fa1f38e646f194"
+  },
   "workflow:example-todo-scan-workflow": {
     "seedRevision": 2,
     "fingerprint": "20a0934ded9c2daa3601897163c1840b0cd1128922db1edb56d02a3fd534dbde"

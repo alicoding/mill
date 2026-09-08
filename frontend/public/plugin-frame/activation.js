@@ -36,6 +36,7 @@
 	var captureMessageHandlers = new Map() // capture id -> onMessage()
 	var settingsHandlers = new Map() // subId -> {key, fn}
 	var contentsHandlers = new Map() // subId -> {kinds, fn}
+	var lifecycleHandlers = new Map() // subId -> fn (docs/goals/0392 S2, entity.*/object.*)
 
 	function send(msg) {
 		msg.mill = 1
@@ -106,6 +107,13 @@
 		} else if (data.event === 'contents.changed') {
 			var ch2 = contentsHandlers.get(data.payload.subId)
 			if (ch2 && (!ch2.kinds || ch2.kinds.indexOf(data.payload.kind) !== -1)) ch2.fn({ id: data.payload.id, kind: data.payload.kind })
+		} else if (data.event === 'lifecycle.event') {
+			var lh = lifecycleHandlers.get(data.payload.subId)
+			if (lh) {
+				var payload = {}
+				for (var key in data.payload) { if (key !== 'subId') payload[key] = data.payload[key] }
+				lh(payload)
+			}
 		}
 	}
 
@@ -151,16 +159,32 @@
 		kinds: function () { return call('kinds') },
 		open: function (cardId) { void call('open', cardId) },
 		on: function (event, handler, filter) {
-			if (event !== 'contents:changed') throw new Error('plugin ' + pluginId + ': unknown event "' + event + '"')
-			var subId = 0
-			call('subscribe', { topic: 'contents:changed', kinds: filter && filter.kinds }).then(function (r) {
-				subId = r.subId
-				contentsHandlers.set(subId, { kinds: filter && filter.kinds, fn: handler })
-			}).catch(function (err) { console.error('plugin ' + pluginId + ': on("contents:changed") failed', err) })
-			return function () {
-				contentsHandlers.delete(subId)
-				void call('unsubscribe', { subId: subId })
+			if (event === 'contents:changed') {
+				var subId = 0
+				call('subscribe', { topic: 'contents:changed', kinds: filter && filter.kinds }).then(function (r) {
+					subId = r.subId
+					contentsHandlers.set(subId, { kinds: filter && filter.kinds, fn: handler })
+				}).catch(function (err) { console.error('plugin ' + pluginId + ': on("contents:changed") failed', err) })
+				return function () {
+					contentsHandlers.delete(subId)
+					void call('unsubscribe', { subId: subId })
+				}
 			}
+			// entity.*/object.* (docs/goals/0392 S2): the host already
+			// filters by kinds before posting, so this side just registers
+			// the handler under its own subId.
+			if (event === 'entity.*' || event === 'object.*') {
+				var lifecycleSubId = 0
+				call('subscribe', { topic: event, kinds: filter && filter.kinds }).then(function (r) {
+					lifecycleSubId = r.subId
+					lifecycleHandlers.set(lifecycleSubId, handler)
+				}).catch(function (err) { console.error('plugin ' + pluginId + ': on("' + event + '") failed', err) })
+				return function () {
+					lifecycleHandlers.delete(lifecycleSubId)
+					void call('unsubscribe', { subId: lifecycleSubId })
+				}
+			}
+			throw new Error('plugin ' + pluginId + ': unknown event "' + event + '"')
 		},
 		fetch: function (url, requestInit) { return call('fetch', url, requestInit || {}) },
 		content: Object.freeze({
