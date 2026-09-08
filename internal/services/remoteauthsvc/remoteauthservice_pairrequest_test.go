@@ -74,6 +74,9 @@ func TestRequestPairing_MintsSixDigitCodeAndPublishes(t *testing.T) {
 	if evt.Body != "Code "+info.Code {
 		t.Errorf("Body = %q, want the same code the popup shows", evt.Body)
 	}
+	if len(evt.Targets) != 1 || evt.Targets[0] != "desktop-only" {
+		t.Errorf("Targets = %v, want the desktop-only sentinel that excludes every phone (goal 0379 S2)", evt.Targets)
+	}
 }
 
 // TestRequestPairing_ReplacesOutstandingRequest pins the single-live-

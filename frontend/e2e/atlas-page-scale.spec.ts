@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { openToolbarAction } from './fixtures/toolbarActions'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -58,6 +59,7 @@ test('a card page at scale caps its entries with an honest expander and lazy-loa
       extraEnv: { MILL_TEST_FOLDER_PICK_PATH: MIRROR_DENSE_FIXTURE },
     })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await page.getByRole('link', { name: 'Atlas' }).click()
     await expect(page.getByTestId('atlas-board')).toBeVisible()

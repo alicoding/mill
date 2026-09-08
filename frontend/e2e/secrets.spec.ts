@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -37,6 +38,7 @@ test('secret manager: create vault, store/reveal/copy/edit/history/delete a pass
     // directory automatically (fixtures/server.ts) -- no override needed.
     server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
     await page.goto(`${server.baseURL}/`)
     await page.getByRole('link', { name: 'Secrets' }).click()
@@ -280,6 +282,7 @@ test('secret manager: a vault with no key on this device says so, and Start a ne
     // in-memory keyring and nowhere else. ---
     server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
     let page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await page.getByRole('link', { name: 'Secrets' }).click()
     await page.getByRole('button', { name: 'Got it' }).click()
@@ -291,6 +294,7 @@ test('secret manager: a vault with no key on this device says so, and Start a ne
     // --- Second run: same vault file, empty keyring. ---
     server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
     page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await page.getByRole('link', { name: 'Secrets' }).click()
     await expect(page.getByText('Vault is locked')).toBeVisible()
@@ -341,6 +345,7 @@ test('secret manager: a vault whose stored key no longer opens it names the caus
   try {
     server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await page.getByRole('link', { name: 'Secrets' }).click()
     await page.getByRole('button', { name: 'Got it' }).click()
@@ -395,6 +400,7 @@ test('secret manager: restoring the last backup recovers a vault whose current k
   try {
     server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await page.getByRole('link', { name: 'Secrets' }).click()
     await page.getByRole('button', { name: 'Got it' }).click()

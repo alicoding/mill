@@ -226,6 +226,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-e2e-seed-literals.sh
 
+  # Mirrors lefthook.yml's own e2e-edge-hover job -- same script (goal
+  # 0358 S8: an Atlas link edge's hover/click is routed through
+  # fixtures/atlasEdge.ts, never a bare call landing on the chip).
+  # Grep-only, so like comment-hygiene it needs no build setup.
+  e2e-edge-hover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-e2e-edge-hover.sh
+
   # Mirrors lefthook.yml's own ui-copy job -- same script
   # (.claude/rules/ux-writing.md is the standard it enforces).
   ui-copy:
@@ -409,6 +420,30 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-hook-command-guard.sh
+
+  # Mirrors lefthook.yml's own selftest-git-isolation job -- same script
+  # (goal 0394: a scripts/*.sh creating a throwaway git repo sources
+  # scripts/lib/git-fixture.sh, which clears the calling process's git
+  # environment before touching the fixture). Grep-only, so like
+  # hook-command-guard it needs no build setup.
+  selftest-git-isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-selftest-git-isolation.sh
+
+  # Fixture-tests the gate above against a bad and a good fixture
+  # script, plus the goal's own Acceptance assertion: a git_fixture_init
+  # call made under the exact hostile GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE
+  # a pre-commit hook exports must leave the real checkout's `git status`
+  # byte-identical before and after.
+  selftest-git-isolation-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-selftest-git-isolation-selftest.sh
 
   # Fixture-tests check-review-report.sh itself (fixed PR bodies piped
   # on stdin), same shape as hook-command-guard's own probe job -- keeps
@@ -1176,6 +1211,7 @@ jobs:
       - framework-api-first-selftest
       - test-side-effects
       - e2e-seed-literals
+      - e2e-edge-hover
       - sdk-comments
       - ui-copy
       - drag-regions
@@ -1191,6 +1227,8 @@ jobs:
       - rules-frontmatter
       - standing-context
       - hook-command-guard
+      - selftest-git-isolation
+      - selftest-git-isolation-selftest
       - review-report-selftest
       - review-report
       - go-mod-tidy
