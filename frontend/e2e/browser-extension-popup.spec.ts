@@ -46,6 +46,9 @@ interface BridgeState {
   pairRequestStatus: 'pending' | 'accepted' | 'denied' | 'expired'
   token: string
   label: string
+  // disconnectCalls pins that the popup's own Disconnect really POSTs
+  // the self-revoke door (goal 0379 S2), not just a local clear.
+  disconnectCalls: number
 }
 
 function serveBridge(port: number, state: BridgeState): Promise<http.Server> {
@@ -85,6 +88,18 @@ function serveBridge(port: number, state: BridgeState): Promise<http.Server> {
         body.label = state.label
       }
       res.end(JSON.stringify(body))
+      return
+    }
+    if (url.pathname === '/__mill/bridge/disconnect' && req.method === 'POST') {
+      state.disconnectCalls += 1
+      const authorized = Boolean(state.token) && req.headers.authorization === `Bearer ${state.token}`
+      if (!authorized) {
+        res.writeHead(401, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'unauthorized' }))
+        return
+      }
+      state.token = ''
+      res.writeHead(204).end()
       return
     }
     res.writeHead(404).end()
@@ -143,7 +158,7 @@ test.describe('the extension popup (goal 0379)', () => {
   // eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
   test('unpaired: "Pair with Mill" leads, "Enter a code instead" stays reachable', async ({}, testInfo) => {
     const bridgePort = BRIDGE_PORT_BASE + 20 + testInfo.parallelIndex
-    const state: BridgeState = { pairRequestStatus: 'pending', token: '', label: '' }
+    const state: BridgeState = { pairRequestStatus: 'pending', token: '', label: '', disconnectCalls: 0 }
     const bridgeServer = await serveBridge(bridgePort, state)
     const browser = await chromium.launch()
     try {
@@ -160,7 +175,7 @@ test.describe('the extension popup (goal 0379)', () => {
   // eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
   test('Pair with Mill: waiting shows the code, Accept in Mill connects', async ({}, testInfo) => {
     const bridgePort = BRIDGE_PORT_BASE + 40 + testInfo.parallelIndex
-    const state: BridgeState = { pairRequestStatus: 'pending', token: 'minted-token', label: 'Chrome' }
+    const state: BridgeState = { pairRequestStatus: 'pending', token: 'minted-token', label: 'Chrome', disconnectCalls: 0 }
     const bridgeServer = await serveBridge(bridgePort, state)
     const browser = await chromium.launch()
     try {
@@ -183,7 +198,7 @@ test.describe('the extension popup (goal 0379)', () => {
   // eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
   test('Deny in Mill: the popup falls back to "Pair with Mill", no retry loop', async ({}, testInfo) => {
     const bridgePort = BRIDGE_PORT_BASE + 60 + testInfo.parallelIndex
-    const state: BridgeState = { pairRequestStatus: 'pending', token: '', label: '' }
+    const state: BridgeState = { pairRequestStatus: 'pending', token: '', label: '', disconnectCalls: 0 }
     const bridgeServer = await serveBridge(bridgePort, state)
     const browser = await chromium.launch()
     try {
@@ -203,7 +218,7 @@ test.describe('the extension popup (goal 0379)', () => {
   // eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
   test('connected: discover(paired:true) skips straight past the form', async ({}, testInfo) => {
     const bridgePort = BRIDGE_PORT_BASE + 80 + testInfo.parallelIndex
-    const state: BridgeState = { pairRequestStatus: 'pending', token: 'already-good', label: 'Firefox' }
+    const state: BridgeState = { pairRequestStatus: 'pending', token: 'already-good', label: 'Firefox', disconnectCalls: 0 }
     const bridgeServer = await serveBridge(bridgePort, state)
     const browser = await chromium.launch()
     try {
@@ -222,13 +237,55 @@ test.describe('the extension popup (goal 0379)', () => {
       await page.getByText('Show details').click()
       await expect(page.locator('#connected-address')).toHaveText(`http://127.0.0.1:${bridgePort}`)
 
-      // Disconnect clears the local credential and falls back to the
-      // unpaired form -- no bridge door revokes it from this side.
+      // Disconnect ends the pairing in Mill too (goal 0379 S2): the
+      // door is called with this browser's own bearer token before the
+      // local credential clears, and the popup falls back to the
+      // unpaired form.
       await page.locator('#disconnect').click()
       await expect(page.locator('#view-unpaired')).toBeVisible()
+      expect(state.disconnectCalls).toBe(1)
+      expect(state.token).toBe('')
     } finally {
       await browser.close()
       await new Promise((resolve) => bridgeServer.close(resolve))
+    }
+  })
+
+  // eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
+  test('Disconnect with Mill down: the credential still clears locally', async ({}, testInfo) => {
+    const bridgePort = BRIDGE_PORT_BASE + 100 + testInfo.parallelIndex
+    const state: BridgeState = { pairRequestStatus: 'pending', token: 'already-good', label: 'Firefox', disconnectCalls: 0 }
+    const bridgeServer = await serveBridge(bridgePort, state)
+    const browser = await chromium.launch()
+    try {
+      const page = await withPopup(browser, `http://127.0.0.1:${staticPort}/popup.html`, {
+        address: `http://127.0.0.1:${bridgePort}`,
+        token: 'already-good',
+        label: 'Firefox',
+      })
+      await expect(page.locator('#view-connected')).toBeVisible()
+
+      // Mill goes away entirely before Disconnect is pressed -- the
+      // popup's own POST to the door will fail to connect.
+      await new Promise((resolve) => bridgeServer.close(resolve))
+
+      await page.locator('#disconnect').click()
+      // Wait for the click handler's own async work (the failed door
+      // call, the local clear, the re-run discover) to settle before
+      // reading storage back -- click() resolves on the dispatch, not
+      // on the handler's promise.
+      await expect(page.locator('#view-connected')).toBeHidden()
+      // Local storage clears regardless of the door's own
+      // reachability -- disconnecting must never depend on Mill being
+      // reachable right now.
+      const stored = (await page.evaluate(async () => {
+        const chromeShim = (window as unknown as { chrome: { storage: { local: { get: (key: string) => Promise<Record<string, unknown>> } } } }).chrome
+        const data = await chromeShim.storage.local.get('millBridge')
+        return data.millBridge
+      })) as { token?: string } | undefined
+      expect(stored?.token).toBeUndefined()
+    } finally {
+      await browser.close()
     }
   })
 })
