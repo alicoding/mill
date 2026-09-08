@@ -18,6 +18,7 @@ import { buildFetchJSON } from './pluginFetchJSON'
 import { buildElement } from './pluginElementBuilder'
 import { formatPluginDate } from './pluginDateFormat'
 import { pushNotice } from '../shared/noticeStore'
+import { getExtensionExports } from './extensionExports'
 import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/extensionSettingsStore'
 import type { CanvasObjectDecl, ContentQuery, MillPluginAPI, PluginFetchInit, PluginOutputOptions, PluginElAttrs, PluginElChild } from './sdk'
 import type { MenuPath } from '../shared/menuSkeleton'
@@ -316,6 +317,12 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		// own formatUpdated -- the same relative-time phrasing Mill's own
 		// interface renders everywhere, not a plugin's own Date math.
 		formatDate: formatPluginDate,
+		// The extension-interop door (goal 0364): a declared dependency's
+		// export surface only, gated by ITS OWN manifest exports
+		// allowlist -- never a live handle into another extension.
+		extensions: Object.freeze({
+			get: (id: string) => getExtensionExports(manifest, id),
+		}),
 	})
 	// The api object is kept, not just handed to activate(): a framed
 	// view or capture reaches Mill through a message bridge, and the

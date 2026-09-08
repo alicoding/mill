@@ -24,6 +24,14 @@ convert: PluginConvertAPI;
 
 ***
 
+### extensions
+
+```ts
+extensions: PluginExtensionsAPI;
+```
+
+***
+
 ### fetch
 
 ```ts

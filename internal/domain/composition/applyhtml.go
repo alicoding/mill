@@ -24,13 +24,14 @@ const sampleHTML = `<h2>Quarterly update</h2>
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "apply-clipboard-write-html", Kind: KindApply,
-		Effect:      guardrail.ClassLocal,
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadNone},
-		Produces:    PayloadProduce{Kind: PayloadHTML},
-		Output:      "the HTML it wrote",
-		Label:       "Write HTML to clipboard",
-		Description: "Writes configured HTML to the clipboard.",
+		PaletteGroup: PaletteGroupApply,
+		Effect:       guardrail.ClassLocal,
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadNone},
+		Produces:     PayloadProduce{Kind: PayloadHTML},
+		Output:       "the HTML it wrote",
+		Label:        "Write HTML to clipboard",
+		Description:  "Writes configured HTML to the clipboard.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "html", Label: "HTML to write",
