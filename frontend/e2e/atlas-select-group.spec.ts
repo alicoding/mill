@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { blurSticky, fillSticky } from './fixtures/codeEditor'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -62,6 +63,7 @@ test.fixme('atlas multi-select: the selection-overlay context menu reaches Group
   try {
     server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await page.getByRole('link', { name: 'Atlas' }).click()
     const board = page.getByTestId('atlas-board')
@@ -194,6 +196,7 @@ test('atlas shift-click select: toggle membership, group via member right-click,
   try {
     server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await page.getByRole('link', { name: 'Atlas' }).click()
     const board = page.getByTestId('atlas-board')

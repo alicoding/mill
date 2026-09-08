@@ -99,6 +99,10 @@
     "seedRevision": 1,
     "fingerprint": "1e55d1591c9b7a0f98a7cd22d2de9940b4d3fa2a8094a8fd9496870e500b549a"
   },
+  "atlasobject:atlas-object-example-table": {
+    "seedRevision": 1,
+    "fingerprint": "bb724969a63b09e791e2f0d8cedce088182a685a6b91a2775aa977a81480e561"
+  },
   "atlasobject:atlas-object-example-xlsx": {
     "seedRevision": 1,
     "fingerprint": "9aba245f162f0e9a502dcb4ef25d245cf8d1ac55c2ef095324b43e6ca134990f"
@@ -199,6 +203,10 @@
     "seedRevision": 4,
     "fingerprint": "145a6b39ce02f5f72ed7b06aefa6ef1dac02930119fa6df0074dc43392da5fc4"
   },
+  "list:example-unused-list": {
+    "seedRevision": 1,
+    "fingerprint": "7189cddf25ec5bcc9578f233a9a5105a49b80f1928252aa4645425ec2699c1fe"
+  },
   "mcpserver:example-reference-mcpserver": {
     "seedRevision": 1,
     "fingerprint": "c7dff3a5c30bf817c7ab4d7dc109c08508b5cd4c646e9dc54f3abb2e7bf147af"
@@ -256,8 +264,8 @@
     "fingerprint": "e3fe2388aab10bfe18af6c1c6a943abbd7db65274c129ceb0e0d2533ad250b03"
   },
   "workflow:clipboard-html-to-markdown-workflow": {
-    "seedRevision": 4,
-    "fingerprint": "e4b3cb3f0842accb0f70454bc453a327c35a4f57c9b8fc4cc0cb75017a71d92a"
+    "seedRevision": 5,
+    "fingerprint": "1229da9a7edf5cdb4e6761e8a08bd0bdd2a8e04fd6740897f9e250987a0127c1"
   },
   "workflow:clipbridge-reply-cards-workflow": {
     "seedRevision": 3,
@@ -268,8 +276,8 @@
     "fingerprint": "cbd789a974956ceea36271f5240de1d118b6966e4a7c9637fb00467f07f03d00"
   },
   "workflow:coding-loop-run-copied-command-workflow": {
-    "seedRevision": 6,
-    "fingerprint": "025e0d7686b746faf0eb056de12909739c5f3d6f137c327e93f1738afd7da48a"
+    "seedRevision": 7,
+    "fingerprint": "c1480ed42e4b22e4b06a73b12bbcc5f4d7853afccae7adc0d38166541b1de1a1"
   },
   "workflow:example-ai-classify-branch-workflow": {
     "seedRevision": 4,
@@ -384,8 +392,8 @@
     "fingerprint": "cae6a27182d454f59ed25e8037f33079d0da97e7c52ce85a363da1169eef4541"
   },
   "workflow:example-run-in-captured-folder-workflow": {
-    "seedRevision": 2,
-    "fingerprint": "58fc31ccfecbb7cb866af5b553dde42084b4547784f81b51bf73a5ad4ac9e74e"
+    "seedRevision": 3,
+    "fingerprint": "aa48cf5466ed66d1fd7ceab06ad6d050a24cfb474be07539842526623d2eae17"
   },
   "workflow:example-run-receipt-workflow": {
     "seedRevision": 2,
@@ -424,12 +432,12 @@
     "fingerprint": "add39815b73d840c233f266f01043b9cbec60ed37d04cba12a8306e85ce23214"
   },
   "workflow:update-available-notify-workflow": {
-    "seedRevision": 3,
-    "fingerprint": "a8397caa6c380937ca695c5d0fa935eac59f44c86a1ed1b83e5864700358011d"
+    "seedRevision": 4,
+    "fingerprint": "0e08b036ae10baf6f86beb01be0deb5fe2b06b0af7aaf330ba3f244c73effa8c"
   },
   "workflow:webhook-notify-workflow": {
-    "seedRevision": 7,
-    "fingerprint": "d0e541803356ed8e4bfca0a9cdbe0997be415cebd088791420d4480893b3cb39"
+    "seedRevision": 8,
+    "fingerprint": "0d651179087ad479229af156b791f6602f3f736ee4436f72c2421a87d7929d3e"
   },
   "workflow:webhook-respond-workflow": {
     "seedRevision": 2,

@@ -45,9 +45,12 @@ type Manifest struct {
 	// checks it decodes to exactly that size). A sibling file with
 	// "@dark" inserted before the extension, when present, is the
 	// dark-appearance variant.
-	Icon         string              `json:"icon"`
-	Capabilities []string            `json:"capabilities"`
-	Contributes  ManifestContributes `json:"contributes"`
+	Icon         string   `json:"icon"`
+	Capabilities []string `json:"capabilities"`
+	// Dependencies/Exports: see DependencyContribution's doc (pluginservice_dependencies.go).
+	Dependencies []DependencyContribution `json:"dependencies"`
+	Exports      []string                 `json:"exports"`
+	Contributes  ManifestContributes      `json:"contributes"`
 }
 
 // ManifestContributes is the manifest's declarative contribution
@@ -158,6 +161,13 @@ type PluginInfo struct {
 	// (policy_match.go), "" when no policy refuses this folder. A
 	// refused plugin stays listed and never runs.
 	PolicyBlocked string
+	// Grants names what this plugin was given outside the sandboxed
+	// activation frame every other non-built-in plugin runs inside
+	// (docs/goals/0375 S1b): "canvas-host" for a non-built-in plugin
+	// that declares a canvas object, since the framed canvas API does
+	// not exist yet and its own tools still need board input the way a
+	// built-in's do. Always empty for a built-in.
+	Grants []string
 }
 
 // knownCapabilities is the enumerated capability vocabulary
@@ -338,6 +348,7 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 		return info
 	}
 	info.Manifest = m
+	info.Grants = pluginGrants(false, m)
 	_, mainErr := os.Stat(filepath.Join(dir, "main.js")) // #nosec G703 -- folder passed pluginIDPattern (no separators, no dots)
 	info.Error = manifestProblem(m, folder, mainErr == nil, p.appVersion)
 	if info.Error == "" {
@@ -395,6 +406,12 @@ func manifestProblem(m Manifest, folder string, mainJSExists bool, appVersion st
 		}
 	}
 	if problem := validateContributes(m.ID, m.Capabilities, m.Contributes); problem != "" {
+		return problem
+	}
+	if problem := validateDependencyShape(m.ID, m.Dependencies); problem != "" {
+		return problem
+	}
+	if problem := validateExportsShape(m.Exports); problem != "" {
 		return problem
 	}
 	return checkMinMillVersion(m.MinMillVersion, appVersion)

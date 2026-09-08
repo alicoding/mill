@@ -86,18 +86,6 @@ func TestMaturity_Flags(t *testing.T) {
 	}
 }
 
-// TestDaysBehind_NoDocsPageNeverReadsTheWallClock pins goal 0358 S9's
-// fix: a family with no docs page (docs zero) must report 0, not days
-// since code last changed against time.Now -- the latter made the
-// same commit's regenerated ledger differ depending on what day `go
-// generate` ran.
-func TestDaysBehind_NoDocsPageNeverReadsTheWallClock(t *testing.T) {
-	oldCode := time.Now().Add(-365 * 24 * time.Hour)
-	if got := daysBehind(oldCode, time.Time{}); got != 0 {
-		t.Errorf("daysBehind(code 1yr old, no docs page) = %d, want 0 (no wall-clock fallback)", got)
-	}
-}
-
 // TestReport_GeneratedAtUsesTheInjectedClock proves Ledger.GeneratedAt
 // comes from the clock Report is given, never time.Now() read
 // internally -- the seam a caller needs to keep the run-time
@@ -115,10 +103,9 @@ func TestReport_GeneratedAtUsesTheInjectedClock(t *testing.T) {
 
 // TestReport_StableFieldsIndependentOfClock proves every field the
 // committed markdown/JSON actually carries (family, level, evidence,
-// currency, flags) is identical across two Report calls that differ
-// only in which clock they were given -- the guarantee `go generate`
-// on an unchanged commit needs to be idempotent regardless of today's
-// date.
+// flags) is identical across two Report calls that differ only in
+// which clock they were given -- the guarantee `go generate` on an
+// unchanged commit needs to be idempotent regardless of today's date.
 func TestReport_StableFieldsIndependentOfClock(t *testing.T) {
 	repoRoot := "../../.."
 	a := Report(repoRoot, func() time.Time { return time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC) })
@@ -185,6 +172,20 @@ func TestHasE2E_RegistrationCallAndContributesLiteral(t *testing.T) {
 	writeE2ESpec(t, repoRoot, "another-spec.spec.ts", "expect(refused).toContainText('contributes.network')\n")
 	if !hasE2E(repoRoot, "network") {
 		t.Error(`hasE2E(repoRoot, "network") = false, want true: literal contributes.network appears in a spec`)
+	}
+}
+
+// TestHasE2E_DeclaredSurfaceNeedsNoRegisterCall is the regression this
+// goal (docs/goals/0375 S1b) found: an entry-declared view, capture or
+// canvas object opens straight off the manifest and calls registerX
+// only when it needs the message relay, so a spec exercising ONE
+// through nothing but its manifest's own declarative shape must still
+// count as e2e evidence.
+func TestHasE2E_DeclaredSurfaceNeedsNoRegisterCall(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeE2ESpec(t, repoRoot, "runtime-plugin-capture.spec.ts", "manifest: { contributes: { captures: [{ id: 'thought', entry: 'thought.html' }] } },\nmain: 'export function activate() {}\\n',\n")
+	if !hasE2E(repoRoot, "captures") {
+		t.Error(`hasE2E(repoRoot, "captures") = false, want true: the manifest's own "captures: [" shape appears with no registerCapture call anywhere`)
 	}
 }
 

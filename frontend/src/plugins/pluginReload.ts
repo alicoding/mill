@@ -8,6 +8,7 @@ import { resetLazyArrays } from '../shared/lazySnapshot'
 import { unregisterThirdPartyNouns } from '../atlas/atlasNounRegistry'
 import { buildPluginAPI, collectFrameSurfaces } from './hostApi'
 import { collectReloadCommand, loadPluginStorage, pluginLoadStates, readPluginPolicy, resolveActivate } from './loader'
+import { captureSameDomExports, clearExports } from './extensionExports'
 import { unregisterPluginCaptures } from './pluginCaptures'
 import { unregisterPluginCommands } from './pluginCommands'
 import { notifyPluginReloaded } from './pluginReloadSignal'
@@ -15,6 +16,7 @@ import { pluginRunState } from './pluginTrust'
 import { unregisterPluginViews } from './pluginViews'
 import { pushNotice } from '../shared/noticeStore'
 import type { PluginModule } from './sdk'
+import { activateFramed, isFramedActivation, teardownActivationFrame } from './activation'
 
 // Per-plugin reload (goal 0319): drop exactly what one plugin
 // contributed, import its main.js again, and activate the fresh
@@ -47,6 +49,14 @@ function unregisterContributions(pluginId: string): void {
 	unregisterPluginViews(pluginId)
 	unregisterPluginCaptures(pluginId)
 	unregisterThirdPartyNouns(pluginId)
+	// Ends whatever activation frame the PREVIOUS activation created,
+	// framed or not (a no-op when it never had one) -- "unload/reload
+	// tears the frame down" (docs/goals/0375 S1b).
+	teardownActivationFrame(pluginId)
+	// Drops any captured export surface too (goal 0364): a dependant
+	// calling mid-reload sees "not running" rather than the PRIOR
+	// activation's stale exports.
+	clearExports(pluginId)
 }
 
 // currentInfo re-scans rather than reusing the boot-time record: a
@@ -90,15 +100,24 @@ export async function reloadPlugin(pluginId: string): Promise<void> {
 	}
 	sweep()
 	try {
-		// The query is what makes this a RELOAD: a module already in the
-		// browser's registry is never fetched again, so the version alone
-		// (unchanged when an author edits main.js in place) would re-run
-		// the code that is already loaded.
-		const url = `/plugins/${pluginId}/main.js?v=${encodeURIComponent(info.Manifest.version)}&reload=${Date.now()}`
-		const mod = (await import(/* @vite-ignore */ url)) as PluginModule
-		const activate = resolveActivate(mod)
-		if (!activate) throw new Error('main.js exports no activate() function')
-		await Promise.resolve(activate(buildPluginAPI(info.Manifest, millVersion, storage[pluginId] ?? {})))
+		if (isFramedActivation(!!info.Builtin, info.Manifest)) {
+			// activateFramed tears down any PRIOR activation frame itself
+			// (the fresh manifest may have moved between framed and
+			// same-DOM), so this reload's own frame is never layered on
+			// top of a stale one.
+			await activateFramed(info, millVersion, storage[pluginId] ?? {})
+		} else {
+			// The query is what makes this a RELOAD: a module already in
+			// the browser's registry is never fetched again, so the
+			// version alone (unchanged when an author edits main.js in
+			// place) would re-run the code that is already loaded.
+			const url = `/plugins/${pluginId}/main.js?v=${encodeURIComponent(info.Manifest.version)}&reload=${Date.now()}`
+			const mod = (await import(/* @vite-ignore */ url)) as PluginModule
+			const activate = resolveActivate(mod)
+			if (!activate) throw new Error('main.js exports no activate() function')
+			const returned = await Promise.resolve(activate(buildPluginAPI(info.Manifest, millVersion, storage[pluginId] ?? {})))
+			captureSameDomExports(pluginId, info.Manifest.exports ?? [], returned)
+		}
 		pluginLoadStates().set(pluginId, { status: 'loaded', info })
 	} catch (err) {
 		// A half-activated plugin is worse than an unloaded one: whatever

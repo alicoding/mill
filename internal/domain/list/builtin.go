@@ -31,6 +31,12 @@ const ExampleJiraIssuesID = "example-jira-issues-list"
 // request matched by its path.
 const ExampleBrunoResultsID = "example-bruno-results-list"
 
+// ExampleUnusedListID is the seeded List proving Configure's Unused
+// filter live (goal 0392 S1): no board object and no workflow node
+// references it, on a fresh install or an existing one that top-up
+// seeding reaches.
+const ExampleUnusedListID = "example-unused-list"
+
 // BuiltIn returns the seeded example List -- pure config, no
 // persistence (mirrors httprequest.BuiltIn/decision.BuiltIn's shape:
 // this package stays free of the settings-store concern, per
@@ -177,6 +183,16 @@ func BuiltIn() []List {
 				{Key: "httpStatus", Label: "HTTP status", Type: typedfield.TypeText},
 				{Key: "durationMs", Label: "Duration (ms)", Type: typedfield.TypeText},
 				{Key: "error", Label: "Error", Type: typedfield.TypeText},
+			},
+			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
+		},
+		{
+			ID:          ExampleUnusedListID,
+			Label:       "Example: an unused list",
+			Description: "No board or workflow references this List. Find it again anytime with the Unused filter.",
+			Columns: []typedfield.Field{
+				{Key: "note", Label: "Note", Type: typedfield.TypeText},
 			},
 			BuiltIn: true,
 			Seed:    seedorigin.Stamp(1),

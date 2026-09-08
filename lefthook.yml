@@ -38,6 +38,13 @@ pre-commit:
       # hand-kept: a literal goes stale on the next member and fails
       # the PR that added it. Grep-only, same shape as comment-hygiene.
       run: ./scripts/check-e2e-seed-literals.sh
+    - name: e2e-edge-hover
+      glob: "frontend/e2e/**/*.ts"
+      # A .react-flow__edge locator hovered/clicked directly (not
+      # through fixtures/atlasEdge.ts) lands on AtlasLinkEdge's own
+      # chip under load, retrying to the test timeout (goal 0358 S8).
+      # Grep-only, same shape as e2e-seed-literals.
+      run: ./scripts/check-e2e-edge-hover.sh
     - name: ui-copy
       glob: "frontend/src/locales/**/*.json"
       run: ./scripts/check-ui-copy.sh

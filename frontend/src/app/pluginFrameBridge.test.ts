@@ -33,6 +33,7 @@ function fakeApi(overrides: Partial<MillPluginAPI> = {}): MillPluginAPI {
     convert: { htmlToMarkdown: vi.fn() },
     files: { list: vi.fn() },
     ui: { renderOutput: vi.fn(() => () => {}) },
+    extensions: { get: vi.fn(async () => undefined) },
     ...overrides,
   } as unknown as MillPluginAPI
 }
@@ -84,8 +85,19 @@ describe('callFrameMethod', () => {
   it('keeps every whitelisted name routable', async () => {
     const api = fakeApi()
     for (const method of FRAME_METHODS) {
+      // 'extensions.call' is gate-shaped by design (goal 0364): it
+      // REJECTS for a target that never declared exports, which the
+      // dedicated test below covers -- the blanket sweep is for doors
+      // that answer SOME value for any well-shaped args.
+      if (method === 'extensions.call') continue
       await expect(callFrameMethod(api, method, ['a', {}, 'c'], { done: () => {}, cancel: () => {} }, { updatePayload: async () => {}, setEditing: () => {} })).resolves.not.toThrow()
     }
+  })
+
+  it('extensions.get resolves undefined for a target the api layer refuses; extensions.call rejects naming the method', async () => {
+    const api = fakeApi()
+    await expect(callFrameMethod(api, 'extensions.get', ['mill-other'])).resolves.toBeUndefined()
+    await expect(callFrameMethod(api, 'extensions.call', ['mill-other', 'greet', []])).rejects.toThrow('Method greet is not exported by mill-other.')
   })
 })
 

@@ -27,12 +27,13 @@ var transformOperations = []string{
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "process-transform-text", Kind: KindProcess,
-		Label:       "Transform text",
-		Complexity:  ComplexityBasic,
-		Consumes:    []PayloadKind{PayloadText, PayloadHTML},
-		Produces:    PayloadProduce{Kind: PayloadText},
-		Output:      "the transformed text",
-		Description: "Hashes or encodes the payload: SHA-256, base64, URL encoding and more. Hashes are one-way; decoding applies to base64, URL, and hex.",
+		PaletteGroup: PaletteGroupTransform,
+		Label:        "Transform text",
+		Complexity:   ComplexityBasic,
+		Consumes:     []PayloadKind{PayloadText, PayloadHTML},
+		Produces:     PayloadProduce{Kind: PayloadText},
+		Output:       "the transformed text",
+		Description:  "Hashes or encodes the payload: SHA-256, base64, URL encoding and more. Hashes are one-way; decoding applies to base64, URL, and hex.",
 		ConfigFields: []ConfigField{
 			{
 				Key: "operation", Label: "Operation",

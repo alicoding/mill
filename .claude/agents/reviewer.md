@@ -78,6 +78,12 @@ this good":
 15. **Platform vs extension** — plugin code doing platform work (a shape
     a second extension would re-implement; content plane/guardrails/
     secrets/identity/chrome) — Important.
+16. **Reaching into another extension outside `extensions.get`** — a
+    live handle, ambient registry, or global lookup onto another
+    installed extension's internals (Obsidian's `app.plugins[id]`
+    anti-pattern) instead of a declared `dependencies` entry plus
+    `api.extensions.get(id)`'s callee-gated `exports` allowlist —
+    Important.
 
 ## Verification rule
 

@@ -69,7 +69,8 @@ func listPinnedVersion(node Node) (int, error) {
 func init() {
 	RegisterNodeType(NodeType{
 		ID: "list-lookup", Kind: KindProcess,
-		Label: "Look up list row",
+		PaletteGroup: PaletteGroupData,
+		Label:        "Look up list row",
 		// ClassRead: resolves a Configure-authored List's persisted
 		// entries (lookupListFn) -- the same "reads state outside this
 		// workflow's own payload/Attributes" classification capture-file

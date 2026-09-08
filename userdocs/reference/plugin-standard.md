@@ -83,8 +83,9 @@ your plugin feels like part of Mill.
     acquireMillApi()` is its door back to Mill. Styles may stay
     inline. A canvas object's page receives the object as its context
     and writes back through `object.updatePayload`; its face is
-    always interactive. A surface that draws into Mill's own document
-    instead still works; `renderFace` is the deprecated form. (checked)
+    always interactive. A canvas object may still draw into Mill's own
+    document instead (`renderFace`, the deprecated form) — see rule 32
+    for why a view or capture may not. (checked)
 
 22. A canvas object whose face reports an open editor declares
     `content: "interactive"` on the same object. `content` says what
@@ -156,6 +157,82 @@ your plugin feels like part of Mill.
     (`"placement": "board-switcher"`) that writes card fields through
     `api.content.setCardFields` declares the `edit-card-fields`
     capability. (checked)
+
+## Sandboxed activation
+
+32. `main.js` itself activates inside a sandboxed frame, the same
+    isolation an entry page gets — unless your manifest declares a
+    canvas object, which still activates alongside Mill's own document
+    until Mill ships a framed canvas API. Because of that, a view or
+    capture must declare an entry page (rule 21): Mill can no longer
+    draw one in its own document, so a view or capture with no entry
+    page refuses the install. `registerCommand`, `registerView` and
+    `registerCapture` work the same either way — write one `main.js`
+    for both. (checked: refuses the install)
+
+## Extension interop
+
+33. An extension that needs another installed extension's capability
+    declares it in `dependencies: [{ "id", "version" }]` (a semver
+    range) rather than reaching into it directly — never
+    `app.plugins[id]`-style reach. The loader activates a dependency
+    before its dependant; a dependant whose dependency never activates
+    shows *Waits for `<id>`* on its Extensions row instead of running.
+    Installing an extension whose `dependencies` name an id that is
+    not installed, a version outside the declared range, or a mutual
+    dependency cycle refuses the install, naming what is missing.
+    (checked: refuses the install)
+
+## Depending on another extension
+
+Declare the id and the version range you need:
+
+```json
+{
+  "id": "my-consumer",
+  "dependencies": [{ "id": "my-provider", "version": ">=1.0.0" }]
+}
+```
+
+Reach it through `api.extensions.get`, never through a live handle you
+found some other way:
+
+```js
+export async function activate(api) {
+  const provider = await api.extensions.get('my-provider')
+  if (provider) {
+    const result = await provider.someMethod('argument')
+  }
+}
+```
+
+`api.extensions.get(id)` resolves to `undefined` for any id not in
+your own manifest's `dependencies`, and again for a declared
+dependency that has not activated yet.
+
+The other half of the door is `exports`: name the methods on your own
+`activate()`'s returned object a dependant may call.
+
+```json
+{
+  "id": "my-provider",
+  "exports": ["someMethod"]
+}
+```
+
+```js
+export function activate(api) {
+  return {
+    someMethod(argument) { return `did something with ${argument}` },
+  }
+}
+```
+
+Only the methods you list in `exports` are callable, and only by an
+extension that declares you as a dependency; every other property on
+the returned object is plain data, readable by any declared dependant
+without an allowlist entry. Calling a method you did not list throws
+*Method `<name>` is not exported by `<id>`.*
 
 ## Checking your own plugin
 

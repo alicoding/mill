@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { EffectClass } from '../../bindings/github.com/alicoding/mill/internal/domain/guardrail/models'
-import { Complexity, NodeKind, PayloadKind, type NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
+import { Complexity, NodeKind, PaletteGroup, PayloadKind, type NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import type { CanvasNode } from './canvasStore'
 import { connectionRefusalReason, isValidCanvasConnection } from './canvasConnectionRules'
 
@@ -15,7 +15,7 @@ function nodeType(overrides: Partial<NodeType>): NodeType {
   return {
     ID: 'x', Kind: NodeKind.KindProcess, Label: 'X', Description: '',
     ConfigFields: [], Output: '', Consumes: [], Produces: {},
-    Effect: EffectClass.ClassNone, Declared: false, PaletteGroup: '',
+    Effect: EffectClass.ClassNone, Declared: false, PaletteGroup: PaletteGroup.PaletteGroupActions,
     Complexity: Complexity.ComplexityBasic,
     ...overrides,
   }

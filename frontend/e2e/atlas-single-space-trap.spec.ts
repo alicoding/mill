@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -53,6 +54,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
   try {
     server = await spawnMillServer({ port, mcpPort, settingsPath, executionDbPath, backupDir })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await page.getByRole('link', { name: 'Atlas' }).click()
     const board = page.getByTestId('atlas-board')
@@ -148,10 +150,11 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
 
     // "Board gallery" nests board objects, never cards -- a region
     // frame under goal 0266's law. Deleting it promotes its seeded
-    // objects (goal 0233's EffectiveParentID seam) out to THIS root
-    // level; they must land visibly placed, clear of "Client records",
-    // never stacked on top of it the way their stale pre-promotion X/Y
-    // used to.
+    // objects (goal 0233's EffectiveParentID seam, joined by the json/
+    // yaml twins of goal 0269 and the table of goal 0392 S1) out to
+    // THIS root level; they must land visibly placed, clear of "Client
+    // records", never stacked on top of it the way their stale
+    // pre-promotion X/Y used to.
     const clientRecords = groupCard(page, 'Client records')
     await expect(clientRecords).toBeVisible()
 

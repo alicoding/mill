@@ -15,14 +15,21 @@ Chrome, Edge and Opera all load this folder as-is.
 
 ## Pair it with Mill
 
-1. In Mill, open **Settings › Connections › Browsers** and press
-   **Pair a browser**. A code appears, good for five minutes.
-2. Open the extension's popup. Check that **Mill address** matches the
-   address Mill shows in that same section, type the code, and press
-   **Pair**.
+Pairing works the way Bluetooth does: the same code shows on both
+sides, and you confirm the match once.
+
+1. Open the extension's popup and press **Pair with Mill**. A 6-digit
+   code appears.
+2. In Mill, open **Settings › Connections › Browsers**. The request
+   shows there with the same code — check they match, then press
+   **Accept**.
 3. The popup says **Connected to Mill**. Back in Mill, press **Test the
    connection** — a tab opens, a button is pressed, and Mill reports how
    many steps ran.
+
+If the popup can't reach Mill this way, press **Enter a code instead**
+and pair with a code Mill's own **Pair a browser** button mints, typed
+by hand — the same fallback a remote Mill needs.
 
 Pairing lasts until you revoke it. Revoking the browser in Mill ends the
 connection immediately, mid-run included.

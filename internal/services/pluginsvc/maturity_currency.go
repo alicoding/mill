@@ -32,23 +32,45 @@ var docPageByFamily = map[string]string{
 // gatherCurrency reads git history under repoRoot -- a shallow clone
 // (CI's test-go job checks out at fetch-depth 1) answers `git log --
 // <path>` with the checkout's own single commit for any path that
-// commit's tree carries, not the path's true last-touching commit;
-// GenerateMaturity's committed output is therefore generated from a
-// full local clone, and the freshness test that guards it excludes
-// these fields from its byte comparison (docsgen_maturity_test.go) --
-// they are read here for the rendered page and the control-room
-// dashboard, both meant to run against a real working checkout.
+// commit's tree carries, not the path's true last-touching commit.
+// Its answer never reaches a committed artifact (goal 0397): Report
+// never calls it, so the ledger `go generate` writes to userdocs/ is
+// always a pure function of tracked content. Only GatherAllCurrency
+// below calls it, for a live reader with a real working checkout.
 func gatherCurrency(repoRoot, family string) Currency {
-	code := gitLastChanged(repoRoot, sourcePaths(repoRoot, family))
-	docs := time.Time{}
+	codeSHA, code := gitLastTouch(repoRoot, sourcePaths(repoRoot, family))
+	docsSHA, docs := "", time.Time{}
 	if page, ok := docPageByFamily[family]; ok {
-		docs = gitLastChanged(repoRoot, []string{filepath.Join("userdocs", "reference", page)})
+		docsSHA, docs = gitLastTouch(repoRoot, []string{filepath.Join("userdocs", "reference", page)})
 	}
 	return Currency{
+		CodeCommit:    codeSHA,
 		CodeChangedAt: code,
+		DocsCommit:    docsSHA,
 		DocsChangedAt: docs,
-		DaysBehind:    daysBehind(code, docs),
 	}
+}
+
+// CurrencyRow pairs a family with its git-derived Currency -- the
+// dashboard's own live-reader shape, one row per Families() entry.
+type CurrencyRow struct {
+	Family   string
+	Currency Currency
+}
+
+// GatherAllCurrency reads every family's Currency from repoRoot's git
+// history, in Families() order. Never call this from a code path that
+// writes a committed artifact -- its answer differs by branch and by
+// checkout depth for the same tracked content; it exists for a live
+// reader with a real working checkout, such as the control room
+// dashboard's `go run ./internal/docsgen/gen -currency` entry point.
+func GatherAllCurrency(repoRoot string) []CurrencyRow {
+	families := Families()
+	rows := make([]CurrencyRow, 0, len(families))
+	for _, family := range families {
+		rows = append(rows, CurrencyRow{Family: family, Currency: gatherCurrency(repoRoot, family)})
+	}
+	return rows
 }
 
 // sourcePaths lists the files (relative to repoRoot) that implement a
@@ -127,27 +149,27 @@ func relPath(repoRoot, p string) string {
 	return rel
 }
 
-// gitLastChanged answers the committer date of the most recent commit
-// touching any of paths, or a zero time when git finds none (no
-// history reachable, or none of the paths exist at HEAD).
-func gitLastChanged(repoRoot string, paths []string) time.Time {
+// gitLastTouch answers the sha and committer date of the most recent
+// commit touching any of paths, or "" / a zero time when git finds
+// none (no history reachable, or none of the paths exist at HEAD).
+func gitLastTouch(repoRoot string, paths []string) (sha string, date time.Time) {
 	if len(paths) == 0 {
-		return time.Time{}
+		return "", time.Time{}
 	}
-	args := append([]string{"-C", repoRoot, "log", "-1", "--format=%cI", "--"}, paths...)
+	args := append([]string{"-C", repoRoot, "log", "-1", "--format=%H%n%cI", "--"}, paths...)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, "git", args...).Output() // #nosec G204 -- args are fixed flags plus this package's own repo-relative paths, never external input
 	if err != nil {
-		return time.Time{}
+		return "", time.Time{}
 	}
-	s := strings.TrimSpace(string(out))
-	if s == "" {
-		return time.Time{}
+	lines := strings.SplitN(strings.TrimSpace(string(out)), "\n", 2)
+	if len(lines) != 2 {
+		return "", time.Time{}
 	}
-	t, err := time.Parse(time.RFC3339, s)
+	t, err := time.Parse(time.RFC3339, strings.TrimSpace(lines[1]))
 	if err != nil {
-		return time.Time{}
+		return "", time.Time{}
 	}
-	return t
+	return strings.TrimSpace(lines[0]), t
 }

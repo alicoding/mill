@@ -16,7 +16,35 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as device$0 from "../../domain/device/models.js";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as $models from "./models.js";
+
+/**
+ * AcceptPairingRequest is the numeric-comparison trust decision itself
+ * (goal 0379): Settings > Connections > Browsers' Accept button,
+ * meant to be called only after a human has read the SAME code in both
+ * the popup and this card. Mints a browser pairing exactly like
+ * PairBrowser (mintDevice, KindBrowser), so a browser's post-pairing
+ * storage write is unchanged whichever path it arrived through.
+ * Rejects a stale/wrong/already-resolved id server-side -- Accept
+ * after expiry is refused, never silently minting a token for a
+ * request the popup has already given up on.
+ */
+export function AcceptPairingRequest(requestID: string): $CancellablePromise<$models.BrowserPairing> {
+    return $Call.ByID(2479429157, requestID);
+}
+
+/**
+ * DenyPairingRequest is Settings > Connections > Browsers' Deny
+ * button: marks the pending request denied so a browser's next poll
+ * fails closed, without touching the paired-device list at all.
+ */
+export function DenyPairingRequest(requestID: string): $CancellablePromise<void> {
+    return $Call.ByID(4095290179, requestID);
+}
 
 /**
  * GeneratePairingCode mints a new single-use enrollment code on
@@ -44,6 +72,18 @@ export function GeneratePairingCode(): $CancellablePromise<$models.PairingCodeIn
  */
 export function ListBrowsers(): $CancellablePromise<$models.DeviceInfo[] | null> {
     return $Call.ByID(3867557993);
+}
+
+/**
+ * ListDeviceRefs is composition's "devices" OptionsSource resolver
+ * (docs/goals/0372): every paired phone, browser, and webhook token as
+ * one directory, filtered to only the refs that accept at least one of
+ * needs (empty needs returns every ref unfiltered) -- the frontend
+ * picker calls this with a config field's own declared Needs so the
+ * offered list never includes a device the event could never reach.
+ */
+export function ListDeviceRefs(needs: string[] | null): $CancellablePromise<device$0.Ref[] | null> {
+    return $Call.ByID(3248665176, needs);
 }
 
 /**
@@ -77,6 +117,17 @@ export function ListWebhookTokens(): $CancellablePromise<$models.DeviceInfo[] | 
  */
 export function MintWebhookToken(label: string): $CancellablePromise<$models.WebhookToken> {
     return $Call.ByID(393984190, label);
+}
+
+/**
+ * PendingPairingRequest is Settings > Connections > Browsers' own poll
+ * (goal 0379, no server push exists to tell it a request just arrived)
+ * -- the SAME code the popup shows, for the human comparison step
+ * Accept/Deny confirms. A zero-value RequestID means nothing is
+ * pending right now, including a request whose TTL just lapsed.
+ */
+export function PendingPairingRequest(): $CancellablePromise<$models.PendingPairingRequest> {
+    return $Call.ByID(2775362346);
 }
 
 /**

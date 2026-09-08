@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import type { FrameLocator, Locator, Page } from '@playwright/test'
 import { openToolbarAction } from './fixtures/toolbarActions'
 import { mkdtempSync, rmSync } from 'node:fs'
@@ -39,6 +40,7 @@ async function withServer(testInfo: { parallelIndex: number }, run: (page: Page)
       backupDir: path.join(dir, 'backups'),
     })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     await page.getByRole('link', { name: 'Atlas' }).click()
     await expect(page.getByTestId('atlas-board')).toBeVisible()

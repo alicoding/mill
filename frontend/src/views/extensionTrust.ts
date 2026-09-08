@@ -1,4 +1,4 @@
-import type { InstallPreview } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
+import type { InstallPreview, PluginInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 
 // Trust tiers and permissions as PRESENTATION (docs/goals/0349). The
 // backend answers facts -- which tier, which capabilities, which hosts;
@@ -135,6 +135,15 @@ const ADDS_LINE: Record<string, string> = {
   themes: 'extensions.can.addsThemes',
   tools: 'extensions.can.addsTools',
   mcpServers: 'extensions.can.addsMcpServers',
+}
+
+// hasCanvasHostGrant answers the Extensions row's "Draws in Mill's
+// window" label (docs/goals/0375 S1b): true only for a non-built-in
+// plugin the host recorded the "canvas-host" grant for -- a
+// non-built-in plugin with no canvas object activates framed instead,
+// and a built-in carries no grant at all (PluginInfo.Grants).
+export function hasCanvasHostGrant(plugin: Pick<PluginInfo, 'Grants'>): boolean {
+  return (plugin.Grants ?? []).includes('canvas-host')
 }
 
 // withoutRuleNumber strips the "standard rule N: " prefix an install

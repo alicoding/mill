@@ -10,6 +10,7 @@ import { useHotkeyCapture, isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } fr
 import { generateSamplePayload } from '../shared/configSchema'
 import { openExternalUrl } from '../shared/openExternal'
 import { EntityRefField } from '../configure/EntityRefField'
+import { ArrayOptionsField } from './ArrayOptionsField'
 import { IntegrationBindingsEditor } from './IntegrationBindingsEditor'
 import { ChildWorkflowBindingsEditor } from './ChildWorkflowBindingsEditor'
 import { DecisionOutcomeBindingsEditor } from './DecisionOutcomeBindingsEditor'
@@ -254,6 +255,12 @@ export function NodeConfigFields({ node, attrs, nodeType, sameKindNodeTypes, has
                 </WorkflowHoverPreview>
               )}
             </>
+          ) : field.Type === ConfigFieldType.TypeArray && field.Items?.OptionsSource ? (
+            <ArrayOptionsField
+              field={field}
+              value={node.data.config[field.Key] ?? ''}
+              onChange={(v) => onConfigChange(field.Key, v)}
+            />
           ) : field.Type === ConfigFieldType.TypeBoolean ? (
             <Checkbox
               defaultChecked={node.data.config[field.Key] === 'true'}
