@@ -17,6 +17,7 @@ export type {
     ContentsFilter,
     FileDropCreateResult,
     FileDropRoute,
+    FileObjectResult,
     FolderImportSummary,
     FolderScanCategoryFields,
     FolderScanEntry,

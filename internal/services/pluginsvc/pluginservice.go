@@ -73,7 +73,19 @@ type ManifestContributes struct {
 	// contract compiled-in nouns use. Declared in the manifest, not
 	// at activate() time, so the Extensions row can render them
 	// without running plugin code and validation fails the LOAD.
+	//
+	// Deprecated: superseded by Configuration (0349 S2), kept working
+	// as an alias.
 	Settings []SettingContribution `json:"settings"`
+	// Configuration is docs/goals/0349 S2's canonical settings key
+	// (VS Code's contributes.configuration); EffectiveSettings
+	// resolves it against the deprecated Settings alias, and a
+	// manifest declaring both refuses to load.
+	Configuration []SettingContribution `json:"configuration"`
+	// Menus is docs/goals/0349 S2's accepted contributes.menus shape
+	// (VS Code's menu-id -> command list), classified onto Mill's own
+	// seats by pluginservice_menus.go's one mapping table.
+	Menus map[string][]MenuItemContribution `json:"menus"`
 	// Network (docs/goals/0288): the hosts a plugin may fetch from,
 	// declared so the Extensions row can state them before the plugin
 	// runs and so an undeclared host is refused before any rule. Only
@@ -130,46 +142,6 @@ type ViewContribution struct {
 type NetworkContribution struct {
 	Host    string   `json:"host"`
 	Methods []string `json:"methods"`
-}
-
-// PluginInfo is one scanned plugin as the Extensions surface and the
-// loader see it. Error is a load-blocking validation problem stated
-// for the human (the row renders it; the loader skips the plugin) --
-// a plugin is either fully valid or visibly broken, never silently
-// half-loaded. Builtin marks a plugin embedded in the binary
-// (pluginservice_builtin.go): same loader and disable list as any
-// plugin, but nothing on disk to reveal or delete.
-type PluginInfo struct {
-	Manifest Manifest
-	Dir      string
-	Error    string
-	Builtin  bool
-	// ContentHash is the folder's current content hash
-	// (pluginservice_hash.go), "" for a built-in or an invalid plugin
-	// -- what the lock compares against.
-	ContentHash string
-	// SigningPolicy reports whether an administrator pinned signing
-	// keys; Signed whether this folder's signature verified against one
-	// (pluginservice_signing.go). Both false with no policy.
-	SigningPolicy bool
-	Signed        bool
-	// Tier is the install trust tier (trust.go, docs/goals/0349): what
-	// actually checked these bytes when they landed. "" for a built-in.
-	Tier string
-	// Marketplace names the index this folder was installed from, ""
-	// when it arrived some other way.
-	Marketplace string
-	// PolicyBlocked is the organisation policy's refusal sentence
-	// (policy_match.go), "" when no policy refuses this folder. A
-	// refused plugin stays listed and never runs.
-	PolicyBlocked string
-	// Grants names what this plugin was given outside the sandboxed
-	// activation frame every other non-built-in plugin runs inside
-	// (docs/goals/0375 S1b): "canvas-host" for a non-built-in plugin
-	// that declares a canvas object, since the framed canvas API does
-	// not exist yet and its own tools still need board input the way a
-	// built-in's do. Always empty for a built-in.
-	Grants []string
 }
 
 // pluginIDPattern pins ids to a filesystem- and URL-safe slug: the id
@@ -312,6 +284,7 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 	}
 	info.Manifest = m
 	info.Grants = pluginGrants(false, m)
+	info.Warnings = manifestWarnings(m)
 	_, mainErr := os.Stat(filepath.Join(dir, "main.js")) // #nosec G703 -- folder passed pluginIDPattern (no separators, no dots)
 	info.Error = manifestProblem(m, folder, mainErr == nil, p.appVersion)
 	if info.Error == "" {

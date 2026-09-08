@@ -86,6 +86,7 @@ export const FRAME_METHODS = [
   'content.setCardFields',
   'files.list',
   'convert.htmlToMarkdown',
+  'convert.markdownToHtml',
   'requestGuardedAction',
   'evaluateGuardedAction',
   'callIntegration',
@@ -135,6 +136,7 @@ export async function callFrameMethod(api: MillPluginAPI, method: string, args: 
     case 'content.setCardFields': return api.content.setCardFields(String(first), second as Record<string, string>)
     case 'files.list': return api.files.list(String(first))
     case 'convert.htmlToMarkdown': return api.convert.htmlToMarkdown(String(first))
+    case 'convert.markdownToHtml': return api.convert.markdownToHtml(String(first))
     case 'requestGuardedAction': return api.requestGuardedAction(String(first), second as Record<string, string>, String(third))
     case 'evaluateGuardedAction': return api.evaluateGuardedAction(String(first), second as Record<string, string>)
     case 'callIntegration': return api.callIntegration(String(first), String(second), String(third), args[3] as Record<string, string>)

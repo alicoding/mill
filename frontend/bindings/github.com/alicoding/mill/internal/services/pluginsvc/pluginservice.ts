@@ -116,6 +116,17 @@ export function ConvertHTMLToMarkdown(html: string): $CancellablePromise<string>
 }
 
 /**
+ * ConvertMarkdownToHTML is the convert door's reverse direction (goal
+ * 0386 S1): the same sanitized CommonMark+GFM renderer a mirrored
+ * file's markdown preview already uses, offered to a plugin as a pure
+ * transform. No capability gates it, for the same reason
+ * ConvertHTMLToMarkdown needs none.
+ */
+export function ConvertMarkdownToHTML(md: string): $CancellablePromise<string> {
+    return $Call.ByID(34437298, md);
+}
+
+/**
  * EvaluateGuardedActionForPlugin answers what a kind/attributes pair
  * would do right now, without performing or recording anything -- lets
  * the frame drive its own local Composing/Sending state before ever

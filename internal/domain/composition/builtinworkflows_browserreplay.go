@@ -19,6 +19,9 @@ import (
 const (
 	ExampleBrowserReplayWorkflowID = "example-browser-replay-workflow"
 	ExampleBrowserReplayStepID     = "example-browser-replay-step"
+	// ExampleBrowserReplayFileObjectStepID is the apply step that lands
+	// the flow's own download as a board object (goal 0350 S3).
+	ExampleBrowserReplayFileObjectStepID = "example-browser-replay-file-object"
 	// ExampleBrowserReplayPageURL is where the test page lives on a
 	// default install. The two halves it is built from live in the
 	// bridge service (its default bind address and the test page's
@@ -59,6 +62,10 @@ func exampleBrowserReplayFlow() browserbridge.UserFlow {
 				Selectors: [][]string{{"#" + browserbridge.TestPageEchoID}},
 				TimeoutMS: browserbridge.DefaultStepTimeoutMS,
 			},
+			{
+				Type:      browserbridge.StepClick,
+				Selectors: [][]string{{"#" + browserbridge.TestPageDownloadLinkID}, {"text/Download the test file"}},
+			},
 		},
 	}
 }
@@ -97,6 +104,7 @@ func builtInBrowserReplayWorkflows() []Workflow {
 				"timeoutSeconds": "60",
 				"browser":        browserMostRecent,
 			}},
+		{ID: ExampleBrowserReplayFileObjectStepID, NodeTypeID: "apply-atlas-file-object", Position: Position{X: 0, Y: 300}},
 	})
 	if err != nil {
 		panic("built-in workflow references an unknown node type: " + err.Error())
@@ -105,12 +113,15 @@ func builtInBrowserReplayWorkflows() []Workflow {
 		ID:    ExampleBrowserReplayWorkflowID,
 		Label: "Example: Replay a browser flow",
 		Description: "Types a value into a page Mill serves itself, presses its button, and reads the echoed text back. " +
-			"Pair a browser first, then run it. Change what it types with the workflow's own text Attribute. " +
-			"Driving a live site is an external effect, so the run parks for your approval.",
+			"Then downloads a file and lands it on the board, matched by its content so a file already there is never " +
+			"duplicated: the run says when it first landed. Pair a browser first, then run it. Change what it types " +
+			"with the workflow's own text Attribute. Driving a live site is an external effect, so the run parks for " +
+			"your approval.",
 		Nodes: nodes,
 		Edges: []Edge{
 			{ID: "example-browser-replay-e0", Source: triggerID, Target: captureID},
 			{ID: "example-browser-replay-e1", Source: captureID, Target: ExampleBrowserReplayStepID},
+			{ID: "example-browser-replay-e2", Source: ExampleBrowserReplayStepID, Target: ExampleBrowserReplayFileObjectStepID},
 		},
 		Attributes: []AttributeDef{
 			{
@@ -128,6 +139,8 @@ func builtInBrowserReplayWorkflows() []Workflow {
 		// Cannot run until a browser is paired -- the same reason every
 		// other device-dependent example ships disabled.
 		Disabled: true,
-		Seed:     seedorigin.Stamp(1),
+		// Revision 2 (goal 0350 S3): the download step + apply-atlas-
+		// file-object node, and the description's own dedupe sentence.
+		Seed: seedorigin.Stamp(2),
 	}}
 }

@@ -23,6 +23,7 @@ export type {
     Manifest,
     ManifestContributes,
     MarketplaceSource,
+    MenuItemContribution,
     NetworkContribution,
     PluginCapture,
     PluginContentWrite,

@@ -74,7 +74,7 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
     extra: (contributes?.mcpServers ?? []).length > 0
       ? <ExtensionsMCPServers pluginId={id} servers={contributes?.mcpServers ?? []} />
       : undefined,
-    status: <PluginStatusNote error={error} status={runtime?.status} policyReason={plugin.PolicyBlocked ?? ''} waitsFor={runtime?.waitsFor} allowed={allowed} onAllow={onAllow} />,
+    status: <PluginStatusNote error={error} status={runtime?.status} policyReason={plugin.PolicyBlocked ?? ''} waitsFor={runtime?.waitsFor} allowed={allowed} onAllow={onAllow} warnings={plugin.Warnings ?? []} />,
     actions: reloadCommand?.enabled?.() ? (
       <Button
         size="small"
@@ -195,8 +195,37 @@ function pluginClaims(plugin: PluginInfo, t: Translate): string[] {
 }
 
 // What actually happened to this plugin this boot, stated in full --
-// including the two states that ask the user to act.
-function PluginStatusNote({ error, status, policyReason, waitsFor, allowed, onAllow }: {
+// including the two states that ask the user to act -- plus any
+// non-blocking manifest warnings (docs/goals/0349 S2: a deprecated
+// settings alias, a menu id Mill has no seat for), which stand beside
+// whatever primary status the switch below renders rather than
+// replacing it -- a disabled plugin can still be told to rename a key.
+function PluginStatusNote({ error, status, policyReason, waitsFor, allowed, onAllow, warnings }: {
+  error: string | undefined
+  status: string | undefined
+  policyReason: string
+  waitsFor: string | undefined
+  allowed: boolean
+  onAllow: () => void
+  warnings: string[]
+}) {
+  const primary = PrimaryStatusNote({ error, status, policyReason, waitsFor, allowed, onAllow })
+  if (!primary && warnings.length === 0) return null
+  return (
+    <Stack direction="vertical" gap="condensed">
+      {primary}
+      {warnings.length > 0 && (
+        <Stack direction="vertical" gap="none" data-testid="extensions-plugin-warnings">
+          {warnings.map((w) => (
+            <Text as="p" key={w} size="small" className={listStyles.muted} data-testid="extensions-plugin-warning">{w}</Text>
+          ))}
+        </Stack>
+      )}
+    </Stack>
+  )
+}
+
+function PrimaryStatusNote({ error, status, policyReason, waitsFor, allowed, onAllow }: {
   error: string | undefined
   status: string | undefined
   policyReason: string

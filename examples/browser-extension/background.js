@@ -92,16 +92,76 @@ async function report(result) {
 // belong to -- Chrome reports a download's final path asynchronously,
 // well after the step that triggered it returned.
 const downloads = new Map()
+
+// DOWNLOAD_BYTES_CAP mirrors browserbridge.DownloadBytesCap (Go) -- the
+// wire contract both sides agree to. Over this, the download still
+// reports its path/filename, but not its content: mirror-not-point
+// only works for a file small enough to actually carry across.
+const DOWNLOAD_BYTES_CAP = 10 * 1024 * 1024
+
+// pendingDownloads counts downloads Chrome has started but not yet
+// completed -- so a step that triggered one (a click on a download
+// link) can wait for it rather than reporting before it lands, without
+// making every OTHER step (the vast majority, which never download
+// anything) pay a fixed delay.
+let pendingDownloads = 0
+chrome.downloads.onCreated.addListener(() => { pendingDownloads++ })
+
+const DOWNLOAD_WAIT_MS = 5000
+const DOWNLOAD_POLL_MS = 50
+
+// waitForPendingDownload blocks only while a download this run started
+// hasn't landed in sink yet, bounded so a download that never completes
+// (a blocked save prompt, an interrupted transfer) can't hang the run.
+async function waitForPendingDownload(sink) {
+  if (pendingDownloads <= 0) return
+  const deadline = Date.now() + DOWNLOAD_WAIT_MS
+  while (sink.length === 0 && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, DOWNLOAD_POLL_MS))
+  }
+}
+
 chrome.downloads.onChanged.addListener((delta) => {
   if (!delta.state || delta.state.current !== 'complete') return
-  chrome.downloads.search({ id: delta.id }, (items) => {
-    const item = items && items[0]
-    if (!item) return
-    for (const [, sink] of downloads) {
-      sink.push({ path: item.filename, filename: item.filename.split('/').pop(), bytes: item.fileSize || 0 })
-    }
-  })
+  void handleDownloadComplete(delta.id)
 })
+
+async function handleDownloadComplete(downloadId) {
+  const items = await chrome.downloads.search({ id: downloadId })
+  const item = items && items[0]
+  if (!item) return
+  pendingDownloads = Math.max(0, pendingDownloads - 1)
+  const entry = { path: item.filename, filename: item.filename.split('/').pop(), bytes: item.fileSize || 0 }
+  if (item.fileSize > 0 && item.fileSize <= DOWNLOAD_BYTES_CAP) {
+    entry.data = await fetchAsBase64(item.finalUrl || item.url).catch(() => undefined)
+  }
+  if (!entry.data) entry.tooLarge = item.fileSize > DOWNLOAD_BYTES_CAP
+  for (const [, sink] of downloads) sink.push(entry)
+}
+
+// fetchAsBase64 re-reads the file over its own source address rather
+// than the local disk: an extension service worker has no file-system
+// API onto a completed download, and the bridge's own fixture (and any
+// site serving a stable export) answers the same bytes it just saved.
+async function fetchAsBase64(url) {
+  const response = await fetch(url)
+  if (!response.ok) throw new Error(`download refetch failed: ${response.status}`)
+  const buffer = await response.arrayBuffer()
+  return arrayBufferToBase64(buffer)
+}
+
+// arrayBufferToBase64 chunks the conversion -- String.fromCharCode's
+// own argument-count ceiling would throw applied to a whole multi-
+// megabyte buffer at once.
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer)
+  const chunkSize = 0x8000
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+  }
+  return btoa(binary)
+}
 
 async function waitForLoad(tabId, timeoutMs) {
   const deadline = Date.now() + timeoutMs
@@ -172,6 +232,7 @@ async function runFlow(command) {
         if (tabId === null) tabId = await tabForFlow(target)
         result = await runStepInTab(tabId, step, i)
       }
+      await waitForPendingDownload(sink)
       const download = sink.shift()
       await report({ id: command.id, stepIndex: i, ...result, download })
       if (result.status === 'failed') {

@@ -23,6 +23,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/trigger"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
+	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/executionsvc"
 )
 
@@ -226,6 +227,11 @@ func NewTriggerService(comp *compositionsvc.CompositionService, logger *slog.Log
 	// executionsvc.NewExecutionService's identical
 	// composition.SetCurrentRunIDLookup call.
 	composition.SetFileWriteRecorder(s.RecordRunFileWrite)
+	// Same self-wiring shape, one line down (goal 0392 S2): triggersvc
+	// already imports dataevent too, so DispatchLifecycleEvent installs
+	// itself as the lifecycle sink directly instead of needing a
+	// main.go setter (see triggerlifecycleevent.go's own doc comment).
+	dataevent.SetLifecycleSink(s.DispatchLifecycleEvent)
 	return s
 }
 
