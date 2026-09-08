@@ -14,6 +14,14 @@ pre-commit:
     - name: comment-hygiene
       glob: "*.{go,ts,tsx}"
       run: ./scripts/check-comment-hygiene.sh
+    - name: agent-definitions
+      # Goal 0414 S1: every .claude/agents/*.md carries the frontmatter
+      # Claude Code's sub-agent contract needs, and the four
+      # dispatch-owning agents carry the operational sentinels this
+      # goal moved out of every brief. Grep-only, so like
+      # comment-hygiene it needs no build setup.
+      glob: ".claude/agents/*.md"
+      run: ./scripts/check-agent-definitions.sh
     - name: framework-api-first
       glob: "*.go"
       run: ./scripts/check-framework-api-first.sh

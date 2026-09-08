@@ -4,6 +4,7 @@ description: Finds out whether a library, SDK, standard, or established pattern 
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
 model: sonnet
 effort: high
+maxTurns: 30
 ---
 
 You answer "does this already exist, and should we adopt it" with evidence.

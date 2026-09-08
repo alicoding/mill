@@ -15,9 +15,12 @@ brief carries more, not less, than an Opus one would need.
 ## Before drafting
 
 1. Read `divergences.md` in this folder. Copy into the brief every
-   divergence whose area the task touches — as written, not
-   paraphrased. If the task exposes a divergence not yet on the list,
-   ADD it to `divergences.md` in the same change.
+   product-model/testing-harness divergence whose area the task
+   touches — as written, not paraphrased. If the task exposes a
+   divergence not yet on the list, ADD it to `divergences.md` in the
+   same change. Skip § Operations: that block now lives in
+   `.claude/agents/builder.md`'s body (loaded only when the builder
+   runs), not copied into the brief.
 2. Check each constraint you are about to state against the code, and
    against the other constraints (three briefs in one arc shipped
    impossibilities; one brief told an agent to update SPEC.md while
@@ -36,23 +39,27 @@ brief carries more, not less, than an Opus one would need.
 - **Objective gates**: what "done" is, as checkable predicates
   (commands to run, files that must exist, a PR number that must
   resolve via `gh pr view <n> --json number,state`).
-- **The operational block** (from `divergences.md` § Operations):
-  worktree scope, e2e slot rule, poll-in-place, docs-repo handling,
-  the never-list.
 - **Report shape**: the exact fields the report must carry, including
   Review, so a stopped agent's last message is a deliverable, not a
-  status.
-- **The pre-PR review step** (from `divergences.md` § Operations): the
-  reviewer dispatch and the Important-blocks rule — and that CI's
-  `review-report` job mechanically rejects the PR without a `## Review`
-  section carrying `Contract match: yes` and `Important findings open: 0`
-  in the PR body itself.
+  status. This is the one piece of the old operational block that
+  still belongs in the brief, not the agent definition — it differs
+  per brief.
 - **Adoption named**: the brief quotes the goal file's chosen
   library/framework, version, and entry-point API, or the recorded
   search that found none. Missing → stop, run the `research` agent
   first, do not dispatch.
 - **Model**: Sonnet unless the brief carries a one-sentence Opus
   justification; never Fable; at most one Opus builder live.
+
+## Dispatch shape
+
+The dispatch itself is short: `Agent({subagent_type: "builder", prompt:
+"brief: <path to the brief file>. goal: <path to the goal file>. <the
+one or two facts that differ this time — branch name, PR title, an
+amendment>."})`. The worktree scope, poll-in-place rule, docs-repo
+handling, the never-list, the pre-PR reviewer dispatch and the
+own-the-PR-to-merge procedure all live in `.claude/agents/builder.md`
+already — never repeat them in the dispatch prompt or the brief body.
 
 ## Tier calibration
 
