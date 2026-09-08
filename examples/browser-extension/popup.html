@@ -6,24 +6,63 @@
 <style>
   body { font: 13px/1.5 system-ui, sans-serif; margin: 0; padding: 14px; width: 280px; }
   h1 { font-size: 14px; margin: 0 0 10px; }
+  p { margin: 8px 0; }
   label { display: block; margin-top: 10px; font-weight: 600; }
   input { width: 100%; box-sizing: border-box; font: inherit; padding: 5px 6px; margin-top: 3px; }
-  button { font: inherit; margin-top: 12px; padding: 5px 12px; }
-  #status { margin-top: 12px; }
-  #status[data-state="connected"] { color: #1a7f37; }
-  #status[data-state="error"] { color: #cf222e; }
+  button { font: inherit; padding: 5px 12px; }
+  button.primary { margin-top: 4px; }
+  .code { font: 700 22px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.08em; margin: 10px 0 4px; }
+  .connected-title { color: #1a7f37; font-weight: 600; }
+  #typed-status[data-state="error"] { color: #cf222e; }
   .hint { color: #59636e; margin-top: 4px; }
+  details.disclosure { margin-top: 14px; }
+  details.disclosure summary { cursor: pointer; font-weight: 600; }
+  .address-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+  .address-row span { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+  [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <h1>Mill</h1>
-<label for="address">Mill address</label>
-<input id="address" type="url" spellcheck="false" autocomplete="off">
-<p class="hint">Use the address shown under Settings &rsaquo; Connections &rsaquo; Browsers.</p>
-<label for="code">Pairing code</label>
-<input id="code" type="text" maxlength="8" spellcheck="false" autocomplete="off" autocapitalize="characters">
-<button id="pair" type="button">Pair</button>
-<p id="status" data-state="idle">Not paired</p>
+
+<section id="view-closed" hidden>
+  <p>Open Mill on this computer to pair.</p>
+</section>
+
+<section id="view-unpaired" hidden>
+  <button id="pair-with-mill" type="button" class="primary">Pair with Mill</button>
+  <p id="unpaired-message" class="hint"></p>
+  <details class="disclosure">
+    <summary>Enter a code instead</summary>
+    <label for="address">Mill address</label>
+    <input id="address" type="url" spellcheck="false" autocomplete="off">
+    <p class="hint">Use the address shown under Settings &rsaquo; Connections &rsaquo; Browsers.</p>
+    <label for="code">Pairing code</label>
+    <input id="code" type="text" maxlength="8" spellcheck="false" autocomplete="off" autocapitalize="characters">
+    <button id="pair-typed" type="button">Pair</button>
+    <p id="typed-status" data-state="idle"></p>
+  </details>
+</section>
+
+<section id="view-waiting" hidden>
+  <p class="code" id="waiting-code"></p>
+  <p>Waiting for Mill&hellip;</p>
+</section>
+
+<section id="view-connected" hidden>
+  <p class="connected-title">Connected to Mill.</p>
+  <p id="connected-label"></p>
+  <p class="hint">Mill can replay recorded flows in this browser.</p>
+  <button id="disconnect" type="button">Disconnect</button>
+  <details class="disclosure">
+    <summary>Show details</summary>
+    <div class="address-row">
+      <span id="connected-address"></span>
+      <button id="copy-address" type="button">Copy</button>
+    </div>
+  </details>
+</section>
+
 <script src="popup.js"></script>
 </body>
 </html>
