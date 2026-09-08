@@ -284,6 +284,7 @@ export interface ManifestContributes {
      * contract compiled-in nouns use. Declared in the manifest, not
      * at activate() time, so the Extensions row can render them
      * without running plugin code and validation fails the LOAD.
+     * 
      * Deprecated: superseded by Configuration (0349 S2), kept working
      * as an alias.
      */

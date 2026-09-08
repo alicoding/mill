@@ -12,8 +12,8 @@ kind: reference
 | steps | experimental | no | yes | yes | yes | no | yes | 2026-09-08 | 2026-09-08 | — |
 | captures | experimental | no | no | yes | yes | yes | n/a | 2026-09-08 | 2026-09-07 | — |
 | settings | stable | yes | yes | yes | yes | yes | n/a | 2026-09-08 | 2026-09-08 | — |
-| configuration | experimental | no | yes | no | yes | no | no | 2026-09-08 | — | — |
-| menus | experimental | no | no | no | yes | no | no | 2026-09-08 | — | — |
+| configuration | experimental | no | yes | no | yes | no | no | 2026-09-08 | 2026-09-08 | — |
+| menus | experimental | no | no | no | yes | no | no | 2026-09-08 | 2026-09-08 | — |
 | network | experimental | no | yes | yes | yes | yes | n/a | 2026-09-08 | 2026-09-07 | — |
 | views | experimental | no | yes | yes | yes | yes | n/a | 2026-09-08 | 2026-09-07 | — |
 | commands | stable | yes | yes | yes | yes | yes | yes | 2026-09-08 | 2026-09-08 | — |
