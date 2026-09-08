@@ -257,6 +257,37 @@ func TestSyncPluginTools_DropsATurnedOffPluginsTool(t *testing.T) {
 	}
 }
 
+// A plugin's declared tool carries annotations too (goal 0388): open-
+// world in both directions, since a plugin's own step/command/query
+// can reach anywhere its author wrote it to, unlike Mill's own
+// closed-world tools.
+func TestPluginTool_AnnotationsMatchDeclaredEffect(t *testing.T) {
+	catalog := &fakeCatalog{tools: []PluginToolSpec{textCaseTool(), noteTool()}}
+	h := newPluginHarness(t, "127.0.0.1:18169", catalog)
+
+	listed, err := h.session.ListTools(h.ctx, nil)
+	if err != nil {
+		t.Fatalf("ListTools: %v", err)
+	}
+	byName := map[string]*mcp.Tool{}
+	for _, tool := range listed.Tools {
+		byName[tool.Name] = tool
+	}
+
+	read := byName["plugin_mill-textcase_change_text_case"]
+	if read == nil || read.Annotations == nil || !read.Annotations.ReadOnlyHint {
+		t.Errorf("read-effect plugin tool: annotations = %+v, want readOnlyHint true", read)
+	}
+
+	write := byName["plugin_mill-clipper_clip_page"]
+	if write == nil || write.Annotations == nil || write.Annotations.ReadOnlyHint {
+		t.Errorf("write-effect plugin tool: annotations = %+v, want readOnlyHint false", write)
+	}
+	if write.Annotations.DestructiveHint == nil || !*write.Annotations.DestructiveHint {
+		t.Errorf("write-effect plugin tool: destructiveHint = %+v, want true", write.Annotations)
+	}
+}
+
 func (h *atlasMCPHarness) hasTool(t *testing.T, name string) bool {
 	t.Helper()
 	listed, err := h.session.ListTools(h.ctx, nil)
