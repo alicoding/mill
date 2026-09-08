@@ -101,7 +101,8 @@ func (m *MillMCPService) registerAtlasWriteTools() {
 	m.registerWriteExecutor("atlas_propose_card_write", m.executeAtlasProposeCardWrite)
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "atlas_propose_card_write",
-		Description: "Propose creating a new Atlas card (kindId+title required, plus optional note/parentId/fields/links) or updating an existing one (cardId required, plus any of title/note/summary/status/fields to change). Requires the human-set 'Allow MCP clients to import data' toggle in Mill's Settings (default off); parks pending human approval through the SAME queue import_workflow/update_workflow use -- poll atlas_get_write_status (or check_write_status) with the returned id. On approval the write executes through Atlas's own create/update (and link-create) methods.",
+		Description: "Propose creating a new Atlas card (kindId+title required, plus optional note/parentId/fields/links) or updating an existing one (cardId required, plus any of title/note/summary/status/fields to change). Requires the human-set 'Allow MCP clients to change content' toggle in Mill's Settings (default off); parks pending human approval through the SAME queue import_workflow/update_workflow use -- poll atlas_get_write_status (or check_write_status) with the returned id. On approval the write executes through Atlas's own create/update (and link-create) methods.",
+		Annotations: mixedAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasProposeCardWriteArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err
@@ -123,6 +124,7 @@ func (m *MillMCPService) registerAtlasWriteTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "atlas_get_write_status",
 		Description: "Poll a parked atlas_propose_card_write or atlas_propose_kind_write outcome by id (the id from its 'parked pending human approval' response text -- the same id every gated write reports and check_write_status takes). status is pending, approved (cardId names the created/updated card; kindId the created/updated/deleted kind), denied, cancelled, or expired.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasWriteStatusArgs) (*mcp.CallToolResult, any, error) {
 		res, ok := m.writeStatus(in.writeID())
 		if !ok {

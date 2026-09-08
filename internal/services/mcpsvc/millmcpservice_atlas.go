@@ -200,6 +200,7 @@ func (m *MillMCPService) registerAtlasTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "atlas_list_kinds",
 		Description: "The Atlas's declared card types and link types: every Kind's ID/name/description/declared fields (key/label/type), and every LinkKind's ID/name -- plus boardObjectKinds, every canvas noun atlas_create_board_object accepts, with source \"plugin:<pluginId>\" on the ones a plugin contributes. Read this before atlas_propose_card_write -- a card's KindID and its Fields keys must match a declared Kind exactly. Read-only.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
 		if err := m.requireAtlas(); err != nil {
 			return nil, nil, err
@@ -211,6 +212,7 @@ func (m *MillMCPService) registerAtlasTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "atlas_search_cards",
 		Description: "Search Atlas cards by a case-insensitive substring match over title, note, and every field value (the same matching a human's own Atlas jump search uses). Optionally scope to one Kind, one parent card, or one perspective's own members. Read-only.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasSearchCardsArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireAtlas(); err != nil {
 			return nil, nil, err
@@ -230,6 +232,7 @@ func (m *MillMCPService) registerAtlasTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "atlas_read_card",
 		Description: "One card's full content: title, note, summary/status (when its Kind declares those fields), every field value, source URL, mirror path, its containment chain (parent then grandparent... root-ward), its direct children, and every link touching it in both directions (with the other card's ID/title); optionally scoped to one perspective's own members. Read-only.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in atlasReadCardArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireAtlas(); err != nil {
 			return nil, nil, err
@@ -251,7 +254,6 @@ func (m *MillMCPService) registerAtlasTools() {
 	})
 
 	m.registerAtlasBoardObjectTools()
-	m.registerAtlasDiagramTools()
 	m.registerAtlasContentsTool()
 	m.registerAtlasWriteTools()
 	m.registerAuthoringExtTools()
