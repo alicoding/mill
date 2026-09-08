@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { rmSync } from 'node:fs'
 import {
   spawnUpdatesServer,
@@ -34,6 +35,7 @@ test("What's new is reachable from the palette before any check has run, and its
   try {
     ;({ server, dir } = await spawnUpdatesServer(idx, UPDATES_WHATSNEW_EMPTY_SERVER_BASE_PORT, UPDATES_WHATSNEW_EMPTY_MCP_BASE_PORT, {}))
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
 
     // A keydown before the app's keymap mounts is dropped silently; the
@@ -83,6 +85,7 @@ test("The pill's secondary link and Settings' own link both open What's new, ren
       MILL_TEST_UPDATE_CHANNEL: 'release',
     }))
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
     // Settings' own auto-check-on-open (goal 0205 S4) is what actually
     // runs the fake check here -- the same path the updates.spec.ts

@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test'
+import { applyCpuThrottle } from './fixtures/throttle'
 import { openToolbarAction } from './fixtures/toolbarActions'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -120,6 +121,7 @@ test('the AI toolbar button toggles the companion panel; Escape closes it', asyn
       settingsPath: path.join(dir, 'settings.json'), executionDbPath: path.join(dir, 'execution.db'), backupDir: path.join(dir, 'backups'),
     })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await openAtlas(page, server.baseURL)
 
     const panel = page.getByTestId('companion-panel')
@@ -146,6 +148,7 @@ test('the empty-provider state renders its copy and offers Configure', async ({}
       settingsPath: path.join(dir, 'settings.json'), executionDbPath: path.join(dir, 'execution.db'), backupDir: path.join(dir, 'backups'),
     })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await deleteSeededProvider(page, server.baseURL)
     await openAtlas(page, server.baseURL)
 
@@ -177,6 +180,7 @@ test('sending a message streams a reply, the provider picker lists it, and Accep
       settingsPath: path.join(dir, 'settings.json'), executionDbPath: path.join(dir, 'execution.db'), backupDir: path.join(dir, 'backups'),
     })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await createProvider(page, server.baseURL, 'ZzFakeProvider', fakeProvider.url)
     await openAtlas(page, server.baseURL)
 
@@ -236,6 +240,7 @@ test('a provider error renders in full, wrapped and scrollable, with a Copy deta
       settingsPath: path.join(dir, 'settings.json'), executionDbPath: path.join(dir, 'execution.db'), backupDir: path.join(dir, 'backups'),
     })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await createProvider(page, server.baseURL, 'ZzFailingProvider', failingProvider.url)
     await openAtlas(page, server.baseURL)
 
@@ -287,6 +292,7 @@ test('an empty-items reply renders as a no-op, not the generic invalid note', as
       settingsPath: path.join(dir, 'settings.json'), executionDbPath: path.join(dir, 'execution.db'), backupDir: path.join(dir, 'backups'),
     })
     const page = await browser.newPage()
+    await applyCpuThrottle(page)
     await createProvider(page, server.baseURL, 'ZzEmptyProvider', fakeProvider.url)
     await openAtlas(page, server.baseURL)
 
