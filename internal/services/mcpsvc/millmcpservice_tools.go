@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/alicoding/mill/internal/contract"
 	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -39,7 +40,7 @@ func (m *MillMCPService) requireWriteEnabled() error {
 		// internal citation. Writes are default-off by design
 		// (docs/adr/0017 -- the citation lives here, not in the string).
 		return fmt.Errorf("MCP write tools are disabled on this Mill instance -- a human must enable " +
-			"\"Allow MCP clients to import data\" in Mill's Settings page first; writes are off by default")
+			"\"Allow MCP clients to change content\" in Mill's Settings page first; writes are off by default")
 	}
 	return nil
 }
@@ -87,6 +88,34 @@ func marshalArgs(in any) (string, error) {
 	return string(data), nil
 }
 
+// contentContractRegisterers maps a contract.ContentContract's Kind to
+// the method that actually wires its tools -- goal 0388's RULE made
+// mechanical: every file-backed/entity-backed kind is one row in
+// contract.ContentContracts (the data both this loop and the served
+// mill://contract document read) and one entry here, registered
+// through this SAME loop rather than a bespoke call sprinkled through
+// registerAtlasTools/registerTools. The diagram tools migrated onto
+// this loop with no behavior change -- registerAtlasDiagramTools is
+// unchanged, only who calls it moved.
+func (m *MillMCPService) contentContractRegisterers() map[string]func() {
+	return map[string]func(){
+		"diagram": m.registerAtlasDiagramTools,
+		"sheet":   m.registerAtlasSheetTools,
+		"list":    m.registerListContentTools,
+	}
+}
+
+// registerContentContracts wires every kind's content contract listed
+// in contract.ContentContracts -- called once from registerTools.
+func (m *MillMCPService) registerContentContracts() {
+	registerers := m.contentContractRegisterers()
+	for _, c := range contract.ContentContracts {
+		if register, ok := registerers[c.Kind]; ok {
+			register()
+		}
+	}
+}
+
 // registerTools wires the export/import tool set. Export tools are
 // read-only and ungated; import tools all pass through
 // requireWriteEnabled + gateWrite.
@@ -95,10 +124,12 @@ func (m *MillMCPService) registerTools() {
 	m.registerDebugTools()
 	m.registerAtlasTools()
 	m.registerPluginTools()
+	m.registerContentContracts()
 
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "export_workflow",
 		Description: "Export one workflow's full definition as JSON (same shape as the UI's Export button). Read-only.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in workflowIDArgs) (*mcp.CallToolResult, any, error) {
 		id, err := in.resolve()
 		if err != nil {
@@ -114,6 +145,7 @@ func (m *MillMCPService) registerTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "export_request",
 		Description: "Export one HTTPRequest's full definition as JSON -- never includes a secret. Read-only.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in exportToolArgs) (*mcp.CallToolResult, any, error) {
 		data, err := m.cfg.ExportHTTPRequest(in.ID)
 		if err != nil {
@@ -125,6 +157,7 @@ func (m *MillMCPService) registerTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "export_list",
 		Description: "Export one List's full definition (label + entries) as JSON. Read-only.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in exportToolArgs) (*mcp.CallToolResult, any, error) {
 		data, err := m.cfg.ExportList(in.ID)
 		if err != nil {
@@ -136,6 +169,7 @@ func (m *MillMCPService) registerTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name:        "export_mcpserver",
 		Description: "Export one configured MCP Server's definition as JSON. Read-only.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in exportToolArgs) (*mcp.CallToolResult, any, error) {
 		data, err := m.cfg.ExportMCPServer(in.ID)
 		if err != nil {
@@ -165,6 +199,7 @@ func (m *MillMCPService) registerTools() {
 			"import data' toggle in Mill's Settings (default off); when per-write approval is also required " +
 			"(the default), the call may return a 'parked pending human approval' result -- poll " +
 			"check_write_status with the returned id.",
+		Annotations: createAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in importToolArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err
@@ -194,8 +229,9 @@ func (m *MillMCPService) registerTools() {
 		Name: "import_request",
 		Description: "Create a new HTTPRequest from an exported-request JSON definition. The imported request " +
 			"starts with no secret set (a human sets secrets in Mill's UI only). Requires the human-set " +
-			"'Allow MCP clients to import data' toggle in Mill's Settings (default off); may park pending " +
+			"'Allow MCP clients to change content' toggle in Mill's Settings (default off); may park pending " +
 			"approval -- see import_workflow's description for the poll contract.",
+		Annotations: createAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in importToolArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err
@@ -227,8 +263,9 @@ func (m *MillMCPService) registerTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name: "import_list",
 		Description: "Create a new List from an exported-list JSON definition. Requires the human-set " +
-			"'Allow MCP clients to import data' toggle in Mill's Settings (default off); may park pending " +
+			"'Allow MCP clients to change content' toggle in Mill's Settings (default off); may park pending " +
 			"approval -- see import_workflow's description for the poll contract.",
+		Annotations: createAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in importToolArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err
@@ -257,8 +294,9 @@ func (m *MillMCPService) registerTools() {
 	mcp.AddTool(m.server, &mcp.Tool{
 		Name: "import_mcpserver",
 		Description: "Create a new configured MCP Server from an exported-mcpserver JSON definition. Requires " +
-			"the human-set 'Allow MCP clients to import data' toggle in Mill's Settings (default off); may park " +
+			"the human-set 'Allow MCP clients to change content' toggle in Mill's Settings (default off); may park " +
 			"pending approval -- see import_workflow's description for the poll contract.",
+		Annotations: createAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in importToolArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.requireWriteEnabled(); err != nil {
 			return nil, nil, err
@@ -277,6 +315,7 @@ func (m *MillMCPService) registerTools() {
 			"human approval' response). status is pending, approved (result carries the write's own success " +
 			"text), denied, or expired (no human decision within 24h). Outcomes stay queryable for 24h after " +
 			"resolution, then are swept.",
+		Annotations: readOnlyAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in checkWriteStatusArgs) (*mcp.CallToolResult, any, error) {
 		res, ok := m.writeStatus(in.ID)
 		if !ok {
@@ -295,6 +334,7 @@ func (m *MillMCPService) registerTools() {
 			"approval' response). Cancelled is a distinct outcome from denied -- use this when the write no " +
 			"longer matters, not when you expect a human to say no. Ungated: cancelling never needs approval, " +
 			"it only ever reduces pending work. Errors if the write was already resolved or doesn't exist.",
+		Annotations: editAnnotations,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in checkWriteStatusArgs) (*mcp.CallToolResult, any, error) {
 		if err := m.CancelMCPWrite(in.ID); err != nil {
 			return nil, nil, err
