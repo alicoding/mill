@@ -130,14 +130,14 @@ func TestSeededWebhookNotifyExample_WebhookPost_NotifiesFromPostedFields(t *test
 	// text itself, not just run success.
 	var notified int32
 	var gotTitle, gotBody atomic.Value
-	composition.SetNotifier(func(title, body, _ string) error {
+	composition.SetNotifier(func(title, body, _ string, _ []string) error {
 		gotTitle.Store(title)
 		gotBody.Store(body)
 		atomic.AddInt32(&notified, 1)
 		return nil
 	})
 	t.Cleanup(func() {
-		composition.SetNotifier(func(title, body, _ string) error { return fmt.Errorf("no notifier registered (yet)") })
+		composition.SetNotifier(func(title, body, _ string, _ []string) error { return fmt.Errorf("no notifier registered (yet)") })
 	})
 
 	wf := findWorkflowByLabel(t, comp, "Notify when a webhook fires")
@@ -182,14 +182,14 @@ func TestSeededWebhookNotifyExample_PostWithoutFields_UsesFallbacks(t *testing.T
 
 	var notified int32
 	var gotTitle, gotBody atomic.Value
-	composition.SetNotifier(func(title, body, _ string) error {
+	composition.SetNotifier(func(title, body, _ string, _ []string) error {
 		gotTitle.Store(title)
 		gotBody.Store(body)
 		atomic.AddInt32(&notified, 1)
 		return nil
 	})
 	t.Cleanup(func() {
-		composition.SetNotifier(func(title, body, _ string) error { return fmt.Errorf("no notifier registered (yet)") })
+		composition.SetNotifier(func(title, body, _ string, _ []string) error { return fmt.Errorf("no notifier registered (yet)") })
 	})
 
 	wfDisabled := findWorkflowByLabel(t, comp, "Notify when a webhook fires").Disabled

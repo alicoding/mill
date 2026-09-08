@@ -53,6 +53,8 @@ pasted context envelope). Three facts shape everything:
   them, and imports never accept them).
 - Test-running a workflow and production-running it are distinct run
   kinds; use the run tool's flags as documented in the contract.
+- A notify step's targets field holds paired device ids; device ids
+  for notify targets come from Settings › Connections.
 
 ## Working with the Atlas
 
