@@ -4,7 +4,7 @@ import type { PluginCommandDecl } from './commands';
 import type { PluginSettingsAPI } from './settings';
 import type { PluginNoticeInput } from './notify';
 import type { PluginStorageAPI } from './storage';
-import type { ContentQuery, ContentEntry, KindInfo, PluginEventMap, PluginFetchInit, PluginFetchResult, PluginContentAPI, PluginFilesAPI, PluginConvertAPI } from './content';
+import type { ContentQuery, ContentEntry, KindInfo, PluginEventMap, PluginFetchInit, PluginFetchResult, PluginFetchJSONResult, PluginContentAPI, PluginFilesAPI, PluginConvertAPI } from './content';
 import type { PluginViewDecl, PluginViewHandle } from './views';
 import type { PluginCaptureDecl, PluginCaptureHandle } from './captures';
 import type { PluginUIAPI } from './ui';
@@ -40,12 +40,22 @@ export interface MillPluginAPI {
     /** Performs a guarded HTTP request; see PluginFetchInit for the full
      * contract. */
     fetch: (url: string, init?: PluginFetchInit) => Promise<PluginFetchResult>;
+    /** Sugar over fetch for a JSON API: parses the body and never
+     * throws, not even for a denied request, a non-2xx status or a body
+     * that isn't JSON — see PluginFetchJSONResult. */
+    fetchJSON: <T = unknown>(url: string, init?: PluginFetchInit) => Promise<PluginFetchJSONResult<T>>;
     content: PluginContentAPI;
     convert: PluginConvertAPI;
     files: PluginFilesAPI;
     registerView: (decl: PluginViewDecl) => PluginViewHandle;
     registerCapture: (decl: PluginCaptureDecl) => PluginCaptureHandle;
     ui: PluginUIAPI;
+    /** Formats an ISO timestamp the way Mill's own interface does:
+     * 'relative' (the default) reads "2m ago"/"yesterday", falling back
+     * to a short date beyond about a week; 'short' is a locale date;
+     * 'long' is a locale date and time. An unparseable iso answers
+     * '—'. */
+    formatDate: (iso: string, style?: 'relative' | 'short' | 'long') => string;
 }
 /** A plugin's main.js default-exports (or named-exports) activate:
  * export function activate(api) { api.registerCanvasObject({...}) } */

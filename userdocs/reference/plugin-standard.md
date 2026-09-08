@@ -170,6 +170,24 @@ your plugin feels like part of Mill.
     `registerCapture` work the same either way — write one `main.js`
     for both. (checked: refuses the install)
 
+## SDK conveniences
+
+The SDK carries a few small helpers so a plugin never re-invents them:
+`api.ui.el(tag, attrs, children)` builds one DOM element the safe way —
+never `innerHTML`, so nothing you pass can inject markup — for the
+rest of your face's own layout (rule 10 still governs presenting a
+*result*, through `api.ui.renderOutput`). `api.fetchJSON(url, init?)`
+is `api.fetch` plus a JSON parse, answering `{ ok, status, data,
+errorText }` and never throwing, not even for a denied request or a
+non-2xx response. `api.storage.pushList(key, item, { dedupeBy?, max?
+})` and `api.storage.getList(key)` are sugar over `get`/`set` for a
+request-history or cache-list. `api.convert.markdownToHtml(markdown)`
+is `htmlToMarkdown`'s reverse direction, the same sanitized renderer.
+`api.formatDate(iso, style)` formats a timestamp the way Mill's own
+interface does (`'relative'`, `'short'` or `'long'`) instead of a
+plugin's own `Date` math. Every one of these is optional — hand-rolling
+the same shape yourself still works, it's just more code.
+
 ## Checking your own plugin
 
 ```sh

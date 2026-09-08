@@ -42,6 +42,7 @@ function callSimpleDoor(api: MillPluginAPI, method: string, args: unknown[]): Pr
     case 'content.setCardFields': return api.content.setCardFields(String(first), second as Record<string, string>)
     case 'files.list': return api.files.list(String(first))
     case 'convert.htmlToMarkdown': return api.convert.htmlToMarkdown(String(first))
+    case 'convert.markdownToHtml': return api.convert.markdownToHtml(String(first))
     case 'requestGuardedAction': return api.requestGuardedAction(String(first), second as Record<string, string>, String(third))
     default: return undefined
   }
@@ -50,7 +51,7 @@ function callSimpleDoor(api: MillPluginAPI, method: string, args: unknown[]): Pr
 const SIMPLE_DOORS = new Set<string>([
   'notify', 'storage.set', 'storage.delete', 'query', 'kinds', 'open', 'fetch',
   'content.createNote', 'content.createCard', 'content.updateCard', 'content.appendListRow', 'content.createList', 'content.setCardFields',
-  'files.list', 'convert.htmlToMarkdown', 'requestGuardedAction',
+  'files.list', 'convert.htmlToMarkdown', 'convert.markdownToHtml', 'requestGuardedAction',
 ])
 
 interface ActivationSubscription {

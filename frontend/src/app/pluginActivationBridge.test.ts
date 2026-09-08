@@ -34,10 +34,12 @@ function fakeApi(overrides: Partial<MillPluginAPI> = {}): MillPluginAPI {
     open: vi.fn(),
     on: vi.fn(() => () => {}),
     fetch: vi.fn(),
+    fetchJSON: vi.fn(),
     content: { createNote: vi.fn(), createCard: vi.fn(), updateCard: vi.fn(), appendListRow: vi.fn(), createList: vi.fn(), setCardFields: vi.fn() },
-    convert: { htmlToMarkdown: vi.fn() },
+    convert: { htmlToMarkdown: vi.fn(), markdownToHtml: vi.fn() },
     files: { list: vi.fn() },
-    ui: { renderOutput: vi.fn(() => () => {}) },
+    ui: { renderOutput: vi.fn(() => () => {}), el: vi.fn() },
+    formatDate: vi.fn(),
     ...overrides,
   } as unknown as MillPluginAPI
 }
@@ -49,6 +51,14 @@ describe('callActivationMethod', () => {
     const ctx = createActivationFrameContext(frame, 'framed-probe', [])
     await expect(callActivationMethod(ctx, api, 'kinds', [])).resolves.toEqual([])
     expect(api.kinds).toHaveBeenCalled()
+  })
+
+  it('routes convert.markdownToHtml onto the plugin api, the activation bridge\'s one new door', async () => {
+    const api = fakeApi()
+    const { frame } = fakeFrame()
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    await callActivationMethod(ctx, api, 'convert.markdownToHtml', ['# Title'])
+    expect(api.convert.markdownToHtml).toHaveBeenCalledWith('# Title')
   })
 
   it('refuses an unknown method, naming it', async () => {

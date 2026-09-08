@@ -10,8 +10,8 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "yes",
-      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
-      "codeChangedAt": "2026-09-07",
+      "codeCommit": "3da06b1205db1d5f8570017e590788380108dc2d",
+      "codeChangedAt": "2026-09-08",
       "docsCommit": "4b4a49a39be404a10238a84fd6d806a10653af58",
       "docsChangedAt": "2026-09-06",
       "flags": []
@@ -25,10 +25,10 @@
       "docs": true,
       "sdkTypes": false,
       "mcp": "yes",
-      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
-      "codeChangedAt": "2026-09-07",
-      "docsCommit": "cef5975a5918156d48299f3077701d5770cc2c47",
-      "docsChangedAt": "2026-09-07",
+      "codeCommit": "3da06b1205db1d5f8570017e590788380108dc2d",
+      "codeChangedAt": "2026-09-08",
+      "docsCommit": "2c66d0e34bbe1fa62da634d9cfa81fc125fc72d7",
+      "docsChangedAt": "2026-09-08",
       "flags": []
     },
     {
@@ -40,8 +40,8 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
-      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
-      "codeChangedAt": "2026-09-07",
+      "codeCommit": "3da06b1205db1d5f8570017e590788380108dc2d",
+      "codeChangedAt": "2026-09-08",
       "docsCommit": "651439a2b863c2664659ee4cd95a6e6919fe246e",
       "docsChangedAt": "2026-09-07",
       "flags": []
@@ -55,8 +55,8 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
-      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
-      "codeChangedAt": "2026-09-07",
+      "codeCommit": "3da06b1205db1d5f8570017e590788380108dc2d",
+      "codeChangedAt": "2026-09-08",
       "docsCommit": "bcb30504255ade3865d23fea322c68b2571525f9",
       "docsChangedAt": "2026-09-08",
       "flags": []
@@ -70,8 +70,8 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
-      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
-      "codeChangedAt": "2026-09-07",
+      "codeCommit": "3da06b1205db1d5f8570017e590788380108dc2d",
+      "codeChangedAt": "2026-09-08",
       "docsCommit": "651439a2b863c2664659ee4cd95a6e6919fe246e",
       "docsChangedAt": "2026-09-07",
       "flags": []
@@ -85,8 +85,8 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
-      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
-      "codeChangedAt": "2026-09-07",
+      "codeCommit": "3da06b1205db1d5f8570017e590788380108dc2d",
+      "codeChangedAt": "2026-09-08",
       "docsCommit": "651439a2b863c2664659ee4cd95a6e6919fe246e",
       "docsChangedAt": "2026-09-07",
       "flags": []
@@ -100,10 +100,10 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "yes",
-      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
-      "codeChangedAt": "2026-09-07",
-      "docsCommit": "d921d65f5573fc5c39e4834539322c158eb539b4",
-      "docsChangedAt": "2026-09-07",
+      "codeCommit": "3da06b1205db1d5f8570017e590788380108dc2d",
+      "codeChangedAt": "2026-09-08",
+      "docsCommit": "f8a392db2132c62deae9ba8b846211d5136e292f",
+      "docsChangedAt": "2026-09-08",
       "flags": []
     },
     {
@@ -115,8 +115,8 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
-      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
-      "codeChangedAt": "2026-09-07",
+      "codeCommit": "3da06b1205db1d5f8570017e590788380108dc2d",
+      "codeChangedAt": "2026-09-08",
       "docsCommit": "648c1a1d7ff17526ba3016276515c246b60ecdee",
       "docsChangedAt": "2026-09-05",
       "flags": []
@@ -130,8 +130,8 @@
       "docs": true,
       "sdkTypes": true,
       "mcp": "n/a",
-      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
-      "codeChangedAt": "2026-09-07",
+      "codeCommit": "3da06b1205db1d5f8570017e590788380108dc2d",
+      "codeChangedAt": "2026-09-08",
       "docsCommit": "651439a2b863c2664659ee4cd95a6e6919fe246e",
       "docsChangedAt": "2026-09-07",
       "flags": []
@@ -145,8 +145,8 @@
       "docs": true,
       "sdkTypes": false,
       "mcp": "yes",
-      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
-      "codeChangedAt": "2026-09-07",
+      "codeCommit": "3da06b1205db1d5f8570017e590788380108dc2d",
+      "codeChangedAt": "2026-09-08",
       "docsCommit": "651439a2b863c2664659ee4cd95a6e6919fe246e",
       "docsChangedAt": "2026-09-07",
       "flags": []
@@ -160,8 +160,8 @@
       "docs": true,
       "sdkTypes": false,
       "mcp": "no",
-      "codeCommit": "885a4a30f386fee47876271ae9fef3897b3339e8",
-      "codeChangedAt": "2026-09-07",
+      "codeCommit": "3da06b1205db1d5f8570017e590788380108dc2d",
+      "codeChangedAt": "2026-09-08",
       "flags": []
     }
   ]

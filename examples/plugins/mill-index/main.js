@@ -60,30 +60,25 @@ export function activate(api) {
 			if (!byKind.has(e.kind)) byKind.set(e.kind, [])
 			byKind.get(e.kind).push(e)
 		}
-		// All text lands via textContent -- never markup -- so a title can
-		// never inject anything.
+		// api.ui.el is text-safe by construction -- never innerHTML -- so
+		// a title can never inject anything.
 		el.replaceChildren()
 		el.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:10px 12px;font:12px system-ui;height:100%;box-sizing:border-box;overflow:auto'
 		el.setAttribute('data-testid', 'index-face')
 		if (byKind.size === 0) {
-			const empty = document.createElement('div')
-			empty.textContent = 'Nothing on the board yet.'
-			el.append(empty)
+			el.append(api.ui.el('div', {}, ['Nothing on the board yet.']))
 			return
 		}
 		for (const [kind, list] of [...byKind.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-			const heading = document.createElement('div')
-			heading.style.cssText = 'font-weight:600;margin-top:4px'
-			heading.textContent = kind.charAt(0).toUpperCase() + kind.slice(1) + ' · ' + list.length
-			heading.setAttribute('data-testid', 'index-kind-' + kind)
-			el.append(heading)
+			el.append(api.ui.el('div', { style: 'font-weight:600;margin-top:4px', 'data-testid': 'index-kind-' + kind }, [
+				kind.charAt(0).toUpperCase() + kind.slice(1) + ' · ' + list.length,
+			]))
 			for (const e of list) {
-				const row = document.createElement('div')
-				row.textContent = e.title
-				row.style.cssText = 'padding-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'
-				row.setAttribute('data-testid', 'index-row')
-				row.setAttribute('data-kind', kind)
-				el.append(row)
+				el.append(api.ui.el('div', {
+					style: 'padding-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis',
+					'data-testid': 'index-row',
+					'data-kind': kind,
+				}, [e.title]))
 			}
 		}
 	}

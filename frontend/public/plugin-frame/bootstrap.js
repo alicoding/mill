@@ -91,6 +91,32 @@
 		return next
 	}
 
+	// formatDate (goal 0386 S1) mirrors hostApi.ts's own formatPluginDate
+	// and activation.js's own copy of the same algorithm -- kept in sync
+	// by hand, like resolveActivate is in activation.js: this file is
+	// served static, never built from the loader's TypeScript. Needs no
+	// call(): it touches nothing outside its own input.
+	var RELATIVE_UNITS = [['year', 31536000000], ['month', 2592000000], ['week', 604800000], ['day', 86400000], ['hour', 3600000], ['minute', 60000]]
+	var relativeFormatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+	function formatDate(iso, style) {
+		var ms = Date.parse(iso)
+		if (isNaN(ms)) return '—'
+		if (style === 'short') return new Date(ms).toLocaleDateString()
+		if (style === 'long') return new Date(ms).toLocaleString()
+		var diffMs = ms - Date.now()
+		var absDiffMs = Math.abs(diffMs)
+		if (absDiffMs < 604800000) {
+			for (var i = 0; i < RELATIVE_UNITS.length; i++) {
+				var unit = RELATIVE_UNITS[i][0], unitMs = RELATIVE_UNITS[i][1]
+				if (absDiffMs >= unitMs || unit === 'minute') {
+					var value = Math.round(diffMs / unitMs)
+					return value === 0 ? 'just now' : relativeFormatter.format(value, unit)
+				}
+			}
+		}
+		return new Date(ms).toLocaleDateString()
+	}
+
 	var api = {
 		postMessage: postMessage,
 		getState: getState,
@@ -109,6 +135,7 @@
 			eventHandlers.set(event, list)
 			return subscribe(list, fn)
 		},
+		formatDate: formatDate,
 	}
 	Object.defineProperty(api, 'theme', { get: function () { return theme }, enumerable: true })
 	Object.defineProperty(api, 'context', { get: function () { return context }, enumerable: true })
