@@ -62,8 +62,10 @@ func clipboardBuiltInWorkflows() []Workflow {
 			BuiltIn: true,
 			// Rev 2 (goal 0114): the completion notification joined the
 			// pipeline. Rev 4 (goal 0368): apply-notify's new titleAttribute
-			// ConfigField's default-filled "" now lands here too.
-			Seed: seedorigin.Stamp(4),
+			// ConfigField's default-filled "" now lands here too. Rev 5
+			// (goal 0372): apply-notify's new targets ConfigField's
+			// default-filled "" now lands here too.
+			Seed: seedorigin.Stamp(5),
 		},
 	}
 }

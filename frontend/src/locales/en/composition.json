@@ -239,6 +239,17 @@
     "addBreakpoint": "Add breakpoint",
     "removeBreakpoint": "Remove breakpoint",
     "breakpointSaveFirst": "Save this workflow before adding a breakpoint.",
+    "deviceFilterPlaceholder": "Filter devices",
+    "deviceTargetsEveryDevice": "Every device",
+    "deviceTargetsSelectedCount_one": "1 device",
+    "deviceTargetsSelectedCount_other": "{{count}} devices",
+    "deviceOptionLabel": "{{label}} · {{kind}}",
+    "deviceKind": {
+      "phone": "phone",
+      "browser": "browser",
+      "webhook-token": "webhook token"
+    },
+    "noDevicesPaired": "No devices paired yet. Pair one in Settings › Connections.",
     "tabs": {
       "ariaLabel": "Step inspector sections",
       "parameters": "Parameters",

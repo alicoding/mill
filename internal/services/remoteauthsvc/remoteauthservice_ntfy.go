@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"regexp"
+	"slices"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/notification"
@@ -235,13 +236,17 @@ func (c phoneChannel) ShouldDeliver(notification.Event) bool {
 	return false
 }
 
-// Deliver fans evt out to every paired device's topic. Each device's
-// click target is built from ITS OWN last-known reachable address
-// (device.BaseURL), so tapping the notification opens Mill at the same
-// address that device already uses, landing on the Review view (SLICE
-// B item 4) rather than the home screen.
+// Deliver fans evt out to every paired device's topic, or -- when
+// evt.Targets names specific device ids (docs/goals/0372) -- only to
+// the ones listed; a target id naming no live device is silently
+// skipped, never an error (a stale picker selection is not a delivery
+// failure). Each device's click target is built from ITS OWN
+// last-known reachable address (device.BaseURL), so tapping the
+// notification opens Mill at the same address that device already
+// uses, landing on the Review view (SLICE B item 4) rather than the
+// home screen.
 func (c phoneChannel) Deliver(evt notification.Event, rec notification.Record) error {
-	type target struct{ topic, base string }
+	type target struct{ id, topic, base string }
 
 	c.s.mu.Lock()
 	targets := make([]target, 0, len(c.s.devices))
@@ -249,9 +254,19 @@ func (c phoneChannel) Deliver(evt notification.Event, rec notification.Record) e
 		if d.Topic == "" {
 			continue
 		}
-		targets = append(targets, target{topic: d.Topic, base: d.BaseURL})
+		targets = append(targets, target{id: d.ID, topic: d.Topic, base: d.BaseURL})
 	}
 	c.s.mu.Unlock()
+
+	if len(evt.Targets) > 0 {
+		filtered := targets[:0]
+		for _, t := range targets {
+			if slices.Contains(evt.Targets, t.id) {
+				filtered = append(filtered, t)
+			}
+		}
+		targets = filtered
+	}
 
 	for _, t := range targets {
 		msg := ntfyMessage{

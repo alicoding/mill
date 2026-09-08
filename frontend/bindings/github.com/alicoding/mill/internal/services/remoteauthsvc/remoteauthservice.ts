@@ -16,6 +16,10 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as device$0 from "../../domain/device/models.js";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
 /**
@@ -44,6 +48,18 @@ export function GeneratePairingCode(): $CancellablePromise<$models.PairingCodeIn
  */
 export function ListBrowsers(): $CancellablePromise<$models.DeviceInfo[] | null> {
     return $Call.ByID(3867557993);
+}
+
+/**
+ * ListDeviceRefs is composition's "devices" OptionsSource resolver
+ * (docs/goals/0372): every paired phone, browser, and webhook token as
+ * one directory, filtered to only the refs that accept at least one of
+ * needs (empty needs returns every ref unfiltered) -- the frontend
+ * picker calls this with a config field's own declared Needs so the
+ * offered list never includes a device the event could never reach.
+ */
+export function ListDeviceRefs(needs: string[] | null): $CancellablePromise<device$0.Ref[] | null> {
+    return $Call.ByID(3248665176, needs);
 }
 
 /**
