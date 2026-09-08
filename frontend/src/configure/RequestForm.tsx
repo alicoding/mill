@@ -238,13 +238,22 @@ export function RequestForm({
                 ResponsiveValue direction) rather than a hand-rolled
                 media query -- a narrower row than that has no space for
                 both controls side by side regardless of Method's own
-                fixed width. align is responsive too: "end" is a cross-
-                axis value, so it means bottom-aligned in the horizontal
-                row but RIGHT-aligned once the stack flips vertical --
-                an unresponsive "end" shoved the stacked Method control
-                against the right edge instead of the natural left-
-                aligned column every other field in this form uses. */}
-            <Stack direction={{ narrow: 'vertical', regular: 'horizontal' }} gap="condensed" align={{ narrow: 'stretch', regular: 'end' }}>
+                fixed width. align is responsive too (goal 0370
+                amendment 2026-09-08): "end"/"start" are cross-axis
+                values, so at regular width "start" top-aligns the row
+                -- both Label lines share one line and both controls
+                share the line below, rather than "end"'s bottom-align,
+                which floated the shorter Method FormControl mid-height
+                beside URL's taller one (its own Caption pushes it
+                lower). At narrow width the cross-axis is horizontal, so
+                "start" there would only left-align each FormControl at
+                its OWN width rather than filling the row -- "stretch"
+                (Stack's own unset default) keeps every stacked field
+                the same full width the rest of the form's fields use,
+                and also avoids "end"'s worse narrow-width bug: RIGHT-
+                aligning the stacked Method control against the row's
+                far edge instead of a natural left-aligned column. */}
+            <Stack direction={{ narrow: 'vertical', regular: 'horizontal' }} gap="condensed" align={{ narrow: 'stretch', regular: 'start' }}>
               <FormControl>
                 <FormControl.Label>{t('requestForm.method')}</FormControl.Label>
                 <Select
