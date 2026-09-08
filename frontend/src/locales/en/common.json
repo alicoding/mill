@@ -322,6 +322,9 @@
         "certificates": "New client certificate"
       },
       "openKind": "Configure › {{label}}",
+      "integration": {
+        "testDraft": "Test"
+      },
       "request": {
         "delete": "Delete",
         "edit": "Edit",
@@ -332,6 +335,10 @@
         "delete": "Delete",
         "export": "Export",
         "reset": "Reset to shipped example"
+      },
+      "lists": {
+        "deleteUnusedOne": "Delete 1 list",
+        "deleteUnusedOther": "Delete {{count}} lists"
       },
       "mcpserver": {
         "delete": "Delete",

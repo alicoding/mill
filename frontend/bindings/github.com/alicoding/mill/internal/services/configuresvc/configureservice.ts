@@ -61,6 +61,9 @@ import * as list$0 from "../../domain/list/models.js";
 import * as mcpserver$0 from "../../domain/mcpserver/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as reference$0 from "../../domain/reference/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as secretsource$0 from "../../domain/secretsource/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -486,6 +489,15 @@ export function ListMCPServerTools(id: string): $CancellablePromise<mcpclient$0.
     return $Call.ByID(949169294, id);
 }
 
+/**
+ * ListUsageSummary returns every List's own usage count in one call --
+ * the Lists page's per-row indicator and Unused filter read this
+ * instead of one RPC per row.
+ */
+export function ListUsageSummary(): $CancellablePromise<$models.ListUsage[] | null> {
+    return $Call.ByID(2763912249);
+}
+
 export function Lists(): $CancellablePromise<list$0.List[] | null> {
     return $Call.ByID(2461513153);
 }
@@ -557,6 +569,19 @@ export function PublishDecision(id: string): $CancellablePromise<decision$0.Deci
  */
 export function PublishList(id: string): $CancellablePromise<list$0.List> {
     return $Call.ByID(3818004691, id);
+}
+
+/**
+ * References answers "what currently references this Configure
+ * entity" from every source that can hold one (docs/goals/0392
+ * Decision 3): board objects (atlassvc, via boardRefs -- nil-safe, see
+ * its own field comment) and workflow nodes (compositionsvc's existing
+ * WorkflowsReferencing). The one combined index refIntegrityError below
+ * and Configure's own per-row usage indicator (configurelistusage.go)
+ * both read, so the two surfaces can never answer this differently.
+ */
+export function References(entityKind: string, id: string): $CancellablePromise<reference$0.Refs> {
+    return $Call.ByID(2618437226, entityKind, id);
 }
 
 /**

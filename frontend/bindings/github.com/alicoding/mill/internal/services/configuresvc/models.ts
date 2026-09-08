@@ -16,6 +16,20 @@ export interface ClientCertificateMatch {
 }
 
 /**
+ * ListUsage is one List's own usage count against the combined
+ * reference index (docs/goals/0392 Decision 3) -- Boards/Workflows are
+ * counts, not the full reference.Refs, since Configure's Lists page
+ * only ever renders "Used on N boards, M workflows" and the Unused
+ * filter (both == 0), never the referencing names themselves (those
+ * surface in the blocked-delete error instead).
+ */
+export interface ListUsage {
+    "ListID": string;
+    "Boards": number;
+    "Workflows": number;
+}
+
+/**
  * ParsedXlsxFile mirrors listRowImportParse.ts's own ParsedFile shape
  * (frontend/src/configure/listRowImportParse.ts) field-for-field, so
  * xlsx rows feed the identical mapping/inference pipeline the CSV/JSON

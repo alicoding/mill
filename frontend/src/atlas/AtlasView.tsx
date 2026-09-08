@@ -461,6 +461,9 @@ export function AtlasView({ initialCardID }: { initialCardID?: string }) {
             count={undoToast.pending.count}
             linksRemoved={undoToast.pending.linksRemoved}
             childrenPromoted={undoToast.pending.childrenPromoted}
+            objectKind={undoToast.pending.objectKind}
+            entityRefKind={undoToast.pending.entityRefKind}
+            entityStillUsed={undoToast.pending.entityStillUsed}
             onUndo={undoToast.undo}
           />
         )}

@@ -8,6 +8,7 @@ export {
 
 export type {
     ClientCertificateMatch,
+    ListUsage,
     ParsedXlsxFile,
     ReferenceSummary,
     SummaryLine,
