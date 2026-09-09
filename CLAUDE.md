@@ -106,8 +106,8 @@ Status questions and related requests preserve unfinished work; resume it after 
 Use bounded waits and relevant independent work under existing WIP/resource limits; never
 substitute repeated polling or status messages for progress. Stop only for a real blocker,
 unapproved cost/irreversibility, SPEC OPEN/taste decision, or required permission. Name the
-blocker and resume when resolved. Preserve all safety, review and verification gates;
-never infer approval from silence, bypass denial, force-push, or rewrite history.
+blocker and resume when resolved. Preserve all safety, review and verification gates; never infer approval from silence, bypass denial, force-push, or rewrite history.
+Archive delivered goals. **Goal files and BACKLOG.md stay local-only** in ignored `docs/goals/`; never commit them. Other `docs/` changes still commit.
 
 **Releases are held until v1.** Beta builds publish on every merge and in-app updates work
 from them, so nothing needs a tagged release yet; leave release-please's PR open and
