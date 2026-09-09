@@ -67,7 +67,18 @@ readarray -t items < some-file.txt
 EOF
 probe 1 "a bash-4 construct under build/**/*.sh fails too" "$build_dir"
 
-rm -rf "$good" "$bad" "$allowed" "$build_dir"
+divergent="$(mktemp -d)"
+git_fixture_init "$divergent"
+mkdir -p "$divergent/scripts"
+cat >"$divergent/scripts/tmpfile.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+out="$(mktemp -t mill-probe)"
+echo "$out"
+EOF
+probe 1 "mktemp -t (BSD prefix form GNU rejects) fails" "$divergent"
+
+rm -rf "$good" "$bad" "$allowed" "$build_dir" "$divergent"
 
 if [ "$fails" -ne 0 ]; then
   echo "check-bash-portability-selftest: $fails probe(s) failed" >&2

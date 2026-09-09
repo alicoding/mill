@@ -96,7 +96,14 @@ export default defineConfig({
     // for completeness rather than trimming capability for MB is this
     // repo's own stance, so the fix for that class of warning is
     // raising the limit past today's largest real chunk, not chasing
-    // a split that would just reshuffle the same bytes.
+    // a split that would just reshuffle the same bytes. The largest
+    // single chunk today is `index-*.js` (Mill's own app entry, not a
+    // vendored engine) at 1,994kB, produced by no route-level code
+    // splitting existing yet -- every view (Board/Atlas/Settings/...)
+    // imports eagerly from src/app/main.tsx. Revisit this limit (split
+    // via React.lazy per view, the converged pattern) when that same
+    // chunk crosses 2,000kB, or when a second contributor to app-code
+    // size (not a vendored engine) pushes any chunk past this limit.
     chunkSizeWarningLimit: 2200,
     rolldownOptions: {
       // Rolldown's onwarn is a deprecated alias (its own type comment

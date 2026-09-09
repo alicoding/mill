@@ -1,5 +1,14 @@
 version: "2"
 
+# goal 0419 S1c: golangci-lint's own defaults truncate the REPORT at 50
+# issues per linter / 3 repeats of the same text -- a real finding past
+# those caps exits 0 silently. Zero disables both caps so every finding
+# is visible, matching this repo's "every gate's output carries zero
+# warnings" standard.
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
 linters:
   default: standard
   enable:
@@ -76,6 +85,16 @@ linters:
       # indirection would hide the wiring, not remove duplication.
       - path: internal/services/configuresvc/(configure(secretsource|conversionprofile)|clientcert)\.go
         linters: [dupl]
+      # dupSubExpr's `0 == 0` isn't in filetrash_darwin.go's own source --
+      # it's cgo's own generated pointer-check boilerplate for a
+      # `**C.char` argument (`_cgoCheckPointer(_cgoBase1, 0 == 0)` in the
+      # compiler's cgo1.go output, confirmed via `go build -work`), which
+      # every `&cErr`-shaped double-pointer cgo call emits regardless of
+      # what Mill's own code does. Scoped by `text` (not the whole file)
+      # so a real future gocritic finding in this file still gates.
+      - path: internal/adapters/filetrash/filetrash_darwin\.go
+        linters: [gocritic]
+        text: "dupSubExpr"
 
   settings:
     dupl:
