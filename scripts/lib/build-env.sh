@@ -8,8 +8,16 @@
 # bare-`go`/lefthook path the Task graph doesn't reach). No set -e/-u
 # here -- sourced into a caller that already carries its own.
 
-export MACOSX_DEPLOYMENT_TARGET=12.0
-export CGO_CFLAGS="-mmacosx-version-min=12.0"
+# goal 0419 S2c: Go 1.27 discontinued macOS 12 support in its own
+# linker (go.dev/doc/go1.27, "Darwin" -- the toolchain now stamps
+# LC_BUILD_VERSION's minimum at 13.0 unconditionally, independent of
+# any -mmacosx-version-min flag passed in). 12.0 -> 13.0 here isn't a
+# discretionary target choice; it's the floor the Go 1.27 toolchain
+# itself enforces, matched everywhere else this value is set
+# (root Taskfile.yml's env: block, ci.yml's macOS legs) to stay one
+# value.
+export MACOSX_DEPLOYMENT_TARGET=13.0
+export CGO_CFLAGS="-mmacosx-version-min=13.0"
 # -Wl,-no_warn_duplicate_libraries: every cgo package built with `-x
 # objective-c` (Mill's own four darwin packages, plus Wails'
 # pkg/application/pkg/services/{dock,notifications} and
@@ -20,17 +28,11 @@ export CGO_CFLAGS="-mmacosx-version-min=12.0"
 # work it already did right; confirmed via `go build -x` that no
 # per-package LDFLAGS scoping removes the duplication, since each
 # package's cgo invocation adds its own independently.
-export CGO_LDFLAGS="-mmacosx-version-min=12.0 -Wl,-no_warn_duplicate_libraries"
-# GOTOOLCHAIN pin: go.mod's `go 1.26` line is a floor, not a pin --
+export CGO_LDFLAGS="-mmacosx-version-min=13.0 -Wl,-no_warn_duplicate_libraries"
+# GOTOOLCHAIN pin: go.mod's `go 1.27` line is a floor, not a pin --
 # GOTOOLCHAIN=auto (Go's default) keeps using whatever `go` binary is
-# already on PATH once it satisfies that floor, even a newer one. A
-# newer local toolchain's own linker embeds a higher default minimum
-# macOS version into the Go-authored half of the binary regardless of
-# MACOSX_DEPLOYMENT_TARGET (confirmed empirically: go1.27.1 emits `ld:
-# warning: ... was built for newer macOS version (13.0) than being
-# linked (12.0)`; go1.26.8 -- the version CI's setup-go actually
-# resolves for its `go-version: '1.26'` pin -- does not). Pinning here
-# keeps local gates matching CI's own toolchain exactly without moving
-# the repo's declared minimum (go.mod's `go 1.26` line is untouched;
-# S2 owns any real currency bump).
-export GOTOOLCHAIN=go1.26.8
+# already on PATH once it satisfies that floor, even a newer one.
+# Pinning here keeps local gates matching CI's own toolchain exactly
+# without depending on whatever `go` happens to be on a contributor's
+# PATH.
+export GOTOOLCHAIN=go1.27.1

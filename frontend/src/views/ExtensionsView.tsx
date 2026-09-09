@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Heading, SegmentedControl, Stack, Text } from '@primer/react'
+import { Button, Heading, SegmentedControl, Stack, Text } from '@primer/react'
 import PageContainer from '../shared/PageContainer'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { notifyPluginRemoved } from '../shared/pluginRemoveSignal'
@@ -12,6 +12,8 @@ import { ExtensionsPolicyBanner } from './ExtensionsPolicyBanner'
 import { refreshUpdates, useExtensionUpdatesStore } from '../shared/extensionUpdatesStore'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './ExtensionsSection.module.css'
+import { runCommand } from '../shared/commands'
+import { ThemeImportDialog } from './ThemeImportDialog'
 
 // Extensions (docs/goals/0349): a destination of its own, not a
 // Settings pane -- the shape every surveyed extension platform
@@ -31,6 +33,15 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
   const { t } = useTranslation('views')
   const [tab, setTab] = useState<ExtensionsTab>(tabFrom(initialTab))
   const sourcesRequest = useUISignalStore((s) => s.extensionSourcesRequest)
+  const importRequest = useUISignalStore((s) => s.extensionThemeImportRequest)
+  const consumeImportRequest = useUISignalStore((s) => s.consumeExtensionThemeImport)
+  const [importOpen, setImportOpen] = useState(false)
+  useEffect(() => {
+    if (importRequest) {
+      setImportOpen(true)
+      consumeImportRequest()
+    }
+  }, [consumeImportRequest, importRequest])
   // A palette "marketplace sources" ask lands on Browse, where the
   // dialog lives.
   const [seenSources, setSeenSources] = useState(sourcesRequest)
@@ -56,7 +67,12 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
   return (
     <PageContainer variant="wide" data-testid="extensions-view">
       <Stack direction="vertical" gap="none">
-        <Heading as="h1" id="extensions-heading">{t('extensions.heading')}</Heading>
+        <Stack direction="horizontal" justify="space-between" align="center" gap="condensed">
+          <Heading as="h1" id="extensions-heading">{t('extensions.heading')}</Heading>
+          <Button onClick={() => void runCommand('extensions.importTheme')} data-testid="extensions-import-theme">
+            {t('extensions.themeImport.button')}
+          </Button>
+        </Stack>
         <Text as="p" size="small" className={listStyles.muted}>{t('extensions.subtitle')}</Text>
       </Stack>
 
@@ -79,6 +95,7 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
       {tab === 'browse' && <ExtensionsBrowseTab sourcesRequest={sourcesRequest} onInstalled={onInstalled} />}
       {tab === 'updates' && <ExtensionsUpdatesTab />}
       <ExtensionsUpdateDialogHost />
+      {importOpen && <ThemeImportDialog onClose={() => setImportOpen(false)} onImported={() => { setImportOpen(false); onInstalled() }} />}
     </PageContainer>
   )
 }

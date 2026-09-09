@@ -45,13 +45,31 @@ type MarketplaceOwner struct {
 // digest of the downloaded archive when the publisher declares one --
 // declaring it is what earns the hash-pinned tier.
 type PluginSource struct {
-	Kind   string `json:"kind"`
+	Kind string `json:"kind"`
+	// Name is the basename of a local snapshot source such as a theme
+	// file. It is never a machine path.
+	Name   string `json:"name,omitempty"`
 	Path   string `json:"path"`
 	Repo   string `json:"repo"`
 	Ref    string `json:"ref"`
 	SHA    string `json:"sha"`
 	URL    string `json:"url"`
 	SHA256 string `json:"sha256"`
+}
+
+func installSourceLocator(source PluginSource) string {
+	switch source.Kind {
+	case "theme-file":
+		return "theme-file"
+	case "path":
+		return source.Path
+	case "github":
+		return source.Repo
+	case "archive":
+		return source.URL
+	default:
+		return ""
+	}
 }
 
 // MarketplaceEntry is one plugin an index offers.

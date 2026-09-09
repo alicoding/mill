@@ -70,8 +70,9 @@ function needsReviewGroup(label: string): InventoryItemGroup {
   return { key: 'needs-review', label, icon: NEEDS_REVIEW_GROUP_ICON, pinned: true }
 }
 
-export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
+export function ExtensionsInstalledPlugins({ plugins, allowedIds, selectedId, onSelect }: {
   plugins: PluginInfo[] | null
+  allowedIds: string[]
   selectedId: string | null
   onSelect: (id: string) => void
 }) {
@@ -103,7 +104,15 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
     return text && kind
   }
   const reviewCount = pluginsAwaitingReview()
-  const reviewGroup = needsReviewGroup(t('settings.extensions.needsReviewGroup', { count: reviewCount }))
+  const effectiveStatus = (plugin: PluginInfo): string | undefined => {
+    const runtime = states.get(plugin.Manifest.id)?.status
+    if (runtime) return runtime
+    if (plugin.ThemeImport && !allowedIds.includes(plugin.Manifest.id)) return 'unallowed'
+    return undefined
+  }
+  const visibleReviewCount = own.filter((plugin) => needsReview(effectiveStatus(plugin))).length
+  const totalReviewCount = Math.max(reviewCount, visibleReviewCount)
+  const reviewGroup = needsReviewGroup(t('settings.extensions.needsReviewGroup', { count: totalReviewCount }))
   // The "Needs review" group is pinned first (goal 0420, Decision 2) --
   // groupOrder's own pinned-group ordering, ahead of pagination, so the
   // group -- and its header -- lands on page 1 rather than wherever a
@@ -111,7 +120,7 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
   const ownFiltered = groupOrder(
     own.filter(matches).map((plugin) => ({
       plugin,
-      group: needsReview(states.get(plugin.Manifest.id)?.status) ? reviewGroup : undefined,
+      group: needsReview(effectiveStatus(plugin)) ? reviewGroup : undefined,
     })),
   ).map((g) => g.plugin)
   const builtInFiltered = builtIns.filter(matches)
@@ -119,8 +128,8 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
   const pageCount = pageCountFor(ownFiltered.length)
   const page = clampPage(state.page, pageCount)
   const ownPage = pageItems(ownFiltered, page)
-  const reviewPage = ownPage.filter((p) => needsReview(states.get(p.Manifest.id)?.status))
-  const restPage = ownPage.filter((p) => !needsReview(states.get(p.Manifest.id)?.status))
+  const reviewPage = ownPage.filter((p) => needsReview(effectiveStatus(p)))
+  const restPage = ownPage.filter((p) => !needsReview(effectiveStatus(p)))
   const firstOnPage = (page - 1) * LIST_PAGE_SIZE + 1
   // The count is the user's OWN plugins -- the Built-in section carries
   // its own number in its own heading (goal 0337).
@@ -146,9 +155,10 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
     const id = p.Manifest.id
     const name = p.Manifest.name || id
     const runtime = states.get(id)
+    const status = effectiveStatus(p)
     const error = p.Error || (runtime?.status === 'error' ? runtime.error : '')
     const badgeKey = tierLabelKey(p.Tier ?? '')
-    const policyBlocked = runtime?.status === 'policy'
+    const policyBlocked = status === 'policy'
     const canvasHost = hasCanvasHostGrant(p)
     const waitsFor = runtime?.status === 'waits' ? runtime.waitsFor : undefined
     // A blocked row's trailing cluster is already the widest the list
@@ -174,11 +184,11 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
                 <Label variant="attention" data-testid="extensions-row-policy">{t('extensions.policy.blockedStatus')}</Label>
               )}
               {waitsFor && <Label data-testid="extensions-row-waits">{t('settings.extensions.pluginWaitsLabel', { id: waitsFor })}</Label>}
-              {needsReview(runtime?.status) && <Label variant="attention" data-testid="extensions-row-needs-review">{t('settings.extensions.needsReviewPill')}</Label>}
+              {needsReview(status) && <Label variant="attention" data-testid="extensions-row-needs-review">{t('settings.extensions.needsReviewPill')}</Label>}
             </>
           )}
           actions={p.Builtin ? undefined : <ExtensionRowMenu id={id} name={name} />}
-          control={rowControl(runtime?.status, error)}
+          control={rowControl(status, error)}
           enabled={!disabledIds.includes(id)}
           selected={selectedId === id}
           builtInLabel={t('settings.extensions.pluginBuiltIn')}
@@ -231,9 +241,9 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
               {reviewPage.length > 0 && (
                 <Stack direction="vertical" gap="none" data-testid="extensions-needs-review-group">
                   <Text as="h4" size="small" className={listStyles.muted}>
-                    {t('settings.extensions.needsReviewGroup', { count: reviewCount })}
+                    {t('settings.extensions.needsReviewGroup', { count: totalReviewCount })}
                   </Text>
-                  <ul className={styles.rows} aria-label={t('settings.extensions.needsReviewGroup', { count: reviewCount })}>
+                  <ul className={styles.rows} aria-label={t('settings.extensions.needsReviewGroup', { count: totalReviewCount })}>
                     {reviewPage.map(rowFor)}
                   </ul>
                 </Stack>

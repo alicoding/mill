@@ -7,7 +7,7 @@ import { SettingsService } from '../shared/bindings'
 import { resetLazyArrays } from '../shared/lazySnapshot'
 import { unregisterThirdPartyNouns } from '../atlas/atlasNounRegistry'
 import { buildPluginAPI, collectFrameSurfaces } from './hostApi'
-import { collectReloadCommand, loadPluginStorage, pluginLoadStates, readPluginPolicy, resolveActivate } from './loader'
+import { collectReloadCommand, loadPluginStorage, pluginLoadStates, pluginNeedsActivation, readPluginPolicy, resolveActivate } from './loader'
 import { captureSameDomExports, clearExports } from './extensionExports'
 import { unregisterPluginCaptures } from './pluginCaptures'
 import { unregisterPluginCommands } from './pluginCommands'
@@ -101,13 +101,14 @@ export async function reloadPlugin(pluginId: string): Promise<void> {
 	}
 	sweep()
 	try {
-		if (isFramedActivation(!!info.Builtin, info.Manifest)) {
+		const needsActivation = pluginNeedsActivation(info)
+		if (needsActivation && isFramedActivation(!!info.Builtin, info.Manifest)) {
 			// activateFramed tears down any PRIOR activation frame itself
 			// (the fresh manifest may have moved between framed and
 			// same-DOM), so this reload's own frame is never layered on
 			// top of a stale one.
 			await activateFramed(info, millVersion, storage[pluginId] ?? {})
-		} else {
+		} else if (needsActivation) {
 			// The query is what makes this a RELOAD: a module already in
 			// the browser's registry is never fetched again, so the
 			// version alone (unchanged when an author edits main.js in

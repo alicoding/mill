@@ -136,3 +136,7 @@ two lines.
 - Never more than 5 findings — rank and cut, don't dump everything found.
 - Never grade a diff you haven't read in full; never accept the builder's
   own description of what it changed as a substitute for the diff.
+- Never a `Pre-existing —` (or any severity) finding over `wip:` commits
+  still unsquashed in the branch's own history — the merge queue
+  squashes them; commit hygiene inside one goal branch is never
+  reviewable.

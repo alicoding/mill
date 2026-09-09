@@ -157,8 +157,10 @@ const conversionProfiles: EntityRowFamily<EntityRowItem> = {
   remove: (id) => ConfigureService.DeleteConversionProfile(id),
 }
 
-// A secret source names a path on THIS machine, so it has neither an
-// export nor a seeded example (ADR-0050).
+// A secret source's DEFINITION (kind, label, path) travels in the
+// whole-archive Configure export/backup (goal 0408 S3) -- its own
+// path is this machine's, so it carries no per-row export button or
+// seeded-reset command the way a portable entity does.
 const secretSources: EntityRowFamily<EntityRowItem> = {
   entity: 'secretsource',
   namespace: 'configure.secretsource',

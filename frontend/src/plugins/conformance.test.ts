@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -28,6 +28,7 @@ interface Manifest {
     configuration?: { key: string }[]
     captures?: { id: string }[]
     commands?: { id: string }[]
+    themes?: { id: string }[]
     tools?: { name: string; run?: { kind?: string; commandId?: string } }[]
   }
 }
@@ -62,6 +63,13 @@ describe('every shipped example plugin conforms to the platform contract', () =>
   it.each(examples)('%s registers only what its manifest declares', async (id) => {
     const dir = path.join(EXAMPLES, id)
     const manifest = JSON.parse(readFileSync(path.join(dir, 'manifest.json'), 'utf8')) as Manifest
+    const mainPath = path.join(dir, 'main.js')
+    if (!existsSync(mainPath)) {
+      expect(manifest.capabilities ?? []).toEqual([])
+      expect(Object.keys(manifest.contributes ?? {}).sort()).toEqual(['themes'])
+      expect(manifest.contributes?.themes).toBeDefined()
+      return
+    }
     const registered = { objects: [] as string[], views: [] as string[], captures: [] as string[], commands: [] as string[] }
     const touched = new Set<string>()
     const api = recordingAPI(manifest, touched)
@@ -72,7 +80,7 @@ describe('every shipped example plugin conforms to the platform contract', () =>
       registerCapture: (decl: { id: string }) => { registered.captures.push(decl.id); touched.add('registerCapture') },
       registerCommand: (decl: { id: string }) => { registered.commands.push(decl.id); touched.add('registerCommand') },
     }
-    const mod = (await import(/* @vite-ignore */ pathToFileURL(path.join(dir, 'main.js')).href)) as PluginModule
+    const mod = (await import(/* @vite-ignore */ pathToFileURL(mainPath).href)) as PluginModule
     const activate = mod.activate ?? (typeof mod.default === 'function' ? mod.default : mod.default?.activate)
     expect(activate, 'main.js exports activate').toBeTypeOf('function')
     await activate!(Object.freeze(spy) as unknown as MillPluginAPI)

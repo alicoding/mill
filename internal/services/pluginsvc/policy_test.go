@@ -280,14 +280,14 @@ func mustKeyText(t *testing.T, pk minisign.PublicKey) string {
 // fail-closed sentence; an absent file answers none.
 func TestPolicyInstallGates_FailClosed(t *testing.T) {
 	writePolicy(t, `{"version": 1`)
-	if err := policyInstallRefusal(Manifest{ID: "x"}, TierDev, "", "", ""); err != ErrPolicyUnreadable {
+	if err := policyInstallRefusal(Manifest{ID: "x"}, TierDev, ""); err != ErrPolicyUnreadable {
 		t.Fatalf("install under broken policy = %v", err)
 	}
 	if err := policySourceRefusal("", "https://example.test/x"); err != ErrPolicyUnreadable {
 		t.Fatalf("source under broken policy = %v", err)
 	}
 	t.Setenv(PolicyPathEnv, filepath.Join(t.TempDir(), "absent.json"))
-	if err := policyInstallRefusal(Manifest{ID: "x"}, TierDev, "", "", ""); err != nil {
+	if err := policyInstallRefusal(Manifest{ID: "x"}, TierDev, ""); err != nil {
 		t.Fatalf("install without policy = %v", err)
 	}
 	if err := policySourceRefusal("", "https://example.test/x"); err != nil {
@@ -299,10 +299,10 @@ func TestPolicyInstallGates_FailClosed(t *testing.T) {
 // passes, an unlisted one fails with the source sentence.
 func TestPolicyInstallGates_SourceList(t *testing.T) {
 	writePolicy(t, `{"version": 1, "managedBy": "Org", "allowedSources": ["bank-market", "https://git.example.test/mill"]}`)
-	if err := policyInstallRefusal(Manifest{ID: "x"}, TierDev, "other", "", ""); err == nil || !strings.Contains(err.Error(), "allows installs only from") {
+	if err := policyInstallRefusal(Manifest{ID: "x"}, TierDev, "other"); err == nil || !strings.Contains(err.Error(), "allows installs only from") {
 		t.Fatalf("unlisted marketplace = %v", err)
 	}
-	if err := policyInstallRefusal(Manifest{ID: "x"}, TierDev, "bank-market", "", ""); err != nil {
+	if err := policyInstallRefusal(Manifest{ID: "x"}, TierDev, "bank-market"); err != nil {
 		t.Fatalf("listed marketplace = %v", err)
 	}
 	if err := policySourceRefusal("", "https://git.example.test/mill/acme-notes"); err != nil {
@@ -318,7 +318,7 @@ func TestPolicyInstallGates_SourceList(t *testing.T) {
 // the detail and name the file.
 func TestPolicyInstallGates_RefusalSentences(t *testing.T) {
 	writePolicy(t, `{"version": 1, "managedBy": "Org", "block": [{"id": "acme-notes"}]}`)
-	err := policyInstallRefusal(Manifest{ID: "acme-notes", Version: "1.0.0"}, TierVerified, "", "", "")
+	err := policyInstallRefusal(Manifest{ID: "acme-notes", Version: "1.0.0"}, TierVerified, "")
 	if err == nil || err.Error() != "Your organisation blocks this extension." {
 		t.Fatalf("block refusal = %v", err)
 	}

@@ -155,7 +155,9 @@ jobs:
       # --- code: lint offender counts -------------------------------------
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
-          version: v2.12
+          # v2.13 (goal 0419 S2c): the first release built with go1.27,
+          # matching go.mod's toolchain go1.27.1 bump.
+          version: v2.13
           # Only the vote step below runs golangci-lint for real; this
           # action call installs the binary onto PATH without failing the
           # job on its own default full lint pass (reporting job, no gate).

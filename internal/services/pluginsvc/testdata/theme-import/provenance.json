@@ -1,0 +1,28 @@
+{
+  "fixtures": [
+    {
+      "author": "Catppuccin",
+      "version": "3.18.1",
+      "license": "MIT",
+      "url": "https://registry.npmjs.org/@catppuccin/vscode/-/vscode-3.18.1.tgz",
+      "archiveSHA256": "57999ac38f8814a51b367659e713809340d76a7252250bcbc2703bcb68dc40ea",
+      "files": {
+        "frappe.json": "e85b9a273221ff2e48296922d86de6def8f7dc12cd206e0052a5b85c0f72a888",
+        "latte.json": "c5739194f3d416a0056f507e016c369c1919ca77c2ae93709aaff64deffdf771",
+        "macchiato.json": "26c36f49990ad4996a052f2c8475303bcbf44e7f36e941272c9a2f3e3864370c",
+        "mocha.json": "d099921170d0710dead1270cc85f2eb138311561cc2bdaac573149be05bfc4c3"
+      }
+    },
+    {
+      "author": "Vitesse",
+      "version": "1.0.0",
+      "license": "MIT",
+      "url": "https://registry.npmjs.org/theme-vitesse/-/theme-vitesse-1.0.0.tgz",
+      "archiveSHA256": "523af25d0b13c3f03e8aa36388e6f2738087e301a9e6196747a0f95c917ee15d",
+      "files": {
+        "vitesse-dark.json": "4c0d1ea6503bf17599fe1d615232ebae972028b93470f95431e8b61cc647e4f4",
+        "vitesse-light.json": "54c567a98b10a499b5302a53bb8aae2b0ef1ae03abdcfd1448e8617a4d3ae451"
+      }
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 module github.com/alicoding/mill
 
-go 1.26
+go 1.27
 
-toolchain go1.26.8
+toolchain go1.27.1
 
 require (
 	aead.dev/minisign v0.3.0
@@ -11,7 +11,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/PuerkitoBio/goquery v1.13.0
 	github.com/andybalholm/cascadia v1.3.5
-	github.com/coder/websocket v1.8.14
+	github.com/coder/websocket v1.8.15
 	github.com/dbos-inc/dbos-transact-golang v1.3.0
 	github.com/dop251/goja v0.0.0-20260901132549-43234fa61381
 	github.com/expr-lang/expr v1.17.8
@@ -25,8 +25,9 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/modelcontextprotocol/go-sdk v1.7.0
 	github.com/netresearch/go-cron v0.16.0
-	github.com/rapid7/go-get-proxied v1.4.0
+	github.com/rapid7/go-get-proxied v1.4.1
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
+	github.com/tailscale/hujson v0.0.0-20260727124030-b80ff77dac4f
 	github.com/tobischo/gokeepasslib/v3 v3.7.0
 	github.com/wailsapp/wails/v3 v3.0.0-beta.18
 	github.com/xuri/excelize/v2 v2.11.0
@@ -35,9 +36,9 @@ require (
 	github.com/zalando/go-keyring v0.2.8
 	golang.design/x/hotkey v0.6.1
 	golang.org/x/image v0.45.0
-	golang.org/x/mod v0.40.0
+	golang.org/x/mod v0.41.0
 	golang.org/x/net v0.58.0
-	golang.org/x/oauth2 v0.36.0
+	golang.org/x/oauth2 v0.37.0
 	golang.org/x/text v0.41.0
 	golang.org/x/tools v0.49.0
 	gopkg.in/yaml.v3 v3.0.1

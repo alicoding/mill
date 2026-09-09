@@ -18,13 +18,11 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
-    ignore:
-      # go-get-proxied v1.4.1+ raises its go directive to 1.26, which
-      # drags this module's go directive past CI's pinned go-version
-      # '1.25' (GOTOOLCHAIN=local) and fails every Go job at package
-      # load. Lift when CI's Go moves to 1.26.
-      - dependency-name: github.com/rapid7/go-get-proxied
-        versions: [">= 1.4.1"]
+    # cooldown (goal 0419 S2c): a release gets 3 days of upstream soak
+    # before Dependabot opens a PR for it -- Dependabot's own `cooldown`
+    # key (docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#cooldown).
+    cooldown:
+      default-days: 3
     groups:
       go-dependencies:
         update-types:
@@ -40,6 +38,8 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 3
     ignore:
       # TS 7.0 has no stable compiler API; typescript-eslint declares
       # typescript >=4.8.4 <6.1.0 and cannot run on it (their issue
@@ -59,6 +59,8 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 2
+    cooldown:
+      default-days: 3
     # The two Dockerfiles' base images are digest-pinned (goal 0041,
     # Scorecard Pinned-Dependencies); this keeps those digests from
     # rotting the same way the github-actions entry below keeps SHA
@@ -70,6 +72,8 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 3
     groups:
       github-actions:
         # Every action in this repo is now pinned to a full commit SHA

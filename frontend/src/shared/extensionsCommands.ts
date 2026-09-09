@@ -112,6 +112,17 @@ export const EXTENSIONS_COMMANDS: Command[] = [
       useUISignalStore.getState().requestExtensionSources()
     },
   },
+  {
+    id: 'extensions.importTheme',
+    label: 'commands.extensions.importTheme',
+    defaultBinding: null,
+    keywords: ['extensions', 'theme', 'color', 'import'],
+    run: () => {
+      const app = useAppStore.getState()
+      if (app.view.kind !== 'extensions') app.setView({ kind: 'extensions' })
+      useUISignalStore.getState().requestExtensionThemeImport()
+    },
+  },
   // enable/disable/reveal/remove are minted by the row-command factory
   // below (goal 0346 slice B), the same descriptor every Configure
   // family uses -- their ids and labels are unchanged.

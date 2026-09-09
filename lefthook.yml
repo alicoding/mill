@@ -228,6 +228,12 @@ pre-commit:
     - name: hook-command-guard
       glob: "scripts/hook-command-guard.sh"
       run: ./scripts/check-hook-command-guard.sh
+    - name: hook-subagent-stop-selftest
+      # Fixture-tests the SubagentStop hook (goal 0414 S3): a builder
+      # never ends a turn with a dirty goal-branch worktree -- same
+      # probe-on-touch shape as hook-command-guard's own job just above.
+      glob: "{scripts/hook-subagent-stop.sh,scripts/hook-subagent-stop-selftest.sh}"
+      run: ./scripts/hook-subagent-stop-selftest.sh
     - name: selftest-git-isolation
       # Goal 0394: any scripts/*.sh creating a throwaway git repo must
       # source scripts/lib/git-fixture.sh, which clears the calling

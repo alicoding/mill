@@ -8,6 +8,7 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/domain/composition"
+	"github.com/alicoding/mill/internal/domain/secretsource"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
@@ -167,6 +168,10 @@ func TestExportEverything_RoundTripsEveryFamilyIntoAFreshInstance(t *testing.T) 
 	if err != nil {
 		t.Fatalf("CreateHTTPRequest: %v", err)
 	}
+	src, err := sourceCfg.CreateSecretSource("Round-trip source", secretsource.KindEnv, "/tmp/round-trip/.env")
+	if err != nil {
+		t.Fatalf("CreateSecretSource: %v", err)
+	}
 	kind, err := sourceAtlas.CreateKind("Round-trip kind", "", "", nil)
 	if err != nil {
 		t.Fatalf("CreateKind: %v", err)
@@ -201,7 +206,7 @@ func TestExportEverything_RoundTripsEveryFamilyIntoAFreshInstance(t *testing.T) 
 	// with a fresh, unseen id) -- lists/mcpservers/decisions/aiproviders/
 	// atlas are otherwise identical seeded content on both sides, so
 	// those families are legitimately all-Updated, not all-Created.
-	for _, name := range []string{"workflows", "requests"} {
+	for _, name := range []string{"workflows", "requests", "secretsources"} {
 		fs, ok := familyByName(preview.Families, name)
 		if !ok {
 			t.Fatalf("preview has no %q family, want it present", name)
@@ -237,6 +242,16 @@ func TestExportEverything_RoundTripsEveryFamilyIntoAFreshInstance(t *testing.T) 
 	}
 	if !reqFound {
 		t.Errorf("imported request %q not found in the fresh instance", req.ID)
+	}
+
+	srcFound := false
+	for _, s := range destCfg.SecretSources() {
+		if s.ID == src.ID {
+			srcFound = true
+		}
+	}
+	if !srcFound {
+		t.Errorf("imported secret source %q not found in the fresh instance", src.ID)
 	}
 
 	kindFound := false

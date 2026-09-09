@@ -23,19 +23,19 @@ status=0
   go build -o /dev/null .
   go vet . ./internal/...
   # goal 0419 S1c: `go build .`'s own link order happens to put one of
-  # Mill's own -mmacosx-version-min=12.0 cgo flags last on the external
-  # linker's argv, so ld settles on 12.0 without help -- but a smaller
+  # Mill's own -mmacosx-version-min=13.0 cgo flags last on the external
+  # linker's argv, so ld settles on 13.0 without help -- but a smaller
   # test binary (e.g. launchatlogin's, confirmed via `go test
   # -ldflags=-v`) can link a package set whose LAST occurrence is one
   # of Wails' own vendored -mmacosx-version-min=10.13 cgo files instead
   # (ld64 takes the last -mmacosx-version-min on the command line),
-  # producing the "was built for newer macOS version (12.0) than being
+  # producing the "was built for newer macOS version (13.0) than being
   # linked (11.0)" class on stderr with an exit-0 `go test` run.
   # -extldflags pins the resolved target as the LAST flag Go's linker
   # itself appends, independent of package link order, without
   # touching build/*/Taskfile.yml's own -ldflags (those pass their own
   # value explicitly, superseding this one, and already link clean).
-  go test -run '^$' -count=1 -ldflags='-extldflags=-mmacosx-version-min=12.0' ./internal/... .
+  go test -run '^$' -count=1 -ldflags='-extldflags=-mmacosx-version-min=13.0' ./internal/... .
 } >"$out" 2>&1 || status=$?
 
 hits="$(grep -i 'warning' "$out" || true)"

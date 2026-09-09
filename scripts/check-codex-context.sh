@@ -62,7 +62,7 @@ grep -Fq 'CLAUDE.md' AGENTS.md || fail 'router missing canonical context'
 validate_hooks() {
   local canonical="$1" native="$2"
   jq -e '
-    (.hooks | keys) == ["PermissionDenied","PreToolUse","SessionStart","TaskCompleted","UserPromptSubmit","WorktreeRemove"] and
+    (.hooks | keys) == ["PermissionDenied","PreToolUse","SessionStart","SubagentStop","TaskCompleted","UserPromptSubmit","WorktreeRemove"] and
     (.hooks.PreToolUse | length) == 2 and
     (.hooks.PreToolUse | map(.matcher) | sort) == ["Bash","Monitor"] and
     ([.hooks.PreToolUse[] | select(.matcher == "Bash")] == [{matcher:"Bash",hooks:[

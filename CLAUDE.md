@@ -99,14 +99,15 @@ lands against BACKLOG.md**: supersedes/reorders, merges into an existing goal, b
 new goal, or rides the next PR below goal-granularity — the sentence in the response IS
 the record.
 
-**With a ratified queue, sessions self-drive** — finish a goal, pull the next, continue;
-never idle awaiting a go-ahead the queue already gave. Stop for the owner ONLY when: it
-costs money, it's irreversible, it's a SPEC `OPEN` item, or a pure taste/product call with
-no defensible precedent to research against. Never granted: force-push, history
-rewrites. A delivered goal's file moves to `docs/goals/archive/` on completion. **Goal
-files and BACKLOG.md are a LOCAL-ONLY record** — `docs/goals/` is git-ignored in the
-nested docs repo and never committed, on this machine's disk only; everything else in
-`docs/` commits as before.
+**Authorized work self-drives through delivery:** research → contract → builder dispatch → review → installed verification → green merge;
+recording an audit, goal or plan is progress, never a stopping point. Continue without another
+"go ahead" unless the owner requested discussion/research only, paused, or changed scope.
+Status questions and related requests preserve unfinished work; resume it after answering.
+Use bounded waits and relevant independent work under existing WIP/resource limits; never
+substitute repeated polling or status messages for progress. Stop only for a real blocker,
+unapproved cost/irreversibility, SPEC OPEN/taste decision, or required permission. Name the
+blocker and resume when resolved. Preserve all safety, review and verification gates; never infer approval from silence, bypass denial, force-push, or rewrite history.
+Move delivered goal files to `docs/goals/archive/`. **Goal files and BACKLOG.md stay local-only** in ignored `docs/goals/`; never commit them. Other `docs/` changes still commit.
 
 **Releases are held until v1.** Beta builds publish on every merge and in-app updates work
 from them, so nothing needs a tagged release yet; leave release-please's PR open and
@@ -149,8 +150,7 @@ branches live only as long as their one task.
 A SPEC.md `OPEN` item is never silently resolved by implementing one option — surface
 the choice.
 
-**Goal-driven sessions finish their bounded scope, then hand off.** If a goal is too
-large for one session, say so and ask before starting, not after ending partially done.
+**Finish the bounded scope, then hand off.** Surface scope limits before starting.
 
 ## Hard constraints (non-negotiable — see `docs/SPEC.md` §1.1 for the why)
 

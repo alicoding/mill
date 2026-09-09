@@ -4,6 +4,9 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as secret$0 from "../../domain/secret/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as secretsource$0 from "../../domain/secretsource/models.js";
 
 /**
  * DotenvFound is one file the scan turned up, as the results table
@@ -111,6 +114,31 @@ export interface LockPolicy {
     "LockOnSleep": boolean;
     "LockOnUserSwitch": boolean;
     "LockOnMinimize": boolean;
+}
+
+/**
+ * Reference is one nameable secret reference (goal 0408 S3 decision
+ * 7): the vault's own entries, plus every enabled source's currently-
+ * readable keys -- what an agent can point a field at, never a value.
+ * Wire shape for both secrets_list_references (millmcpservice_secrets.go)
+ * and any future frontend consumer of the same listing.
+ */
+export interface Reference {
+    "label": string;
+    "ref": string;
+    "source": ReferenceSource | null;
+    "kind": secret$0.Kind;
+    "unresolved": boolean;
+}
+
+/**
+ * ReferenceSource names the configured source a reference resolves
+ * through, nil for a plain vault entry with no source.
+ */
+export interface ReferenceSource {
+    "id": string;
+    "label": string;
+    "kind": secretsource$0.Kind;
 }
 
 /**

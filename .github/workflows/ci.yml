@@ -505,6 +505,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-hook-command-guard.sh
 
+  # Mirrors lefthook.yml's hook-subagent-stop-selftest job: the
+  # SubagentStop hook that refuses a builder's stop turn while its
+  # goal-branch worktree is still dirty (goal 0414 S3), probed against
+  # synthetic mktemp worktree fixtures -- same probe-on-touch shape as
+  # hook-command-guard's own job just above.
+  hook-subagent-stop-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/hook-subagent-stop-selftest.sh
+
   # Mirrors lefthook.yml's own selftest-git-isolation job -- same script
   # (goal 0394: a scripts/*.sh creating a throwaway git repo sources
   # scripts/lib/git-fixture.sh, which clears the calling process's git
@@ -759,7 +771,9 @@ jobs:
           cache: true
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
-          version: v2.12
+          # v2.13 (goal 0419 S2c): the first release built with go1.27,
+          # matching go.mod's toolchain go1.27.1 bump.
+          version: v2.13
           args: --build-tags=server
       # Cognitive-complexity gate on NEW/CHANGED code only (goal 0109,
       # the clean-as-you-code posture -- see lefthook.yml's gocognit-new
@@ -796,10 +810,11 @@ jobs:
             cgo: '1'
             timeout-minutes: 15
             # One deployment target for Mill's own darwin cgo files
-            # (goal 0419 S1) -- Wails3's own scaffold floor, matching
-            # root Taskfile.yml's env: block and
-            # scripts/lib/build-env.sh exactly.
-            macosx_target: '12.0'
+            # (goal 0419 S1), matching root Taskfile.yml's env: block
+            # and scripts/lib/build-env.sh exactly. 13.0 (goal 0419
+            # S2c): Go 1.27 discontinued macOS 12 support in its own
+            # linker (go.dev/doc/go1.27, "Darwin").
+            macosx_target: '13.0'
           # Linux: server-mode build only. CGO_ENABLED=0 is required, not
           # optional -- Wails3's own internal/operatingsystem and
           # internal/assetserver/webview packages are cgo-gated onto
@@ -901,9 +916,9 @@ jobs:
       - name: Build the raw binary from the already-built frontend/dist
         env:
           CGO_ENABLED: '1'
-          CGO_CFLAGS: '-mmacosx-version-min=12.0'
-          CGO_LDFLAGS: '-mmacosx-version-min=12.0'
-          MACOSX_DEPLOYMENT_TARGET: '12.0'
+          CGO_CFLAGS: '-mmacosx-version-min=13.0'
+          CGO_LDFLAGS: '-mmacosx-version-min=13.0'
+          MACOSX_DEPLOYMENT_TARGET: '13.0'
         run: |
           set -euo pipefail
           mkdir -p bin
@@ -1004,9 +1019,9 @@ jobs:
       # One deployment target (goal 0419 S1) -- see build-go's own
       # macos leg comment; matches root Taskfile.yml's env: block and
       # scripts/lib/build-env.sh.
-      MACOSX_DEPLOYMENT_TARGET: '12.0'
-      CGO_CFLAGS: '-mmacosx-version-min=12.0'
-      CGO_LDFLAGS: '-mmacosx-version-min=12.0 -Wl,-no_warn_duplicate_libraries'
+      MACOSX_DEPLOYMENT_TARGET: '13.0'
+      CGO_CFLAGS: '-mmacosx-version-min=13.0'
+      CGO_LDFLAGS: '-mmacosx-version-min=13.0 -Wl,-no_warn_duplicate_libraries'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -1426,6 +1441,7 @@ jobs:
       - rules-frontmatter
       - standing-context
       - hook-command-guard
+      - hook-subagent-stop-selftest
       - selftest-git-isolation
       - selftest-git-isolation-selftest
       - install-lock-selftest
