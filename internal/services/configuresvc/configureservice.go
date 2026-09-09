@@ -81,17 +81,17 @@ const (
 // package directly, same reasoning as CompositionService's Syncer
 // interface for TriggerService.
 type ConfigureService struct {
-	mu                 sync.Mutex
-	undo               deleteUndo
-	store              settings.Store
-	credentials        credential.Store
-	requests           []httprequest.HTTPRequest
-	lists              []list.List
-	mcpServers         []mcpserver.MCPServer
-	decisions          []decision.Decision
-	execEnvs           []execenv.ExecEnv
-	environments       []environment.Environment
-	secretSources      []secretsource.Source
+	mu            sync.Mutex
+	undo          deleteUndo
+	store         settings.Store
+	credentials   credential.Store
+	requests      []httprequest.HTTPRequest
+	lists         []list.List
+	mcpServers    []mcpserver.MCPServer
+	decisions     []decision.Decision
+	execEnvs      []execenv.ExecEnv
+	environments  []environment.Environment
+	secretSources []secretsource.Source
 	// seedAssetsDir is where a file-backed seed asset (goal 0367's
 	// example dotenv file) is written; empty until wiring provides it,
 	// and the asset-backed golden stays unseeded until then (atlas's
@@ -154,6 +154,10 @@ type ConfigureService struct {
 	// panicking, so a test that never wires it still exercises the
 	// workflow half.
 	boardRefs func(entityKind, id string) []reference.ObjectRef
+	// pluginRefs is pluginsvc's own entityRef-setting reference index
+	// (docs/goals/0400) -- wired late via WirePluginReferenceLookup, the
+	// same nil-means-off discipline boardRefs above follows.
+	pluginRefs func(entityKind, id string) []reference.PluginRef
 }
 
 // WireBoardReferenceLookup injects atlassvc's ObjectsReferencing.
@@ -162,6 +166,14 @@ type ConfigureService struct {
 //wails:ignore
 func (c *ConfigureService) WireBoardReferenceLookup(fn func(entityKind, id string) []reference.ObjectRef) {
 	c.boardRefs = fn
+}
+
+// WirePluginReferenceLookup injects pluginsvc's PluginsReferencing.
+// Called once from wiring.go, after both services exist.
+//
+//wails:ignore
+func (c *ConfigureService) WirePluginReferenceLookup(fn func(entityKind, id string) []reference.PluginRef) {
+	c.pluginRefs = fn
 }
 
 // SetSecretResolver wires ConfigureService's own vault-reference

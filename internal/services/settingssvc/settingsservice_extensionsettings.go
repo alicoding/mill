@@ -68,6 +68,7 @@ func (s *SettingsService) SetExtensionSetting(extensionID, key, jsonValue string
 		return err
 	}
 	settings := s.readExtensionSettings()
+	previous := decodeStringSetting(settings[extensionID][key])
 	if settings[extensionID] == nil {
 		settings[extensionID] = map[string]json.RawMessage{}
 	}
@@ -80,6 +81,10 @@ func (s *SettingsService) SetExtensionSetting(extensionID, key, jsonValue string
 		return err
 	}
 	dataevent.Emit("extension-setting", extensionID)
+	// docs/goals/0400: an entityRef setting's changed value registers/
+	// clears a Configure-entity reference, the same live event pair a
+	// board object's create/delete already fires.
+	s.emitEntityRefChange(extensionID, key, previous, decodeStringSetting(compact))
 	return nil
 }
 

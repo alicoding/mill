@@ -228,7 +228,7 @@ func main() {
 	wiring.WireValidationSeams(configureService)
 	wiring.WireConfigureSeams(atlasService, configureService, compositionService, pluginService) // paste conversion + plugin/workflow content writes + undo journals
 	wiring.WireCanvasObjectExamples(atlasService, pluginService)                                 // goal 0411: Board gallery seeds every plugin's declared canvasObjects example
-	wiring.WireNotify(notificationService)                                   // goal 0368: apply-notify publishes through the notification spine
+	wiring.WireNotify(notificationService)                                                       // goal 0368: apply-notify publishes through the notification spine
 
 	backupService := backupsvc.Wire(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion, compositionService, configureService, atlasService)
 
@@ -244,6 +244,7 @@ func main() {
 	auditService := wiring.WireAuditExport(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsService.GetAuditRetentionEntries(), logger) // goal 0351 S2: export/retention over the shared audit trail
 	settingsService.SetAuditRetentionChanged(auditService.PruneNow)                                                                          // a lowered cap takes effect immediately, not only at the next restart
 	wiring.WireSettingsEraSeams(settingsService, notificationService, remoteAuthService, triggerService, atlasService, pluginService, secretService)
+	wiring.WirePluginEntityRefEvents(settingsService, pluginService, configureService) // goal 0400: an entityRef setting's changed value fires entity.referenced/dereferenced
 	settingsService.SetAppVersion(millUpdateVersion)
 	// The user's persisted channel opt-in wins over the build stamp for
 	// the resolved channel (a source-built copy can deliberately follow

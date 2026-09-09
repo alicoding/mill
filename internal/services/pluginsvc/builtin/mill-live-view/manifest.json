@@ -12,7 +12,7 @@
       { "id": "live-view", "title": "Live view", "entry": "view.html", "placement": "board-switcher" }
     ],
     "settings": [
-      { "key": "integrationId", "type": "string", "label": "Integration", "description": "The id of the Configure Integration that maps this view's search, comment and transition requests (Configure > Integrations).", "default": "" }
+      { "key": "integrationId", "type": "entityRef", "entityKind": "request", "label": "Integration", "description": "The Configure Integration that maps this view's search, comment and transition requests." }
     ]
   }
 }

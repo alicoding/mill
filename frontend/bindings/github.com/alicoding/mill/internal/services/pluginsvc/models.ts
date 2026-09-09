@@ -800,14 +800,18 @@ export interface SecretSourcePathContribution {
 /**
  * SettingContribution is one declared plugin setting. Type is the
  * four-type floor every declarative settings platform shares --
- * "boolean", "string", "number", "enum" -- plus "secretRef" (ADR-0048):
- * the user picks any reference the picker offers -- a vault entry or a
- * configured source's key (goal 0408 S1) -- the stored value is that
- * reference, and the plugin only ever reads its title. Default is the value in
+ * "boolean", "string", "number", "enum" -- plus "secretRef" (ADR-0048)
+ * and "entityRef" (docs/goals/0400): the user picks any reference the
+ * picker offers -- a vault entry or a configured source's key for
+ * secretRef (goal 0408 S1), a Configure entity of EntityKind for
+ * entityRef -- the stored value is that reference, and a secretRef
+ * plugin only ever reads its title (an entityRef plugin reads the id
+ * itself, the same value the picker stored). Default is the value in
  * effect until the user touches the control (the converged
  * `default` spelling), decoded as whatever JSON scalar the manifest
  * wrote; validateContributes pins it to Type. Options is enum-only;
- * Min/Max are number-only, both optional.
+ * Min/Max are number-only; EntityKind is entityRef-only -- all
+ * optional otherwise.
  */
 export interface SettingContribution {
     "key": string;
@@ -818,6 +822,14 @@ export interface SettingContribution {
     "options": SettingOption[] | null;
     "min": number | null;
     "max": number | null;
+
+    /**
+     * EntityKind names which Configure entity kind an entityRef setting
+     * points at -- one of entityKindVocabulary below, the same RefKind
+     * vocabulary frontend/src/configure/EntityRefField.tsx's own
+     * fetchEntities switch resolves to a live picker.
+     */
+    "entityKind": string;
 }
 
 /**

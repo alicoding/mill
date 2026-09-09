@@ -307,21 +307,25 @@ func TestListPlugins_ValidatesContributedSettings(t *testing.T) {
 		{"key":"flag","type":"boolean","label":"Flag","description":"","default":true},
 		{"key":"title","type":"string","label":"Title","description":"","default":"Hi"},
 		{"key":"rows","type":"number","label":"Rows","description":"","default":10,"min":1,"max":100},
-		{"key":"style","type":"enum","label":"Style","description":"","default":"a","options":[{"value":"a","label":"A"},{"value":"b","label":"B"}]}
+		{"key":"style","type":"enum","label":"Style","description":"","default":"a","options":[{"value":"a","label":"A"},{"value":"b","label":"B"}]},
+		{"key":"integration","type":"entityRef","label":"Integration","description":"","entityKind":"request"}
 	]`), nil)
 	cases := map[string]struct{ settings, want string }{
-		"bad-key":      {`[{"key":"1st","type":"boolean","label":"X","default":true}]`, "setting key"},
-		"no-label":     {`[{"key":"k","type":"boolean","label":" ","default":true}]`, "needs a label"},
-		"bad-type":     {`[{"key":"k","type":"password","label":"X","default":""}]`, "unknown type"},
-		"bool-default": {`[{"key":"k","type":"boolean","label":"X","default":"yes"}]`, "not true or false"},
-		"str-default":  {`[{"key":"k","type":"string","label":"X","default":3}]`, "not a string"},
-		"num-default":  {`[{"key":"k","type":"number","label":"X","default":"3"}]`, "not a number"},
-		"num-range":    {`[{"key":"k","type":"number","label":"X","default":5,"min":10,"max":1}]`, "min above max"},
-		"num-outside":  {`[{"key":"k","type":"number","label":"X","default":500,"min":1,"max":100}]`, "outside its min/max"},
-		"enum-no-opts": {`[{"key":"k","type":"enum","label":"X","default":"a"}]`, "declares no options"},
-		"enum-bad-opt": {`[{"key":"k","type":"enum","label":"X","default":"a","options":[{"value":"a","label":""}]}]`, "missing its value or label"},
-		"enum-default": {`[{"key":"k","type":"enum","label":"X","default":"z","options":[{"value":"a","label":"A"}]}]`, "not one of its options"},
-		"dup-key":      {`[{"key":"k","type":"boolean","label":"X","default":true},{"key":"k","type":"boolean","label":"Y","default":false}]`, "declared twice"},
+		"bad-key":         {`[{"key":"1st","type":"boolean","label":"X","default":true}]`, "setting key"},
+		"no-label":        {`[{"key":"k","type":"boolean","label":" ","default":true}]`, "needs a label"},
+		"bad-type":        {`[{"key":"k","type":"password","label":"X","default":""}]`, "unknown type"},
+		"bool-default":    {`[{"key":"k","type":"boolean","label":"X","default":"yes"}]`, "not true or false"},
+		"str-default":     {`[{"key":"k","type":"string","label":"X","default":3}]`, "not a string"},
+		"num-default":     {`[{"key":"k","type":"number","label":"X","default":"3"}]`, "not a number"},
+		"num-range":       {`[{"key":"k","type":"number","label":"X","default":5,"min":10,"max":1}]`, "min above max"},
+		"num-outside":     {`[{"key":"k","type":"number","label":"X","default":500,"min":1,"max":100}]`, "outside its min/max"},
+		"enum-no-opts":    {`[{"key":"k","type":"enum","label":"X","default":"a"}]`, "declares no options"},
+		"enum-bad-opt":    {`[{"key":"k","type":"enum","label":"X","default":"a","options":[{"value":"a","label":""}]}]`, "missing its value or label"},
+		"enum-default":    {`[{"key":"k","type":"enum","label":"X","default":"z","options":[{"value":"a","label":"A"}]}]`, "not one of its options"},
+		"dup-key":         {`[{"key":"k","type":"boolean","label":"X","default":true},{"key":"k","type":"boolean","label":"Y","default":false}]`, "declared twice"},
+		"entref-no-kind":  {`[{"key":"k","type":"entityRef","label":"X","description":"d"}]`, "declares no entityKind"},
+		"entref-bad-kind": {`[{"key":"k","type":"entityRef","label":"X","description":"d","entityKind":"nope"}]`, "not a Configure entity kind"},
+		"entref-default":  {`[{"key":"k","type":"entityRef","label":"X","description":"d","entityKind":"request","default":"abc"}]`, "cannot declare a default"},
 	}
 	for id, c := range cases {
 		writePlugin(t, root, id, base(id, c.settings), nil)
@@ -339,7 +343,7 @@ func TestListPlugins_ValidatesContributedSettings(t *testing.T) {
 	if got := byID["all-types"]; got.Error != "" {
 		t.Fatalf("all-types should be valid, got error %q", got.Error)
 	}
-	if got := byID["all-types"].Manifest.Contributes.Settings; len(got) != 4 || got[2].Default != 10.0 || *got[2].Max != 100 {
+	if got := byID["all-types"].Manifest.Contributes.Settings; len(got) != 5 || got[2].Default != 10.0 || *got[2].Max != 100 || got[4].EntityKind != "request" {
 		t.Fatalf("all-types settings decoded wrong: %+v", got)
 	}
 	for id, c := range cases {

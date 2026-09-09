@@ -586,11 +586,13 @@ export function PublishList(id: string): $CancellablePromise<list$0.List> {
 /**
  * References answers "what currently references this Configure
  * entity" from every source that can hold one (docs/goals/0392
- * Decision 3): board objects (atlassvc, via boardRefs -- nil-safe, see
- * its own field comment) and workflow nodes (compositionsvc's existing
- * WorkflowsReferencing). The one combined index refIntegrityError below
- * and Configure's own per-row usage indicator (configurelistusage.go)
- * both read, so the two surfaces can never answer this differently.
+ * Decision 3, extended by docs/goals/0400): board objects (atlassvc,
+ * via boardRefs -- nil-safe, see its own field comment), workflow
+ * nodes (compositionsvc's existing WorkflowsReferencing), and plugin
+ * entityRef settings (pluginsvc, via pluginRefs -- nil-safe the same
+ * way). The one combined index refIntegrityError below and Configure's
+ * own per-row usage indicator (configurelistusage.go) both read, so
+ * the surfaces can never answer this differently.
  */
 export function References(entityKind: string, id: string): $CancellablePromise<reference$0.Refs> {
     return $Call.ByID(2618437226, entityKind, id);

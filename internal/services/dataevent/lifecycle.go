@@ -12,14 +12,17 @@ import "github.com/alicoding/mill/internal/adapters/windowing"
 const LifecycleEventName = "mill-lifecycle-event"
 
 // LifecycleBy names what added or removed one reference to an entity:
-// a board object (BoardID+ObjectID) or a workflow (WorkflowID) -- the
-// two sources reference.Refs already distinguishes. Exactly one side
-// populated per event; a pointer field on LifecycleEvent so an event
-// with no By (entity.created/entity.deleted) carries neither.
+// a board object (BoardID+ObjectID), a workflow (WorkflowID), or a
+// plugin's own declared setting (PluginID+SettingKey, docs/goals/0400)
+// -- the three sources reference.Refs distinguishes. Exactly one
+// group populated per event; a pointer field on LifecycleEvent so an
+// event with no By (entity.created/entity.deleted) carries neither.
 type LifecycleBy struct {
 	BoardID    string `json:"boardId,omitempty"`
 	ObjectID   string `json:"objectId,omitempty"`
 	WorkflowID string `json:"workflowId,omitempty"`
+	PluginID   string `json:"pluginId,omitempty"`
+	SettingKey string `json:"settingKey,omitempty"`
 }
 
 // LifecycleEvent is the one entity/object lifecycle event family (docs/

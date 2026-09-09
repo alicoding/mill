@@ -8,6 +8,7 @@ import (
 
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/services/atlassvc"
+	"github.com/alicoding/mill/internal/services/configuresvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/notificationsvc"
 	"github.com/alicoding/mill/internal/services/pluginsvc"
@@ -68,6 +69,16 @@ func WireSettingsEraSeams(settings *settingssvc.SettingsService, notif *notifica
 	WirePluginTrust(plugins, settings, secrets)      // docs/adr/0051-platform-contract.md §4
 	WirePluginIngestion(atlas, plugins, settings)    // docs/goals/0251-plugin-ingestion-claims.md
 	WirePluginSecretRefs(plugins, secrets, settings) // docs/adr/0048-plugin-secret-references.md
+}
+
+// WirePluginEntityRefEvents connects an entityRef plugin setting's
+// changed value to the entity.referenced/entity.dereferenced lifecycle
+// events (docs/goals/0400): pluginsvc answers which setting is
+// entityRef and its entityKind, configuresvc answers the live
+// reference count after the change. Called once from main.go, after
+// settingsService, pluginService, and configureService all exist.
+func WirePluginEntityRefEvents(settings *settingssvc.SettingsService, plugins *pluginsvc.PluginService, cfg *configuresvc.ConfigureService) {
+	settings.WireEntityReferenceEvents(plugins.EntityRefEntityKind, cfg.References)
 }
 
 // settingsTrust adapts SettingsService to the plugin service's trust

@@ -15,14 +15,18 @@ import (
 
 // SettingContribution is one declared plugin setting. Type is the
 // four-type floor every declarative settings platform shares --
-// "boolean", "string", "number", "enum" -- plus "secretRef" (ADR-0048):
-// the user picks any reference the picker offers -- a vault entry or a
-// configured source's key (goal 0408 S1) -- the stored value is that
-// reference, and the plugin only ever reads its title. Default is the value in
+// "boolean", "string", "number", "enum" -- plus "secretRef" (ADR-0048)
+// and "entityRef" (docs/goals/0400): the user picks any reference the
+// picker offers -- a vault entry or a configured source's key for
+// secretRef (goal 0408 S1), a Configure entity of EntityKind for
+// entityRef -- the stored value is that reference, and a secretRef
+// plugin only ever reads its title (an entityRef plugin reads the id
+// itself, the same value the picker stored). Default is the value in
 // effect until the user touches the control (the converged
 // `default` spelling), decoded as whatever JSON scalar the manifest
 // wrote; validateContributes pins it to Type. Options is enum-only;
-// Min/Max are number-only, both optional.
+// Min/Max are number-only; EntityKind is entityRef-only -- all
+// optional otherwise.
 type SettingContribution struct {
 	Key         string          `json:"key"`
 	Type        string          `json:"type"`
@@ -32,10 +36,35 @@ type SettingContribution struct {
 	Options     []SettingOption `json:"options"`
 	Min         *float64        `json:"min"`
 	Max         *float64        `json:"max"`
+	// EntityKind names which Configure entity kind an entityRef setting
+	// points at -- one of entityKindVocabulary below, the same RefKind
+	// vocabulary frontend/src/configure/EntityRefField.tsx's own
+	// fetchEntities switch resolves to a live picker.
+	EntityKind string `json:"entityKind"`
 }
 
 // SettingTypeSecretRef is the vault-reference setting type (ADR-0048).
 const SettingTypeSecretRef = "secretRef"
+
+// SettingTypeEntityRef is the Configure-entity-reference setting type
+// (docs/goals/0400): the stored value is the entity's id, picked
+// through the same EntityRefField the ConfigField picker for that
+// RefKind already uses.
+const SettingTypeEntityRef = "entityRef"
+
+// entityKindVocabulary is the RefKind vocabulary an entityRef setting
+// may declare -- exactly the kinds
+// frontend/src/configure/EntityRefField.tsx's own fetchEntities switch
+// resolves to a live picker. Kept as an explicit Go-side copy (that
+// frontend switch is the only other place this set is written) since a
+// manifest naming any other kind would render a picker with nothing to
+// select from -- standard rule 33.
+var entityKindVocabulary = map[string]bool{
+	"request": true, "list": true, "mcpserver": true, "workflow": true,
+	"workflow-scope": true, "decision": true, "execenv": true,
+	"environment": true, "aiprovider": true, "conversionprofile": true,
+	"atlas-kind": true, "atlas-linkkind": true,
+}
 
 // SettingOption is one enum choice: the stored value and its
 // user-facing label.
@@ -137,8 +166,27 @@ func validateSettingContribution(st SettingContribution) string {
 		if st.Default != nil {
 			return fmt.Sprintf("contributed setting %q is a secretRef and cannot declare a default", st.Key)
 		}
+	case SettingTypeEntityRef:
+		return validateEntityRefSetting(st)
 	default:
-		return fmt.Sprintf("contributed setting %q has unknown type %q (boolean, string, number, enum, or secretRef)", st.Key, st.Type)
+		return fmt.Sprintf("contributed setting %q has unknown type %q (boolean, string, number, enum, secretRef, or entityRef)", st.Key, st.Type)
+	}
+	return ""
+}
+
+// validateEntityRefSetting is standard rule 33: an entityRef setting
+// names a known entityKind, and (matching secretRef's own reasoning)
+// declares no default -- no manifest author ever saw the live
+// Configure entity a default would have to name.
+func validateEntityRefSetting(st SettingContribution) string {
+	if st.Default != nil {
+		return fmt.Sprintf("contributed setting %q is an entityRef and cannot declare a default", st.Key)
+	}
+	if strings.TrimSpace(st.EntityKind) == "" {
+		return fmt.Sprintf("contributed setting %q is an entityRef but declares no entityKind (standard rule 33)", st.Key)
+	}
+	if !entityKindVocabulary[st.EntityKind] {
+		return fmt.Sprintf("contributed setting %q has entityKind %q, which is not a Configure entity kind the picker supports (standard rule 33)", st.Key, st.EntityKind)
 	}
 	return ""
 }

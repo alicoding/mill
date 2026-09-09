@@ -14,6 +14,7 @@ import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 import { gotoAppReady } from './fixtures/appReady'
+import { openExtensionDetail, openExtensions, pluginRow } from './fixtures/settingsNav'
 
 const CONFIGURE = 'github.com/alicoding/mill/internal/services/configuresvc.ConfigureService'
 const SETTINGS = 'github.com/alicoding/mill/internal/services/settingssvc.SettingsService'
@@ -93,6 +94,21 @@ test('the live view lists rows from the stub, posts a comment through the inline
   try {
     await callBindingViaRPC(page, `${SETTINGS}.SetExtensionSetting`, [PLUGIN_ID, 'integrationId', JSON.stringify(created.ID)])
 
+    // The Integration setting is entityRef (goal 0400): its row renders
+    // the SAME picker a node ConfigField of RefKind "request" uses,
+    // showing the seeded Integration's own label, never its id.
+    // mill-live-view is bundled (Builtin), so its detail pane has no
+    // tab strip -- declared settings render straight into the one pane
+    // (ExtensionDetailPane's own body, unlike an installed plugin's
+    // settings tab).
+    await openExtensions(page)
+    const detail = await openExtensionDetail(page, pluginRow(page, PLUGIN_ID), PLUGIN_ID)
+    const integrationRow = detail.getByTestId(`extension-setting-${PLUGIN_ID}-integrationId`)
+    await expect(integrationRow).toHaveAttribute('data-setting-type', 'entityRef')
+    const integrationSelect = integrationRow.getByTestId('entity-ref-field')
+    await expect(integrationSelect).toHaveValue(created.ID)
+    await expect(integrationSelect.locator('option:checked')).toHaveText(label)
+
     await page.getByRole('link', { name: 'Atlas' }).click()
     await expect(page.getByTestId('atlas-board')).toBeVisible()
     await page.getByTestId(SWITCHER_TESTID).click()
@@ -145,8 +161,11 @@ test('the live view lists rows from the stub, posts a comment through the inline
     await expect(frame.getByTestId('live-view-comment-sent')).toBeVisible()
     await expect.poll(() => comments).toEqual(['On it', 'Second reply, pre-approved'])
   } finally {
-    await callBindingViaRPC(page, `${CONFIGURE}.DeleteHTTPRequest`, [created.ID])
+    // The setting clears FIRST (goal 0400): the entityRef reference it
+    // holds refuses the HTTPRequest's own delete while it's still
+    // picked, the same block DeleteHTTPRequest's own tests cover.
     await callBindingViaRPC(page, `${SETTINGS}.SetExtensionSetting`, [PLUGIN_ID, 'integrationId', JSON.stringify('')])
+    await callBindingViaRPC(page, `${CONFIGURE}.DeleteHTTPRequest`, [created.ID])
     await new Promise<void>((resolve) => server.close(() => resolve()))
   }
 })
