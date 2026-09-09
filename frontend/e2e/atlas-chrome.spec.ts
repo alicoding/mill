@@ -52,9 +52,11 @@ test('the view switcher moves between the board and its projections, and back', 
   await expect(pane).toHaveCount(0)
   await expect(page.getByTestId('atlas-open-board')).toHaveAttribute('aria-pressed', 'true')
 
-  await page.getByTestId('atlas-open-matrix').click()
-  await expect(pane).toHaveAttribute('data-view', 'matrix')
-  await expect(page.getByTestId('atlas-open-matrix')).toHaveAttribute('aria-pressed', 'true')
+  // Matrix is the bundled mill-matrix plugin (goal 0357 S2): its own
+  // persisted view id, not the old core literal.
+  await page.getByTestId('atlas-open-plugin-mill-matrix-matrix').click()
+  await expect(pane).toHaveAttribute('data-view', 'plugin:mill-matrix.matrix')
+  await expect(page.getByTestId('atlas-open-plugin-mill-matrix-matrix')).toHaveAttribute('aria-pressed', 'true')
 
   await page.keyboard.press('Escape')
   await expect(pane).toHaveCount(0)

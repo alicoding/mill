@@ -25,7 +25,7 @@ export function AtlasViewOverlays({
   overlayCard, onCloseOverlay, undoToast, openGroupEntry, guardDelete,
   importConfirmDialog,
   tableFromListOpen, onCloseTableFromList, newSpaceOpen, onCloseNewSpace, onCreateTable, onCreateSpace,
-  menu, onCloseMenu, linkMenus, containmentMenus, deleteConfirm,
+  menu, onCloseMenu, linkMenus, containmentMenus, deleteConfirm, demoteDialog,
   openNote, onCloseNote,
   editingDiagramObject, onCloseEditDiagram,
   kindsOpen, onCloseKinds,
@@ -57,6 +57,7 @@ export function AtlasViewOverlays({
   linkMenus: ReturnType<typeof useAtlasLinkMenus>
   containmentMenus: ReturnType<typeof useAtlasContainmentMenus>
   deleteConfirm: ReturnType<typeof useAtlasDeleteConfirm>
+  demoteDialog: ReactNode
   openNote: Note | null
   onCloseNote: () => void
   editingDiagramObject: BoardObject | null
@@ -86,7 +87,7 @@ export function AtlasViewOverlays({
       <AtlasStructureDialogs kinds={allKinds} tableFromListOpen={tableFromListOpen} onCloseTableFromList={onCloseTableFromList} newSpaceOpen={newSpaceOpen} onCloseNewSpace={onCloseNewSpace} onCreateTable={onCreateTable} onCreateSpace={onCreateSpace} />
       <ContextMenu state={menu} onClose={onCloseMenu} />
       {linkMenus.labelPopover}
-      {containmentMenus.dissolveDialog}{deleteConfirm.deleteConfirmDialog}
+      {containmentMenus.dissolveDialog}{deleteConfirm.deleteConfirmDialog}{demoteDialog}
       {openNote && <AtlasNoteOverlay key={openNote.ID} note={openNote} onClose={onCloseNote} />}
       {editingDiagramObject && <DrawioEditorDialog key={editingDiagramObject.ID} object={editingDiagramObject} onClose={onCloseEditDiagram} />}
 

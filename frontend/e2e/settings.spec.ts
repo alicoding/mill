@@ -1,4 +1,4 @@
-import { test, expect, MCP_BASE_PORT } from './fixtures/server'
+import { test, expect } from './fixtures/server'
 import { existsSync, readdirSync } from 'node:fs'
 import { openSettings } from './fixtures/settingsNav'
 
@@ -96,14 +96,14 @@ test('Check for updates produces a visible status, found or error', async ({ pag
 // produces when the env wins. The editable/save/validate path is
 // unreachable here for the same reason and is named in
 // .claude/rules/testing.md's manual-only registry instead.
-test('MCP access address field shows the active environment override read-only', async ({ page }, testInfo) => {
+test('MCP access address field shows the active environment override read-only', async ({ page, workerServer }) => {
   await page.goto('/')
   await openSettings(page, 'connections')
 
   const input = page.getByTestId('mcp-access-address-input')
   await expect(input).toBeVisible()
   await expect(input).toBeDisabled()
-  await expect(input).toHaveValue(`127.0.0.1:${MCP_BASE_PORT + testInfo.parallelIndex}`)
+  await expect(input).toHaveValue(`127.0.0.1:${workerServer.mcpPort}`)
   await expect(page.getByText(/MILL_MCP_ADDR environment variable/)).toBeVisible()
   await expect(page.getByTestId('mcp-access-address-save')).toHaveCount(0)
 })

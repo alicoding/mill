@@ -1,0 +1,15 @@
+{
+  "id": "mill-matrix",
+  "name": "Matrix",
+  "version": "1.0.0",
+  "description": "Pivot a space's cards by kind against its typed links.",
+  "author": "Mill",
+  "minMillVersion": "0.14.1",
+  "icon": "icon.png",
+  "capabilities": [],
+  "contributes": {
+    "views": [
+      { "id": "matrix", "title": "Matrix", "entry": "view.html", "placement": "board-switcher" }
+    ]
+  }
+}

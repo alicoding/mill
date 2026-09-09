@@ -17,14 +17,16 @@ import { waitForAppReady } from './fixtures/appReady'
 // (fixtures/wailsRpc.ts) and deleted before the test ends.
 const COMPOSITION = 'github.com/alicoding/mill/internal/services/compositionsvc.CompositionService.'
 
-// Roadmap is the bundled mill-roadmap plugin (goal 0357): its pane
-// content is a sandboxed iframe (PluginFrame), identified by the
-// standard plugin-view host testid rather than a `data-component`
-// marker the built-in panes carry on their own root element.
+// Matrix, Coverage and Roadmap are the bundled mill-matrix/
+// mill-coverage/mill-roadmap plugins (goal 0357, S2 for the first two):
+// each pane's content is a sandboxed iframe (PluginFrame), identified
+// by the standard plugin-view host testid rather than a
+// `data-component` marker the one built-in pane (List) still carries
+// on its own root element.
 const VIEWS = [
   { segment: 'atlas-open-contents', dataView: 'list', paneComponent: 'atlas-contents-pane' },
-  { segment: 'atlas-open-matrix', dataView: 'matrix', paneComponent: 'atlas-matrix-pane' },
-  { segment: 'atlas-open-coverage', dataView: 'coverage', paneComponent: 'atlas-coverage-pane' },
+  { segment: 'atlas-open-plugin-mill-coverage-coverage', dataView: 'plugin:mill-coverage.coverage', paneComponent: 'plugin-view-mill-coverage-coverage' },
+  { segment: 'atlas-open-plugin-mill-matrix-matrix', dataView: 'plugin:mill-matrix.matrix', paneComponent: 'plugin-view-mill-matrix-matrix' },
   { segment: 'atlas-open-plugin-mill-roadmap-roadmap', dataView: 'plugin:mill-roadmap.roadmap', paneComponent: 'plugin-view-mill-roadmap-roadmap' },
 ] as const
 
@@ -57,8 +59,8 @@ test('the switcher tours all five views directly, each a pane with no dialog bac
 
 test('Escape in a projection returns to the Board', async ({ page }) => {
   await openAtlas(page)
-  await openToolbarAction(page, 'atlas-open-matrix')
-  await assertView(page, 'matrix', 'atlas-matrix-pane')
+  await openToolbarAction(page, 'atlas-open-plugin-mill-matrix-matrix')
+  await assertView(page, 'plugin:mill-matrix.matrix', 'plugin-view-mill-matrix-matrix')
   await page.keyboard.press('Escape')
   await assertView(page, 'board', null)
   await expect(page.getByTestId('atlas-open-board')).toHaveAttribute('aria-pressed', 'true')
@@ -71,8 +73,8 @@ test('the active view survives a tab switch away and back, and a reload of the t
     label, '', [{ ID: 'n1', Kind: 'trigger', NodeTypeID: 'trigger-manual', Config: {}, Position: { X: 0, Y: 0 } }], [],
   ])
   try {
-    await openToolbarAction(page, 'atlas-open-coverage')
-    await assertView(page, 'coverage', 'atlas-coverage-pane')
+    await openToolbarAction(page, 'atlas-open-plugin-mill-coverage-coverage')
+    await assertView(page, 'plugin:mill-coverage.coverage', 'plugin-view-mill-coverage-coverage')
 
     // Away: opening a work tab never touches `view`
     // (shared/store.ts's openWorkTab), so the atlas View -- boardView
@@ -84,14 +86,14 @@ test('the active view survives a tab switch away and back, and a reload of the t
 
     // Back: the page tab carries today's board title, no view suffix.
     await page.getByRole('tab', { name: 'Atlas', exact: true }).click()
-    await assertView(page, 'coverage', 'atlas-coverage-pane')
+    await assertView(page, 'plugin:mill-coverage.coverage', 'plugin-view-mill-coverage-coverage')
 
     // The view rides the persisted store, so a reload of the tab lands
     // back on the same pane.
     await page.reload()
     await waitForAppReady(page)
-    await assertView(page, 'coverage', 'atlas-coverage-pane')
-    await expect(page.getByTestId('atlas-open-coverage')).toHaveAttribute('aria-pressed', 'true')
+    await assertView(page, 'plugin:mill-coverage.coverage', 'plugin-view-mill-coverage-coverage')
+    await expect(page.getByTestId('atlas-open-plugin-mill-coverage-coverage')).toHaveAttribute('aria-pressed', 'true')
   } finally {
     await callBindingViaRPC(page, COMPOSITION + 'DeleteWorkflow', [wf.ID])
   }
@@ -100,9 +102,9 @@ test('the active view survives a tab switch away and back, and a reload of the t
 test('the palette command for Coverage switches the segment too', async ({ page }) => {
   await openAtlas(page)
   await page.keyboard.press('Meta+/')
-  await paletteDialog(page).getByRole('combobox').fill('Open coverage')
-  await paletteDialog(page).getByRole('option', { name: 'Open coverage' }).click()
+  await paletteDialog(page).getByRole('combobox').fill('Coverage')
+  await paletteDialog(page).getByRole('option', { name: 'Coverage', exact: true }).click()
   await expect(paletteDialog(page)).toHaveCount(0)
-  await assertView(page, 'coverage', 'atlas-coverage-pane')
-  await expect(page.getByTestId('atlas-open-coverage')).toHaveAttribute('aria-pressed', 'true')
+  await assertView(page, 'plugin:mill-coverage.coverage', 'plugin-view-mill-coverage-coverage')
+  await expect(page.getByTestId('atlas-open-plugin-mill-coverage-coverage')).toHaveAttribute('aria-pressed', 'true')
 })

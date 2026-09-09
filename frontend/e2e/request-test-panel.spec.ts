@@ -39,7 +39,7 @@ test('Running a test against an unreachable address logs a deterministic error',
   await page.getByLabel('Label').fill('Test Panel Request')
   // Port 1 is reserved and essentially never bound -- a connection
   // refused, not a DNS lookup or a real remote host.
-  await page.getByLabel('URL', { exact: true }).fill('http://127.0.0.1:1/widgets')
+  await page.getByLabel('URL', { exact: true }).fill('http://127.0.0.1:1/widgets') // port-literal: reserved, essentially never bound -- deliberately unreachable
 
   // The manual editor is always visible, pre-seeded with the request's
   // one implicit operation (1:1 model) -- Method is the request's own
@@ -106,6 +106,12 @@ test('Duplicating a request pre-fills a new form naming the same secret, never t
   await expect(page.locator('body')).not.toContainText('shh-original-secret')
 
   await page.getByRole('button', { name: 'Save integration' }).click()
+
+  // Saving closes the duplicate tab and returns to the summary tab it
+  // was opened from (goal 0407's MRU rule), not the list -- the
+  // Configure link is clicked explicitly to reach the list and see the
+  // new row.
+  await page.getByRole('link', { name: 'Configure' }).click()
   await expect(requestRow(page, 'Original Request copy')).toBeVisible()
 
   await deleteRequest(page, 'Original Request')

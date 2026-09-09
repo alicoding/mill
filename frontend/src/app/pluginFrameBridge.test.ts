@@ -28,6 +28,8 @@ function fakeApi(overrides: Partial<MillPluginAPI> = {}): MillPluginAPI {
     },
     query: vi.fn(async () => []),
     kinds: vi.fn(async () => []),
+    links: vi.fn(async () => []),
+    linkKinds: vi.fn(async () => []),
     open: vi.fn(),
     on: vi.fn(() => () => {}),
     fetch: vi.fn(),
@@ -52,6 +54,14 @@ describe('callFrameMethod', () => {
     const api = fakeApi()
     await expect(callFrameMethod(api, 'settings.get', ['mode'])).resolves.toBe('value')
     expect(api.settings.get).toHaveBeenCalledWith('mode')
+  })
+
+  it('routes links and linkKinds, the two read doors a projection pane calls', async () => {
+    const api = fakeApi()
+    await callFrameMethod(api, 'links', [{ kind: 'blocks' }])
+    expect(api.links).toHaveBeenCalledWith({ kind: 'blocks' })
+    await callFrameMethod(api, 'linkKinds', [])
+    expect(api.linkKinds).toHaveBeenCalled()
   })
 
   it('answers true for notify, whose own return value is a function', async () => {

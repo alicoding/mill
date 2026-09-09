@@ -18,11 +18,11 @@ type Pos = { x: number; y: number }
 // a registry command over the selection context (goal 0346 slice B);
 // this hook keeps the two executors the commands' requests land on:
 // deleteSelection (the container-delete gate, the one undo mark, the
-// undo toast) and dissolve (the confirm naming the promotion).
+// undo toast) and dissolve (the confirm naming the re-parent).
 //
 // Delete goes instant everywhere (goal 0093's quick-delete-with-undo
 // guard). Dissolve area keeps its confirm (a structure rewrite, not a
-// delete): DeleteCard promotes a frame's children VIRTUALLY on delete
+// delete): DeleteCard re-parents a frame's children VIRTUALLY on delete
 // regardless of which door triggered it, so "Dissolve area" and a
 // plain Delete on a frame call the exact same AtlasService.DeleteCard
 // -- only Dissolve's own confirm copy names the act deliberately.
@@ -37,19 +37,19 @@ export function useAtlasContainmentMenus({
   onError: (message: string) => void
   onDeleted: (result: TombstoneResult) => void
   // The container-delete gate (goal 0149 gap 3) -- confirms when the
-  // delete promotes children, runs exec directly otherwise. Dissolve
-  // bypasses it: its own dialog already names the promotion. objectIDs
-  // is count-only (goal 0179/0180) -- a board object never promotes
+  // delete re-parents children, runs exec directly otherwise. Dissolve
+  // bypasses it: its own dialog already names the re-parent. objectIDs
+  // is count-only (goal 0179/0180) -- a board object never re-parents
   // anything itself.
   guardDelete: (cardIDs: string[], noteIDs: string[], exec: () => void, objectIDs?: string[]) => void
 }) {
   const [dissolveTarget, setDissolveTarget] = useState<Card | null>(null)
 
   // Every direct child (card + note + board object) a dissolve is
-  // about to virtually promote -- the confirm dialog's own "N items
-  // move up a level" fact (goal 0266: objects promote through the
+  // about to virtually re-parent -- the confirm dialog's own "N items
+  // move up a level" fact (goal 0266: objects re-parent through the
   // same EffectiveParentID seam, goal 0233).
-  const promotedCount = (frameID: string) => childrenOf(allCards, frameID).length + notes.filter((n) => n.ParentID === frameID).length + allObjects.filter((o) => o.ParentID === frameID).length
+  const reparentedCount = (frameID: string) => childrenOf(allCards, frameID).length + notes.filter((n) => n.ParentID === frameID).length + allObjects.filter((o) => o.ParentID === frameID).length
 
   const deleteCard = (id: string) => {
     AtlasService.DeleteCard(id)
@@ -65,7 +65,7 @@ export function useAtlasContainmentMenus({
   const dissolveDialog = dissolveTarget && (
     <ConfirmDialog
       title={t('confirm.dissolveTitle', { title: dissolveTarget.Title })}
-      body={t('confirm.dissolveBody', { count: promotedCount(dissolveTarget.ID) })}
+      body={t('confirm.dissolveBody', { count: reparentedCount(dissolveTarget.ID) })}
       confirmLabel={t('confirm.dissolveConfirm')}
       onCancel={() => setDissolveTarget(null)}
       onConfirm={() => {
@@ -98,7 +98,7 @@ export function useAtlasContainmentMenus({
             NoteIDs: results.flatMap((r) => r.NoteIDs ?? []),
             ObjectIDs: results.flatMap((r) => r.ObjectIDs ?? []),
             LinksRemoved: results.reduce((sum, r) => sum + (r.LinksRemoved ?? 0), 0),
-            ChildrenPromoted: results.reduce((sum, r) => sum + (r.ChildrenPromoted ?? 0), 0),
+            ChildrenReparented: results.reduce((sum, r) => sum + (r.ChildrenReparented ?? 0), 0),
             EntityRefKind: soleObjectResult?.EntityRefKind ?? '',
             ObjectKind: soleObjectResult?.ObjectKind ?? '',
             EntityStillUsed: soleObjectResult?.EntityStillUsed ?? false,

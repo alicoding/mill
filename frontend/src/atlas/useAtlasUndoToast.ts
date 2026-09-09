@@ -12,7 +12,7 @@ export interface PendingUndo {
   objectIDs: string[]
   count: number
   linksRemoved: number
-  childrenPromoted: number
+  childrenReparented: number
   // The deleted board object's own entity-reference outcome (goal 0392
   // S1) -- objectKind/entityRefKind are both '' for a card/note delete
   // or a board-object kind with no declared entityRef, in which case
@@ -58,7 +58,7 @@ export function useAtlasUndoToast() {
       objectIDs,
       count: cardIDs.length + noteIDs.length + objectIDs.length,
       linksRemoved: result.LinksRemoved ?? 0,
-      childrenPromoted: result.ChildrenPromoted ?? 0,
+      childrenReparented: result.ChildrenReparented ?? 0,
       objectKind: result.ObjectKind ?? '',
       entityRefKind: result.EntityRefKind ?? '',
       entityStillUsed: result.EntityStillUsed ?? false,

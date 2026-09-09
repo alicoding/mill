@@ -9,55 +9,55 @@ import (
 
 // These mirror frontend/src/atlas/atlasBoardLayout.ts's own NOTE_WIDTH/
 // NOTE_HEIGHT/BOARD_GAP and AtlasShapeContent.tsx's default shape
-// footprint -- read here only to estimate how far a promoted board
+// footprint -- read here only to estimate how far a re-parented board
 // object must land to clear whatever else already occupies its new
 // parent (goal 0233), never to reproduce the frontend's own
-// row-wrapping pixel-for-pixel. promotionFrameHeight is deliberately
+// row-wrapping pixel-for-pixel. reparentFrameHeight is deliberately
 // generous rather than replicating computeGroupFrameLayout's real
 // (child-count-dependent) height: a frame card's rendered footprint
 // varies with its own children, which this package has no layout
 // engine to compute.
 const (
-	promotionLeafHeight  = 128
-	promotionFrameHeight = 400
-	promotionGap         = 24
-	// promotionObjectFootprintW/H mirror atlasBoardLayout.ts's own
+	reparentLeafHeight  = 128
+	reparentFrameHeight = 400
+	reparentGap         = 24
+	// reparentObjectFootprintW/H mirror atlasBoardLayout.ts's own
 	// OBJECT_FALLBACK_EXTENT: AtlasBoardObjectNode.module.css clamps
 	// an unsized object's content to 480px per axis, so that box --
-	// not a smaller guess -- is how far the NEXT promoted object must
-	// land to clear it. TestPromotionObjectFootprint_MatchesFrontendFallbackExtent
+	// not a smaller guess -- is how far the NEXT re-parented object must
+	// land to clear it. TestReparentObjectFootprint_MatchesFrontendFallbackExtent
 	// fails the build if either language's number moves alone.
-	promotionObjectFootprintW = 480
-	promotionObjectFootprintH = 480
-	// promotionTableFootprintW/H mirror atlasBoardLayout.ts's own
+	reparentObjectFootprintW = 480
+	reparentObjectFootprintH = 480
+	// reparentTableFootprintW/H mirror atlasBoardLayout.ts's own
 	// TABLE_WIDTH/TABLE_HEIGHT -- the unsized default every
 	// table-shaped face (sheet, json's tree) renders at, wider still
 	// than the 480px clamp every other unsized Kind fits inside.
-	promotionTableFootprintW = 520
-	promotionTableFootprintH = 320
+	reparentTableFootprintW = 520
+	reparentTableFootprintH = 320
 )
 
-// promotionObjectFootprint returns the (W, H) estimate for a Kind that
+// reparentObjectFootprint returns the (W, H) estimate for a Kind that
 // carries no persisted Size -- most Kinds fit inside the generic
-// promotionObjectFootprintW/H clamp, but a table-shaped Kind defaults
+// reparentObjectFootprintW/H clamp, but a table-shaped Kind defaults
 // to a visibly wider unsized render than that (its own content face's
 // own frameStyle), so the generic fallback under-estimates it enough
-// to leave the NEXT promoted object landing on top of it.
-func promotionObjectFootprint(kind string) (float64, float64) {
+// to leave the NEXT re-parented object landing on top of it.
+func reparentObjectFootprint(kind string) (float64, float64) {
 	switch kind {
 	case "sheet", "json", "table":
-		return promotionTableFootprintW, promotionTableFootprintH
+		return reparentTableFootprintW, reparentTableFootprintH
 	default:
-		return promotionObjectFootprintW, promotionObjectFootprintH
+		return reparentObjectFootprintW, reparentObjectFootprintH
 	}
 }
 
-// promotionState is preparePromotionLocked's own report to DeleteCard:
+// reparentState is prepareReparentLocked's own report to DeleteCard:
 // which board objects it moved and where each one was before, so the
 // caller can roll the write back on a persist failure or restore it
 // from an undo entry. A zero value (nil objectIDs) means "this delete
-// had no board-object children to promote."
-type promotionState struct {
+// had no board-object children to re-parent."
+type reparentState struct {
 	objectIDs []string
 	original  map[string]atlas.Position
 }
@@ -90,33 +90,33 @@ func (a *AtlasService) cardHasLiveChildLocked(cardID string) bool {
 	return false
 }
 
-// preparePromotionLocked is DeleteCard's own seam for goal 0233's
-// write-once fix: a promoted board object previously kept its raw X/Y
-// from the board it was promoted OFF of, landing on top of unrelated
+// prepareReparentLocked is DeleteCard's own seam for goal 0233's
+// write-once fix: a re-parented board object previously kept its raw X/Y
+// from the board it was re-parented OFF of, landing on top of unrelated
 // content at the destination (the mechanism named in that goal's own
 // file). Called AFTER id's own DeletedAt is stamped (so
 // EffectiveParentID resolves the POST-delete context), it repositions
 // every direct board-object child clear of everything already live at
 // the new effective parent, and returns enough state for the caller's
 // own rollback/undo composition. Caller must hold a.mu.
-func (a *AtlasService) preparePromotionLocked(id string) promotionState {
+func (a *AtlasService) prepareReparentLocked(id string) reparentState {
 	ids := a.directLiveObjectIDsLocked(id)
 	if len(ids) == 0 {
-		return promotionState{}
+		return reparentState{}
 	}
 	newParentID := atlas.EffectiveParentID(a.cardsByIDLocked(), id)
-	return promotionState{objectIDs: ids, original: a.repositionPromotedObjectsLocked(ids, newParentID)}
+	return reparentState{objectIDs: ids, original: a.repositionReparentedObjectsLocked(ids, newParentID)}
 }
 
-// occupiedMaxYLocked is repositionPromotedObjectsLocked's own scan:
+// occupiedMaxYLocked is repositionReparentedObjectsLocked's own scan:
 // the lowest Y any live card, note, or object already occupying
-// newParentID reaches, so a promoted object can be placed clear of all
+// newParentID reaches, so a re-parented object can be placed clear of all
 // of it. Every stored ParentID is resolved through EffectiveParentID
 // before comparing against newParentID -- an existing card/note/object
-// can ITSELF already be a virtually-promoted child of a tombstoned
+// can ITSELF already be a virtually-re-parented child of a tombstoned
 // ancestor (liveCardsLocked's own read-time contract), so a raw
 // equality check here would miss exactly the sibling this goal exists
-// to clear (a card promoted past its own tombstoned parent still
+// to clear (a card re-parented past its own tombstoned parent still
 // carries that parent's raw id in a.cards). Caller must hold a.mu.
 func (a *AtlasService) occupiedMaxYLocked(byID map[string]atlas.Card, newParentID string) float64 {
 	maxY := a.occupiedMaxYFromCardsLocked(byID, newParentID)
@@ -134,9 +134,9 @@ func (a *AtlasService) occupiedMaxYFromCardsLocked(byID map[string]atlas.Card, n
 		if atlas.EffectiveParentID(byID, c.ParentID) != newParentID || !c.DeletedAt.IsZero() || c.Position == nil {
 			continue
 		}
-		h := float64(promotionLeafHeight)
+		h := float64(reparentLeafHeight)
 		if a.cardHasLiveChildLocked(c.ID) {
-			h = promotionFrameHeight
+			h = reparentFrameHeight
 		}
 		maxY = max(maxY, c.Position.Y+h)
 	}
@@ -152,7 +152,7 @@ func (a *AtlasService) occupiedMaxYFromNotesLocked(byID map[string]atlas.Card, n
 		if atlas.EffectiveParentID(byID, n.ParentID) != newParentID || !n.DeletedAt.IsZero() {
 			continue
 		}
-		maxY = max(maxY, n.Position.Y+promotionLeafHeight)
+		maxY = max(maxY, n.Position.Y+reparentLeafHeight)
 	}
 	return maxY
 }
@@ -166,7 +166,7 @@ func (a *AtlasService) occupiedMaxYFromObjectsLocked(byID map[string]atlas.Card,
 		if atlas.EffectiveParentID(byID, o.ParentID) != newParentID || !o.DeletedAt.IsZero() {
 			continue
 		}
-		_, h := promotionObjectFootprint(o.Kind)
+		_, h := reparentObjectFootprint(o.Kind)
 		if o.Size != nil {
 			h = o.Size.H
 		}
@@ -175,18 +175,18 @@ func (a *AtlasService) occupiedMaxYFromObjectsLocked(byID map[string]atlas.Card,
 	return maxY
 }
 
-// repositionPromotedObjectsLocked assigns each of objectIDs a fresh
+// repositionReparentedObjectsLocked assigns each of objectIDs a fresh
 // position below every live card, note, and object already occupying
 // newParentID (occupiedMaxYLocked above), laid out in a single row so
-// multiple simultaneously-promoted objects don't stack on each other
+// multiple simultaneously-re-parented objects don't stack on each other
 // either. Returns the position each object held BEFORE this call.
 // Caller must hold a.mu.
-func (a *AtlasService) repositionPromotedObjectsLocked(objectIDs []string, newParentID string) map[string]atlas.Position {
+func (a *AtlasService) repositionReparentedObjectsLocked(objectIDs []string, newParentID string) map[string]atlas.Position {
 	previous := make(map[string]atlas.Position, len(objectIDs))
 	maxY := a.occupiedMaxYLocked(a.cardsByIDLocked(), newParentID)
 	y := 0.0
 	if maxY > 0 {
-		y = maxY + promotionGap
+		y = maxY + reparentGap
 	}
 	now := time.Now()
 	x := 0.0
@@ -196,22 +196,22 @@ func (a *AtlasService) repositionPromotedObjectsLocked(objectIDs []string, newPa
 			continue
 		}
 		previous[id] = a.objects[idx].Position
-		w, _ := promotionObjectFootprint(a.objects[idx].Kind)
+		w, _ := reparentObjectFootprint(a.objects[idx].Kind)
 		if a.objects[idx].Size != nil {
 			w = a.objects[idx].Size.W
 		}
 		a.objects[idx].Position = atlas.Position{X: x, Y: y}
 		a.objects[idx].UpdatedAt = now
-		x += w + promotionGap
+		x += w + reparentGap
 	}
 	return previous
 }
 
-// rollbackPromotionLocked restores exactly the positions
-// preparePromotionLocked changed -- DeleteCard's own persist-failure
+// rollbackReparentLocked restores exactly the positions
+// prepareReparentLocked changed -- DeleteCard's own persist-failure
 // path, the same shape as its sibling `a.cards[idx] = previous`
 // restore. Caller must hold a.mu.
-func (a *AtlasService) rollbackPromotionLocked(s promotionState) {
+func (a *AtlasService) rollbackReparentLocked(s reparentState) {
 	for oid, pos := range s.original {
 		if idx := a.findObjectLocked(oid); idx != -1 {
 			a.objects[idx].Position = pos
@@ -219,26 +219,26 @@ func (a *AtlasService) rollbackPromotionLocked(s promotionState) {
 	}
 }
 
-// undoCardDeleteWithPromotion is DeleteCard's own undoApply: restores
+// undoCardDeleteWithReparent is DeleteCard's own undoApply: restores
 // id (UndoDelete's existing door) then restores exactly the positions
-// preparePromotionLocked moved, so undoing a delete that promoted
+// prepareReparentLocked moved, so undoing a delete that re-parented
 // board-object children puts them back where they were, not where
-// they landed after promotion.
-func (a *AtlasService) undoCardDeleteWithPromotion(id string, promotion promotionState) error {
+// they landed after the re-parent.
+func (a *AtlasService) undoCardDeleteWithReparent(id string, reparent reparentState) error {
 	if err := a.UndoDelete([]string{id}, nil, nil); err != nil {
 		return err
 	}
-	return a.restorePromotedObjectPositions(promotion.original)
+	return a.restoreReparentedObjectPositions(reparent.original)
 }
 
-// restorePromotedObjectPositions writes back exactly the positions a
-// prior preparePromotionLocked call returned -- undo's own door for
-// the position half of a card delete that promoted board-object
+// restoreReparentedObjectPositions writes back exactly the positions a
+// prior prepareReparentLocked call returned -- undo's own door for
+// the position half of a card delete that re-parented board-object
 // children (goal 0233), called sequentially after UndoDelete through
 // the same "apply the inverse as a new operation" convention every
 // undo entry uses (atlasundo.go's own header comment), never nested
 // inside another door's lock.
-func (a *AtlasService) restorePromotedObjectPositions(positions map[string]atlas.Position) error {
+func (a *AtlasService) restoreReparentedObjectPositions(positions map[string]atlas.Position) error {
 	if len(positions) == 0 {
 		return nil
 	}

@@ -76,6 +76,8 @@ export const FRAME_METHODS = [
   'storage.delete',
   'query',
   'kinds',
+  'links',
+  'linkKinds',
   'open',
   'fetch',
   'content.createNote',
@@ -126,6 +128,8 @@ export async function callFrameMethod(api: MillPluginAPI, method: string, args: 
     case 'storage.delete': { await api.storage.delete(String(first)); return true }
     case 'query': return api.query(first as Parameters<MillPluginAPI['query']>[0])
     case 'kinds': return api.kinds()
+    case 'links': return api.links(first as Parameters<MillPluginAPI['links']>[0])
+    case 'linkKinds': return api.linkKinds()
     case 'open': { api.open(String(first)); return true }
     case 'fetch': return api.fetch(String(first), second as Parameters<MillPluginAPI['fetch']>[1])
     case 'content.createNote': return api.content.createNote(first as Parameters<MillPluginAPI['content']['createNote']>[0])

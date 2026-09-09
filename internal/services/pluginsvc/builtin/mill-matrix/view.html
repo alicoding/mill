@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Matrix</title>
+    <style>
+      /* Mill injects its own palette as custom properties on :root and
+         updates them in place, so plain CSS follows the user's theme.
+         Only the documented frame vocabulary (userdocs plugin-theming
+         reference) is used; sizes the palette never promised are
+         literal. */
+      html, body {
+        margin: 0;
+        height: 100%;
+        font: 13px system-ui, sans-serif;
+        color: var(--fgColor-default);
+        background: var(--bgColor-default);
+      }
+      /* The pane's own pad: the same inset the host gave this view as
+         Mill's own component (PageContainer's "wide" variant, on every
+         side -- unlike Roadmap's own full-bleed grid, a matrix reads
+         better with the same margin every list/table page carries). */
+      #pane {
+        height: 100%;
+        box-sizing: border-box;
+        padding: 26px 42px 68px;
+        overflow: auto;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .field label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--fgColor-muted);
+      }
+      .field select {
+        font: inherit;
+        color: var(--fgColor-default);
+        background: var(--bgColor-default);
+        border: 1px solid var(--borderColor-default);
+        border-radius: 6px;
+        padding: 5px 8px;
+        min-width: 160px;
+      }
+      .emptyState {
+        color: var(--fgColor-muted);
+        font-size: 12px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th, td {
+        text-align: left;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--borderColor-default);
+        vertical-align: top;
+      }
+      thead th {
+        font-size: 12px;
+        color: var(--fgColor-muted);
+        font-weight: 600;
+      }
+      tbody th {
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .absentCell {
+        color: var(--fgColor-muted);
+        font-size: 12px;
+      }
+      .targetLink {
+        display: inline-block;
+        border: none;
+        background: transparent;
+        color: var(--mill-accent-emphasis);
+        font: inherit;
+        padding: 0;
+        margin: 0 8px 4px 0;
+        cursor: pointer;
+        text-decoration: underline;
+      }
+      .targetLink:hover { text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <div id="pane" data-component="atlas-matrix-pane"></div>
+    <script src="view.js"></script>
+  </body>
+</html>
