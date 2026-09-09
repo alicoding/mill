@@ -15,22 +15,20 @@
 // is a host-side command (a framed view's own page has no doors but
 // postMessage, so the button that seats in the tab header has to live
 // here) that re-plays the page's own send button through the SAME
-// view handle registerView returns. Enabled only once the page itself
-// reports a first send -- a fresh tab has nothing to send again.
-
+// view handle registerView returns. No enabled predicate: this plugin
+// has no canvas object, so it activates in its own sandboxed frame
+// (activation.ts's isFramedActivation) -- a framed activation's
+// registerCommand answers Command.enabled with a synchronous ctx.alive
+// only (pluginActivationBridge.ts), never a plugin-declared predicate,
+// since Command.enabled must return synchronously and the plugin's own
+// state lives across an async message boundary. Always-available here
+// matches what the bridge actually delivers.
 /** @param {import('../../../frontend/plugin-sdk').MillPluginAPI} api */
 export function activate(api) {
-	let hasSent = false
-	const view = api.registerView({
-		id: 'tester',
-		onMessage: (message) => {
-			if (message && message.type === 'sent') hasSent = true
-		},
-	})
+	const view = api.registerView({ id: 'tester' })
 	api.registerCommand({
 		id: 'mill-request-tester.sendAgain',
 		label: 'Send again',
-		enabled: () => hasSent,
 		run: () => view.postMessage({ type: 'send-again' }),
 	})
 }

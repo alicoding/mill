@@ -76,11 +76,6 @@ async function remember(entry) {
 sendEl.addEventListener('click', async () => {
 	const target = urlEl.value.trim()
 	if (!target) { statusEl.textContent = 'Enter an address first.'; return }
-	// Tells the host's "Send again" title action (goal 0349 S2b) there
-	// is now something to re-send -- fired on every attempt, not only a
-	// successful one, since even a parked-for-approval request is a
-	// real "again" candidate.
-	mill.postMessage({ type: 'sent' })
 	statusEl.textContent = 'Asking… (this request needs your approval in Review)'
 	responseEl.textContent = ''
 	try {
