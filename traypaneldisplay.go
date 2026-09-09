@@ -20,8 +20,10 @@ const trayPanelOffset = 6
 //
 // events.Common.WindowShow is the earliest Wails window event that
 // fires after SystemTray.processClick's PositionWindow call and no
-// later than visibility, on this pinned SDK (systemtray.go:157-174:
-// PositionWindow runs, THEN Show().Focus()). On darwin, WindowShow is
+// later than visibility, on this pinned SDK (systemtray.go:155-172's
+// ToggleWindow -- the click handler applySmartDefaults installs when
+// no OnClick override is set, Mill's own case: PositionWindow runs,
+// THEN Show().Focus()). On darwin, WindowShow is
 // emitted ONLY from windowDidChangeOcclusionState
 // (webview_window_darwin.m:580-585); the tray panel's own custom
 // windowShow:/windowHide: methods (:952-957) are never wired to an
