@@ -5,12 +5,14 @@ import { expect, type Locator, type Page } from '@playwright/test'
 // shared/CodeEditor.tsx renders. Replaces the whole document:
 //
 //  1. Click into `.cm-content` to focus it.
-//  2. Select-all via the platform's own combo. CodeMirror's built-in
-//     Mod-a binding checks the REAL running browser's navigator.platform
-//     at match time (@codemirror/view's own `browser.mac` flag), so a
-//     hardcoded modifier would only work on one OS -- process.platform is
-//     a valid proxy here since Playwright always launches its browser on
-//     this same machine, never a remote farm.
+//  2. Select-all with Meta on every host. CodeMirror's built-in Mod-a
+//     binding checks the running browser's navigator.platform at match
+//     time (@codemirror/view's own `browser.mac` flag), and the shared
+//     fixture (fixtures/server.ts, goal 0405 S1) pins that to MacIntel so
+//     every keybinding chip renders Mac glyphs -- which makes Meta the
+//     editor's Mod key on the Linux runner too. A host-OS choice here
+//     sent Control there, select-all never fired, and typing merged
+//     into leftover text.
 //  3. Delete the selection, then insert the new text via Playwright's
 //     keyboard.insertText -- a native beforeinput/input path, not
 //     per-character keydown -- so CodeEditor's closeBrackets extension
@@ -19,7 +21,7 @@ import { expect, type Locator, type Page } from '@playwright/test'
 export async function fillCodeEditor(page: Page, testId: string, text: string) {
   const content = page.locator(`[data-testid="${testId}"] .cm-content`)
   await content.click()
-  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a')
+  await page.keyboard.press('Meta+a') // Meta on every host: the page's platform is pinned to MacIntel (fixtures/server.ts)
   await page.keyboard.press('Delete')
   await page.keyboard.insertText(text)
 }
@@ -68,7 +70,12 @@ export async function fillMilkdown(page: Page, testId: string, text: string) {
       .toBe(true)
       .then(() => true, () => false)
   for (let round = 0; round < 3; round++) {
-    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a')
+    // Meta on every host: fixtures/server.ts pins the page's navigator.platform
+    // to MacIntel (goal 0405 S1), so the editor libraries resolve their
+    // Mod key to Meta regardless of the runner's OS -- a host-OS choice
+    // here sent Control on the Linux runner, select-all never fired, and
+    // typing merged into leftover text.
+    await page.keyboard.press('Meta+a')
     await page.keyboard.press('Delete')
     if (await emptied()) break
   }
