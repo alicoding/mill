@@ -192,6 +192,11 @@ export interface PluginListDirResult { approved: boolean; effect: string; ruleLa
  * folders are never included. */
 export interface PluginFilesAPI {
   list: (path: string) => Promise<PluginListDirResult>
+  /** Saves bytes into Mill's own file store and resolves with the
+   * stored file's path, ready to use as a file-backed object's
+   * payload. base64 is the file's content; ext is a lowercase
+   * ".ext". */
+  saveImageBytes: (base64: string, ext: string, title: string) => Promise<string>
 }
 
 /** Pure transforms Mill already implements, offered to a plugin as-is.

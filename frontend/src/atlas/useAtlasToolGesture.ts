@@ -96,6 +96,10 @@ export function useAtlasToolGesture({ tool, readOnly, isFree, ctx, wrapperRef }:
   // a later disarm (which nulls `gesture` below) can never stop an
   // already-fading ephemeral trail mid-fade.
   const fadeMsRef = useRef<number | undefined>(undefined)
+  // The gesture captured at pointerdown, kept for the boundaries that
+  // fire after a disarm has already nulled `gesture` above: Escape's
+  // cancel, and every fade frame of an ephemeral trail.
+  const activeGestureRef = useRef<AtlasToolGesture | null>(null)
   // Fresh per-gesture scratch (eraser's own live hit accumulation) --
   // allocated at pointerdown, read at onEnd, discarded after.
   const scratchRef = useRef<{ cardIDs: Set<string>; noteIDs: Set<string>; objectIDs: Set<string> } | null>(null)
@@ -136,11 +140,20 @@ export function useAtlasToolGesture({ tool, readOnly, isFree, ctx, wrapperRef }:
     return box ? { x: p.x - box.left, y: p.y - box.top } : p
   }
 
+  // The modifier keys the CURRENT pointer event carried, recorded by
+  // each core handler below so buildCtx can hand them to a tool that
+  // never sees the event itself.
+  const modifiersRef = useRef<AtlasGestureCtx['modifiers']>({ shift: false, alt: false, ctrl: false, meta: false })
+
   const buildCtx = useCallback((): AtlasGestureCtx => {
     const sticky = toolRef.current?.sticky ?? false
     const { disarm, disarmUnlessLocked } = gestureDisarmFns(sticky, ctxRef.current.disarm, ctxRef.current.disarmUnlessLocked)
-    return { ...ctxRef.current, disarm, disarmUnlessLocked, hitAccumulator: scratchRef.current ?? { cardIDs: new Set(), noteIDs: new Set(), objectIDs: new Set() } }
+    return { ...ctxRef.current, disarm, disarmUnlessLocked, modifiers: modifiersRef.current, hitAccumulator: scratchRef.current ?? { cardIDs: new Set(), noteIDs: new Set(), objectIDs: new Set() } }
   }, [])
+
+  const recordModifiers = (e: ReactPointerEvent): void => {
+    modifiersRef.current = { shift: e.shiftKey, alt: e.altKey, ctrl: e.ctrlKey, meta: e.metaKey }
+  }
 
   // The ephemeral prune loop (an `ephemeral-drag` tool's own fadeMs,
   // laser today): started at pointerdown, self-perpetuating via rAF
@@ -156,6 +169,7 @@ export function useAtlasToolGesture({ tool, readOnly, isFree, ctx, wrapperRef }:
     }
     setPoints([...localPointsRef.current])
     setNow(t)
+    if (ms !== undefined && localPointsRef.current.length > 0) activeGestureRef.current?.onFade?.(t)
     if (localPointsRef.current.length > 0 || drawingRef.current) {
       rafRef.current = requestAnimationFrame(() => tickRef.current())
     } else {
@@ -168,6 +182,7 @@ export function useAtlasToolGesture({ tool, readOnly, isFree, ctx, wrapperRef }:
 
   const onPointerDownCore = useCallback((e: ReactPointerEvent) => {
     if (panningRef.current || !armed || !isPrimaryButton(e.button)) return
+    recordModifiers(e)
     e.stopPropagation()
     e.preventDefault()
     const g = gestureRef.current
@@ -179,6 +194,7 @@ export function useAtlasToolGesture({ tool, readOnly, isFree, ctx, wrapperRef }:
     drawingRef.current = true
     scratchRef.current = { cardIDs: new Set(), noteIDs: new Set(), objectIDs: new Set() }
     fadeMsRef.current = g?.fadeMs
+    activeGestureRef.current = g
     setPreview(() => g?.preview ?? null)
     const t = performance.now()
     const client = { x: e.clientX, y: e.clientY, t }
@@ -193,6 +209,7 @@ export function useAtlasToolGesture({ tool, readOnly, isFree, ctx, wrapperRef }:
 
   const onPointerMoveCore = useCallback((e: ReactPointerEvent) => {
     if (panningRef.current || !drawingRef.current) return
+    recordModifiers(e)
     e.stopPropagation()
     const t = performance.now()
     const client = { x: e.clientX, y: e.clientY, t }
@@ -206,6 +223,7 @@ export function useAtlasToolGesture({ tool, readOnly, isFree, ctx, wrapperRef }:
 
   const onPointerUpCore = useCallback((e: ReactPointerEvent) => {
     if (panningRef.current || !drawingRef.current) return
+    recordModifiers(e)
     e.stopPropagation()
     drawingRef.current = false
     const clientPoints = clientPointsRef.current
@@ -239,7 +257,10 @@ export function useAtlasToolGesture({ tool, readOnly, isFree, ctx, wrapperRef }:
       drawingRef.current = false
       // Escape cancels WITHOUT calling onEnd -- no mutation happens, but
       // a mark opened at pointerdown must still close, or every later,
-      // unrelated action would wrongly land inside it.
+      // unrelated action would wrongly land inside it. A tool running
+      // outside this document is TOLD (onCancel), since it has no other
+      // way to learn the gesture it is mid-way through is over.
+      activeGestureRef.current?.onCancel?.()
       void markOpenRef.current?.then(() => AtlasService.EndUndoMark())
       markOpenRef.current = null
       clientPointsRef.current = []

@@ -12,6 +12,10 @@ import type { AtlasStyleField } from '../atlas/atlasStyleVocabulary'
 import { thirdPartyNouns, type AtlasGestureCtx, type AtlasGesturePoint, type AtlasToolGesture, type ThirdPartyNounShape } from '../atlas/atlasNounRegistry'
 import { meetsDragThreshold } from '../atlas/useAtlasToolGesture'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
+import { useUISignalStore } from '../shared/uiSignalStore'
+import type { AtlasArmRequestTool } from '../shared/atlasToolIdentity'
+import { registerThirdPartyNoun } from '../atlas/atlasNounRegistry'
+import { collectPluginCommand } from './pluginCommands'
 import { ingestionClaimMismatch } from './ingestionClaims'
 import { pluginFaceComponent, pluginObjectCtx } from './PluginFaceContent'
 import { pluginFramedFaceComponent } from './PluginFaceFrame'
@@ -403,4 +407,26 @@ export function adaptGesture(kind: string, objectKind: string, fields: readonly 
 		preview: decl.renderPreview ? pluginPreviewComponent(kind, decl.renderPreview) : undefined,
 		fadeMs: decl.fadeMs,
 	}
+}
+
+// seatCanvasTool is the registration act itself, shared by the
+// same-DOM registerCanvasObject door and the framed register.tool one
+// (docs/goals/0380): the registry entry, the style-picker seed, and
+// the palette parity every built-in tool has (its own
+// atlas.create.<id> command). One seating, so a framed tool is
+// reachable exactly where a same-DOM one is.
+export function seatCanvasTool(pluginId: string, noun: ThirdPartyNounShape, styleFields: readonly CanvasStyleFieldDecl[]): void {
+	registerThirdPartyNoun(noun)
+	seedStyleValues(noun.id, styleFields)
+	collectPluginCommand({
+		id: `atlas.create.${noun.id}`,
+		label: noun.label,
+		pluginId,
+		surface: ['atlas'],
+		// The arm signal's type is the built-in literal union; the
+		// runtime gate already accepts any registered third-party id
+		// (useAtlasCreation's isThirdPartyToolId OR) -- the same
+		// one-documented-cast convention orderedRegisteredTools carries.
+		run: () => useUISignalStore.getState().requestAtlasArmTool(noun.id as AtlasArmRequestTool),
+	})
 }

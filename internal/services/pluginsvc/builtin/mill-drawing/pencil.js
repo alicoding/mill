@@ -1,10 +1,14 @@
-// The pencil: drag to draw a freehand ink stroke. The completed
-// stroke bakes to a self-contained SVG file in Mill's mirror store
+// The pencil: drag to draw a freehand ink stroke. The completed stroke
+// bakes to a self-contained SVG file in Mill's mirror store
 // (colour/size become document data, never re-read from the ephemeral
 // style cache) and lands as an 'ink' object -- the same Kind, payload
-// shape, and file format strokes had when this tool was compiled in,
-// so old and new strokes are indistinguishable.
-import { ensureChild, ensurePreview, livePreviewPathData, meetsDragThreshold, outlinePathData, setAttrs, strokeOutline, textToBase64 } from './lib.js'
+// shape, and file format strokes had before, so old and new strokes
+// are indistinguishable.
+//
+// Mill owns the pointer and paints the live stroke from the draft's
+// own preview data: this file computes an outline and hands it over,
+// and never touches the board.
+import { livePreviewPathData, meetsDragThreshold, outlinePathData, strokeOutline, textToBase64 } from './lib.js'
 
 const COLORS = ['#1f6feb', '#da3633', '#238636', '#9a6700', '#8250df', '#24292f']
 const SIZES = [2, 4, 8]
@@ -25,25 +29,48 @@ function bakeStrokeSvg(points, color, size) {
 }
 
 export function registerPencil(api) {
-	// Last-used style survives a restart (goal 0277): the declared
-	// defaults read the plugin's own storage, each completed stroke
-	// writes back. A stored value outside the option set falls back.
+	// Last-used style survives a restart: the declared defaults read the
+	// plugin's own storage, each completed stroke writes back. A stored
+	// value outside the option set falls back.
 	const saved = api.storage.get('pencil') || {}
 	const defaultColor = COLORS.includes(saved.color) ? saved.color : COLORS[0]
 	const defaultSize = SIZES.includes(saved.size) ? saved.size : SIZES[1]
-	let liveStyle = { color: defaultColor, size: defaultSize }
 
-	api.registerCanvasObject({
+	let points = []
+	let draft = null
+
+	async function end(color, size) {
+		const stroke = draft
+		draft = null
+		if (!stroke) return
+		if (!meetsDragThreshold(points) || points.length < 2) {
+			await stroke.discard()
+			return
+		}
+		void api.storage.set('pencil', { color, size }).catch(console.error)
+		const baked = bakeStrokeSvg(points, color, size)
+		if (!baked) {
+			await stroke.discard()
+			return
+		}
+		// The stroke's own bounding-box origin is where the object lands,
+		// so the placed picture sits exactly where it was drawn.
+		const mirrorPath = await api.files.saveImageBytes(textToBase64(baked.svg), '.svg', 'Sketch')
+		await stroke.patch({ at: { x: baked.originX, y: baked.originY }, data: { mirrorPath, title: 'Sketch' } })
+		await stroke.commit()
+	}
+
+	api.registerCanvasTool({
 		kind: 'pencil',
 		objectKind: 'ink',
 		label: 'Draw with the pencil',
 		description: 'Draws a freehand ink stroke on the board.',
 		icon: 'pencil',
+		cursor: 'crosshair',
 		shortcutKey: 'P',
 		group: 'annotate',
 		source: 'file',
 		editRoute: 'none',
-		interaction: 'drag-to-draw',
 		// An ink stroke's whole body already drags -- the shared band
 		// would only be debris.
 		dragBand: false,
@@ -51,35 +78,28 @@ export function registerPencil(api) {
 			{ type: 'color', key: 'color', label: 'Color', options: COLORS, default: defaultColor },
 			{ type: 'stroke-width', key: 'size', label: 'Size', render: 'dot', options: SIZES, default: defaultSize },
 		],
-		gesture: {
-			onPoint(_pt, ctx) {
-				liveStyle = { color: String(ctx.styleValues.color || COLORS[0]), size: Number(ctx.styleValues.size) || SIZES[1] }
-			},
-			renderPreview(el, points) {
-				const d = livePreviewPathData(points, liveStyle.size)
-				if (!d) {
-					el.replaceChildren()
-					return
-				}
-				const svg = ensurePreview(el, 'atlas-pencil-preview')
-				setAttrs(ensureChild(svg, 'path'), { d, fill: liveStyle.color })
-			},
-			onEnd(points, ctx) {
-				if (!meetsDragThreshold(points) || points.length < 2) return
-				const color = String(ctx.styleValues.color || COLORS[0])
-				const size = Number(ctx.styleValues.size) || SIZES[1]
-				void api.storage.set('pencil', { color, size }).catch(console.error)
-				const baked = bakeStrokeSvg(points, color, size)
-				if (!baked) return
-				// The stroke's own bounding-box origin converts through
-				// screenToFlowPosition so the object lands exactly where
-				// it was drawn.
-				const flowOrigin = ctx.screenToFlowPosition({ x: baked.originX, y: baked.originY })
-				void ctx
-					.saveImageBytes(textToBase64(baked.svg), '.svg', 'Sketch')
-					.then((mirrorPath) => ctx.createObject({ mirrorPath, title: 'Sketch' }, flowOrigin))
-					.catch(console.error)
-			},
+		preview: { kind: 'path', from: 'trail', fill: 'trailFill' },
+		async onPointer(event, ctx) {
+			const color = String(ctx.styleValues.color || COLORS[0])
+			const size = Number(ctx.styleValues.size) || SIZES[1]
+			if (event.phase === 'down') {
+				points = [event.point]
+				draft = await ctx.createDraft({ at: event.point, preview: { trail: '', trailFill: color } })
+				return
+			}
+			if (event.phase === 'cancel') {
+				const stroke = draft
+				draft = null
+				points = []
+				if (stroke) await stroke.discard()
+				return
+			}
+			points = points.concat(event.coalesced, [event.point])
+			if (event.phase === 'move') {
+				if (draft) await draft.patch({ preview: { trail: livePreviewPathData(points, size), trailFill: color } })
+				return
+			}
+			if (event.phase === 'up') await end(color, size)
 		},
 		renderFace(el, ctx) {
 			el.style.cssText = 'width:100%;height:100%'

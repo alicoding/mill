@@ -672,53 +672,83 @@ turns in id order.
 
 ## Drawing tools
 
-A plugin isn't limited to click-to-place objects: it can register a
-DRAG tool that rides the same gesture engine, style picker, and
-live-preview overlay Mill's own drawing tools use — in fact Mill's
-own pencil, shape, eraser, and laser ARE such a plugin (**Drawing**,
-built into the app; its row sits under Installed, and a
-folder named `mill-drawing` in your plugins folder replaces it). The
-declaration fields that open this up:
+An extension isn't limited to click-to-place objects: it can register
+a DRAG tool that rides the same gesture engine, style picker and live
+preview Mill's own drawing tools use — in fact Mill's own pencil,
+shape, eraser and laser ARE such an extension (**Drawing**, built into
+the app; its row sits under Installed, and a folder named
+`mill-drawing` in your extensions folder replaces it).
 
-- `interaction` — `"arm-then-click"` (the default), `"drag-to-draw"`
-  (the armed pointer drag feeds your `gesture`, which decides what to
-  create), or `"ephemeral-drag"` (the drag only renders a live
-  preview and never creates anything — a laser-pointer shape;
-  `renderFace` is optional there, since nothing is ever placed).
+`api.registerCanvasTool(decl)` is the door. Mill owns every pointer
+event and paints the live preview itself, so the tool runs fully
+sandboxed: it never reaches the board, and nothing it draws can escape
+its own frame. Declare the kind with `"tool": true` beside it in
+`contributes.canvasObjects`.
+
+- `onPointer(event, ctx)` — called once per phase, once per frame.
+  `event.phase` is `"down"`, `"move"`, `"up"`, `"cancel"` (the drag
+  was abandoned) or `"fade"` (a trail still aging out after release).
+  `event.point` is the newest sample in BOARD coordinates and
+  `event.coalesced` carries the samples folded into the same frame,
+  oldest first, so a freehand stroke loses no detail. `event.zoom` is
+  the board's current scale — divide by it to keep a trail the same
+  thickness however far the board is zoomed out. `event.modifiers`
+  carries the keys held; `event.styleValues` the picker's current
+  values; `event.target` the object under the pointer, if any.
+- `ctx.createDraft({ at, size?, data?, preview? })` — starts the
+  in-progress object. `draft.patch(...)` merges into it as often as
+  you like: nothing persists, nothing syncs, and nothing lands in the
+  undo history until `draft.commit({ select? })`, which places it as
+  ONE undo step. `draft.discard()` throws it away and the board is
+  exactly as it was.
+- `preview` — what Mill draws while the drag is live, instead of
+  mounting the object's face on every move. `kind` is `"rect"`,
+  `"ellipse"`, `"line"`, `"path"` or `"shapes"`, and `from` names the
+  draft key carrying the geometry: `"x,y,width,height"` for a box,
+  `"x1,y1,x2,y2"` for a line, an SVG path for `"path"`, and a JSON
+  list of parts for `"shapes"` — the one to use when each part carries
+  its own paint, like a trail whose points fade independently.
+  `fill`, `stroke`, `strokeWidth` and `opacity` each name a key
+  holding that value. A draft's `data` is what a commit saves;
+  `preview` is drawing state that is never saved, and the declaration
+  reads across both.
 - `styleFields` — the tool's styleable properties (`color`,
   `color-or-none`, `stroke-width`, and `shape-kind`, an icon-button
   picker whose options name their icons from the same named glyph set
-  as `icon` below), each with its own options, default, and optional
-  `label`. Declaring any renders Mill's style picker next to the
-  armed tool automatically; current values arrive on the gesture ctx.
-- `gesture` — `{ onPoint?, onEnd, renderPreview?, fadeMs? }`. `onEnd`
-  receives the full drag's points plus a ctx carrying
-  `screenToFlowPosition`, `styleValues`, `createObject(payload,
-  flowPos, opts?)` (scoped to your own kind; lands, syncs, and undoes
-  like any placement — `opts.size` sets the placed size, `opts.select`
-  selects it), `saveImageBytes(base64, ext, title)` for baking
-  drawn bytes into a Mill-owned file a file-backed object's payload
-  can point at, and `itemsInRect(rect)` for the ids of the top-level
-  cards, notes and objects whose center falls inside a board-space
-  rect (the rule the built-in Area tool uses). `renderPreview(el, points, now)` draws the live
-  in-drag stroke into a host-owned overlay element. Drag tools stay
-  armed across strokes by default (`sticky: false` opts out, and a
-  non-sticky tool may add `lockable: true` so re-clicking its armed
-  button locks it for deliberate repetition).
-- Identity extras — `icon` takes an emoji or a named glyph (`pencil`,
-  `zap`, `trash`, `diamond`, `square`, `circle`, `arrow-up-right`);
-  `shortcutKey` gives the tool a bare-letter shortcut and tray key
-  chip; `group: "annotate"` files its button into the tray's Annotate
-  drawer; `objectKind` lets the persisted object kind differ from the
-  tool id (the pencil places `ink` objects); `dragBand: false` drops
-  the drag-handle band when the object's whole body already drags.
+  as `icon`), each with its own options, default and optional `label`.
+  Declaring any renders Mill's style picker next to the armed tool
+  automatically.
+- `ephemeral: true` — the drag draws a trail and places nothing (a
+  laser pointer, an eraser). Add `fadeMs` and the trail keeps aging
+  out after release, one `"fade"` frame at a time.
+- Identity — `icon` takes an emoji or a named glyph (`pencil`, `zap`,
+  `trash`, `diamond`, `square`, `circle`, `arrow-up-right`);
+  `cursor` sets the pointer shape while the tool is armed;
+  `shortcutKey` gives it a bare-letter shortcut and tray key chip;
+  `group: "annotate"` files its button into the tray's Annotate
+  drawer; `objectKind` lets the saved object kind differ from the tool
+  id (the pencil places `ink` objects); `dragBand: false` drops the
+  drag-handle band when the object's whole body already drags. Drag
+  tools stay armed across strokes by default (`sticky: false` opts
+  out, and a non-sticky tool may add `lockable: true` so re-clicking
+  its armed button locks it for deliberate repetition).
+- `api.files.saveImageBytes(base64, ext, title)` bakes drawn bytes
+  into a Mill-owned file, ready to use as a file-backed object's
+  payload — how the pencil turns a finished stroke into a picture.
+- `api.measure(markup, maxWidth)` lays markup out off the board at
+  real pixel size and answers `{ width, height }`, for a face whose
+  own layout depends on how big its content turned out.
 - Erasing — a tool that erases instead of creating declares the
-  `erase-board-items` capability in its manifest. Its gesture ctx
-  then carries `eraseHitTest(pt)` (accumulates whatever board item
-  sits under the point) and `commitErase()` (erases the accumulated
-  set through the same undoable quick-delete a Delete key press
-  uses — one undo step per pass). What was hit stays on Mill's side;
-  the plugin never sees item identities.
+  `erase-board-items` capability in its manifest. Its ctx then carries
+  `eraseAt(point)` (accumulates whatever board item sits under the
+  point) and `commitErase()` (erases the accumulated set through the
+  same undoable quick-delete a Delete key press uses — one undo step
+  per pass). What was hit stays on Mill's side; the extension never
+  sees item identities.
+
+The object's own face is an entry page: name it as `"entry"` beside
+the kind, the same way any other framed face is declared. A tool that
+places nothing needs none.
 
 ## Settings
 
@@ -4889,8 +4919,8 @@ rewriting anything:
 | Source menu id | Mill seat |
 | --- | --- |
 | `commandPalette` | Already true for every command Mill knows about; declaring it does nothing extra. |
-| `editor/context` | Renders in the canvas object's own right-click menu, after a separator. |
-| `view/title` | Renders as an icon-only action in the work tab's title area. |
+| `editor/context` | Renders in the canvas object's own right-click menu, after a separator. Its `when` clause decides when the item shows, over facts Mill computes about the right-clicked object and the selection: `objectKind`, `objectPluginId`, `hasFile`, `hasSize`, `editRoute`, `selectionCount`, `selectionKinds`, and every payload key as `payload.<key>`. An item that should always show says so with `when: "true"`. |
+| `view/title` | Renders as an icon-only action in the work tab's title area. Its `when` clause is evaluated against `viewId`, so one extension with several views can scope an item to one of them. |
 | any other id | Accepted and ignored — named once in the extension's status so you know it was silently dropped, never a load failure. |
 
 ## Three ported jobs, classified

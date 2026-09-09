@@ -84,12 +84,12 @@ describe('missingExampleWarnings (goal 0411 S2)', () => {
   const withExample: CanvasObjectContribution['example'] = { title: 'Example', payload: {}, revision: 1, fixtures: [] }
 
   it('warns once when a declared canvas object has no example', () => {
-    const objects: CanvasObjectContribution[] = [{ kind: 'mindmap', fileExtensions: [], pastesURLs: false, entry: '', example: null }]
+    const objects: CanvasObjectContribution[] = [{ kind: 'mindmap', fileExtensions: [], pastesURLs: false, tool: false, entry: '', example: null }]
     expect(missingExampleWarnings(objects)).toEqual(['Declare a working example so a new object shows something on insert.'])
   })
 
   it('stays silent once every declared canvas object has an example', () => {
-    const objects: CanvasObjectContribution[] = [{ kind: 'mindmap', fileExtensions: [], pastesURLs: false, entry: '', example: withExample }]
+    const objects: CanvasObjectContribution[] = [{ kind: 'mindmap', fileExtensions: [], pastesURLs: false, tool: false, entry: '', example: withExample }]
     expect(missingExampleWarnings(objects)).toEqual([])
   })
 

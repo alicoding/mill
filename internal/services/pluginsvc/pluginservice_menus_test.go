@@ -189,3 +189,26 @@ func TestManifestContributes_SeatedCommandIDs_MergesWithoutDuplicates(t *testing
 		t.Fatalf("SeatedCommandIDs = %v, want demo.run and demo.other", ids)
 	}
 }
+
+// Standard rule 34 (docs/goals/0380 Decision 4): a seated menu item
+// with no `when` shows everywhere, and an author who meant that says
+// so. Advisory, never a load refusal -- and never raised for a menu id
+// Mill has no seat for, which is inert anyway.
+func TestConformMenusWithoutWhen(t *testing.T) {
+	seated := Manifest{Contributes: ManifestContributes{Menus: map[string][]MenuItemContribution{
+		"editor/context": {{Command: "demo.always"}, {Command: "demo.scoped", When: "objectKind == 'ink'"}},
+		"scm/title":      {{Command: "demo.unseated"}},
+	}}}
+	warnings := conformMenusWithoutWhen(seated)
+	if len(warnings) != 1 {
+		t.Fatalf("warnings = %v, want exactly the one un-scoped seated item", warnings)
+	}
+	if !strings.Contains(warnings[0], "demo.always") || !strings.Contains(warnings[0], "standard rule 34") {
+		t.Fatalf("warning = %q, want it to name the item and the rule", warnings[0])
+	}
+	if got := conformMenusWithoutWhen(Manifest{Contributes: ManifestContributes{Menus: map[string][]MenuItemContribution{
+		"editor/context": {{Command: "demo.always", When: "true"}},
+	}}}); len(got) != 0 {
+		t.Fatalf("warnings = %v, want none once the item says when: \"true\"", got)
+	}
+}

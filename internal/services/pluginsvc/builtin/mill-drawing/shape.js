@@ -1,10 +1,9 @@
 // The shape: drag to draw a rectangle, ellipse, or arrow -- one tool,
 // the type picked in the style panel while armed. Geometry and style
-// stay live Payload data (never a baked file), the exact payload
-// shape objects had when this tool was compiled in
-// (shapeType/fill/stroke/strokeWidth/title, plus dx/dy for an arrow),
-// so pre-port shapes render identically.
-import { ensureChild, ensurePreview, meetsDragThreshold, setAttrs, svgEl } from './lib.js'
+// stay live Payload data (never a baked file), the exact payload shape
+// these objects had before (shapeType/fill/stroke/strokeWidth/title,
+// plus dx/dy for an arrow), so older shapes render identically.
+import { meetsDragThreshold, svgEl } from './lib.js'
 
 const COLORS = ['#1f6feb', '#da3633', '#238636', '#9a6700', '#8250df', '#24292f']
 const WIDTHS = [1, 2, 4]
@@ -39,30 +38,74 @@ function styleFrom(values) {
 	}
 }
 
+// The live shape, as the one primitive Mill draws for it: an arrow is
+// a line from where the drag started to where it is now; a rectangle
+// and an ellipse are the box between the two.
+function previewShape(style, start, current) {
+	const paint = { stroke: style.stroke, strokeWidth: String(style.width), fill: 'none' }
+	if (style.type === 'arrow') {
+		return [{ kind: 'line', geometry: `${start.x},${start.y},${current.x},${current.y}`, ...paint }]
+	}
+	const x = Math.min(start.x, current.x)
+	const y = Math.min(start.y, current.y)
+	const w = Math.abs(current.x - start.x)
+	const h = Math.abs(current.y - start.y)
+	return [{ kind: style.type === 'ellipse' ? 'ellipse' : 'rect', geometry: `${x},${y},${w},${h}`, ...paint }]
+}
+
 export function registerShape(api) {
-	// Last-used style survives a restart (goal 0277): declared defaults
-	// read the plugin's own storage; each completed shape writes back.
-	// A stored value outside an option set falls back to the shipped
-	// default.
+	// Last-used style survives a restart: declared defaults read the
+	// plugin's own storage; each completed shape writes back. A stored
+	// value outside an option set falls back to the shipped default.
 	const saved = api.storage.get('shape') || {}
 	const defaultType = ['rectangle', 'ellipse', 'arrow'].includes(saved.type) ? saved.type : 'rectangle'
 	const defaultStroke = COLORS.includes(saved.stroke) ? saved.stroke : COLORS[0]
 	const defaultWidth = WIDTHS.includes(saved.width) ? saved.width : WIDTHS[1]
-	let liveStyle = { type: defaultType, stroke: defaultStroke, width: defaultWidth }
 
-	api.registerCanvasObject({
+	let start = null
+	let points = []
+	let draft = null
+
+	async function end(style, current) {
+		const shape = draft
+		draft = null
+		if (!shape) return
+		if (!meetsDragThreshold(points) || !start) {
+			await shape.discard()
+			return
+		}
+		void api.storage.set('shape', { type: style.type, stroke: style.stroke, width: style.width }).catch(console.error)
+		const dx = current.x - start.x
+		const dy = current.y - start.y
+		const base = { shapeType: style.type, fill: style.fill, stroke: style.stroke, strokeWidth: String(style.width), title: shapeTitle(style.type) }
+		if (style.type === 'arrow') {
+			// An arrow's geometry is entirely dx/dy from its start point --
+			// it carries no size at all.
+			await shape.patch({ at: start, data: { ...base, dx: String(dx), dy: String(dy) } })
+			await shape.commit({ select: true })
+			return
+		}
+		await shape.patch({
+			at: { x: Math.min(start.x, current.x), y: Math.min(start.y, current.y) },
+			size: { w: Math.max(8, Math.abs(dx)), h: Math.max(8, Math.abs(dy)) },
+			data: base,
+		})
+		await shape.commit({ select: true })
+	}
+
+	api.registerCanvasTool({
 		kind: 'shape',
 		label: 'Draw a shape',
 		description: 'Draws a rectangle, ellipse, or arrow.',
 		icon: 'diamond',
+		cursor: 'crosshair',
 		shortcutKey: 'S',
 		group: 'annotate',
 		source: 'board-local',
 		editRoute: 'none',
-		interaction: 'drag-to-draw',
 		// The one discrete drag tool: a completed draw disarms it, and
-		// re-clicking the armed button locks it for deliberate
-		// repetition instead.
+		// re-clicking the armed button locks it for deliberate repetition
+		// instead.
 		sticky: false,
 		lockable: true,
 		// A shape's whole body already drags -- no band.
@@ -83,54 +126,32 @@ export function registerShape(api) {
 			{ type: 'stroke-width', key: 'width', label: 'Width', render: 'line', options: WIDTHS, default: defaultWidth },
 			{ type: 'color-or-none', key: 'fill', label: 'Fill', options: COLORS },
 		],
-		gesture: {
-			onPoint(_pt, ctx) {
-				const s = styleFrom(ctx.styleValues)
-				liveStyle = { type: s.type, stroke: s.stroke, width: s.width }
-			},
-			renderPreview(el, points) {
-				if (points.length < 1) {
-					el.replaceChildren()
-					return
-				}
-				const start = points[0]
-				const current = points[points.length - 1]
-				const svg = ensurePreview(el, 'atlas-shape-preview')
-				const strokeAttrs = { 'stroke': liveStyle.stroke, 'stroke-width': liveStyle.width }
-				if (liveStyle.type === 'arrow') {
-					setAttrs(ensureChild(svg, 'line'), { x1: start.x, y1: start.y, x2: current.x, y2: current.y, 'stroke-linecap': 'round', ...strokeAttrs })
-					return
-				}
-				const x = Math.min(start.x, current.x)
-				const y = Math.min(start.y, current.y)
-				const w = Math.abs(current.x - start.x)
-				const h = Math.abs(current.y - start.y)
-				if (liveStyle.type === 'rectangle') {
-					setAttrs(ensureChild(svg, 'rect'), { x, y, 'width': w, 'height': h, 'fill': 'none', ...strokeAttrs })
-				} else {
-					setAttrs(ensureChild(svg, 'ellipse'), { cx: x + w / 2, cy: y + h / 2, rx: w / 2, ry: h / 2, 'fill': 'none', ...strokeAttrs })
-				}
-			},
-			onEnd(points, ctx) {
-				if (!meetsDragThreshold(points)) return
-				const s = styleFrom(ctx.styleValues)
-				void api.storage.set('shape', { type: s.type, stroke: s.stroke, width: s.width }).catch(console.error)
-				const startFlow = ctx.screenToFlowPosition(points[0])
-				const endFlow = ctx.screenToFlowPosition(points[points.length - 1])
-				const dx = endFlow.x - startFlow.x
-				const dy = endFlow.y - startFlow.y
-				const title = shapeTitle(s.type)
-				const base = { shapeType: s.type, fill: s.fill, stroke: s.stroke, strokeWidth: String(s.width), title }
-				if (s.type === 'arrow') {
-					// An arrow's geometry is entirely dx/dy from its start
-					// point -- it carries no Size at all.
-					void ctx.createObject({ ...base, dx: String(dx), dy: String(dy) }, startFlow, { select: true }).catch(console.error)
-					return
-				}
-				const origin = { x: Math.min(startFlow.x, endFlow.x), y: Math.min(startFlow.y, endFlow.y) }
-				const size = { w: Math.max(8, Math.abs(dx)), h: Math.max(8, Math.abs(dy)) }
-				void ctx.createObject(base, origin, { size, select: true }).catch(console.error)
-			},
+		// The drawn primitive changes with the picker while the tool is
+		// armed, so the preview is a list this tool rebuilds per frame
+		// rather than one fixed kind.
+		preview: { kind: 'shapes', from: 'live' },
+		async onPointer(event, ctx) {
+			const style = styleFrom(ctx.styleValues)
+			if (event.phase === 'down') {
+				start = event.point
+				points = [event.point]
+				draft = await ctx.createDraft({ at: event.point, preview: { live: JSON.stringify(previewShape(style, start, event.point)) } })
+				return
+			}
+			if (event.phase === 'cancel') {
+				const shape = draft
+				draft = null
+				start = null
+				points = []
+				if (shape) await shape.discard()
+				return
+			}
+			points = points.concat(event.coalesced, [event.point])
+			if (event.phase === 'move') {
+				if (draft && start) await draft.patch({ preview: { live: JSON.stringify(previewShape(style, start, event.point)) } })
+				return
+			}
+			if (event.phase === 'up') await end(style, event.point)
 		},
 		renderFace(el, ctx) {
 			const payload = ctx.object.Payload

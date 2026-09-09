@@ -89,6 +89,14 @@ type CanvasObjectContribution struct {
 	// S6); empty means the legacy renderFace form drawn into Mill's
 	// own document.
 	Entry string `json:"entry"`
+	// Tool declares this kind as a framed drawing tool (docs/goals/
+	// 0380): the extension declares what the tool is and what its drag
+	// writes, Mill owns every pointer event and paints the live
+	// preview, so nothing about it needs Mill's own document. A
+	// manifest whose canvas kinds are ALL tools activates sandboxed
+	// and earns no "canvas-host" grant; one with any same-DOM kind
+	// still does.
+	Tool bool `json:"tool"`
 	// Example declares this kind's own working example (goal 0411):
 	// what a fresh install's Board gallery seeds and what an
 	// empty-payload insert materializes before the first renderFace.

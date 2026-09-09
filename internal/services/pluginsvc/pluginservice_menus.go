@@ -15,10 +15,10 @@ import (
 // pluginservice_contributes.go's other fail-closed validation.
 
 // MenuItemContribution is one entry in a contributes.menus array: the
-// command to seat, VS Code's optional `when` clause (accepted for
-// shape compatibility -- Mill has no context-key expression language,
-// so it is never evaluated; a ported command stays reachable through
-// its own Command.enabled instead) and an optional group band.
+// command to seat, VS Code's `when` clause -- evaluated since
+// docs/goals/0380 against facts the host computes about the
+// right-clicked object and the selection -- and an optional group
+// band.
 type MenuItemContribution struct {
 	Command string `json:"command"`
 	When    string `json:"when"`
@@ -182,4 +182,26 @@ func unknownMenuWarning(ids []string) string {
 		return fmt.Sprintf("Menu %s is not one Mill has a seat for, so it is ignored", quoted[0])
 	}
 	return fmt.Sprintf("Menus %s are not ones Mill has a seat for, so they are ignored", strings.Join(quoted, ", "))
+}
+
+// conformMenusWithoutWhen is standard rule 34 (docs/goals/0380
+// Decision 4): a seated menu item with no `when` shows everywhere, and
+// an author who meant that says so with `when: "true"` rather than
+// leaving the next reader unable to tell an always-on item from a
+// forgotten predicate. Advisory, never a load refusal -- an item
+// without one still works exactly as it reads.
+func conformMenusWithoutWhen(m Manifest) []string {
+	var warnings []string
+	for _, id := range sortedMenuIDs(m.Contributes.Menus) {
+		if _, seated := menuSeatByVSCodeID[id]; !seated {
+			continue
+		}
+		for _, item := range m.Contributes.Menus[id] {
+			if strings.TrimSpace(item.When) != "" {
+				continue
+			}
+			warnings = append(warnings, fmt.Sprintf("standard rule 34: menu %q item %q declares no when clause; say when: \"true\" if it should always show", id, item.Command))
+		}
+	}
+	return warnings
 }

@@ -15,6 +15,7 @@
 export * from './sdk/theme'
 export * from './sdk/guardedAction'
 export * from './sdk/canvasObjects'
+export * from './sdk/canvasTools'
 export * from './sdk/commands'
 export * from './sdk/settings'
 export * from './sdk/notify'

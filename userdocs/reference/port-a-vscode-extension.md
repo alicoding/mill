@@ -55,8 +55,8 @@ rewriting anything:
 | Source menu id | Mill seat |
 | --- | --- |
 | `commandPalette` | Already true for every command Mill knows about; declaring it does nothing extra. |
-| `editor/context` | Renders in the canvas object's own right-click menu, after a separator. |
-| `view/title` | Renders as an icon-only action in the work tab's title area. |
+| `editor/context` | Renders in the canvas object's own right-click menu, after a separator. Its `when` clause decides when the item shows, over facts Mill computes about the right-clicked object and the selection: `objectKind`, `objectPluginId`, `hasFile`, `hasSize`, `editRoute`, `selectionCount`, `selectionKinds`, and every payload key as `payload.<key>`. An item that should always show says so with `when: "true"`. |
+| `view/title` | Renders as an icon-only action in the work tab's title area. Its `when` clause is evaluated against `viewId`, so one extension with several views can scope an item to one of them. |
 | any other id | Accepted and ignored — named once in the extension's status so you know it was silently dropped, never a load failure. |
 
 ## Three ported jobs, classified

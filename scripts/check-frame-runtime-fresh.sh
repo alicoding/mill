@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Enforces goal 0396: the plugin-frame runtime (activation.js,
-# bootstrap.js, served into every sandboxed plugin frame -- goal 0192,
+# bootstrap.js, measure.js, served into every sandboxed plugin frame -- goal 0192,
 # goal 0375 S1b) is built from frontend/src/plugin-frame/*.ts, never a
 # hand-written copy. Two things drift silently without this gate: a
 # hand-written frontend/public/plugin-frame/*.js reappearing (the
@@ -33,7 +33,7 @@ if [ -d "$public_dir" ] && [ -n "$(find "$public_dir" -type f 2>/dev/null)" ]; t
 fi
 
 dist_dir="$root/dist/plugin-frame"
-for name in activation bootstrap; do
+for name in activation bootstrap measure; do
   bundle="$dist_dir/$name.js"
   if [ ! -f "$bundle" ]; then
     fail "$bundle is missing -- run 'npm run build' (or 'npm run build:frame') in frontend/ to produce it."

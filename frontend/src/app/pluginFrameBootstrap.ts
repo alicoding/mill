@@ -118,6 +118,30 @@ export interface ActivationFrameInit {
   // and methods (gated) BEFORE anything crosses the postMessage
   // boundary at activation-done.
   exports: string[]
+  // capabilities (docs/goals/0380): the manifest's own declared
+  // capability list, so a capability-gated ctx door is ABSENT rather
+  // than present-and-refusing -- the same shape a same-DOM gesture ctx
+  // has always had.
+  capabilities: string[]
+}
+
+// MEASURE_SCRIPT_PATH is the off-board measuring stage's own script
+// (docs/goals/0380 Decision 3): a frame that renders one piece of
+// markup, answers how big it turned out, and is thrown away. It shares
+// the same mount-data meta element every other frame runtime entry
+// reads, since no two of them ever share a document.
+export const MEASURE_SCRIPT_PATH = '/plugin-frame/measure.js'
+
+export function measureScriptUrl(): string {
+  return new URL(MEASURE_SCRIPT_PATH, window.location.href).href
+}
+
+// MeasureFrameInit is that frame's own mount data: which call it is
+// answering, the markup to lay out, and the width to wrap it at.
+export interface MeasureFrameInit {
+  callId: number
+  markup: string
+  maxWidth: number
 }
 
 // buildFrameSrcdoc prepends Mill's four head pieces to the plugin's own
@@ -132,7 +156,7 @@ export interface ActivationFrameInit {
 // comment or string containing the same text. An activation frame has
 // no plugin-authored page at all: html is "" and DOMParser still gives
 // it a head to inject into.
-export function buildFrameSrcdoc(base: string, scripts: readonly string[], html: string, init: FrameInit | ActivationFrameInit, tokens: string): string {
+export function buildFrameSrcdoc(base: string, scripts: readonly string[], html: string, init: FrameInit | ActivationFrameInit | MeasureFrameInit, tokens: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html')
   const injected = doc.createElement('head')
   injected.innerHTML = [

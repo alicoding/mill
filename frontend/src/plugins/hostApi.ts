@@ -1,4 +1,3 @@
-import { registerThirdPartyNoun } from '../atlas/atlasNounRegistry'
 import { Events } from '@wailsio/runtime'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import { AtlasService } from '../../bindings/github.com/alicoding/mill/internal/services/atlassvc'
@@ -8,9 +7,11 @@ import { attachPluginCaptureMessages, collectPluginCapture, getPluginCapture } f
 import { SettingsService } from '../shared/bindings'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { useUISignalStore } from '../shared/uiSignalStore'
-import type { AtlasArmRequestTool } from '../shared/atlasToolIdentity'
 import { collectPluginCommand } from './pluginCommands'
-import { buildThirdPartyNoun, seedStyleValues } from './canvasToolAdapter'
+import { buildThirdPartyNoun, seatCanvasTool } from './canvasToolAdapter'
+import { registerLocalCanvasTool } from './canvasToolLocal'
+import { measureMarkup } from './canvasMeasure'
+import { parseObjectMeasure } from './canvasToolProtocol'
 import { settingDeclsFromManifest } from './pluginSettings'
 import { secretTitleOf } from '../shared/secretTitleCache'
 import { buildPluginStorage } from './pluginStorage'
@@ -21,7 +22,7 @@ import { formatPluginDate } from './pluginDateFormat'
 import { pushNotice } from '../shared/noticeStore'
 import { getExtensionExports } from './extensionExports'
 import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/extensionSettingsStore'
-import type { CanvasObjectDecl, ContentQuery, LifecycleEventPayload, LinkQuery, MillPluginAPI, PluginFetchInit, PluginOutputOptions, PluginElAttrs, PluginElChild } from './sdk'
+import type { CanvasObjectDecl, CanvasToolDecl, ContentQuery, LifecycleEventPayload, LinkQuery, MillPluginAPI, PluginFetchInit, PluginOutputOptions, PluginElAttrs, PluginElChild } from './sdk'
 import type { MenuPath } from '../shared/menuSkeleton'
 import type { Command } from '../shared/commands'
 
@@ -219,6 +220,11 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 				const r = await PluginService.ListDirForPlugin(pluginId, path)
 				return { approved: r.approved, effect: r.effect, ruleLabel: r.ruleLabel, entries: (r.entries ?? []).map((e) => ({ name: e.name, path: e.path, isDir: e.isDir, size: e.size })) }
 			},
+			// Baking bytes into Mill's own file store (a drawing tool's
+			// "draw, save as SVG, place with the returned path" shape),
+			// moved here from the gesture ctx (docs/goals/0380) so a
+			// framed tool reaches it through the same door a face does.
+			saveImageBytes: (base64: string, ext: string, title: string) => AtlasService.SaveImageBytes(base64, ext, title),
 		}),
 		// The convert door (goal 0282, reverse direction goal 0386 S1):
 		// the shared Markdown<->HTML converters as pure transforms over
@@ -256,28 +262,10 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			if (!KIND_PATTERN.test(decl.kind)) throw new Error(`plugin ${pluginId}: canvas object kind "${decl.kind}" must be a lowercase slug`)
 			if (!SOURCES.has(decl.source)) throw new Error(`plugin ${pluginId}: unknown source "${decl.source}"`)
 			if (typeof decl.editRoute !== 'function' && !EDIT_ROUTES.has(decl.editRoute)) throw new Error(`plugin ${pluginId}: unknown editRoute "${decl.editRoute}"`)
-			registerThirdPartyNoun(buildThirdPartyNoun(pluginId, manifest, decl))
-			seedStyleValues(decl.kind, decl.styleFields ?? [])
-			// The palette parity built-in tools already have (their
-			// atlas.create.<id> commands, shared/atlasCreateCommands.ts):
-			// a plugin's tool gets the same registry command through the
-			// same collector its own commands ride, arming the identical
-			// placement mechanism the tray click uses. Enablement is
-			// structural -- a disabled plugin never activates, so its
-			// command is never collected.
-			collectPluginCommand({
-				id: `atlas.create.${decl.kind}`,
-				label: decl.label,
-				pluginId,
-				surface: ['atlas'],
-				// The arm signal's type is the built-in literal union; the
-				// runtime gate already accepts any registered third-party
-				// id (useAtlasCreation's isThirdPartyToolId OR) -- the
-				// same one-documented-cast convention
-				// orderedRegisteredTools carries for the registry itself.
-				run: () => useUISignalStore.getState().requestAtlasArmTool(decl.kind as AtlasArmRequestTool),
-			})
+			seatCanvasTool(pluginId, buildThirdPartyNoun(pluginId, manifest, decl), decl.styleFields ?? [])
 		},
+		registerCanvasTool: (decl: CanvasToolDecl) => registerLocalCanvasTool(pluginId, manifest, decl),
+		measure: (markup: string, maxWidth: number) => measureMarkup(pluginId, parseObjectMeasure({ markup, maxWidth })),
 		// A plugin view (goal 0290): declared in the manifest, registered
 		// here with its render, opened by a registry command. The store is
 		// imported lazily inside run() -- at activation time the app module

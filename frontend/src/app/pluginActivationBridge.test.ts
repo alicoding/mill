@@ -1,9 +1,15 @@
 // @vitest-environment jsdom
+import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { attachActivationBridge, callActivationMethod, createActivationFrameContext, sendExtensionCall, teardownActivationFrameContext } from './pluginActivationBridge'
 import { collectPluginCapture, getPluginCapture, setPluginCaptureSink, unregisterPluginCaptures } from '../plugins/pluginCaptures'
 import { collectPluginView, getPluginView, setPluginViewSink, unregisterPluginViews } from '../plugins/pluginViews'
 import type { MillPluginAPI } from '../plugins/sdk'
+
+// The manifest a framed context now carries (docs/goals/0380): the
+// canvas-tool doors check a capability and an ingestion claim against
+// it, and every case below drives a plugin that declares neither.
+const PROBE_MANIFEST = { id: 'framed-probe', name: 'Framed probe', version: '1.0.0', description: '', author: '', minMillVersion: '', icon: '', capabilities: [], dependencies: [], exports: [], contributes: {} } as unknown as Manifest
 
 // The activation bridge is a third-party plugin's ONLY door into its
 // registrations while it runs framed (docs/goals/0375 S1b): what it
@@ -49,7 +55,7 @@ describe('callActivationMethod', () => {
   it('routes a reused simple door onto the plugin api', async () => {
     const api = fakeApi()
     const { frame } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     await expect(callActivationMethod(ctx, api, 'kinds', [])).resolves.toEqual([])
     expect(api.kinds).toHaveBeenCalled()
   })
@@ -57,7 +63,7 @@ describe('callActivationMethod', () => {
   it('routes convert.markdownToHtml onto the plugin api, the activation bridge\'s one new door', async () => {
     const api = fakeApi()
     const { frame } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     await callActivationMethod(ctx, api, 'convert.markdownToHtml', ['# Title'])
     expect(api.convert.markdownToHtml).toHaveBeenCalledWith('# Title')
   })
@@ -65,14 +71,14 @@ describe('callActivationMethod', () => {
   it('refuses an unknown method, naming it', async () => {
     const api = fakeApi()
     const { frame } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     await expect(callActivationMethod(ctx, api, 'registerCanvasObject', [])).rejects.toThrow('registerCanvasObject is not available in a frame')
   })
 
   it('register.command seats a command whose run() asks the frame and awaits its result', async () => {
     const api = fakeApi()
     const { frame, post } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     await callActivationMethod(ctx, api, 'register.command', [{ id: 'go', label: 'Go' }])
     expect(api.registerCommand).toHaveBeenCalled()
     const decl = (api.registerCommand as ReturnType<typeof vi.fn>).mock.calls[0][0] as { run: () => Promise<void>; enabled: () => boolean }
@@ -92,7 +98,7 @@ describe('callActivationMethod', () => {
   it('enabled() goes false once the frame is torn down, and a pending run rejects', async () => {
     const api = fakeApi()
     const { frame } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     await callActivationMethod(ctx, api, 'register.command', [{ id: 'go', label: 'Go' }])
     const decl = (api.registerCommand as ReturnType<typeof vi.fn>).mock.calls[0][0] as { run: () => Promise<void>; enabled: () => boolean }
     const pending = decl.run()
@@ -104,7 +110,7 @@ describe('callActivationMethod', () => {
   it('register.view seats onMessage only when the frame declared one, and forwards a page message as an event', async () => {
     const api = fakeApi()
     const { frame, post } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     await callActivationMethod(ctx, api, 'register.view', [{ id: 'panel', hasMessageHandler: true }])
     const decl = (api.registerView as ReturnType<typeof vi.fn>).mock.calls[0][0] as { id: string; onMessage?: (message: unknown) => void }
     expect(decl.id).toBe('panel')
@@ -121,7 +127,7 @@ describe('callActivationMethod', () => {
     collectPluginView({ pluginId: 'framed-probe', pluginName: 'Framed probe', viewId: 'panel', title: 'Panel', version: '1.0.0', entry: 'panel.html' })
     const api = fakeApi()
     const { frame } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     const sink = vi.fn()
     setPluginViewSink('framed-probe', 'panel', sink)
     await callActivationMethod(ctx, api, 'view.postMessage', [{ id: 'panel', payload: { hello: 2 } }])
@@ -134,7 +140,7 @@ describe('callActivationMethod', () => {
     collectPluginCapture({ pluginId: 'framed-probe', pluginName: 'Framed probe', captureId: 'jot', label: 'Jot', version: '1.0.0', entry: 'jot.html' })
     const api = fakeApi()
     const { frame } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     await callActivationMethod(ctx, api, 'register.capture', [{ id: 'jot', hasMessageHandler: false }])
     expect(api.registerCapture).toHaveBeenCalledWith(expect.objectContaining({ id: 'jot', onMessage: undefined }))
     const sink = vi.fn()
@@ -147,7 +153,7 @@ describe('callActivationMethod', () => {
   it('subscribe/unsubscribe on contents:changed round-trips a subId', async () => {
     const api = fakeApi()
     const { frame } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     const result = await callActivationMethod(ctx, api, 'subscribe', [{ topic: 'contents:changed' }])
     expect(result).toEqual({ subId: 1 })
     expect(ctx.subscriptions.has(1)).toBe(true)
@@ -158,7 +164,7 @@ describe('callActivationMethod', () => {
   it('subscribe on an undeclared settings key still hands back a subId, quietly firing nothing', async () => {
     const api = fakeApi()
     const { frame } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     const result = await callActivationMethod(ctx, api, 'subscribe', [{ topic: 'settings', key: 'missing' }])
     expect(result).toEqual({ subId: 1 })
   })
@@ -176,7 +182,7 @@ describe('callActivationMethod', () => {
   it('subscribe on entity.* forwards a matching lifecycle firing as a lifecycle.event message', async () => {
     const api = fakeApi()
     const { frame, post } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     const { subId } = await callActivationMethod(ctx, api, 'subscribe', [{ topic: 'entity.*' }]) as { subId: number }
 
     dispatchLifecycleEvent({ event: 'entity.dereferenced', entityKind: 'list', entityId: 'list-1', remaining: 0 })
@@ -190,7 +196,7 @@ describe('callActivationMethod', () => {
   it('subscribe on object.* ignores an entity.* firing, and kinds narrows within the family', async () => {
     const api = fakeApi()
     const { frame, post } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     await callActivationMethod(ctx, api, 'subscribe', [{ topic: 'object.*', kinds: ['table'] }])
 
     dispatchLifecycleEvent({ event: 'entity.created', entityKind: 'list', entityId: 'list-1' })
@@ -208,7 +214,7 @@ describe('callActivationMethod', () => {
   it('unsubscribe on entity.*/object.* stops further delivery', async () => {
     const api = fakeApi()
     const { frame, post } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     const { subId } = await callActivationMethod(ctx, api, 'subscribe', [{ topic: 'entity.*' }]) as { subId: number }
     await callActivationMethod(ctx, api, 'unsubscribe', [{ subId }])
 
@@ -220,7 +226,7 @@ describe('callActivationMethod', () => {
     const get = vi.fn(async (id: string) => (id === 'mill-interop-provider' ? { greet: () => 'hi' } : undefined))
     const api = fakeApi({ extensions: { get } })
     const { frame } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     await expect(callActivationMethod(ctx, api, 'extensions.get', ['mill-interop-provider'])).resolves.toEqual({ data: {}, methods: ['greet'] })
     expect(get).toHaveBeenCalledWith('mill-interop-provider')
     await expect(callActivationMethod(ctx, api, 'extensions.call', ['mill-other', 'greet', []])).rejects.toThrow('Method greet is not exported by mill-other.')
@@ -232,7 +238,7 @@ describe('sendExtensionCall (goal 0364)', () => {
 
   it('resolves once the frame answers extension.result', async () => {
     const { frame, contentWindow, post } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     const api = fakeApi()
     const detach = attachActivationBridge({ ctx, api, onDone: () => {}, onError: () => {} })
     const ran = sendExtensionCall(ctx, 'greet', ['Ada'])
@@ -246,7 +252,7 @@ describe('sendExtensionCall (goal 0364)', () => {
   it('rejects with the frame-not-running sentence 10 s after no reply arrives', async () => {
     vi.useFakeTimers()
     const { frame } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     const ran = sendExtensionCall(ctx, 'greet', [])
     const assertion = expect(ran).rejects.toThrow('Extension framed-probe is not running.')
     await vi.advanceTimersByTimeAsync(10_000)
@@ -255,7 +261,7 @@ describe('sendExtensionCall (goal 0364)', () => {
 
   it('a torn-down frame rejects every pending extension call', async () => {
     const { frame } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     const ran = sendExtensionCall(ctx, 'greet', [])
     teardownActivationFrameContext(ctx)
     await expect(ran).rejects.toThrow('Extension framed-probe is not running.')
@@ -268,7 +274,7 @@ describe('attachActivationBridge', () => {
   it('ignores a message whose source is not the frame it is bridging', async () => {
     const api = fakeApi()
     const { frame, post } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     const onDone = vi.fn()
     const detach = attachActivationBridge({ ctx, api, onDone, onError: vi.fn() })
     window.dispatchEvent(new MessageEvent('message', { source: {} as Window, data: { mill: 1, kind: 'activation-done' } }))
@@ -281,7 +287,7 @@ describe('attachActivationBridge', () => {
   it('answers a call from its own frame with the routed result', async () => {
     const api = fakeApi()
     const { frame, contentWindow, post } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     const detach = attachActivationBridge({ ctx, api, onDone: vi.fn(), onError: vi.fn() })
     window.dispatchEvent(new MessageEvent('message', { source: contentWindow, data: { mill: 1, id: 9, kind: 'call', method: 'kinds', args: [] } }))
     await vi.waitFor(() => expect(post).toHaveBeenCalledWith({ mill: 1, id: 9, ok: true, result: [] }, '*'))
@@ -291,7 +297,7 @@ describe('attachActivationBridge', () => {
   it('signals activation-done and activation-error to the orchestrator', () => {
     const api = fakeApi()
     const { frame, contentWindow } = fakeFrame()
-    const ctx = createActivationFrameContext(frame, 'framed-probe', [])
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     const onDone = vi.fn()
     const onError = vi.fn()
     const detach = attachActivationBridge({ ctx, api, onDone, onError })

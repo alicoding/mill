@@ -238,6 +238,31 @@ current state, never a cache.
 
 ***
 
+### measure
+
+```ts
+measure: (markup, maxWidth) => Promise<CanvasMeasureResult>;
+```
+
+Measures markup off the board at real pixel size, for a face
+whose own layout depends on how big its content turned out.
+
+#### Parameters
+
+##### markup
+
+`string`
+
+##### maxWidth
+
+`number`
+
+#### Returns
+
+`Promise`\<[`CanvasMeasureResult`](CanvasMeasureResult.md)\>
+
+***
+
 ### millVersion
 
 ```ts
@@ -366,6 +391,28 @@ registerCanvasObject: (decl) => void;
 ##### decl
 
 [`CanvasObjectDecl`](CanvasObjectDecl.md)
+
+#### Returns
+
+`void`
+
+***
+
+### registerCanvasTool
+
+```ts
+registerCanvasTool: (decl) => void;
+```
+
+Declares a drawing tool Mill drives: Mill owns every pointer
+event and draws the tool's live preview from the draft's own data,
+so the tool needs no access to the board itself.
+
+#### Parameters
+
+##### decl
+
+[`CanvasToolDecl`](CanvasToolDecl.md)
 
 #### Returns
 

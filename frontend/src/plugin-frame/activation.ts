@@ -3,6 +3,7 @@ import { buildFetchJSON } from '../plugins/pluginFetchJSON'
 import { formatPluginDate } from '../plugins/pluginDateFormat'
 import { buildPluginStorage, type PluginStorageDoors } from '../plugins/pluginStorage'
 import type { ContentQuery, LifecycleEventPayload, MillPluginAPI, PluginCaptureDecl, PluginCaptureHandle, PluginCommandDecl, PluginFetchResult, PluginNoticeInput, PluginViewDecl, PluginViewHandle } from '../plugins/sdk'
+import { CANVAS_TOOL_CALLS, buildCanvasToolsFrameHalf } from './canvasTools'
 
 // A third-party plugin's own activation, run inside a hidden sandboxed
 // frame (goal 0375 S1b): main.js's activate(api) runs HERE, not in
@@ -50,11 +51,12 @@ export const ACTIVATION_CALL_METHODS = [
 	'view.postMessage', 'capture.postMessage',
 	'subscribe', 'unsubscribe',
 	'extensions.get', 'extensions.call',
+	...CANVAS_TOOL_CALLS,
 ] as const
 
 ;(function () {
 	const initMeta = document.querySelector('meta[name="mill-frame-init"]')
-	let init: ActivationFrameInit = { pluginId: '', millVersion: '', version: '', settings: {}, storage: {}, exports: [] }
+	let init: ActivationFrameInit = { pluginId: '', millVersion: '', version: '', settings: {}, storage: {}, exports: [], capabilities: [] }
 	try {
 		if (initMeta) init = JSON.parse(initMeta.getAttribute('content') || '{}') as ActivationFrameInit
 	} catch (err) {
@@ -169,6 +171,7 @@ export const ACTIVATION_CALL_METHODS = [
 			case 'settings.changed': onSettingsChanged(data.payload); break
 			case 'contents.changed': onContentsChanged(data.payload); break
 			case 'lifecycle.event': onLifecycleEvent(data.payload); break
+			case 'tool.pointer': canvasTools.onToolPointer(data.payload); break
 		}
 	}
 
@@ -206,6 +209,7 @@ export const ACTIVATION_CALL_METHODS = [
 		delete: (key) => call('storage.delete', key).then(() => undefined),
 	}
 	const storage = buildPluginStorage(pluginId, storageLiterals, storageDoors)
+	const canvasTools = buildCanvasToolsFrameHalf(call, pluginId, init.capabilities || [])
 
 	const api: FramedPluginAPI = {
 		millVersion: init.millVersion,
@@ -268,13 +272,21 @@ export const ACTIVATION_CALL_METHODS = [
 			createList: (input) => call('content.createList', input) as ReturnType<MillPluginAPI['content']['createList']>,
 			setCardFields: (cardId, fields) => call('content.setCardFields', cardId, fields) as ReturnType<MillPluginAPI['content']['setCardFields']>,
 		}),
-		files: Object.freeze({ list: (path: string) => call('files.list', path) as ReturnType<MillPluginAPI['files']['list']> }),
+		files: Object.freeze({
+			list: (path: string) => call('files.list', path) as ReturnType<MillPluginAPI['files']['list']>,
+			saveImageBytes: canvasTools.saveImageBytes,
+		}),
 		convert: Object.freeze({
 			htmlToMarkdown: (html: string) => call('convert.htmlToMarkdown', html) as Promise<string>,
 			markdownToHtml: (md: string) => call('convert.markdownToHtml', md) as Promise<string>,
 		}),
 		requestGuardedAction: (kind, attributes, description) => call('requestGuardedAction', kind, attributes, description) as ReturnType<MillPluginAPI['requestGuardedAction']>,
+		// The same-DOM face/gesture form genuinely cannot work here (it
+		// hands out host elements and live callbacks); registerCanvasTool
+		// is the framed shape of the same contribution.
 		registerCanvasObject: notAvailable('registerCanvasObject'),
+		registerCanvasTool: canvasTools.registerCanvasTool,
+		measure: canvasTools.measure,
 		registerCommand: (decl: PluginCommandDecl) => {
 			runHandlers.set(decl.id, decl.run)
 			void call('register.command', { id: decl.id, label: decl.label }).catch((err: unknown) => console.error(`plugin ${pluginId}: registerCommand failed`, err))

@@ -265,6 +265,11 @@ export interface AtlasGestureCtx {
   // and discards after onEnd -- eraser's own onPoint is the sole
   // consumer today; no other tool touches it.
   hitAccumulator: { cardIDs: Set<string>; noteIDs: Set<string>; objectIDs: Set<string> }
+  // The modifier keys held for the pointer event this call came from
+  // (docs/goals/0380). Shift-to-constrain is a converged drawing
+  // expectation, and a tool running outside this document has no event
+  // of its own to read it off, so the engine carries it.
+  modifiers: { shift: boolean; alt: boolean; ctrl: boolean; meta: boolean }
 }
 
 // AtlasToolGesture -- a drag-shaped tool's own pure behavior
@@ -286,6 +291,13 @@ export interface AtlasToolGesture {
   // one generic mechanism useAtlasToolGesture.ts owns for an
   // 'ephemeral-drag' tool so no tool needs its own rAF loop.
   fadeMs?: number
+  // onCancel/onFade are the two gesture boundaries a tool running
+  // OUTSIDE this document cannot observe for itself (docs/goals/0380):
+  // an abandoned gesture (Escape), and each aging frame of an
+  // ephemeral trail. A same-DOM tool reads both off its own state and
+  // declares neither.
+  onCancel?: () => void
+  onFade?: (now: number) => void
 }
 
 // AtlasToolShape: a discriminated union, one member per

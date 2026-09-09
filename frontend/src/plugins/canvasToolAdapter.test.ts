@@ -91,6 +91,7 @@ describe('goal 0252 S2 doors', () => {
       onDeleteSelection: () => {}, openAreaPopover: () => {}, onShapeCreated: () => {}, enclosedIn: () => ({ cardIDs: [], noteIDs: [], objectIDs: [] }),
       disarm: () => calls.push('disarm'),
       disarmUnlessLocked: () => calls.push('disarmUnlessLocked'),
+      modifiers: { shift: false, alt: false, ctrl: false, meta: false },
       hitAccumulator: { cardIDs: new Set<string>(), noteIDs: new Set<string>(), objectIDs: new Set<string>() },
     }
     const gesture = adaptGesture('thing', 'thing', [], { onEnd: () => {} }, false, false)
@@ -108,6 +109,7 @@ describe('goal 0252 S2 doors', () => {
       onDeleteSelection: () => {}, openAreaPopover: () => {}, onShapeCreated: () => {}, enclosedIn: () => ({ cardIDs: [], noteIDs: [], objectIDs: [] }),
       disarm: () => calls.push('disarm'),
       disarmUnlessLocked: () => calls.push('disarmUnlessLocked'),
+      modifiers: { shift: false, alt: false, ctrl: false, meta: false },
       hitAccumulator: { cardIDs: new Set<string>(), noteIDs: new Set<string>(), objectIDs: new Set<string>() },
     }
     const gesture = adaptGesture('thing', 'thing', [], { onEnd: () => {} }, true, false)
@@ -126,7 +128,8 @@ describe('goal 0252 S2 doors', () => {
         parentID: '', cardBoxes: [], noteBoxes: [], objectBoxes: [],
         onDeleteSelection: () => {}, openAreaPopover: () => {}, onShapeCreated: () => {}, enclosedIn: () => ({ cardIDs: [], noteIDs: [], objectIDs: [] }),
         disarm: () => {}, disarmUnlessLocked: () => {},
-        hitAccumulator: { cardIDs: new Set<string>(), noteIDs: new Set<string>(), objectIDs: new Set<string>() },
+      modifiers: { shift: false, alt: false, ctrl: false, meta: false },
+      hitAccumulator: { cardIDs: new Set<string>(), noteIDs: new Set<string>(), objectIDs: new Set<string>() },
       })
       return seen
     }
@@ -147,6 +150,7 @@ describe('goal 0310 doors', () => {
       onDeleteSelection: () => {}, openAreaPopover: () => {}, onShapeCreated: () => {},
       enclosedIn: (rect) => ({ cardIDs: [`c@${rect.width}`], noteIDs: ['n1'], objectIDs: [] }),
       disarm: () => {}, disarmUnlessLocked: () => {},
+      modifiers: { shift: false, alt: false, ctrl: false, meta: false },
       hitAccumulator: { cardIDs: new Set<string>(), noteIDs: new Set<string>(), objectIDs: new Set<string>() },
     })
     expect(seen).toEqual({ cardIds: ['c@10'], noteIds: ['n1'], objectIds: [] })

@@ -42,14 +42,25 @@ setFramedExportCallHandler((id, method, args) => {
   return sendExtensionCall(entry.ctx, method, args)
 })
 
-// isFramedActivation is the one branch this slice adds (docs/goals/
-// 0375 S1b's binding scope): a built-in keeps same-DOM behind its own
-// named transition (the tools API, S1c); a non-built-in that declares
-// a canvas object keeps same-DOM behind the "canvas-host" grant, until
-// the framed canvas API exists (goal 0380). Every other non-built-in
-// plugin activates framed.
+// isFramedActivation decides which activation an extension gets. The
+// deciding fact is which door a kind's REGISTRATION crosses, not where
+// its face ends up drawn: registerCanvasObject (a `tool`-less kind, or
+// one whose face is the legacy renderFace function) is a same-DOM-only
+// door -- plugin-frame/activation.ts never implements it, since a
+// function cannot cross postMessage. registerCanvasTool (a `tool` kind)
+// IS available framed, but its own face still crosses only through
+// buildThirdPartyNoun's entry-page lookup (host-side, off the
+// manifest), never through a renderFace function the frame can't send
+// -- so a `tool` kind with no `entry` still needs Mill's own document
+// for its face. A kind is framed-safe only when it is BOTH: declared a
+// tool (registers through the door that survives the bridge) AND names
+// an entry page (its face needs nothing the frame cannot send). One
+// kind missing either is enough to need the whole extension's own
+// document, since the whole extension shares one activation.
 export function isFramedActivation(builtin: boolean, manifest: Manifest): boolean {
-  return !builtin && (manifest.contributes?.canvasObjects ?? []).length === 0
+  const canvas = manifest.contributes?.canvasObjects ?? []
+  if (canvas.length > 0) return canvas.every((kind) => !!kind.tool && !!kind.entry)
+  return !builtin
 }
 
 // activateFramed builds the SAME host-side api object same-DOM
@@ -75,6 +86,7 @@ export async function activateFramed(info: PluginInfo, millVersion: string, stor
     settings: snapshotPluginSettings(manifest),
     storage: decodedStorage,
     exports: exportAllowlist,
+    capabilities: [...(manifest.capabilities ?? [])],
   }
   const srcdoc = buildFrameSrcdoc(pluginAssetBase(pluginId), [activationScriptUrl()], '', init, millTokenCss(hostTokenReader()))
 
@@ -88,7 +100,7 @@ export async function activateFramed(info: PluginInfo, millVersion: string, stor
   document.body.appendChild(frame)
   frame.srcdoc = srcdoc
 
-  const ctx = createActivationFrameContext(frame, pluginId, settingDeclsFromManifest(manifest))
+  const ctx = createActivationFrameContext(frame, pluginId, settingDeclsFromManifest(manifest), manifest)
   await new Promise<void>((resolve, reject) => {
     const detachBridge = attachActivationBridge({
       ctx,

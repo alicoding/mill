@@ -4,6 +4,7 @@ import { useAtlasStore } from './atlasStore'
 import { isGroupCard } from './atlasBoardLayout'
 import { exportersForCard, isDemotableCard } from './atlasUnits'
 import { boardObjectContentFor, thirdPartyNounFor } from './atlasNounRegistry'
+import { boardObjectMenuFacts } from '../plugins/pluginMenuFacts'
 import { resolveEditRoute } from './objectSeams'
 
 // The adapter behind shared/atlasSelectionFacts.ts (goal 0346 slice B):
@@ -42,6 +43,15 @@ installAtlasFacts({
       editDiagram: Boolean(editRoute) && resolveEditRoute(object, editRoute!).kind === 'embedded-engine',
       fitDiagram: content?.overflowChip === true,
       pluginItems: (thirdPartyNounFor(object.Kind)?.menuItems ?? []).filter((item) => item.enabled(object)).map((item) => ({ id: item.id, label: item.label })),
+      menuFacts: boardObjectMenuFacts({
+        kind: object.Kind,
+        payload: Object.fromEntries(Object.entries(object.Payload ?? {}).flatMap(([k, v]) => (v === undefined ? [] : [[k, String(v)]]))),
+        size: object.Size ?? null,
+        pluginId: thirdPartyNounFor(object.Kind)?.pluginId ?? '',
+        hasFile: Boolean(content?.fileBacked && object.Payload?.mirrorPath),
+        editRoute: editRoute ? resolveEditRoute(object, editRoute).kind : 'none',
+        selectionKinds: [object.Kind],
+      }),
     }
   },
   link: (id) => {

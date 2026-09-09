@@ -19,7 +19,7 @@ const FACTS: AtlasFacts = {
     return undefined
   },
   note: (id) => id === 'n-1',
-  object: (id) => (id === 'o-table' ? { id, kind: 'table', rename: true, openInDefaultApp: false, editDiagram: false, fitDiagram: false, pluginItems: [{ id: 'p1', label: 'Plugin thing' }] } : undefined),
+  object: (id) => (id === 'o-table' ? { id, kind: 'table', rename: true, openInDefaultApp: false, editDiagram: false, fitDiagram: false, menuFacts: {}, pluginItems: [{ id: 'p1', label: 'Plugin thing' }] } : undefined),
   link: (id) => (id === 'l-1' ? { id, sourceId: 'c-note', sourceTitle: 'A plain note', targetId: 'c-frame', targetTitle: 'An area', label: '' } : undefined),
   linkKinds: () => [{ id: 'lk-1', label: 'depends on' }],
   perspectives: () => [{ id: 'p-1', name: 'Roadmap', members: ['c-frame'] }],

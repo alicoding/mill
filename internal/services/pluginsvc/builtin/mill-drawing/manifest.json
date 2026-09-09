@@ -6,20 +6,40 @@
   "author": "Mill",
   "minMillVersion": "0.14.1",
   "icon": "icon.png",
-  "capabilities": ["erase-board-items"],
+  "capabilities": [
+    "erase-board-items"
+  ],
   "contributes": {
     "canvasObjects": [
-      { "kind": "pencil" },
-      { "kind": "shape" },
-      { "kind": "eraser" },
-      { "kind": "laser" }
+      {
+        "kind": "pencil",
+        "tool": true
+      },
+      {
+        "kind": "shape",
+        "tool": true
+      },
+      {
+        "kind": "eraser",
+        "tool": true
+      },
+      {
+        "kind": "laser",
+        "tool": true
+      }
     ],
     "commands": [
-      { "id": "mill-drawing.showTips", "label": "Drawing tips" }
+      {
+        "id": "mill-drawing.showTips",
+        "label": "Drawing tips"
+      }
     ],
     "menus": {
       "editor/context": [
-        { "command": "mill-drawing.showTips" }
+        {
+          "command": "mill-drawing.showTips",
+          "when": "true"
+        }
       ]
     }
   }

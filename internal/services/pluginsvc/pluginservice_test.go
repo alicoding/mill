@@ -353,15 +353,27 @@ func TestListPlugins_ValidatesContributedSettings(t *testing.T) {
 	}
 }
 
-// A non-built-in plugin that contributes a canvas object keeps
-// same-DOM activation until the framed canvas API exists
-// (docs/goals/0375 S1b); PluginInfo names that honestly as the
-// "canvas-host" grant, never silently. A plugin with no canvas object
+// A non-built-in plugin whose canvas object draws into Mill's own
+// document (docs/goals/0375 S1b) carries the "canvas-host" grant,
+// named honestly rather than taken silently. Since the framed canvas
+// API exists (docs/goals/0380) a kind draws through the bridge instead
+// and needs no grant only when it is BOTH declared a TOOL (registers
+// through the door that survives the bridge) AND names its own entry
+// page (its face needs nothing a frame cannot send) -- a tool with no
+// entry page still needs Mill's own document for its renderFace
+// function, and an entry page on a kind that is not a tool still
+// registers through registerCanvasObject, a same-DOM-only door. One
+// same-DOM kind is enough to need the grant, because the whole
+// extension shares one activation. A plugin with no canvas object
 // carries no grant, and a built-in never does either.
 func TestListPlugins_CanvasObjectGrantsCanvasHost(t *testing.T) {
 	root := t.TempDir()
 	writePlugin(t, root, "draws", `{"id":"draws","name":"Draws","version":"1.0.0","contributes":{"canvasObjects":[{"kind":"draws"}]}}`, nil)
 	writePlugin(t, root, "no-canvas", `{"id":"no-canvas","name":"No canvas","version":"1.0.0"}`, nil)
+	writePlugin(t, root, "tools-only", `{"id":"tools-only","name":"Tools only","version":"1.0.0","contributes":{"canvasObjects":[{"kind":"pencil","tool":true,"entry":"face.html"}]}}`, nil)
+	writePlugin(t, root, "mixed", `{"id":"mixed","name":"Mixed","version":"1.0.0","contributes":{"canvasObjects":[{"kind":"pencil","tool":true,"entry":"face.html"},{"kind":"legacy"}]}}`, nil)
+	writePlugin(t, root, "tool-no-entry", `{"id":"tool-no-entry","name":"Tool no entry","version":"1.0.0","contributes":{"canvasObjects":[{"kind":"pencil","tool":true}]}}`, nil)
+	writePlugin(t, root, "entry-no-tool", `{"id":"entry-no-tool","name":"Entry no tool","version":"1.0.0","contributes":{"canvasObjects":[{"kind":"note","entry":"face.html"}]}}`, nil)
 
 	svc := New(root, nil, "1.0.0")
 	infos, err := svc.ListPlugins()
@@ -377,5 +389,17 @@ func TestListPlugins_CanvasObjectGrantsCanvasHost(t *testing.T) {
 	}
 	if got := byID["no-canvas"]; len(got.Grants) != 0 {
 		t.Fatalf("no-canvas grants = %v, want none", got.Grants)
+	}
+	if got := byID["tools-only"]; len(got.Grants) != 0 {
+		t.Fatalf("tools-only grants = %v, want none: every kind is both a tool and its own entry page", got.Grants)
+	}
+	if got := byID["mixed"]; len(got.Grants) != 1 || got.Grants[0] != "canvas-host" {
+		t.Fatalf("mixed grants = %v, want [canvas-host]: one self-drawn face is enough", got.Grants)
+	}
+	if got := byID["tool-no-entry"]; len(got.Grants) != 1 || got.Grants[0] != "canvas-host" {
+		t.Fatalf("tool-no-entry grants = %v, want [canvas-host]: its renderFace function cannot cross the bridge (mill-drawing's own shape)", got.Grants)
+	}
+	if got := byID["entry-no-tool"]; len(got.Grants) != 1 || got.Grants[0] != "canvas-host" {
+		t.Fatalf("entry-no-tool grants = %v, want [canvas-host]: registerCanvasObject itself never crosses framed", got.Grants)
 	}
 }
