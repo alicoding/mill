@@ -39,7 +39,7 @@ function isWhenValue(value: unknown): value is WhenValue {
 export function setPluginContextKey(pluginId: string, key: string, value: unknown): void {
   if (key.trim() === '') throw new Error(`plugin ${pluginId}: context.set needs a non-empty key`)
   if (key.split('.')[0] === 'plugin') {
-    throw new Error(`plugin ${pluginId}: context key "${key}" must not start with "plugin." -- that prefix is added automatically wherever a when clause reads it back`)
+    throw new Error(`plugin ${pluginId}: context key "${key}" must not start with "plugin.". That prefix is added automatically wherever a when clause reads it back`)
   }
   if (!isWhenValue(value)) {
     throw new Error(`plugin ${pluginId}: context value for "${key}" must be a string, number, boolean, or an array of strings`)

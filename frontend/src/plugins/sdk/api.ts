@@ -44,7 +44,7 @@ export interface MillPluginAPI {
   callIntegration: (integrationId: string, path: string, method: string, values: Record<string, string>) => Promise<string>
   settings: PluginSettingsAPI
   /** This plugin's own declared context keys, read by a declared
-   * item's `when` clause as `plugin.<key>` -- see PluginContextAPI. */
+   * item's `when` clause as `plugin.<key>`. See PluginContextAPI. */
   context: PluginContextAPI
   /** Shows a notice and returns its dismiss function. */
   notify: (input: PluginNoticeInput) => () => void
