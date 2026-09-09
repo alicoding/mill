@@ -272,6 +272,7 @@ export function InventoryRow({ item, onOpenMenu, selection }: { item: InventoryI
       <ConfirmDialog
         title={pendingConfirm.confirm.title}
         body={pendingConfirm.confirm.body}
+        confirmLabel={pendingConfirm.confirm.confirmLabel}
         onCancel={() => setPendingConfirm(null)}
         onConfirm={() => {
           performMenuAction(pendingConfirm)

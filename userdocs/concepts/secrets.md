@@ -46,6 +46,16 @@ still names it, so putting the key back resolves it again — and
 starting a run that needs it refuses before anything runs, naming the
 missing key.
 
+## Trash
+
+Deleting a vault entry moves it to Trash instead of destroying it. A
+trashed entry can only be restored or deleted forever — it can't be
+revealed, copied, edited, or picked by a field. A reference that still
+names a trashed entry says so, distinctly from one that names an entry
+that no longer exists at all, and a run that would need it refuses
+before anything runs. Trash empties itself automatically 30 days after
+each entry lands there.
+
 ## The lock policy
 
 **Settings › Security** decides when the vault closes itself: after a

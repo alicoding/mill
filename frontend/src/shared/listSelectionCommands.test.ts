@@ -14,6 +14,7 @@ function fakeHandle(overrides: Partial<ListSelectionHandle> = {}): ListSelection
     selectAll: vi.fn(),
     clear: vi.fn(),
     hasSelection: () => false,
+    selectedCount: () => 0,
     deleteSelected: vi.fn(),
     toggleFocusedRow: vi.fn(),
     extendFocusedRow: vi.fn(),

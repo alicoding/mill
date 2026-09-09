@@ -79,7 +79,7 @@ export function buildSecretRowItems({
           commandId: 'secret.row.delete',
           ctx: entityRowContext('secret', s.ID),
           danger: true,
-          confirm: { title: t('deleteConfirmTitle'), body: t('deleteConfirmBody', { label: s.Title }) },
+          confirm: { title: t('deleteConfirmTitle'), body: t('deleteConfirmBody'), confirmLabel: t('trash.moveToTrashButton') },
         },
       ],
     }

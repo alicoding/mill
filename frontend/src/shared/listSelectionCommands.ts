@@ -1,4 +1,5 @@
 import type { Command } from './commands'
+import { copy } from './copy'
 import { focusedListSelection } from './listSelectionFocus'
 
 // The list surfaces (goal 0404 S1): every InventoryList consumer that
@@ -45,8 +46,46 @@ export const LIST_SELECTION_COMMANDS: Command[] = [
     hintOnly: true,
     surface: LIST_SURFACES,
     bulk: true,
-    enabled: () => focusedListSelection()?.hasSelection() ?? false,
-    run: () => focusedListSelection()?.deleteSelected(),
+    // Absent (never a no-op button) for a list mounted in Trash mode
+    // (goal 0406 S2): its own selectionHandle carries no deleteSelected.
+    enabled: () => focusedListSelection()?.deleteSelected !== undefined && (focusedListSelection()?.hasSelection() ?? false),
+    run: () => focusedListSelection()?.deleteSelected?.(),
+  },
+  // Restore / Delete forever (goal 0406 S2): the Trash section's own
+  // bulk pair, present only while the focused list's own handle offers
+  // restoreSelected/destroySelected (InventoryList's `selection.mode:
+  // 'trash'`) -- generic here, not Secrets-specific, the same
+  // "multi-purpose surface" shape list.deleteSelection already is.
+  {
+    id: 'list.restoreSelection',
+    label: 'commands.list.restoreSelection',
+    defaultBinding: null,
+    hintOnly: true,
+    surface: LIST_SURFACES,
+    bulk: true,
+    enabled: () => focusedListSelection()?.restoreSelected !== undefined && (focusedListSelection()?.hasSelection() ?? false),
+    run: () => focusedListSelection()?.restoreSelected?.(),
+  },
+  {
+    id: 'list.destroySelection',
+    label: 'commands.list.destroySelection',
+    defaultBinding: null,
+    hintOnly: true,
+    surface: LIST_SURFACES,
+    bulk: true,
+    // Irreversible, unlike Delete (to Trash) -- the one bulk action here
+    // that asks first, batched into ONE question rather than the
+    // per-row confirm goal 0346 slice B gives a single Delete forever.
+    confirm: () => {
+      const count = focusedListSelection()?.selectedCount() ?? 0
+      return {
+        title: copy('bulkTrash.destroyConfirmTitle', { count }),
+        body: copy('bulkTrash.destroyConfirmBody'),
+        confirmLabel: copy('bulkTrash.destroyConfirmButton'),
+      }
+    },
+    enabled: () => focusedListSelection()?.destroySelected !== undefined && (focusedListSelection()?.hasSelection() ?? false),
+    run: () => focusedListSelection()?.destroySelected?.(),
   },
   // Keyboard selection on the row Tab landed on (goal 0404 S1,
   // Gmail/Linear shape): the checkbox itself is out of the

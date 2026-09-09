@@ -10,7 +10,7 @@ import { SelectionBar } from './SelectionBar'
 import { useListState } from './useListState'
 import { useListSelection } from './useListSelection'
 import { useIsNarrowViewport } from './useNarrowViewport'
-import { bulkDeleteDoorFor } from './entityDeleteDoors'
+import { bulkDeleteDoorFor, bulkTrashDoorFor, type BulkTrashDoor } from './entityDeleteDoors'
 import { bulkDeleteWithUndo } from './bulkDeleteWithUndo'
 import { useListSelectionFocusStore, type ListSelectionHandle } from './listSelectionFocus'
 import {
@@ -57,7 +57,13 @@ export function InventoryList({ items, emptyState, searchPlaceholder, listId, fi
   // user's OWN items on the current page (never the Examples group,
   // a separate ActionList by design) and, for "Select all {N}", the
   // full filtered set.
-  selection?: { entity: string }
+  //
+  // mode 'trash' (goal 0406 S2) swaps the bulk door: a Trash section's
+  // own selection Restores or Delete-forevers instead of deleting, so
+  // list.deleteSelection stays absent there and list.restoreSelection/
+  // list.destroySelection appear instead (both read the SAME
+  // selectionHandle SelectionBar/the keymap already consult).
+  selection?: { entity: string; mode?: 'delete' | 'trash' }
 }) {
   const { t } = useTranslation('common')
   const [ownQuery, setOwnQuery] = useState('')
@@ -121,7 +127,8 @@ export function InventoryList({ items, emptyState, searchPlaceholder, listId, fi
   const pageIDs = ownPage.map((i) => i.id)
   const selection = useListSelection(pageIDs)
   const isNarrowViewport = useIsNarrowViewport()
-  const door = selectionConfig ? bulkDeleteDoorFor(selectionConfig.entity) : undefined
+  const selectionMode = selectionConfig?.mode ?? 'delete'
+  const { door, trashDoor } = bulkDoorsFor(selectionConfig, selectionMode)
 
   // A changed search/sort/filter (Configure Lists' own Unused toggle is
   // the proving case) must never leave a phantom row checked -- prunes
@@ -152,6 +159,14 @@ export function InventoryList({ items, emptyState, searchPlaceholder, listId, fi
     })
     selection.clear()
   }
+
+  // Restore / Delete forever (goal 0406 S2): the Trash section's own
+  // bulk pair, over the same page-filtered selection deleteSelected
+  // reads -- runTrashBulk (below, outside the component) keeps the
+  // actual loop out of this function's own branching.
+  const trashTargetIDs = ownFiltered.filter((item) => selection.selected.has(item.id)).map((item) => item.id)
+  const restoreSelected = () => runTrashBulk(trashDoor, trashTargetIDs, (id, door) => door.restore(id), selection.clear)
+  const destroySelected = () => runTrashBulk(trashDoor, trashTargetIDs, (id, door) => door.destroy(id), selection.clear)
 
   // The row's own selection projection (goal 0404 S1), shared between
   // however many group runs render below -- a row with no group and a
@@ -196,7 +211,9 @@ export function InventoryList({ items, emptyState, searchPlaceholder, listId, fi
   const selectionHandle: ListSelectionHandle | null = selectionConfig
     ? {
       id: listId, selectAll: selection.selectAll, clear: selection.clear, hasSelection: () => selection.selected.size > 0,
-      deleteSelected, toggleFocusedRow, extendFocusedRow,
+      selectedCount: () => selection.selected.size,
+      ...(selectionMode === 'delete' ? { deleteSelected } : { restoreSelected, destroySelected }),
+      toggleFocusedRow, extendFocusedRow,
     }
     : null
   useEffect(() => {
@@ -323,6 +340,32 @@ export function InventoryList({ items, emptyState, searchPlaceholder, listId, fi
       <ContextMenu state={rowMenu} onClose={() => setRowMenu(null)} />
     </Stack>
   )
+}
+
+// bulkDoorsFor resolves the ONE door a mounted InventoryList's
+// selection actually uses (goal 0406 S2's `mode: 'trash'` addition) --
+// split out so the component itself carries one branch, not two.
+function bulkDoorsFor(selectionConfig: { entity: string; mode?: 'delete' | 'trash' } | undefined, mode: 'delete' | 'trash') {
+  if (!selectionConfig) return { door: undefined, trashDoor: undefined }
+  return mode === 'delete'
+    ? { door: bulkDeleteDoorFor(selectionConfig.entity), trashDoor: undefined }
+    : { door: undefined, trashDoor: bulkTrashDoorFor(selectionConfig.entity) }
+}
+
+// runTrashBulk drives one Trash-mode bulk action (Restore or Delete
+// forever, goal 0406 S2) over a live selection: try every id, skip a
+// refused one rather than aborting the batch (a row raced by another
+// tab), then clear the selection. No Undo either way -- Restore
+// reverses Delete-to-Trash, and Delete forever's own irreversibility is
+// what its confirm (list.destroySelection's Command.confirm,
+// SelectionBar.tsx) already asked about before this ever ran. No
+// refetch either: the Trash section's own list re-reads on the SAME
+// 'secret' mill-data-changed event Trash/Restore/Destroy already emit
+// (SecretsView.tsx's own subscription).
+async function runTrashBulk(door: BulkTrashDoor | undefined, ids: string[], action: (id: string, door: BulkTrashDoor) => Promise<unknown>, clear: () => void): Promise<void> {
+  if (!door || ids.length === 0) return
+  await Promise.all(ids.map((id) => action(id, door).catch(() => undefined)))
+  clear()
 }
 
 function InventoryEmptyBlankslate({ state }: { state: InventoryEmptyState }) {

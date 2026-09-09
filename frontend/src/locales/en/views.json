@@ -141,6 +141,7 @@
       "secretRefNone": "No secret picked",
       "secretRefGone": "This secret no longer exists. Pick another.",
       "secretRefUnresolved": "Unresolved: {{key}} is not in {{source}}.",
+      "secretRefTrashed": "In Trash. Restore to use.",
       "secretRefUnavailable": "Unlock the vault in Secrets to pick one.",
       "secretRefGroupVault": "Vault",
       "secretRefGroupSources": "Secret sources",
