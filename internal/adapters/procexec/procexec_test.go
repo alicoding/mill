@@ -34,6 +34,51 @@ func waitForGroupGone(t *testing.T, pgid int) {
 	t.Fatalf("process group %d still alive after waiting", pgid)
 }
 
+// readySignal is a Spec.Output sink that closes ready once marker has
+// appeared in the accumulated bytes -- a fixed-duration time.Sleep
+// standing in for "the child has finished some async setup" only ever
+// guesses a long-enough interval; the child itself knows when the
+// setup it just did (a trap installed, a background job forked) is
+// done, so it prints marker and the test waits on THAT instead
+// (goal 0358 S10). fanWriter (writer.go) serializes every Write behind
+// its own mutex, so this type needs none of its own. marker may arrive
+// split across separate Write calls (stdout is line-buffered in
+// 4KB-ish chunks, not per-line) -- buf accumulates across calls so a
+// split marker is still found.
+type readySignal struct {
+	marker []byte
+	buf    []byte
+	ready  chan struct{}
+	closed bool
+}
+
+func newReadySignal(marker string) *readySignal {
+	return &readySignal{marker: []byte(marker), ready: make(chan struct{})}
+}
+
+func (r *readySignal) Write(p []byte) (int, error) {
+	if !r.closed {
+		r.buf = append(r.buf, p...)
+		if bytes.Contains(r.buf, r.marker) {
+			r.closed = true
+			close(r.ready)
+		}
+	}
+	return len(p), nil
+}
+
+// waitReady blocks until marker has appeared in the child's output or
+// timeout passes, failing the test loudly in the latter case rather
+// than letting a caller silently race ahead on an un-signaled child.
+func (r *readySignal) waitReady(t *testing.T, timeout time.Duration) {
+	t.Helper()
+	select {
+	case <-r.ready:
+	case <-time.After(timeout):
+		t.Fatalf("child did not signal readiness: %q never appeared in its output", r.marker)
+	}
+}
+
 func TestStart_EchoCapture(t *testing.T) {
 	var out bytes.Buffer
 	var startedPGID int
@@ -82,19 +127,20 @@ func TestStart_EchoCapture(t *testing.T) {
 }
 
 func TestCancel_KillsWholeProcessGroup(t *testing.T) {
-	var out bytes.Buffer
+	// echo fires only after `&` has returned, and `&` returns only once
+	// the shell has actually forked the background sleep -- so ready
+	// signals a real second process now sits in the group, the fact
+	// killGroup below must reach (not just the shell leader).
+	ready := newReadySignal("ready\n")
 	h, err := Start(Spec{
-		Argv:   []string{"/bin/sh", "-c", "sleep 30 & sleep 30"},
-		Output: &out,
+		Argv:   []string{"/bin/sh", "-c", "sleep 30 & echo ready; sleep 30"},
+		Output: ready,
 	})
 	if err != nil {
 		t.Fatalf("Start() error: %v", err)
 	}
 
-	// Give the shell a moment to actually fork its background sleep
-	// before cancelling, so there's a real second process in the group
-	// to prove killGroup reaches (not just the shell leader).
-	time.Sleep(150 * time.Millisecond)
+	ready.waitReady(t, 2*time.Second)
 	if !groupAlive(h.PGID()) {
 		t.Fatalf("process group %d not alive before Cancel", h.PGID())
 	}
@@ -256,16 +302,22 @@ func TestDir_SetsWorkingDirectory(t *testing.T) {
 }
 
 func TestCancel_EscalatesToSIGKILL_WhenSIGTERMIsTrapped(t *testing.T) {
+	// echo fires only once the preceding `trap` builtin has returned,
+	// so ready signals the trap is actually installed -- Cancel racing
+	// ahead of that point sends SIGTERM before the trap exists, and the
+	// untrapped default handler kills the child immediately, timing the
+	// test well under GracePeriod (the bug this test exists to catch).
+	ready := newReadySignal("ready\n")
 	h, err := Start(Spec{
-		Argv:        []string{"/bin/sh", "-c", `trap "" TERM; sleep 30`},
+		Argv:        []string{"/bin/sh", "-c", `trap "" TERM; echo ready; sleep 30`},
 		GracePeriod: 300 * time.Millisecond,
+		Output:      ready,
 	})
 	if err != nil {
 		t.Fatalf("Start() error: %v", err)
 	}
 
-	// Let the trap actually install before cancelling.
-	time.Sleep(150 * time.Millisecond)
+	ready.waitReady(t, 2*time.Second)
 
 	start := time.Now()
 	h.Cancel()

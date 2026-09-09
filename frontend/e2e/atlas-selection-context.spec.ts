@@ -3,7 +3,7 @@ import { noteCard } from './fixtures/atlasCards'
 import { contextMenu } from './fixtures/contextMenu'
 import { paletteDialog } from './fixtures/palette'
 import { cancelCreatePopover } from './fixtures/atlasBoard'
-import { clickEdgeOffChip } from './fixtures/atlasEdge'
+import { rightClickEdgeOffChip } from './fixtures/atlasEdge'
 
 // Goal 0346 slice B: the Atlas selection is a shared context. The
 // right-click menu and the command palette run the SAME registry
@@ -80,9 +80,8 @@ test('an artery: "Open <card>" carries its target in the context -- the far end,
   // A right-click on an edge selects nothing on the board; the item
   // names its own card, and each end opens ITS card.
   const edge = page.locator('.react-flow__edge').first()
-  await clickEdgeOffChip(page, edge, { button: 'right' })
   const menu = contextMenu(page)
-  await expect(menu).toBeVisible()
+  await rightClickEdgeOffChip(page, edge, menu, 'Open Client records')
   await expect(page.locator('.react-flow__node.selected')).toHaveCount(0)
   await menu.getByText('Open Client records', { exact: true }).click()
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
