@@ -98,6 +98,7 @@ func PageIndex() []DocPage {
 		{"agents/connect-mcp.md", "Automate with agents", "connecting over MCP and what agents can do", KindHowTo},
 		{"agents/diagrams.md", "Edit a diagram with an agent", "reading a diagram's shapes by id and adding, changing, deleting and importing them in place", KindHowTo},
 		{"agents/sheets.md", "Edit a sheet with an agent", "reading a sheet's cells by range and changing named cells in place", KindHowTo},
+		{"agents/spreadsheets.md", "Edit a spreadsheet file with an agent", "reading a spreadsheet file's cells and formulas by range and changing named cells in place, everything else preserved", KindHowTo},
 		{"agents/lists.md", "Add a row with an agent", "reading a List's columns and rows and appending a new row to an existing one", KindHowTo},
 		{"agents/plugins.md", "What plugins expose to agents", "listing installed plugins, calling a plugin's declared tools, and how a plugin write parks", KindHowTo},
 	}

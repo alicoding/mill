@@ -7131,6 +7131,13 @@
       ]
     },
     {
+      "kind": "xlsx",
+      "readTool": "atlas_xlsx_read_range",
+      "editTools": [
+        "atlas_xlsx_edit_cells"
+      ]
+    },
+    {
       "kind": "list",
       "readTool": "export_list",
       "editTools": [
