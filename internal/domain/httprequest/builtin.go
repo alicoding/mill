@@ -262,7 +262,7 @@ func BuiltIn() []HTTPRequest {
 			// invariant every other secret-shaped field already keeps
 			// (vaultref.go), so there is nothing here for the vault-
 			// adoption pass to create.
-			ID: ExampleSourceSecretID, Label: "Example: Bearer token from a source (httpbin.org)",
+			ID: ExampleSourceSecretID, Label: "Example: API token from a .env source (httpbin.org)",
 			Description: "Sends Authorization: Bearer <token> against httpbin.org/bearer, with the " +
 				"token read live from the seeded example secret source instead of the vault. " +
 				"Open Secrets to see the reference, or remove the key from the source to see a " +
@@ -271,7 +271,11 @@ func BuiltIn() []HTTPRequest {
 			SecretRef:   vaultref.Ref(vaultref.ProviderEnv, secretsource.ExampleDotenvSourceID+"/EXAMPLE_API_TOKEN"),
 			OpenAPISpec: typedBearerSpec,
 			BuiltIn:     true,
-			Seed:        seedorigin.Stamp(1),
+			// Revision 2 (goal 0408 S1 fix-forward): the label no longer
+			// shares a prefix with "Example: Bearer token (httpbin.org)",
+			// which a shared-pool e2e spec's own row filter matched by
+			// prefix.
+			Seed: seedorigin.Stamp(2),
 		},
 	}
 }

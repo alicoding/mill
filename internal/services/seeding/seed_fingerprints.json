@@ -248,8 +248,8 @@
     "fingerprint": "093d33cbd3cdd9ec2a1f105f07ae8d111e75d9e5c7e66e98f24ffa10278c682d"
   },
   "request:example-source-secret-httpbin": {
-    "seedRevision": 1,
-    "fingerprint": "043e8c882d251ac507143674c475daebd5344f806e4bc34a67e149066139aedf"
+    "seedRevision": 2,
+    "fingerprint": "cd10fe7c12b53a4859783cf28ff0a928fbca43fe2372e5fc0393beeaee4f55a5"
   },
   "secretsource:secretsource-example-dotenv": {
     "seedRevision": 1,
