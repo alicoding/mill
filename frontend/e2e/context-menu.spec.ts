@@ -23,7 +23,7 @@ test('right-click on an Atlas card offers Open, the share trio, and Delete; a fr
   await expect(menu).toBeVisible()
   await expect(menu.getByText('Open', { exact: true })).toBeVisible()
   await expect(menu.getByText('Copy as context')).toBeVisible()
-  await expect(menu.getByText('Delete')).toBeVisible()
+  await expect(menu.getByText('Delete', { exact: true })).toBeVisible()
   // A leaf is not a place: no Zoom in.
   await expect(menu.getByText('Zoom in')).toHaveCount(0)
   await page.keyboard.press('Escape')
