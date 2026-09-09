@@ -5,7 +5,11 @@ package windowing
 // framework-api-audit: wails/v3@v3.0.0-beta.15 lacks an exported query of whether the calling goroutine is on the main thread right now -- mainthread.go exports InvokeSync/InvokeAsync to dispatch onto it, never a boolean read of current thread identity, which assertMainThread's runtime guard needs before it would dispatch at all.
 
 /*
-#cgo CFLAGS: -mmacosx-version-min=10.13 -x objective-c
+// -Wno-unused-parameter: see locktriggers_darwin.go's own comment --
+// cgo's own generated GCC prolog for this package's //export functions
+// merges every file's CFLAGS together, so the flag is repeated on each
+// file rather than relying on declaration order to keep it last.
+#cgo CFLAGS: -x objective-c -Wall -Wextra -Werror -Wno-unused-parameter
 #cgo LDFLAGS: -framework Foundation
 
 #include "Foundation/Foundation.h"

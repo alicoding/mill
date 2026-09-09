@@ -38,14 +38,14 @@ void millStartLockTriggers(void) {
 		    addObserverForName:@"com.apple.screenIsLocked"
 		                object:nil
 		                 queue:[NSOperationQueue mainQueue]
-		            usingBlock:^(NSNotification *note) {
+		            usingBlock:^(__unused NSNotification *note) {
 			millLockTriggerFired(MILL_LOCK_TRIGGER_SCREEN_LOCK);
 		}];
 		[[[NSWorkspace sharedWorkspace] notificationCenter]
 		    addObserverForName:NSWorkspaceSessionDidResignActiveNotification
 		                object:nil
 		                 queue:[NSOperationQueue mainQueue]
-		            usingBlock:^(NSNotification *note) {
+		            usingBlock:^(__unused NSNotification *note) {
 			millLockTriggerFired(MILL_LOCK_TRIGGER_USER_SWITCH);
 		}];
 	}

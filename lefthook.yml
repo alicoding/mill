@@ -259,7 +259,13 @@ pre-commit:
       run: ./scripts/check-root-naming.sh
     - name: go-vet
       glob: "*.go"
-      run: go vet . ./internal/...
+      # scripts/lib/build-env.sh: the default (non-server) tag set
+      # compiles Mill's own darwin cgo files, which need the one
+      # macOS-deployment-target env every other Go build/test gate
+      # below also sources -- golangci-lint/gocognit-new/depguard-new
+      # and go-build-server all pass --build-tags=server instead,
+      # which excludes those `!server`-tagged files, so they don't.
+      run: . scripts/lib/build-env.sh && go vet . ./internal/...
     - name: golangci-lint
       glob: "*.go"
       # --build-tags=server matches ci.yml's own golangci-lint-action
@@ -318,13 +324,22 @@ pre-commit:
       # go-build-desktop below already build the root package locally,
       # so that requirement (this file's own header comment) already
       # applied before this line did.
-      run: ./scripts/with-gate-lock.sh bash -c 'OUT="$(mktemp -t mill-cover)" && go test . ./internal/... -race -coverprofile="$OUT" && bash scripts/check-go-coverage.sh "$OUT"'
+      run: ./scripts/with-gate-lock.sh bash -c 'source scripts/lib/build-env.sh && OUT="$(mktemp -t mill-cover)" && go test . ./internal/... -race -coverprofile="$OUT" && bash scripts/check-go-coverage.sh "$OUT"'
     - name: go-build-desktop
       glob: "*.go"
-      run: go build -o /dev/null .
+      # scripts/lib/build-env.sh: see go-vet's own comment -- this is
+      # the exact `go build .` invocation item 2's acceptance line
+      # names.
+      run: . scripts/lib/build-env.sh && go build -o /dev/null .
     - name: go-build-server
       glob: "*.go"
       run: go build -tags server -o /dev/null .
+    - name: build-warnings
+      # goal 0419 S1: go-build-desktop/go-vet above only check exit
+      # status -- a linker/clang warning on stderr passes silently.
+      # This gate fails the commit on any of it instead.
+      glob: "*.go"
+      run: ./scripts/check-build-warnings.sh
     - name: eslint
       root: "frontend/"
       glob: "frontend/**/*.{ts,tsx}"

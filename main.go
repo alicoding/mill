@@ -227,6 +227,7 @@ func main() {
 	wiring.WireAtlasProjections(atlasService, configureService, compositionService)
 	wiring.WireValidationSeams(configureService)
 	wiring.WireConfigureSeams(atlasService, configureService, compositionService, pluginService) // paste conversion + plugin/workflow content writes + undo journals
+	wiring.WireCanvasObjectExamples(atlasService, pluginService)                                 // goal 0411: Board gallery seeds every plugin's declared canvasObjects example
 	wiring.WireNotify(notificationService)                                   // goal 0368: apply-notify publishes through the notification spine
 
 	backupService := backupsvc.Wire(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion, compositionService, configureService, atlasService)

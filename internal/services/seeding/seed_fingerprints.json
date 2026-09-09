@@ -103,6 +103,10 @@
     "seedRevision": 1,
     "fingerprint": "bb724969a63b09e791e2f0d8cedce088182a685a6b91a2775aa977a81480e561"
   },
+  "atlasobject:atlas-object-example-xlsx": {
+    "seedRevision": 1,
+    "fingerprint": "9aba245f162f0e9a502dcb4ef25d245cf8d1ac55c2ef095324b43e6ca134990f"
+  },
   "atlasobject:atlas-object-example-yaml": {
     "seedRevision": 1,
     "fingerprint": "0e728bb7741d0e1d18aa6fa3df09c5a3e2d80472ed9fbc3518f69d71b7ffca49"

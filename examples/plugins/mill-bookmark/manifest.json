@@ -13,7 +13,13 @@
     "canvasObjects": [
       {
         "kind": "bookmark",
-        "pastesURLs": true
+        "pastesURLs": true,
+        "example": {
+          "title": "Bookmark example",
+          "payload": { "url": "https://example.com/board-gallery" },
+          "revision": 1,
+          "fixtures": []
+        }
       }
     ],
     "settings": [

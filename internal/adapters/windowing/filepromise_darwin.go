@@ -5,7 +5,10 @@ package windowing
 // framework-api-audit: wails/v3@v3.0.0-beta.15 lacks any drag-OUT file-promise API -- webview_window_darwin_drag.m only registerForDraggedTypes to receive drops; no NSFilePromiseProvider/NSDraggingSource wrapper exists on any platform.
 
 /*
-#cgo CFLAGS: -mmacosx-version-min=10.13 -x objective-c
+// -Wno-unused-parameter: see locktriggers_darwin.go's own comment --
+// cgo's generated GCC prolog for this package's //export functions
+// trips -Wextra on code this package doesn't author.
+#cgo CFLAGS: -x objective-c -Wall -Wextra -Werror -Wno-unused-parameter
 #cgo LDFLAGS: -framework Foundation -framework AppKit
 
 #include "filepromise_darwin.h"

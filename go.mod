@@ -2,6 +2,8 @@ module github.com/alicoding/mill
 
 go 1.26
 
+toolchain go1.26.8
+
 require (
 	aead.dev/minisign v0.3.0
 	github.com/JohannesKaufmann/dom v0.3.1

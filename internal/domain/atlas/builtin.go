@@ -116,6 +116,12 @@ const (
 	// atlas-single-space-trap.spec.ts's fixed-pixel right-click) pays
 	// its one-time update exactly once, here.
 	cardSketchesID = "atlas-card-session-sketches"
+	// BoardGalleryCardID exports cardSketchesID for atlassvc's own
+	// plugin-example reconcile (goal 0411): the permanent single home
+	// for every seeded board-object example this file's own comment
+	// above already promises "present and future" -- a declared plugin
+	// example nests here exactly like every built-in one.
+	BoardGalleryCardID = cardSketchesID
 
 	linkGettingToContactID  = "atlas-link-getting-to-contact"
 	linkContactToDocumentID = "atlas-link-contact-to-document"
@@ -139,6 +145,7 @@ const (
 	objectInkExampleID     = "atlas-object-example-ink"
 	objectImageExampleID   = "atlas-object-example-image"
 	objectSheetExampleID   = "atlas-object-example-sheet"
+	objectXlsxExampleID    = "atlas-object-example-xlsx"
 	objectPdfExampleID     = "atlas-object-example-pdf"
 	objectDiagramExampleID = "atlas-object-example-diagram"
 	objectJSONExampleID    = "atlas-object-example-json"

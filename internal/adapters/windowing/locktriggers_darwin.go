@@ -5,7 +5,11 @@ package windowing
 // framework-api-audit: wails/v3@v3.0.0-beta.15 lacks any macOS screen-lock or fast-user-switching event -- events.Common.ScreenLocked/ScreenUnlocked are mapped only by the iOS and Android backends (pkg/application/events_common_ios.go, events_common_android.go), events_common_darwin.go maps sleep and theme alone, and no NSWorkspaceSessionDidResignActiveNotification or com.apple.screenIsLocked observer exists anywhere in the SDK.
 
 /*
-#cgo CFLAGS: -mmacosx-version-min=10.13 -x objective-c
+// -Wno-unused-parameter: this package exports Go functions to C
+// (millLockTriggerFired, millFilePromiseDropped in filepromise_darwin.go)
+// -- cgo's own generated GCC prolog for each declares a parameter it
+// never reads, tripping -Wextra on code this package doesn't author.
+#cgo CFLAGS: -x objective-c -Wall -Wextra -Werror -Wno-unused-parameter
 #cgo LDFLAGS: -framework Foundation -framework AppKit
 
 #include "locktriggers_darwin.h"

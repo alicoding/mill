@@ -9,6 +9,8 @@ export {
 export type {
     BrowseEntry,
     CanvasObjectContribution,
+    CanvasObjectExample,
+    CanvasObjectExampleFixture,
     CaptureContribution,
     CommandContribution,
     CommandMenuContribution,

@@ -40,6 +40,11 @@ var ContentContracts = []ContentContract{
 		EditTools: []string{"atlas_sheet_edit_cells"},
 	},
 	{
+		Kind:      "xlsx",
+		ReadTool:  "atlas_xlsx_read_range",
+		EditTools: []string{"atlas_xlsx_edit_cells"},
+	},
+	{
 		Kind:      "list",
 		ReadTool:  "export_list",
 		EditTools: []string{"list_append_row"},
