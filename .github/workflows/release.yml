@@ -87,7 +87,7 @@ jobs:
       - name: Install Task and wails3 CLI
         run: |
           go install github.com/go-task/task/v3/cmd/task@v3.52.0
-          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.6
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.18
       # task build already chains: go mod tidy -> generate icons -> install
       # frontend deps -> generate bindings -> frontend build -> go build.
       # No GoReleaser (see ADR-0002 / wailsapp/wails#747, closed wont-fix) --

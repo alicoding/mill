@@ -2,7 +2,7 @@
 
 package windowing
 
-// framework-api-audit: wails/v3@v3.0.0-beta.15 lacks any macOS screen-lock or fast-user-switching event -- events.Common.ScreenLocked/ScreenUnlocked are mapped only by the iOS and Android backends (pkg/application/events_common_ios.go, events_common_android.go), events_common_darwin.go maps sleep and theme alone, and no NSWorkspaceSessionDidResignActiveNotification or com.apple.screenIsLocked observer exists anywhere in the SDK.
+// framework-api-audit: wails/v3@v3.0.0-beta.18 lacks any macOS screen-lock or fast-user-switching event -- events.Common.ScreenLocked/ScreenUnlocked are mapped only by the iOS and Android backends (pkg/application/events_common_ios.go, events_common_android.go), events_common_darwin.go maps sleep and theme alone, and no NSWorkspaceSessionDidResignActiveNotification or com.apple.screenIsLocked observer exists anywhere in the SDK.
 
 /*
 // -Wno-unused-parameter: this package exports Go functions to C

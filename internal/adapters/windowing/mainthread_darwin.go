@@ -2,7 +2,7 @@
 
 package windowing
 
-// framework-api-audit: wails/v3@v3.0.0-beta.15 lacks an exported query of whether the calling goroutine is on the main thread right now -- mainthread.go exports InvokeSync/InvokeAsync to dispatch onto it, never a boolean read of current thread identity, which assertMainThread's runtime guard needs before it would dispatch at all.
+// framework-api-audit: wails/v3@v3.0.0-beta.18 lacks an exported query of whether the calling goroutine is on the main thread right now -- mainthread.go exports InvokeSync/InvokeAsync to dispatch onto it, never a boolean read of current thread identity, which assertMainThread's runtime guard needs before it would dispatch at all.
 
 /*
 // -Wno-unused-parameter: see locktriggers_darwin.go's own comment --

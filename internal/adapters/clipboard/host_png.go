@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// framework-api-audit: wails/v3@v3.0.0-beta.12 lacks image clipboard write
+// framework-api-audit: wails/v3@v3.0.0-beta.18 lacks image clipboard write
 //
 // The vendored SDK's whole clipboard surface is
 // application.Clipboard{SetText, Text} over a clipboardImpl of
