@@ -1,6 +1,7 @@
 package secretsvc
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -95,18 +96,13 @@ func (s *SecretService) resolveProvider(id string, actx secretaudit.AccessContex
 		s.recordAccess(id, "", actx, secretaudit.OutcomeError, secretaudit.FailureKindOther, err.Error())
 		return "", true, err
 	}
-	var src *secretsource.Source
-	for _, candidate := range s.sourcesSnapshot() {
-		if candidate.ID == sourceID && providerOf(candidate) == provider {
-			c := candidate
-			src = &c
-		}
-	}
-	if src == nil {
+	srcVal, srcOK := s.findSource(provider, sourceID)
+	if !srcOK {
 		err = fmt.Errorf("secret source %q is not configured", sourceID)
 		s.recordAccess(id, "", actx, secretaudit.OutcomeError, secretaudit.FailureKindOther, err.Error())
 		return "", true, err
 	}
+	src := &srcVal
 	if src.Kind.IsPlugin() {
 		v, perr := s.resolvePluginSource(id, *src, key, actx)
 		return v, true, perr
@@ -237,17 +233,11 @@ func (s *SecretService) SecretRefUnresolved(ref string) (unresolved bool, key, s
 	if !found || k == "" {
 		return false, "", ""
 	}
-	var src *secretsource.Source
-	for _, candidate := range s.sourcesSnapshot() {
-		if candidate.ID == sourceID && providerOf(candidate) == provider {
-			c := candidate
-			src = &c
-		}
-	}
-	if src == nil || src.Kind.IsPlugin() || isCLIKind(src.Kind) {
+	src, ok2 := s.findSource(provider, sourceID)
+	if !ok2 || src.Kind.IsPlugin() || isCLIKind(src.Kind) {
 		return false, "", ""
 	}
-	values, err := dotenvsource.Read(envPathOf(*src))
+	values, err := dotenvsource.Read(envPathOf(src))
 	if err != nil {
 		return false, "", "" // unreadable is a different state (SourceProblems)
 	}
@@ -271,6 +261,20 @@ func providerOf(src secretsource.Source) string {
 		return vaultref.ProviderBW
 	}
 	return vaultref.ProviderEnv
+}
+
+// findSource answers the currently-enabled source a provider-qualified
+// reference's own provider+id pair names, ok=false when no configured
+// source currently answers to it (removed, or never existed) -- the
+// SAME lookup resolveProvider/SecretRefUnresolved/ListReferences each
+// need, kept in one place rather than three near-identical loops.
+func (s *SecretService) findSource(provider, sourceID string) (secretsource.Source, bool) {
+	for _, candidate := range s.sourcesSnapshot() {
+		if candidate.ID == sourceID && providerOf(candidate) == provider {
+			return candidate, true
+		}
+	}
+	return secretsource.Source{}, false
 }
 
 func isCLIKind(k secretsource.Kind) bool {
@@ -314,6 +318,15 @@ func (s *SecretService) ListDotenvSourceKeys(sourceID string) ([]string, error) 
 	return nil, fmt.Errorf("secret source %q is not configured", sourceID)
 }
 
+// dotenvMissingFileProblem is a source's row copy when its own file
+// isn't at its configured path -- an imported source's own everyday
+// state (goal 0408 S3 decision 6: the definition travels, the file on
+// this machine may not), same wording whether the file never existed
+// here or moved away after the source was created. Never the raw
+// os-level error, which would leak this machine's own filesystem path
+// into the UI (.claude/rules/ux-writing.md).
+const dotenvMissingFileProblem = "The file for this source can't be found."
+
 // SourceProblems reports, per source id, why a source currently lists
 // nothing ("" for a healthy one): a missing or locked CLI, an
 // unreadable file or collection. The Configure row shows it.
@@ -333,6 +346,10 @@ func (s *SecretService) SourceProblems() map[string]string {
 			_, err = brunosource.Read(src.Path)
 		default:
 			_, err = dotenvsource.Keys(src.Path)
+			if errors.Is(err, dotenvsource.ErrMissing) {
+				out[src.ID] = dotenvMissingFileProblem
+				continue
+			}
 		}
 		if err != nil {
 			out[src.ID] = err.Error()

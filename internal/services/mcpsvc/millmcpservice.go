@@ -27,6 +27,7 @@ import (
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
+	"github.com/alicoding/mill/internal/services/secretsvc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -85,6 +86,10 @@ type MillMCPService struct {
 	// exec backs the authoring tier's list_runs/get_run/run_workflow
 	// (millmcpservice_authoring.go); late-bound from main.go.
 	exec *executionsvc.ExecutionService
+	// secrets backs secrets_list_references (millmcpservice_secrets.go,
+	// goal 0408 S3); late-bound via SetSecretService, same nil-until-
+	// wired posture as atlas/exec below.
+	secrets *secretsvc.SecretService
 	// atlas backs the atlas_* tools/resource (millmcpservice_atlas.go,
 	// millmcpservice_atlas_write.go, goal 0083); late-bound from main.go
 	// via SetAtlasService, same construction-order reason as exec above.

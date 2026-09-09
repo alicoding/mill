@@ -280,7 +280,7 @@ func main() {
 	// something the rest of the app depends on to function.
 	millMCPAddr, _ := settingssvc.ResolveMCPAddr(os.Getenv("MILL_MCP_ADDR"), settingsService.MCPAccessAddress())
 	millMCPService := mcpsvc.NewMillMCPService(millVersion, compositionService, configureService, settingsStore, userdocsFS, mcpAuditService.ServerMiddleware())
-	wiring.WireMillMCPService(millMCPService, settingsService, executionService, atlasService, mcpAuditService, guardrailService, millMCPAddr, logger)
+	wiring.WireMillMCPService(millMCPService, settingsService, executionService, atlasService, mcpAuditService, guardrailService, secretService, millMCPAddr, logger)
 	wiring.WireMCPPluginCatalog(millMCPService, pluginService, settingsService) // plugin contributions over MCP (docs/goals/0324)
 
 	agentLoopService := agentloopsvc.NewAgentLoopService(millMCPService) // an MCP client of it, ADR-0035

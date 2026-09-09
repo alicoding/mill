@@ -43,8 +43,21 @@ func (c *ConfigureService) SecretSources() []secretsource.Source {
 }
 
 func (c *ConfigureService) CreateSecretSource(label string, kind secretsource.Kind, path string) (secretsource.Source, error) {
+	return c.createSecretSourceWithID(seeding.NewSlugID(label, "secretsource"), label, kind, path)
+}
+
+// createSecretSourceWithID is CreateSecretSource's own logic,
+// parameterized on the new source's id -- the seam ImportSecretSource
+// (configuresecretsource_export.go) uses to preserve a caller-supplied
+// id (ADR-0036 decision 3). A path this machine cannot read is not
+// rejected here: Validate only checks the path STRING is present, never
+// that it resolves, so an imported source whose file lives on a
+// different machine still lands, reporting through SourceProblems
+// exactly like a source whose file moved or was deleted after creation
+// (goal 0408 S3 decision 6).
+func (c *ConfigureService) createSecretSourceWithID(id, label string, kind secretsource.Kind, path string) (secretsource.Source, error) {
 	now := time.Now()
-	s := secretsource.Source{ID: seeding.NewSlugID(label, "secretsource"), Label: label, Kind: kind, Path: path, CreatedAt: now, UpdatedAt: now}
+	s := secretsource.Source{ID: id, Label: label, Kind: kind, Path: path, CreatedAt: now, UpdatedAt: now}
 	if err := secretsource.Validate(s); err != nil {
 		return secretsource.Source{}, err
 	}
@@ -54,6 +67,19 @@ func (c *ConfigureService) CreateSecretSource(label string, kind secretsource.Ki
 	dataevent.Emit("secretsource", s.ID)
 	c.notifySecretSourcesChanged()
 	return s, nil
+}
+
+// secretSourceExistsLocked reports whether id names a real local
+// secret source -- ImportSecretSource's own create-vs-update branch
+// (ADR-0036 decision 3), the same shape every other family's
+// <family>ExistsLocked helper already gives. Caller must hold c.mu.
+func (c *ConfigureService) secretSourceExistsLocked(id string) bool {
+	for _, s := range c.secretSources {
+		if s.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *ConfigureService) UpdateSecretSource(id, label string, kind secretsource.Kind, path string) (secretsource.Source, error) {

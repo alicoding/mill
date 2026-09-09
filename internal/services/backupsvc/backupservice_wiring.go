@@ -154,6 +154,27 @@ func BuildFamilies(comp *compositionsvc.CompositionService, cfg *configuresvc.Co
 				return p.ID, err
 			},
 		},
+		{
+			// secretsources carries only the DEFINITION (kind, label,
+			// path) -- a source itself holds no value (goal 0408 S3
+			// decision 6). A path this archive's own machine doesn't
+			// have never fails the import; the source lands and its own
+			// row reports the problem (secretsvc.SourceProblems).
+			Name: "secretsources",
+			IDs: func() []string {
+				sources := cfg.SecretSources()
+				ids := make([]string, len(sources))
+				for i, s := range sources {
+					ids[i] = s.ID
+				}
+				return ids
+			},
+			Export: cfg.ExportSecretSource,
+			Import: func(data string) (string, error) {
+				s, err := cfg.ImportSecretSource(data)
+				return s.ID, err
+			},
+		},
 	}
 }
 

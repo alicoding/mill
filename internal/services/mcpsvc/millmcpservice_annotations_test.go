@@ -38,6 +38,7 @@ var readOnlyToolNames = map[string]bool{
 	"list_step_types": true, "list_node_types": true, "list_runs": true, "get_run": true,
 	"validate_workflow": true, "list_plugins": true,
 	"export_workflow": true, "export_request": true, "export_list": true, "export_mcpserver": true,
+	"secrets_list_references": true,
 }
 
 func TestBuiltInTools_ReadOnlyToolsAreMarkedReadOnly(t *testing.T) {
