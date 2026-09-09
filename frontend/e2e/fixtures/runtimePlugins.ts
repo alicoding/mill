@@ -86,7 +86,17 @@ export async function launchWithPlugins(offset: number, opts: { withBroken?: boo
 		settingsPath: path.join(dir, 'settings.json'),
 		executionDbPath: path.join(dir, 'exec.db'),
 		backupDir: path.join(dir, 'backups'),
-		extraEnv: { ...(opts.extraEnv ?? {}), MILL_PLUGINS_DIR: pluginsDir },
+		// MILL_SKIP_PLUGIN_EXAMPLE_SEED (goal 0411): this harness's whole
+		// point is a shipping example plugin's own doors/mechanics in
+		// isolation -- every caller already loads mill-bookmark/mill-
+		// scribble/mill-index/mill-markmap (SHARED_EXAMPLE_PLUGIN_IDS
+		// above), so an unscoped Board-gallery seed of each one's own
+		// declared example would collide with the very kind most of these
+		// tests create and assert a single instance of. Gallery seeding
+		// itself is proven on the shared server pool
+		// (atlas-seeded-board-objects.spec.ts), which boots with the real,
+		// unmodified main.go sequence.
+		extraEnv: { MILL_SKIP_PLUGIN_EXAMPLE_SEED: '1', ...(opts.extraEnv ?? {}), MILL_PLUGINS_DIR: pluginsDir },
 	})
 	const browser = await chromium.launch()
 	const context = await browser.newContext({ baseURL: `http://127.0.0.1:${serverPort}` })

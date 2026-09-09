@@ -53,6 +53,56 @@ export interface CanvasObjectContribution {
      * own document.
      */
     "entry": string;
+
+    /**
+     * Example declares this kind's own working example (goal 0411):
+     * what a fresh install's Board gallery seeds and what an
+     * empty-payload insert materializes before the first renderFace.
+     * Nil for a kind that ships none yet -- a bundled/example plugin
+     * without one fails conform_test.go's own repo-wide check; a
+     * third-party one only gets an Extensions-pane warning, never a
+     * load refusal.
+     */
+    "example": CanvasObjectExample | null;
+}
+
+/**
+ * CanvasObjectExample is one canvas-object kind's declared working
+ * example (goal 0411, docs/goals/0411 Amendment). Payload is the
+ * object's own payload once every Fixture's created id has been
+ * injected at its own PayloadKey; Title names the Board gallery's
+ * seeded copy; Revision is this example's own seed revision -- the
+ * same "bump to re-seed a fresh copy on top-up" convention every other
+ * golden's Seed field already carries, read by atlassvc's own
+ * reconcile (adapted across the service seam by wiring.go, never a
+ * direct pluginsvc import into atlassvc).
+ */
+export interface CanvasObjectExample {
+    "title": string;
+    "payload": { [_ in string]?: string } | null;
+    "revision": number;
+    "fixtures": CanvasObjectExampleFixture[] | null;
+}
+
+/**
+ * CanvasObjectExampleFixture is one piece of content an example
+ * insert/seed creates ahead of the object itself. "note" is the only
+ * declarable Kind today (ADR-0047's deferred-capability vocabulary
+ * grows this as a real second kind needs it); PayloadKey names where
+ * the created fixture's own id lands in CanvasObjectExample.Payload.
+ */
+export interface CanvasObjectExampleFixture {
+    "kind": string;
+
+    /**
+     * Title documents the fixture's own intent for a future fixture
+     * kind that carries a real title field; a "note" fixture derives
+     * its own title from Body's first line (atlas.Note has none of its
+     * own), so this is not read when creating one.
+     */
+    "title": string;
+    "body": string;
+    "payloadKey": string;
 }
 
 /**

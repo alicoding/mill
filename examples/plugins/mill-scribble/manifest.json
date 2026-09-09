@@ -10,7 +10,19 @@
   "contributes": {
     "canvasObjects": [
       {
-        "kind": "scribble"
+        "kind": "scribble",
+        "example": {
+          "title": "Scribble example",
+          "payload": {
+            "points": "[{\"x\":0,\"y\":0},{\"x\":40,\"y\":30},{\"x\":80,\"y\":0}]",
+            "w": "80",
+            "h": "30",
+            "color": "#1f6feb",
+            "size": "4"
+          },
+          "revision": 1,
+          "fixtures": []
+        }
       }
     ],
     "themes": [

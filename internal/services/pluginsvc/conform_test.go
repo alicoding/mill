@@ -108,6 +108,64 @@ func TestConformDir_EveryShippedPluginConforms(t *testing.T) {
 	}
 }
 
+// canvasObjectExampleExempt names the shipped canvasObjects kinds this
+// goal's example mechanism cannot cover yet, each for a structural
+// reason rather than an oversight -- grown only when a real one
+// applies, never a catch-all:
+//   - "eraser", "laser" (mill-drawing): ephemeral-drag tools place
+//     nothing (canvasToolAdapter.ts's faceContent returns nil content
+//     for one), so there is no board-object kind a gallery example
+//     could ever seed.
+//   - "shape" (mill-drawing): the SAME kind the pre-existing built-in
+//     golden already seeds (atlas.BuiltInBoardObjects' own
+//     objectShapeExampleID, boardobject_builtin.go) -- Drawing ships
+//     as a built-in runtime plugin over that same kind (goal 0252
+//     S2+S3); a second plugin-level example here would duplicate it in
+//     the gallery.
+//   - "pencil" (mill-drawing), "bruno-collection" (mill-bruno):
+//     file-backed kinds (a real mirrored SVG/collection folder on
+//     disk) -- CanvasObjectExampleFixture only declares "note" content
+//     today (ADR-0047's deferred-capability vocabulary); a file-backed
+//     fixture kind is a real gap this goal did not close, tracked as a
+//     goal 0411 follow-up rather than invented here.
+var canvasObjectExampleExempt = map[string]bool{
+	"eraser": true, "laser": true, "shape": true, "pencil": true, "bruno-collection": true,
+}
+
+// Every shipped example and the embedded built-in's own canvasObjects
+// entries declare a working example (goal 0411, docs/goals/0411
+// Amendment item 4): a bundled/example plugin ships nothing a user
+// meets blank for the first time -- the same repo-wide bar
+// TestConformDir_EveryShippedPluginConforms already holds every other
+// standard rule to. A third-party install gets only an Extensions-pane
+// warning for the same gap (ExtensionsPluginDetail.tsx), never a load
+// refusal -- this test is what actually makes it a MUST for the repo's
+// own plugins.
+func TestConformDir_EveryShippedCanvasObjectDeclaresExample(t *testing.T) {
+	for _, glob := range []string{"../../../examples/plugins/*", "builtin/*"} {
+		matches, _ := filepath.Glob(glob)
+		for _, m := range matches {
+			info, err := os.Stat(m)
+			if err != nil || !info.IsDir() {
+				continue
+			}
+			raw, err := os.ReadFile(filepath.Join(m, "manifest.json")) // #nosec G304 -- m comes from this test's own repo-relative glob, never external input
+			if err != nil {
+				t.Fatalf("%s: %v", m, err)
+			}
+			manifest, problem := parseManifest(raw)
+			if problem != "" {
+				t.Fatalf("%s: %s", m, problem)
+			}
+			for _, obj := range manifest.Contributes.CanvasObjects {
+				if obj.Example == nil && !canvasObjectExampleExempt[obj.Kind] {
+					t.Errorf("%s: canvas object %q has no example", m, obj.Kind)
+				}
+			}
+		}
+	}
+}
+
 // The conformance checker an author runs before shipping reports a
 // tool's declare-first problems in the author's own words, not a
 // generic "invalid manifest".

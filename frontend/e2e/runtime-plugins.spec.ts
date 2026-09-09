@@ -234,7 +234,11 @@ test('a plugin object placed before its plugin is removed stays visible, honest,
 	// error that masks the real failure.
 	const servers: SpawnedServer[] = []
 	try {
-		const first = await spawnMillServer({ ...spawnOpts, extraEnv: { MILL_PLUGINS_DIR: pluginsDir } })
+		// MILL_SKIP_PLUGIN_EXAMPLE_SEED (goal 0411): this test's own
+		// "exactly one bookmark" assertion below would otherwise collide
+		// with mill-bookmark's declared Board-gallery example -- the same
+		// reasoning runtimePlugins.ts's own launchWithPlugins carries.
+		const first = await spawnMillServer({ ...spawnOpts, extraEnv: { MILL_PLUGINS_DIR: pluginsDir, MILL_SKIP_PLUGIN_EXAMPLE_SEED: '1' } })
 		servers.push(first)
 		const page1 = await browser.newPage({ baseURL: first.baseURL })
 		await applyCpuThrottle(page1)

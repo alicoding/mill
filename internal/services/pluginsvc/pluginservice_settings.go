@@ -60,6 +60,46 @@ type CanvasObjectContribution struct {
 	// S6); empty means the legacy renderFace form drawn into Mill's
 	// own document.
 	Entry string `json:"entry"`
+	// Example declares this kind's own working example (goal 0411):
+	// what a fresh install's Board gallery seeds and what an
+	// empty-payload insert materializes before the first renderFace.
+	// Nil for a kind that ships none yet -- a bundled/example plugin
+	// without one fails conform_test.go's own repo-wide check; a
+	// third-party one only gets an Extensions-pane warning, never a
+	// load refusal.
+	Example *CanvasObjectExample `json:"example"`
+}
+
+// CanvasObjectExample is one canvas-object kind's declared working
+// example (goal 0411, docs/goals/0411 Amendment). Payload is the
+// object's own payload once every Fixture's created id has been
+// injected at its own PayloadKey; Title names the Board gallery's
+// seeded copy; Revision is this example's own seed revision -- the
+// same "bump to re-seed a fresh copy on top-up" convention every other
+// golden's Seed field already carries, read by atlassvc's own
+// reconcile (adapted across the service seam by wiring.go, never a
+// direct pluginsvc import into atlassvc).
+type CanvasObjectExample struct {
+	Title    string                       `json:"title"`
+	Payload  map[string]string            `json:"payload"`
+	Revision int                          `json:"revision"`
+	Fixtures []CanvasObjectExampleFixture `json:"fixtures"`
+}
+
+// CanvasObjectExampleFixture is one piece of content an example
+// insert/seed creates ahead of the object itself. "note" is the only
+// declarable Kind today (ADR-0047's deferred-capability vocabulary
+// grows this as a real second kind needs it); PayloadKey names where
+// the created fixture's own id lands in CanvasObjectExample.Payload.
+type CanvasObjectExampleFixture struct {
+	Kind string `json:"kind"`
+	// Title documents the fixture's own intent for a future fixture
+	// kind that carries a real title field; a "note" fixture derives
+	// its own title from Body's first line (atlas.Note has none of its
+	// own), so this is not read when creating one.
+	Title      string `json:"title"`
+	Body       string `json:"body"`
+	PayloadKey string `json:"payloadKey"`
 }
 
 // settingKeyPattern pins a setting key to the identifier shape the
