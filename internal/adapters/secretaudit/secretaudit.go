@@ -129,6 +129,12 @@ const (
 	// (configuresvc.unknownVaultLabel, "unrecognized vault entry") so
 	// the same condition reads the same way in both places.
 	FailureKindUnrecognizedEntry FailureKind = "unrecognized-entry"
+	// FailureKindUnresolvedReference is secretsvc.ErrUnresolvedReference
+	// (goal 0408 S1): the reference names a source that still exists,
+	// but no longer has the key -- distinct from an unrecognized entry
+	// (the vault has no such id at all) and from a source that can't be
+	// read (dotenv-source-unreadable keeps its own code).
+	FailureKindUnresolvedReference FailureKind = "unresolved-reference"
 	// FailureKindOther is any OutcomeError the UI has no dedicated
 	// label for; it falls back to the capped ErrorText.
 	FailureKindOther FailureKind = "other"

@@ -134,6 +134,7 @@
       "pluginToggleAria": "Enable {{name}}",
       "secretRefNone": "No secret picked",
       "secretRefGone": "This secret no longer exists. Pick another.",
+      "secretRefUnresolved": "Unresolved: {{key}} is not in {{source}}.",
       "secretRefUnavailable": "Unlock the vault in Secrets to pick one.",
       "secretRefGroupVault": "Vault",
       "secretRefGroupSources": "Secret sources",

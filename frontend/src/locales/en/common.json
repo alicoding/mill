@@ -117,7 +117,8 @@
     "working-directory-missing": "The working directory {{path}} doesn't exist.",
     "working-directory-relative": "The working directory must be an absolute path.",
     "dotenv-source-unreadable": "The file for this source can't be read.",
-    "vault-locked-import": "Unlock the vault to import keys."
+    "vault-locked-import": "Unlock the vault to import keys.",
+    "secret-reference-unresolved": "This reference's key isn't in its source anymore."
   },
   "list": {
     "sort": "Sort",

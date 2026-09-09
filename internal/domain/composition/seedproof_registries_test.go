@@ -52,6 +52,11 @@ var httpRequestProofRegistry = map[string]seedProof{
 	httprequest.ExampleJiraSearchID: proven(
 		"seed: validates + resolves end-to-end; live PAT run is goal 0111's owner acceptance step",
 	),
+	httprequest.ExampleSourceSecretID: proven(
+		"secretsvc.TestResolveSecretValue_UnresolvedVsUnreadableVsResolved",
+		"configuresvc.TestRequestSecretUnresolved_NamesTheGoneKeyOnlyWhenTheSourceStillExists",
+		"e2e: secret-references.spec.ts",
+	),
 }
 
 // decisionProofRegistry: every decision.BuiltIn() ID.

@@ -25,6 +25,9 @@ import type * as executionsvc$0 from "../../../../alicoding/mill/internal/servic
 import type * as mcpsvc$0 from "../../../../alicoding/mill/internal/services/mcpsvc/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import type * as secretsvc$0 from "../../../../alicoding/mill/internal/services/secretsvc/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import type * as triggersvc$0 from "../../../../alicoding/mill/internal/services/triggersvc/models.js";
 
 declare module "@wailsio/runtime" {
@@ -41,6 +44,7 @@ declare module "@wailsio/runtime" {
             "mill-data-changed": dataevent$0.Changed;
             "mill-lifecycle-event": dataevent$0.LifecycleEvent;
             "mill-navigate": string;
+            "secrets:sources-changed": secretsvc$0.SourcesChanged;
             "time": string;
         }
     }

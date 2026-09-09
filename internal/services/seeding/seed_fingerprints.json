@@ -247,6 +247,10 @@
     "seedRevision": 2,
     "fingerprint": "093d33cbd3cdd9ec2a1f105f07ae8d111e75d9e5c7e66e98f24ffa10278c682d"
   },
+  "request:example-source-secret-httpbin": {
+    "seedRevision": 2,
+    "fingerprint": "cd10fe7c12b53a4859783cf28ff0a928fbca43fe2372e5fc0393beeaee4f55a5"
+  },
   "secretsource:secretsource-example-dotenv": {
     "seedRevision": 1,
     "fingerprint": "e12aae0f9408aa086264b2fc9bc72e9c8d1d4f54fcf0b141ec8e3b1ee14864a5"
@@ -414,6 +418,10 @@
   "workflow:example-sha256-clipboard-workflow": {
     "seedRevision": 2,
     "fingerprint": "b7a0534060e7ae3545d21339fab217a0483a35c05fbae42836e2da4b11afd78a"
+  },
+  "workflow:example-source-secret-workflow": {
+    "seedRevision": 1,
+    "fingerprint": "a1a1a761693e6433236cbfd9a32db2ab10a7daef6762be0d2e3bb2f64a38b3f5"
   },
   "workflow:example-step-failure-workflow": {
     "seedRevision": 2,

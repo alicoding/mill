@@ -52,11 +52,20 @@ func WireSecrets(vaultPath, backupDir string, credentials credential.Store, stor
 	// the first, and on every install that never enabled the old one.
 	secretService.MigrateLegacyPresenceProtection()
 	configureService.SetSecretResolver(secretService.ResolveSecretValue)
+	// Goal 0408 S1: the unresolved-reference preflight check, and the
+	// live file watch that re-arms whenever a source is created,
+	// edited or deleted.
+	configureService.SetSecretUnresolvedLookup(secretService.SecretRefUnresolved)
+	configureService.SetSecretSourcesChanged(secretService.RearmSourceWatches)
 	// Goal 0367: the seeded example dotenv source materializes its own
 	// file beside the vault's own data (the per-worker temp dir under
 	// e2e), now that the directory exists to write it into.
 	configureService.SetSeedAssetsDir(filepath.Dir(vaultPath))
 	secretService.SetSourcesLister(configureService.SecretSources)
+	// The initial arm: every source already loaded from persisted
+	// storage by the time this runs, so a file edited before Mill ever
+	// launched still gets a live watch from the first moment.
+	secretService.RearmSourceWatches()
 	// Goal 0306 S4: "Add as sources" on the .env scan creates the same
 	// Configure entity the Sources page's own form does, through this
 	// one seam -- secretsvc never depends on configuresvc.

@@ -27,7 +27,6 @@ import (
 	"github.com/alicoding/mill/internal/services/companionsvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
-	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/docssvc"
 	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
@@ -81,24 +80,6 @@ var examplePluginsFS embed.FS
 
 //go:embed build/appicon.png
 var trayIconPNG []byte
-
-func init() {
-	// Each RegisterEvent[T] gives the binding generator a typed JS/TS API.
-	application.RegisterEvent[string]("time")
-	application.RegisterEvent[triggersvc.HotkeyActivity]("hotkey-activity")
-	application.RegisterEvent[mcpsvc.MCPWriteRequest]("mcp-write-approval")
-	application.RegisterEvent[mcpsvc.MCPWriteActivity]("mcp-write-activity")
-	application.RegisterEvent[dataevent.Changed](dataevent.EventName)
-	application.RegisterEvent[dataevent.LifecycleEvent](dataevent.LifecycleEventName)
-	application.RegisterEvent[atlassvc.MirrorChanged](atlassvc.MirrorChangedEvent)
-	application.RegisterEvent[executionsvc.GuardrailPendingChanged]("guardrail-pending-changed")
-	application.RegisterEvent[companionsvc.CompanionDelta](companionsvc.DeltaEventName)
-	application.RegisterEvent[agentloopsvc.AgentLoopEvent](agentloopsvc.StateEventName)
-	application.RegisterEvent[agentloopsvc.AgentLoopDelta](agentloopsvc.DeltaEventName)
-	// docs/adr/0033: OpenMainWindow emits this so App.tsx can switch views
-	// once the main window is back in front -- broadcast to every window.
-	application.RegisterEvent[string]("mill-navigate")
-}
 
 // main initializes the application, creates the window, and wires every
 // bounded-context service together.

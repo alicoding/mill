@@ -87,17 +87,21 @@ func RunShutdown(logger *slog.Logger, executionService *executionsvc.ExecutionSe
 		logger.Error("audit export service shutdown", "error", err)
 	}
 	// No watcher goroutine outlives the process (goal 0194's live
-	// round-trip slice).
+	// round-trip slice; goal 0408 S1 extends the same discipline to
+	// secret sources).
 	atlasService.CloseAllMirrorWatches()
+	secretService.CloseAllSourceWatches()
 }
 
 // WireAtlasProjections connects AtlasService's recognition (goal 0126)
 // and List-projection (goal 0105) seams to Configure's and
 // Composition's exported readers, adapting types at the boundary.
 // WireValidationSeams connects graph validation's Configure-side
-// checks (goal 0127 slice 3: the credential-presence gap).
+// checks: the credential-presence gap (goal 0127 slice 3) and the
+// unresolved-source-secret gap (goal 0408 S1).
 func WireValidationSeams(cfg *configuresvc.ConfigureService) {
 	composition.SetCredentialGapCheck(cfg.RequestCredentialGap)
+	composition.SetSecretUnresolvedCheck(cfg.RequestSecretUnresolved)
 }
 
 func WireAtlasProjections(atlas *atlassvc.AtlasService, cfg *configuresvc.ConfigureService, comp *compositionsvc.CompositionService) {

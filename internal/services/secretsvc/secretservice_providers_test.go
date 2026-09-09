@@ -55,8 +55,10 @@ func TestResolveSecretValue_ProviderQualifiedIDReadsTheDotenvKey(t *testing.T) {
 	if err != nil || v != "tok-123" {
 		t.Fatalf("resolve: %q %v", v, err)
 	}
-	if _, err := s.ResolveSecretValue("env:proj-env/NOPE", actx); err == nil || !strings.Contains(err.Error(), `no key "NOPE"`) {
-		t.Errorf("missing key: %v", err)
+	_, unresolvedErr := s.ResolveSecretValue("env:proj-env/NOPE", actx)
+	var unresolved *ErrUnresolvedReference
+	if !errors.As(unresolvedErr, &unresolved) || unresolved.Key != "NOPE" || unresolved.SourceLabel != "Project .env" || unresolved.Ref != "env:proj-env/NOPE" {
+		t.Errorf("missing key = %v, want *ErrUnresolvedReference{Key: NOPE, SourceLabel: Project .env, Ref: env:proj-env/NOPE}", unresolvedErr)
 	}
 	if _, err := s.ResolveSecretValue("env:unknown/API_TOKEN", actx); err == nil || !strings.Contains(err.Error(), "not configured") {
 		t.Errorf("unknown source: %v", err)
@@ -106,8 +108,10 @@ func TestBrunoSource_ListsDeclaredAndEnvKeys_ResolvesFromEnv(t *testing.T) {
 	if err != nil || v != "tok-bruno" {
 		t.Fatalf("resolve = %q err=%v", v, err)
 	}
-	if _, err := s.ResolveSecretValue("bruno:gazette/SIGNING_KEY", secretaudit.AccessContext{Context: secretaudit.ContextExecEnv, Actor: "test"}); err == nil || !strings.Contains(err.Error(), "no key") {
-		t.Fatalf("missing declared secret err = %v", err)
+	_, missingErr := s.ResolveSecretValue("bruno:gazette/SIGNING_KEY", secretaudit.AccessContext{Context: secretaudit.ContextExecEnv, Actor: "test"})
+	var unresolvedBruno *ErrUnresolvedReference
+	if !errors.As(missingErr, &unresolvedBruno) || unresolvedBruno.Key != "SIGNING_KEY" {
+		t.Fatalf("missing declared secret err = %v, want *ErrUnresolvedReference{Key: SIGNING_KEY}", missingErr)
 	}
 	// An env-provider id never reaches a Bruno source.
 	if _, err := s.ResolveSecretValue("env:gazette/API_TOKEN", secretaudit.AccessContext{Context: secretaudit.ContextExecEnv, Actor: "test"}); err == nil {
@@ -228,5 +232,73 @@ func TestResolveSecretValue_SourceBackedEntry_MissingKeyReports(t *testing.T) {
 	}
 	if _, err := s.ResolveSecretValue(created.ID, secretaudit.AccessContext{Context: secretaudit.ContextIntegrationAuth}); err == nil {
 		t.Fatal("resolving a source-backed entry whose key is gone returned nil error")
+	}
+}
+
+// Goal 0408 S1's own table test: a source-backed reference resolves
+// three ways -- the key is there, the key is gone (a typed
+// ErrUnresolvedReference, distinct from an unreadable file), or the
+// file itself can't be read (the pre-existing usererror, unchanged).
+// SecretRefUnresolved is the pre-run verdict's own check, so every
+// case pins both it and ResolveSecretValue's own outcome.
+func TestResolveSecretValue_UnresolvedVsUnreadableVsResolved(t *testing.T) {
+	dir := t.TempDir()
+	envPath := filepath.Join(dir, ".env")
+	if err := os.WriteFile(envPath, []byte("API_TOKEN=tok-123\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sources := []secretsource.Source{
+		{ID: "proj-env", Label: "Project .env", Kind: secretsource.KindEnv, Path: envPath, UpdatedAt: time.Now()},
+		{ID: "broken-env", Label: "Broken .env", Kind: secretsource.KindEnv, Path: filepath.Join(dir, "missing", ".env"), UpdatedAt: time.Now()},
+	}
+	s := NewSecretService(secretvault.New(filepath.Join(dir, "secrets.kdbx")), credential.NewInMemory(), servicetest.NewFakeStore())
+	t.Cleanup(s.stopAutoLock)
+	s.SetSourcesLister(func() []secretsource.Source { return sources })
+	actx := secretaudit.AccessContext{Context: secretaudit.ContextHTTPHeader}
+
+	t.Run("resolved", func(t *testing.T) { assertResolvedCase(t, s, actx) })
+	t.Run("unresolved", func(t *testing.T) { assertUnresolvedCase(t, s, actx) })
+	t.Run("unreadable", func(t *testing.T) { assertUnreadableCase(t, s, actx) })
+}
+
+func assertResolvedCase(t *testing.T, s *SecretService, actx secretaudit.AccessContext) {
+	t.Helper()
+	v, err := s.ResolveSecretValue("env:proj-env/API_TOKEN", actx)
+	if err != nil || v != "tok-123" {
+		t.Fatalf("resolve = %q, %v", v, err)
+	}
+	if unresolved, _, _ := s.SecretRefUnresolved("env:proj-env/API_TOKEN"); unresolved {
+		t.Error("a present key must not report unresolved")
+	}
+}
+
+func assertUnresolvedCase(t *testing.T, s *SecretService, actx secretaudit.AccessContext) {
+	t.Helper()
+	_, err := s.ResolveSecretValue("env:proj-env/GONE", actx)
+	var unresolvedErr *ErrUnresolvedReference
+	if !errors.As(err, &unresolvedErr) || unresolvedErr.Key != "GONE" || unresolvedErr.SourceLabel != "Project .env" {
+		t.Fatalf("err = %v, want *ErrUnresolvedReference{Key: GONE, SourceLabel: Project .env}", err)
+	}
+	if ue, ok := usererror.Of(err); !ok || ue.Code != "secret-reference-unresolved" {
+		t.Errorf("usererror = %+v, %v, want code secret-reference-unresolved", ue, ok)
+	}
+	unresolved, key, sourceLabel := s.SecretRefUnresolved("env:proj-env/GONE")
+	if !unresolved || key != "GONE" || sourceLabel != "Project .env" {
+		t.Errorf("SecretRefUnresolved = %v, %q, %q, want true, GONE, Project .env", unresolved, key, sourceLabel)
+	}
+}
+
+func assertUnreadableCase(t *testing.T, s *SecretService, actx secretaudit.AccessContext) {
+	t.Helper()
+	_, err := s.ResolveSecretValue("env:broken-env/API_TOKEN", actx)
+	var unresolvedErr *ErrUnresolvedReference
+	if errors.As(err, &unresolvedErr) {
+		t.Fatal("an unreadable file must not report unresolved -- it is a different state")
+	}
+	if err == nil {
+		t.Fatal("an unreadable file's resolve must fail")
+	}
+	if unresolved, _, _ := s.SecretRefUnresolved("env:broken-env/API_TOKEN"); unresolved {
+		t.Error("an unreadable file must not report unresolved")
 	}
 }

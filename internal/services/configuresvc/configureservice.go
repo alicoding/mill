@@ -116,6 +116,17 @@ type ConfigureService struct {
 	// where the actual audit line gets written, so every call site here
 	// carries who's asking.
 	secretResolver func(id string, actx secretaudit.AccessContext) (string, error)
+	// secretUnresolvedLookup answers whether a source-backed reference
+	// still resolves (goal 0408 S1) -- RequestSecretUnresolved's own
+	// seam, wired late via SetSecretUnresolvedLookup once secretsvc
+	// exists. Defaults to reporting nothing unresolved, so a check run
+	// before wiring completes never blocks a run on a false positive.
+	secretUnresolvedLookup func(ref string) (unresolved bool, key, sourceLabel string)
+	// secretSourcesChanged tells secretsvc's watch set to recompute
+	// itself (goal 0408 S1) after a secret source is created, edited or
+	// deleted -- wired late via SetSecretSourcesChanged, nil-safe no-op
+	// until then.
+	secretSourcesChanged func()
 	// secretCreator is the store's own create door, wired late the same
 	// way secretResolver is -- used only by the adoption pass
 	// (configureservice_secretadoption.go), nil until it is wired.
@@ -161,6 +172,25 @@ func (c *ConfigureService) WireBoardReferenceLookup(fn func(entityKind, id strin
 //wails:ignore
 func (c *ConfigureService) SetSecretResolver(fn func(id string, actx secretaudit.AccessContext) (string, error)) {
 	c.secretResolver = fn
+}
+
+// SetSecretUnresolvedLookup wires RequestSecretUnresolved's own check
+// to secretsvc.SecretService's SecretRefUnresolved (goal 0408 S1) --
+// called once from main.go after that service exists, same pattern as
+// SetSecretResolver.
+//
+//wails:ignore
+func (c *ConfigureService) SetSecretUnresolvedLookup(fn func(ref string) (unresolved bool, key, sourceLabel string)) {
+	c.secretUnresolvedLookup = fn
+}
+
+// SetSecretSourcesChanged wires secret-source create/update/delete to
+// secretsvc.SecretService's RearmSourceWatches (goal 0408 S1) -- called
+// once from main.go after that service exists.
+//
+//wails:ignore
+func (c *ConfigureService) SetSecretSourcesChanged(fn func()) {
+	c.secretSourcesChanged = fn
 }
 
 // SetSecretLabelsLister wires DeriveSecretLabels' title lookup to
