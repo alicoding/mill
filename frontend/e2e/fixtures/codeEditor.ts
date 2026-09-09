@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 
 // CodeMirror renders no <textarea> -- its editable surface is a
 // contenteditable `.cm-content` node inside the [data-testid] wrapper
@@ -57,12 +57,22 @@ export async function fillMilkdown(page: Page, testId: string, text: string) {
   // text the new text then merges into. Verify the doc is OBSERVABLY
   // empty before typing -- retrying the same select-all+delete a real
   // user would -- rather than trusting the keypresses landed.
+  // A synchronous textContent read right after the Delete keypress can
+  // observe the doc BEFORE ProseMirror's delete transaction has applied
+  // (CI's shard-2 runs typed "Plan v2" onto leftover text as "Plan v2an"
+  // after all three rounds "saw" a non-empty doc), so each round polls
+  // for the settled empty state instead of reading once.
+  const emptied = async () =>
+    expect
+      .poll(async () => (await content.evaluate((el) => (el.textContent ?? '').trim())) === '', { timeout: 1500 })
+      .toBe(true)
+      .then(() => true, () => false)
   for (let round = 0; round < 3; round++) {
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a')
     await page.keyboard.press('Delete')
-    const empty = await content.evaluate((el) => (el.textContent ?? '').trim() === '')
-    if (empty) break
+    if (await emptied()) break
   }
+  await expect.poll(async () => (await content.evaluate((el) => (el.textContent ?? '').trim())), { timeout: 5000 }).toBe('')
   const lines = text.split('\n')
   for (let i = 0; i < lines.length; i++) {
     if (lines[i]) await page.keyboard.type(lines[i])
