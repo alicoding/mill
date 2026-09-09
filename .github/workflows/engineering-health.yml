@@ -275,7 +275,11 @@ jobs:
       - name: Append the JSON as a collapsed comment
         run: |
           set -euo pipefail
-          issue_number=$(gh issue list --repo "$REPO" --label engineering-health --state all --json number --jq '.[0].number')
+          issue_number=$(gh issue list --repo "$REPO" --label engineering-health --state open --json number --jq '.[0].number')
+          if [ -z "$issue_number" ] || [ "$issue_number" = "null" ]; then
+            echo "engineering-health: no open issue labelled engineering-health found to comment on" >&2
+            exit 1
+          fi
           {
             echo "<details><summary>engineering-health.json</summary>"
             echo
