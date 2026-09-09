@@ -923,6 +923,16 @@ jobs:
           set -euo pipefail
           mkdir -p bin
           go build -tags production -trimpath -ldflags="-w -s" -o bin/mill .
+      - name: Generate and validate modern Apple icon assets
+        env:
+          DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+        run: |
+          set -euo pipefail
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.18
+          go_path="$(go env GOPATH)"
+          export PATH="$go_path/bin:$PATH"
+          mkdir -p /tmp/desktop-launch-artifacts/modern-icons
+          ./scripts/check-modern-icon-assets.sh /tmp/desktop-launch-artifacts/modern-icons
       - run: task darwin:create:app:bundle
       - run: mkdir -p /tmp/desktop-launch-artifacts
       # First launch path: Launch Services, the same door a person
