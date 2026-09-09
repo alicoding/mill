@@ -237,3 +237,26 @@ export function useCommandKeybindingCapture(commandId: string | null, onChanged?
   }), [commandId, t])
   return useComboCapture(commandId !== null, adapter, onChanged)
 }
+
+// The Settings → Keyboard Shortcuts editor's "find by shortcut" mode
+// (goal 0405 S1, JetBrains Keymap's own find-actions-by-shortcut): the
+// SAME press-to-capture UX (menu-accelerator suspension, reserved-combo
+// rejection, Escape/blur cancel) every other recorder above shares, but
+// this one assigns nothing -- there is no target command, only a chord
+// to filter the list by, so the adapter never calls a Settings/Trigger
+// RPC. onCaptured fires with the raw KeyCombo the instant a valid combo
+// is pressed, which is what the caller actually filters against
+// (effectiveBinding comparisons need mods/key, not the formatted label
+// useComboCapture's own `binding` field resolves to).
+export function useShortcutSearchCapture(onCaptured: (mods: string[], key: string) => void) {
+  const adapter = useMemo<ComboCaptureAdapter>(() => ({
+    currentBinding: () => Promise.resolve(null),
+    assign: (mods, key) => {
+      onCaptured(mods, key)
+      return Promise.resolve(formatCombo(mods, key))
+    },
+    unassign: () => Promise.resolve(),
+    entity: 'keybinding',
+  }), [onCaptured])
+  return useComboCapture(true, adapter)
+}

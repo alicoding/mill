@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, FormControl, Select, Stack, Text, TextInput, Textarea } from '@primer/react'
 import { KeyIcon } from '@primer/octicons-react'
-import { KeyComboChip } from '../shared/KeyComboChip'
+import { KeybindingHint } from '@primer/react/experimental'
+import { hintKeysFromLabel } from '../shared/keybinding'
 import type { AttributeDef, NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import type { CanvasNode } from './canvasStore'
@@ -139,7 +140,7 @@ export function NodeConfigFields({ node, attrs, nodeType, sameKindNodeTypes, has
               ) : hotkeyCapture.binding ? (
                 <Stack direction="horizontal" gap="condensed" align="center">
                   <KeyIcon size={12} />
-                  <KeyComboChip label={hotkeyCapture.binding} />
+                  <KeybindingHint keys={hintKeysFromLabel(hotkeyCapture.binding)} />
                   <Button size="small" variant="invisible" onClick={hotkeyCapture.startRecording}>{t('common:actions.change')}</Button>
                   <Button size="small" variant="invisible" onClick={hotkeyCapture.clear}>{t('common:actions.clear')}</Button>
                 </Stack>

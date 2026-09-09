@@ -405,12 +405,31 @@
     "searchPlaceholder": "Search commands…",
     "searchAriaLabel": "Search commands",
     "noMatches": "No matches for \"{{query}}\".",
+    "noMatchesForShortcut": "No commands use that shortcut.",
     "pressCombo": "Press a combo… (Esc to cancel)",
     "clickToChange": "Click to change",
     "reset": "Reset",
     "unbound": "Unbound",
     "alsoLabel": "Also:",
-    "extraBindingTitle": "Additional shortcut (not editable here)"
+    "extraBindingTitle": "Additional shortcut (not editable here)",
+    "findByShortcut": "Find by shortcut",
+    "findByShortcutPrompt": "Press the shortcut to find its commands",
+    "facetsAriaLabel": "Filter commands",
+    "unboundDisclosure": "Unbound ({{n}})",
+    "facets": {
+      "all": "All",
+      "bound": "Bound",
+      "unbound": "Unbound",
+      "unboundAriaLabel": "Show {{n}} unbound",
+      "customised": "Customised"
+    },
+    "surfaces": {
+      "everywhere": "Everywhere",
+      "atlas": "Atlas",
+      "workflows": "Workflows",
+      "review": "Review",
+      "settings": "Settings"
+    }
   },
   "placeholderView": {
     "notBuiltYet": "Not built yet",

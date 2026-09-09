@@ -206,3 +206,35 @@ const KEY_SYMBOL: Record<string, string> = { Enter: '↩', ArrowUp: '↑', Arrow
 export function formatCombo(mods: string[], key: string): string {
   return mods.map((m) => MOD_SYMBOL[m.toLowerCase()] ?? m).join('') + (KEY_SYMBOL[key] ?? key.toUpperCase())
 }
+
+// The reverse of MOD_SYMBOL/KEY_SYMBOL above, for hintKeysFromLabel.
+const HINT_MOD_FOR_SYMBOL: Record<string, string> = { '⌘': 'meta', '⌃': 'control', '⇧': 'shift', '⌥': 'alt' }
+const HINT_KEY_FOR_SYMBOL: Record<string, string> = { '↩': 'enter', '↑': 'arrowup', '↓': 'arrowdown', '←': 'arrowleft', '→': 'arrowright', '⌫': 'delete' }
+// formatCombo spells a few keys out rather than giving them a glyph
+// (keyFromEventCode's own 'Space'/'Tab'/'Escape') -- their reverse
+// tokens, case-insensitive like every KeybindingHint token.
+const HINT_KEY_FOR_WORD: Record<string, string> = { SPACE: 'space', TAB: 'tab', ESCAPE: 'escape' }
+
+// hintKeysFromLabel adapts a Mill-formatted shortcut label (formatCombo's
+// own output above, or Go's mirrored triggersvc.FormatBinding -- the
+// ONLY two producers of this string anywhere in the app, never a
+// hand-typed one) into Primer KeybindingHint's own `keys` prop format
+// (https://github.com/github/hotkey): a total, closed-vocabulary
+// reverse of formatCombo, not a parse of arbitrary text -- every label
+// this function ever receives was itself produced by formatCombo's own
+// MOD_SYMBOL/KEY_SYMBOL tables (or Go's identical mirror), so stripping
+// a MOD_SYMBOL glyph prefix then reverse-mapping what's left always
+// recovers the original KeyCombo's mods/key. The '+' key is the one
+// token requiring a rewrite ("Plus"): KeybindingHint's own chord format
+// uses '+' as its key SEPARATOR, so the literal glyph would corrupt the
+// split (see https://github.com/github/hotkey's own escaping note).
+export function hintKeysFromLabel(label: string): string {
+  const mods: string[] = []
+  let rest = label
+  while (rest.length > 0 && HINT_MOD_FOR_SYMBOL[rest[0]]) {
+    mods.push(HINT_MOD_FOR_SYMBOL[rest[0]])
+    rest = rest.slice(1)
+  }
+  const key = HINT_KEY_FOR_SYMBOL[rest] ?? HINT_KEY_FOR_WORD[rest] ?? (rest === '+' ? 'Plus' : rest)
+  return [...mods, key].join('+')
+}

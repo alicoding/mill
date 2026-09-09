@@ -3743,8 +3743,13 @@ links back here to change either one.
   action currently available — match the command palette exactly,
   since both read from the same list.
 - **Keyboard shortcuts** — every command Mill dispatches in its own
-  window, searchable, with editable bindings. Click a combo to record
-  a new one; Reset returns the default.
+  window, grouped by where it applies (Everywhere, Atlas, Workflows,
+  Review), bound commands first with the unbound rest tucked behind a
+  closed "Unbound" row per group — search or the Unbound filter opens
+  it. Filter by All, Bound, Unbound or Customised, or press the find-
+  by-shortcut key icon and the combo itself to jump straight to
+  whatever it's bound to. Click a combo to record a new one; Reset
+  returns the default.
 
 ## Extensions
 

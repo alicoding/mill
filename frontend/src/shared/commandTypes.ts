@@ -29,7 +29,7 @@ export interface Command {
   // pass: Settings' recorder-based rebinding UI
   // (views/KeyboardShortcutsSection.tsx) edits `defaultBinding` only
   // (via keybindingOverrides, same as before); extras render as
-  // read-only secondary KeyComboChips there and are never looked up in
+  // read-only secondary hint chips there and are never looked up in
   // keybindingOverrides by the keydown dispatcher (shared/commandDispatch.ts) -- a real
   // "edit an alias" feature (its own override storage keyed by
   // command+index, its own Go-side persistence) is more than this

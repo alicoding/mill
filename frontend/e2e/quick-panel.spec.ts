@@ -6,8 +6,11 @@ import {
   findWorkflowIdByLabel, restoreMCPWriteDefaults, stripExportedID,
 } from './mcpTestClient'
 import { assignDebugWorkflowHotkey } from './hotkeyDebugKnob'
+import { hintText, pinMacPlatform } from './fixtures/keybindingHint'
 import { workflowRow, activePanel, dragBetweenHandles, dragPaletteItemToCanvas } from './fixtures/canvas'
 import { waitForViewportStable } from './fixtures/animation'
+
+pinMacPlatform(test)
 
 // Exercises the Quick Panel's frontend (docs/adr/0033-quick-panel-
 // second-window.md, app/QuickPanel.tsx) at its hash route
@@ -127,7 +130,10 @@ test('a seeded workflow is listed and Enter runs it, showing the outcome in the 
   await expect(runOption).toBeVisible()
 
   // The footer names the active row's actions before anything runs.
-  await expect(page.getByTestId('quick-panel-run-hint')).toHaveText('↩')
+  // KeybindingHint's own condensed glyph for Enter is "⏎" (key-names.ts's
+  // condensedKeyName map), not Mill's old "↩" -- hintKeysFromLabel
+  // adapts to the kit's own vocabulary.
+  await expect.poll(() => hintText(page.getByTestId('quick-panel-run-hint'))).toBe('⏎')
   await page.keyboard.press('Enter')
   // Outcome stays put (goal 0294): no auto-dismiss, the footer says
   // whether it worked and how long it took.
@@ -140,12 +146,12 @@ test('a seeded workflow is listed and Enter runs it, showing the outcome in the 
   await expect(menu).toBeVisible()
   await expect(page.getByTestId('quick-panel-action-run')).toContainText('Run')
   await expect(page.getByTestId('quick-panel-action-run-watch')).toContainText('Run and watch')
-  await expect(page.getByTestId('quick-panel-action-run-watch-shortcut')).toHaveText('⌘⇧↩')
+  await expect.poll(() => hintText(page.getByTestId('quick-panel-action-run-watch-shortcut'))).toBe('⌘⇧⏎')
   // ⌘↩ names the run this panel just started, not the workflow (goal
   // 0343): the row's action IS the run.open command with that run as
   // its target, so the label says what it will actually open.
   await expect(page.getByTestId('quick-panel-action-open')).toContainText('Open run')
-  await expect(page.getByTestId('quick-panel-action-open-shortcut')).toHaveText('⌘↩')
+  await expect.poll(() => hintText(page.getByTestId('quick-panel-action-open-shortcut'))).toBe('⌘⏎')
   await expect(page.getByTestId('quick-panel-action-pin')).toContainText('Pin')
   await page.keyboard.press('Escape')
   await expect(menu).toHaveCount(0)
@@ -479,7 +485,7 @@ test('a workflow row shows its own hotkey-trigger combo inline; a non-hotkey tri
   await search.fill(hotkeyLabel)
   const hotkeyOption = page.getByRole('option', { name: hotkeyLabel })
   await expect(hotkeyOption).toBeVisible()
-  await expect(hotkeyOption.getByTestId('workflow-hotkey-chip')).toHaveText('⌘⇧M')
+  await expect.poll(() => hintText(hotkeyOption.getByTestId('workflow-hotkey-chip'))).toBe('⌘⇧M')
 
   // A manual-trigger row carries no hotkey-chip testid at all -- not
   // just an empty one -- since WorkflowRowTrailingVisual only renders

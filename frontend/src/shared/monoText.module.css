@@ -6,8 +6,8 @@
    `<MachineFact>` wrapper component would just be a `<span
    className={...}>` with extra indirection -- the smallest correct
    mechanism per CLAUDE.md's reuse-boundary rule. Key combos already
-   have their own richer renderer (shared/KeyComboChip.tsx, design
-   wave 1) -- this is deliberately not for those. */
+   have their own richer renderer (Primer KeybindingHint,
+   @primer/react/experimental) -- this is deliberately not for those. */
 .mono {
     font-family: var(--mill-mono);
 }
