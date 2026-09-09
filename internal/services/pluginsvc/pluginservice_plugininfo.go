@@ -14,7 +14,8 @@ type PluginInfo struct {
 	Builtin  bool
 	// ContentHash is the folder's current content hash
 	// (pluginservice_hash.go), "" for a built-in or an invalid plugin
-	// -- what the lock compares against.
+	// -- what signature verification (Signed) checks against. NOT what
+	// the lock compares against; that is CodeHash (docs/goals/0375 S2).
 	ContentHash string
 	// CodeHash excludes manifest.json (docs/goals/0375 S2): the trust
 	// lock's own comparison input, so a manifest-only edit never trips
