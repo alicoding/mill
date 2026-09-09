@@ -38,7 +38,7 @@
     ],
     "menus": {
       "view/title": [
-        { "command": "mill-request-tester.sendAgain" }
+        { "command": "mill-request-tester.sendAgain", "when": "plugin.hasResult" }
       ]
     },
     "configuration": [

@@ -4827,6 +4827,30 @@ platform](port-a-vscode-extension.md).
     the same picker a workflow node's own reference field uses.
     (checked)
 
+## Menu when clauses
+
+34. A `contributes.menus` item seated on `editor/context` or
+    `view/title` declares a `when` clause; one that declares none
+    shows everywhere, so say `when: "true"` if that is the intent.
+    (checked, advisory)
+35. A `when` clause that reads `plugin.<key>` names a key your own
+    scripts actually write with `api.context.set(key, value)` (or the
+    entry-page/framed equivalent, `call('context.set', key, value)`)
+    somewhere — a key you never set stays permanently falsy. (checked,
+    advisory)
+
+## Context keys
+
+Your own plugin can contribute facts a `when` clause reads: call
+`api.context.set(key, value)` — from `main.js` directly, or from a
+framed entry page's `acquireMillApi().call('context.set', key,
+value)` — and a declared item's `when: "plugin.<key>"` reads it back,
+evaluated host-side, synchronously, every time the item's own seat or
+its command's enablement is checked. `value` is a string, number,
+boolean, or an array of strings; a key already starting with
+`"plugin."` is refused, since that prefix is added automatically
+wherever the fact is read back.
+
 ## SDK conveniences
 
 The SDK carries a few small helpers so a plugin never re-invents them:
