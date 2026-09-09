@@ -104,6 +104,15 @@ pre-commit:
     - name: gocache-trim-selftest
       glob: "scripts/dev/gocache-trim*.sh"
       run: ./scripts/dev/gocache-trim-selftest.sh
+    - name: frame-runtime-fresh
+      # Goal 0396: assumes frontend/dist already exists (this file's own
+      # header comment's standing prerequisite) -- run `npm run build` in
+      # frontend/ first if this fails on a fresh clone.
+      glob: "{frontend/src/plugin-frame/**,frontend/vite.config.frame.ts,frontend/public/plugin-frame/**}"
+      run: ./scripts/check-frame-runtime-fresh.sh
+    - name: frame-runtime-fresh-selftest
+      glob: "scripts/check-frame-runtime-fresh*.sh"
+      run: ./scripts/check-frame-runtime-fresh-selftest.sh
     - name: vendor-names
       # Goal 0385: semgrep/vendor-names.yml's own header comment carries
       # the value-vs-concept rule and the case-sensitivity split.
