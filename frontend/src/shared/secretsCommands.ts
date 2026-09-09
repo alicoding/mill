@@ -1,10 +1,13 @@
 import type { Command } from './commands'
+import { entityContext } from './commandContext'
 import { SecretService } from './bindings'
 import { useAppStore } from './store'
 import { useUISignalStore } from './uiSignalStore'
 import { refreshVaultBackupTime, refreshVaultStatus, useVaultStatusStore } from './vaultStatusStore'
 import type { UserError } from './userError'
 import { userErrorFrom } from './userError'
+import { writeClipboardText } from './clipboardWrite'
+import { toReference } from './secretReference'
 
 // The vault lock/unlock/reset actions (goal 0222 S1's own state door,
 // vaultStatusStore.ts) -- split out of shared/commands.ts (CLAUDE.md's
@@ -27,6 +30,26 @@ function record(promise: Promise<unknown>): void {
 }
 
 export const SECRETS_COMMANDS: Command[] = [
+  {
+    // Copy reference (goal 0408 S2, the 1Password "copy secret
+    // reference" precedent): every row -- a vault entry or a source's
+    // own key -- copies the portable string ("vault:<id>" or
+    // "env:<source>/<KEY>") a Configure field or a plugin's secretRef
+    // consumes, never the value itself, so this needs no gate the
+    // value-copy actions already carry. Named `secret.copyReference`
+    // (not the family's `secret.row.*` namespace) since it acts on
+    // every row identically, vault or source.
+    id: 'secret.copyReference',
+    label: 'commands.secret.copyReference',
+    defaultBinding: null,
+    needs: 'entity',
+    enabled: (ctx) => entityContext(ctx, 'secret') !== null,
+    run: async (ctx) => {
+      const target = entityContext(ctx, 'secret')
+      if (!target) return
+      await writeClipboardText(toReference(target.id))
+    },
+  },
   {
     // "Find .env files…" (goal 0367): opens the Sources section's scan
     // dialog from anywhere. Navigation first, the set-then-consume

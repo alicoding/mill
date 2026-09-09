@@ -85,8 +85,20 @@ export interface InventoryItem {
     onToggle: (expanded: boolean) => void
     content: ReactNode
   }
+  // Which backing this row belongs to (goal 0408 S2's merged Secrets
+  // list: vault entries plus every source's own keys, in one list).
+  // Undefined is the list's own "default" bucket -- rendered first,
+  // with no header at all -- so a list with no grouped item anywhere
+  // renders exactly as it did before this field existed.
+  group?: InventoryItemGroup
   onOpen: () => void
   menuActions: InventoryMenuAction[]
+}
+
+export interface InventoryItemGroup {
+  key: string
+  label: string
+  icon: InventoryItemIcon
 }
 
 export interface InventoryEmptyState {
@@ -148,4 +160,45 @@ export function menuActionsToContextMenuItems(actions: InventoryMenuAction[]): C
     danger: action.danger,
     confirm: action.confirm,
   }))
+}
+
+export interface InventoryItemRun {
+  group?: InventoryItemGroup
+  items: InventoryItem[]
+}
+
+// groupOrder reorders items into stable buckets (goal 0408 S2): every
+// ungrouped item first (a list's own default bucket -- Secrets' vault
+// entries), then one bucket per distinct group key, ordered
+// alphabetically by the group's own label so the order is deterministic
+// with no second, caller-supplied ranking. Stable WITHIN each bucket --
+// Array.prototype.sort's own ES2019 guarantee, the same one
+// listStandard.ts's sortItems already relies on -- so grouping never
+// fights whichever sort (updated/name/created) the caller already
+// applied.
+export function groupOrder(items: InventoryItem[]): InventoryItem[] {
+  const labels = new Map<string, string>()
+  for (const item of items) {
+    if (item.group && !labels.has(item.group.key)) labels.set(item.group.key, item.group.label)
+  }
+  const order = [...labels.keys()].sort((a, b) => labels.get(a)!.localeCompare(labels.get(b)!, undefined, { sensitivity: 'base' }))
+  const rank = new Map(order.map((key, i) => [key, i + 1]))
+  return [...items].sort((a, b) => (a.group ? rank.get(a.group.key)! : 0) - (b.group ? rank.get(b.group.key)! : 0))
+}
+
+// listRuns splits an already-ordered sequence (groupOrder's own output,
+// or a page slice of it) into the contiguous runs InventoryList renders
+// one header per -- never reorders, so a page starting mid-group still
+// opens with that group's header rather than an unlabeled continuation.
+export function listRuns(items: InventoryItem[]): InventoryItemRun[] {
+  const runs: InventoryItemRun[] = []
+  for (const item of items) {
+    const last = runs[runs.length - 1]
+    if (last && last.group?.key === item.group?.key) {
+      last.items.push(item)
+      continue
+    }
+    runs.push({ group: item.group, items: [item] })
+  }
+  return runs
 }

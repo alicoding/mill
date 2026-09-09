@@ -1,11 +1,13 @@
 // A dotenv source shows its keys, and discovery stops being a typing
-// chore (goal 0367): the source row's own read-back lists key NAMES
-// (never a value), a rescan marks the file already being a source
-// instead of duplicating it, a file Mill cannot parse is named with
-// its reason, a second import updates rather than duplicates, and the
-// palette opens the scan dialog from anywhere. Shared pool: the temp
-// tree, the one source and the imported entries this spec creates are
-// its own, deleted here; the seeded example source is only read.
+// chore (goal 0367): the source row's own read-back (goal 0408 S2: a
+// link into the merged Secrets list, every key a full secret entry
+// there) never shows a value on the Sources row itself, a rescan marks
+// the file already being a source instead of duplicating it, a file
+// Mill cannot parse is named with its reason, a second import updates
+// rather than duplicates, and the palette opens the scan dialog from
+// anywhere. Shared pool: the temp tree, the one source and the imported
+// entries this spec creates are its own, deleted here; the seeded
+// example source is only read.
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -49,12 +51,18 @@ test('a dotenv source lists its keys, the rescan marks what is already a source,
 		// The collapsed row carries the count caption.
 		await expect(row.getByTestId('inventory-row-description')).toContainText('2 keys')
 
-		// Expand: the key NAMES are read back, one per line; the values
-		// never are (tok-readback must not appear).
-		await row.getByRole('button', { name: 'Show keys' }).click()
-		await expect(row.getByTestId(/inventory-row-disclosure-content-/)).toContainText('WIDGET_API_KEY')
-		await expect(row.getByTestId(/inventory-row-disclosure-content-/)).toContainText('WIDGET_PROJECT')
-		await expect(row.getByTestId(/inventory-row-disclosure-content-/)).not.toContainText('tok-readback')
+		// The read-back link (goal 0408 S2) opens the merged Secrets list,
+		// narrowed to this source's own group: both key NAMES show there,
+		// as secret entries in their own right; the value never does
+		// (tok-readback must not appear anywhere on screen).
+		await row.getByRole('button', { name: 'Show 2 keys in the list' }).click()
+		await expect(page.getByTestId('secrets-view')).toBeVisible()
+		await expect(page.getByText('WIDGET_API_KEY', { exact: true })).toBeVisible()
+		await expect(page.getByText('WIDGET_PROJECT', { exact: true })).toBeVisible()
+		await expect(page.getByText('tok-readback')).toHaveCount(0)
+
+		// Back to Sources for the rescan check below.
+		await openSecretSources(page)
 
 		// A rescan shows the file already being a source: checkbox
 		// disabled, caption naming it, and it starts unticked.
@@ -108,12 +116,13 @@ test('importing keys twice updates the same entries in place', async ({ page }) 
 
 test('the seeded example dotenv source materializes its own file and lists its keys', async ({ page }) => {
 	await gotoAppReady(page)
+	await ensureVault(page)
 	await openSecretSources(page)
 	await expandExamples(page)
 	const row = sourceRow(page, 'Example: Project .env')
 	await expect(row).toBeVisible()
-	await row.getByRole('button', { name: 'Show keys' }).click()
-	await expect(row.getByTestId(/inventory-row-disclosure-content-/)).toContainText('EXAMPLE_API_TOKEN')
+	await row.getByRole('button', { name: 'Show 2 keys in the list' }).click()
+	await expect(page.getByText('EXAMPLE_API_TOKEN', { exact: true })).toBeVisible()
 })
 
 test('the palette command opens the scan dialog on the Sources section', async ({ page }) => {
