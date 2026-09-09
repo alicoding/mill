@@ -37,6 +37,22 @@ never boot-loaded.
   Mill's own dispatch path regardless, which is what a Mill-owned
   agent gives for the same plumbing cost.
 
+## Size classes (`maxTurns`) and the resume rule
+
+- **builder**: 150 (a hotfix brief with an ≤80k-token ceiling: 60)
+- **pr-shepherd**: 100
+- **closeout**: 40 (batches of at most 3 merged PRs per dispatch)
+- **verifier**: 60
+- **reviewer**: 40
+
+Every dispatch-owning agent's token ceiling is CUMULATIVE across
+resumes, not reset per resume (the class: a builder against a 300k
+ceiling spent 852k across resumes because each `SendMessage` resume
+re-granted the full allowance). The orchestrator counts resumes: at
+most TWO per brief. A third resume's need means the remaining work is
+re-briefed as a new slice with its own ceiling, never a third resume of
+the same one.
+
 ## Deliberately skipped, with the evidence
 - **security-reviewer**: the official posture is a deterministic
   hook, not a standing agent; Mill's guardrail gate is the

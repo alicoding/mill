@@ -60,31 +60,30 @@ Before a capability's goal starts, answer EVERY line — "wired",
   status.
 
 ## Session conduct
-- Reviewer findings triaged, not chased: act only on correctness/
-  requirements gaps.
+- Reviewer findings triaged: act only on correctness/requirements gaps.
 - Post-merge worktree verification is CHECKED (`git worktree list`).
 - Avoid: kitchen-sink sessions, and correcting the same thing twice.
 - Long arcs write state to files, not context, at every checkpoint.
 - `gh run list -b main -L 1` when picking up the next goal.
 
 ## Green baseline always
-Every PR/main check must be GREEN — a permanently-red job is banned. Fix
-same-day or move OUT of the baseline with a register entry naming its
-path back. "Non-required" is a promotion lane, never a standing
-exemption.
+Every PR/main check must be GREEN — a permanently-red job is banned;
+fix same-day, or move OUT with a register entry naming the path back.
+"Non-required" is a promotion lane, never a standing exemption.
 
 ## Orchestration economics (goal 0414)
-- WIP limit: ≤6 open goal PRs before a new build dispatch.
+- WIP limit: ≤6 open goal PRs before a new dispatch.
 - A builder owns its PR through merge; the orchestrator only
   dispatches and verifies.
-- Budgets are per-dispatch (`maxTurns`, a token ceiling); one bounded
-  wait per turn, never wait-only; closeouts batch per tick.
+- Budgets are per-dispatch (`maxTurns`, a token ceiling), cumulative
+  across resumes at ≤2 per brief; one bounded wait per turn, never
+  wait-only; closeouts batch per tick.
 - Every finished agent's tokens append to `docs/goals/AGENT-LEDGER.md`
   (git-ignored).
 
 ## Tech debt and deferrals
 A BACKLOG.md entry needs the same DoR/DoD as any goal — never a bare
 TODO. A gap against researched precedent is never deferred — build it
-in the finding goal; an agent that would defer it reports it instead.
-Legal only when the same sentence names its tracking home: a goal
+in the finding goal; an agent that would defer it reports instead.
+Legal only naming its tracking home in the same sentence: a goal
 number, BACKLOG line, SPEC `OPEN` item, or revisit trigger.

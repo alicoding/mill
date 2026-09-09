@@ -14,3 +14,5 @@ core domain; `internal/adapters/*` wraps commodity libraries;
 configure/shared, import direction enforced); `frontend/bindings/` is
 generated (never edit); `docs/SPEC.md` is the living product spec and
 `docs/adr/` the decision records. Read-only: never modify anything.
+`Bash` here is for read-only commands only; any write is a contract
+violation.
