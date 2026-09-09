@@ -82,12 +82,13 @@ func (p *PluginService) PolicyAllows(id string) bool {
 	return info.Builtin || info.PolicyBlocked == ""
 }
 
-// policyInstallRefusal asks the policy about a folder about to be
-// installed -- the staged copy, before it moves into place. dir may be
-// "" when only the manifest is known (a preview of a remote archive),
-// in which case the signature is unknown and the tier is the one the
-// index promised.
-func policyInstallRefusal(m Manifest, tier, marketplace, dir, hash string) error {
+// policyInstallRefusal asks the policy about a remote archive preview,
+// where no staged folder or signature is available yet.
+func policyInstallRefusal(m Manifest, tier, marketplace string) error {
+	return policyInstallRefusalAt(m, tier, marketplace, "", "", "")
+}
+
+func policyInstallRefusalAt(m Manifest, tier, marketplace, locator, dir, hash string) error {
 	st := LoadPolicy()
 	if !st.Present {
 		return nil
@@ -95,7 +96,7 @@ func policyInstallRefusal(m Manifest, tier, marketplace, dir, hash string) error
 	if st.Error != "" {
 		return ErrPolicyUnreadable
 	}
-	if !st.Policy.SourceAllowed(marketplace, "") {
+	if !st.Policy.SourceAllowed(marketplace, locator) {
 		return policyRefused(st.Policy.SourceRefusal())
 	}
 	keyID := uint64(0)

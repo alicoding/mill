@@ -67,6 +67,7 @@ func scanBuiltin(id string, appVersion string) PluginInfo {
 	info.Warnings = manifestWarnings(m)
 	_, mainErr := fs.Stat(builtinPluginsFS, path.Join(builtinRoot, id, "main.js"))
 	info.Error = manifestProblem(m, id, mainErr == nil, appVersion)
+	info.DataOnly = info.Error == "" && mainErr != nil && isDataOnlyManifest(m)
 	if info.Error == "" {
 		info.Error = entryFileProblem(m, func(rel string) bool {
 			_, statErr := fs.Stat(builtinPluginsFS, path.Join(builtinRoot, id, rel))

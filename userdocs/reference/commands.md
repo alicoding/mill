@@ -185,6 +185,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `extension.update` | Update | — | Global | Acts on the selected entity |
 | `extensions.checkUpdates` | Extensions: check for updates | — | Global | Always available |
 | `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
+| `extensions.importTheme` | Extensions: Import theme | — | Global | Always available |
 | `extensions.open` | Extensions | `⌘⇧X` | Global | Always available |
 | `extensions.review` | Review extensions waiting for you | — | Global | Conditional — available only in a matching state |
 | `extensions.sources` | Extensions: marketplace sources | — | Global | Always available |

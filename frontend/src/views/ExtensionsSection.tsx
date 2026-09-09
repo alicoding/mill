@@ -77,6 +77,7 @@ export default function ExtensionsSection() {
   useEffect(() => {
     void refreshDisabledExtensions()
     void background(SettingsService.AppVersion().then(setAppVersion), 'extensions.appVersion')
+    void background(SettingsService.GetAllowedPlugins().then((ids) => setAllowedNow(ids ?? [])), 'extensions.getAllowedPlugins')
   }, [])
 
   useEffect(() => {
@@ -219,6 +220,7 @@ export default function ExtensionsSection() {
             })}
             <ExtensionsInstalledPlugins
               plugins={plugins}
+              allowedIds={allowedNow}
               selectedId={selection?.kind === 'plugin' ? selection.id : null}
               onSelect={(id) => setSelection({ kind: 'plugin', id })}
             />

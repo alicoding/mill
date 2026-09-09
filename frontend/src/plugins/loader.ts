@@ -135,6 +135,13 @@ export function resolveActivate(mod: PluginModule): ((api: MillPluginAPI) => Plu
 	return null
 }
 
+// DataOnly comes from the backend's validated manifest classification. This
+// small predicate keeps the activation boundary explicit and directly tested:
+// only that authoritative flag can bypass loading main.js.
+export function pluginNeedsActivation(info: Pick<PluginInfo, 'DataOnly'>): boolean {
+	return !info.DataOnly
+}
+
 // loadPluginStorage fetches every plugin's stored values in one call
 // (goal 0277), BEFORE any activate(), so api.storage.get() is
 // synchronous and honest from the first call. An unreadable blob means
@@ -251,6 +258,10 @@ function unmetDependency(info: PluginInfo): string | undefined {
 	return undefined
 }
 
+async function activateIfNeeded(info: PluginInfo, millVersion: string, storage: Record<string, string>) {
+	if (pluginNeedsActivation(info)) await activateOne(info, millVersion, storage)
+}
+
 // loadPlugins scans, filters to enabled+valid, and activates each
 // plugin's main.js. Every failure is PER-PLUGIN -- recorded on its own
 // row, never thrown upward -- and the whole pass is raced against a
@@ -310,7 +321,7 @@ export async function loadPlugins(): Promise<void> {
 		// throws still opens the pages its manifest promised.
 		collectFrameSurfaces(info.Manifest)
 		try {
-			await activateOne(info, millVersion, storage[id] ?? {})
+			await activateIfNeeded(info, millVersion, storage[id] ?? {})
 			loadStates.set(id, { status: 'loaded', info })
 		} catch (err) {
 			loadStates.set(id, { status: 'error', error: err instanceof Error ? err.message : String(err), info })

@@ -1416,6 +1416,14 @@
     "needs": null
   },
   {
+    "id": "extensions.importTheme",
+    "label": "Extensions: Import theme",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
     "id": "extensions.open",
     "label": "Extensions",
     "binding": "⌘⇧X",

@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/alicoding/mill/internal/domain/usererror"
 )
@@ -103,7 +102,7 @@ func (p *PluginService) PreviewInstall(marketplace, id string) (InstallPreview, 
 	if dir, ok := p.previewDir(idx, entry); ok {
 		_, pv.Warnings = InstallChecks(dir, m)
 	}
-	if err := policyInstallRefusal(m, pv.Tier, idx.Name, "", ""); err != nil {
+	if err := policyInstallRefusal(m, pv.Tier, idx.Name); err != nil {
 		pv.PolicyRefusal = err.Error()
 	}
 	pv.AlreadyInstalled = p.installedFolderExists(entry.ID)
@@ -346,61 +345,6 @@ func releaseAssetURL(repo, version, asset string) string {
 	return "https://github.com/" + repo + "/releases/download/" + tag + "/" + asset
 }
 
-// finishInstall moves a staged folder into place under the manifest's
-// own id and writes the receipt. A folder already at that id is
-// replaced only when it is the SAME plugin -- a different one there is
-// refused rather than silently overwritten.
-func (p *PluginService) finishInstall(stage string, rec InstallRecord) (InstallRecord, error) {
-	id, root, err := ManifestIDIn(stage)
-	if err != nil {
-		return InstallRecord{}, err
-	}
-	// The policy and the static checks run over the STAGED folder: a
-	// refusal leaves nothing under the plugins directory, and the
-	// staging folder itself goes with the caller's deferred cleanup.
-	warnings, err := p.stagedChecks(root, rec)
-	if err != nil {
-		return InstallRecord{}, err
-	}
-	rec.Warnings = warnings
-	if err := os.MkdirAll(p.dir, 0o750); err != nil {
-		return InstallRecord{}, err
-	}
-	target := filepath.Join(p.dir, id) // #nosec G703 -- id passed pluginIDPattern inside ManifestIDIn
-	if existing := p.scanOne(id); p.installedFolderExists(id) && existing.Manifest.ID != "" && existing.Manifest.ID != id {
-		return InstallRecord{}, fmt.Errorf("a different extension is already installed at %q", id)
-	}
-	if err := os.RemoveAll(target); err != nil {
-		return InstallRecord{}, err
-	}
-	if err := os.Rename(root, target); err != nil {
-		// A rename across devices fails; the copy is the same result.
-		if copyErr := CopyPluginFolder(root, target); copyErr != nil {
-			return InstallRecord{}, copyErr
-		}
-	}
-	info := p.scanOne(id)
-	if info.Error != "" {
-		_ = os.RemoveAll(target)
-		return InstallRecord{}, fmt.Errorf("%s", info.Error)
-	}
-	rec.Version = info.Manifest.Version
-	rec.ContentHash = info.ContentHash
-	rec.InstalledAt = time.Now().UTC().Format(time.RFC3339)
-	if rec.Tier == TierVerified && !p.signatureOK(target, info.ContentHash) {
-		// The signed tier is only earned when a pinned key verifies the
-		// folder; without a signing policy the honest answer is the
-		// hash it was pinned by.
-		if rec.Marketplace != ReservedMarketplaceName {
-			rec.Tier = TierHashPinned
-		}
-	}
-	if err := WriteInstallRecord(target, rec); err != nil {
-		return InstallRecord{}, err
-	}
-	return rec, nil
-}
-
 // stagedChecks asks the policy and the install checks about a staged
 // folder. The policy sees the tier the staging earned and, for the
 // signed tier, which policy key signed the folder.
@@ -414,7 +358,7 @@ func (p *PluginService) stagedChecks(root string, rec InstallRecord) ([]string, 
 		return nil, fmt.Errorf("%s", parseProblem)
 	}
 	hash, _ := ContentHash(root)
-	if err := policyInstallRefusal(m, rec.Tier, rec.Marketplace, root, hash); err != nil {
+	if err := policyInstallRefusalAt(m, rec.Tier, rec.Marketplace, installSourceLocator(rec.Source), root, hash); err != nil {
 		return nil, err
 	}
 	refusals, warnings := InstallChecks(root, m)

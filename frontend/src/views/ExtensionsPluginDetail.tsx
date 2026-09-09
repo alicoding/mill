@@ -17,6 +17,7 @@ import {
 } from './ExtensionsDetailTabs'
 import { tierLabelKey, tierVariant } from './extensionTrust'
 import { ExtensionsMCPServers } from './ExtensionsMCPServers'
+import { ThemeImportEvidence } from './ThemeImportEvidence'
 import { missingExampleWarnings, reachLabel } from './extensionMeta'
 import listStyles from '../shared/ListCard.module.css'
 
@@ -42,6 +43,7 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
   const id = plugin.Manifest.id
   const name = plugin.Manifest.name || id
   const runtime = pluginLoadStates().get(id)
+  const status = runtime?.status ?? (!plugin.Builtin && !allowed ? 'unallowed' : undefined)
   const error = plugin.Error || (runtime?.status === 'error' ? runtime.error : '')
   const contributes = plugin.Manifest.contributes
 
@@ -70,14 +72,12 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
     claims,
     // A bundled plugin's header meta line already says "Built into
     // Mill"; only an installed one has a folder worth naming.
-    provenance: plugin.Builtin ? undefined : t('settings.extensions.pluginSource', { path: plugin.Dir }),
-    extra: (contributes?.mcpServers ?? []).length > 0
-      ? <ExtensionsMCPServers pluginId={id} servers={contributes?.mcpServers ?? []} />
-      : undefined,
+    provenance: plugin.Builtin || plugin.ThemeImport ? undefined : t('settings.extensions.pluginSource', { path: plugin.Dir }),
+    extra: pluginExtra(id, contributes, plugin.ThemeImport),
     status: (requestRemove: () => void) => (
       <PluginStatusNote
         error={error}
-        status={runtime?.status}
+        status={status}
         policyReason={plugin.PolicyBlocked ?? ''}
         waitsFor={runtime?.waitsFor}
         allowed={allowed}
@@ -113,7 +113,7 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
       onClose={onClose}
       tabStrip={<ExtensionsDetailTabStrip active={activeTab} onSelect={setTab} hasSettings={hasSettings} />}
       body={activeTab === 'contributions' ? undefined : (
-        <TabBody tab={activeTab} plugin={plugin} changed={runtime?.status === 'changed'} />
+        <TabBody tab={activeTab} plugin={plugin} changed={status === 'changed'} />
       )}
     />
   )
@@ -154,6 +154,17 @@ function TabBody({ tab, plugin, changed }: { tab: ExtensionDetailTab; plugin: Pl
 type Contributes = PluginInfo['Manifest']['contributes']
 type Translate = (key: string, options?: Record<string, unknown>) => string
 
+function pluginExtra(id: string, contributes: Contributes, themeImport: PluginInfo['ThemeImport']) {
+  const servers = contributes?.mcpServers ?? []
+  if (servers.length === 0 && !themeImport) return undefined
+  return (
+    <Stack direction="vertical" gap="condensed">
+      {servers.length > 0 && <ExtensionsMCPServers pluginId={id} servers={servers} />}
+      {themeImport && <ThemeImportEvidence metadata={themeImport} />}
+    </Stack>
+  )
+}
+
 // What the plugin declares it contributes, in the order the pane lists
 // it. Commands come from the live registry (a plugin registers them at
 // activation, not in the manifest); everything else is manifest-
@@ -181,6 +192,8 @@ function pluginAdds(id: string, contributes: Contributes): ExtensionDetail['adds
   if (captures.length > 0) adds.push({ kind: 'captures', items: captures })
   const secretSources = (contributes?.secretSources ?? []).map((s) => s.label)
   if (secretSources.length > 0) adds.push({ kind: 'secretSources', items: secretSources })
+  const themes = (contributes?.themes ?? []).map((theme) => theme.label)
+  if (themes.length > 0) adds.push({ kind: 'themes', items: themes })
   return adds
 }
 

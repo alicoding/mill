@@ -155,6 +155,7 @@ var pluginIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 // Mill version minMillVersion enforcement compares against.
 type PluginService struct {
 	dir        string
+	installMu  sync.Mutex
 	guardrail  *guardrailsvc.GuardrailService
 	openURL    func(url string) error
 	appVersion string
@@ -288,8 +289,12 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 	info.Warnings = manifestWarnings(m)
 	_, mainErr := os.Stat(filepath.Join(dir, "main.js")) // #nosec G703 -- folder passed pluginIDPattern (no separators, no dots)
 	info.Error = manifestProblem(m, folder, mainErr == nil, p.appVersion)
+	info.DataOnly = info.Error == "" && mainErr != nil && isDataOnlyManifest(m)
 	if info.Error == "" {
 		info.Error = stepsFileProblem(dir, m)
+	}
+	if info.Error == "" {
+		info.ThemeImport = readThemeImportMetadata(dir)
 	}
 	if info.Error == "" {
 		info.Error = secretsFileProblem(dir, m)
@@ -334,7 +339,7 @@ func manifestProblem(m Manifest, folder string, mainJSExists bool, appVersion st
 		return fmt.Sprintf("the manifest id %q must match the folder name %q", m.ID, folder)
 	case strings.TrimSpace(m.Name) == "" || strings.TrimSpace(m.Version) == "":
 		return "the manifest needs a name and a version"
-	case !mainJSExists:
+	case !mainJSExists && !isDataOnlyManifest(m):
 		return "main.js is missing"
 	}
 	for _, c := range m.Capabilities {
@@ -355,6 +360,15 @@ func manifestProblem(m Manifest, folder string, mainJSExists bool, appVersion st
 		return problem
 	}
 	return checkMinMillVersion(m.MinMillVersion, appVersion)
+}
+
+// isDataOnlyManifest is deliberately narrow: themes are the only declared
+// contribution and there is no capability, dependency, or export that could
+// imply executable behavior.
+func isDataOnlyManifest(m Manifest) bool {
+	kinds := contributionKinds(m.Contributes)
+	return len(m.Capabilities) == 0 && len(m.Dependencies) == 0 && len(m.Exports) == 0 &&
+		len(kinds) == 1 && kinds[0] == "themes" && len(m.Contributes.Themes) > 0
 }
 
 // checkMinMillVersion refuses a plugin that declares it needs a newer

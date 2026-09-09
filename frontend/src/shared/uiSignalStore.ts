@@ -24,6 +24,11 @@ interface UISignalState {
   // page's Sources dialog from the palette.
   extensionSourcesRequest: number
   requestExtensionSources: () => void
+  // extensions.importTheme may navigate here from any surface, or keep
+  // the currently selected Extensions tab when it is already open.
+  extensionThemeImportRequest: boolean
+  requestExtensionThemeImport: () => void
+  consumeExtensionThemeImport: () => void
   // extension.update (goal 0349 S5): which extension's update to
   // confirm. Set-then-consume, like configureCreateRequest: the
   // Extensions page's dialog host previews it and shows the prompt.
@@ -348,8 +353,11 @@ interface UISignalState {
 export const useUISignalStore = create<UISignalState>()((set) => ({
   atlasJumpRequest: 0,
   extensionSourcesRequest: 0,
+  extensionThemeImportRequest: false,
   requestAtlasJump: () => set((s) => ({ atlasJumpRequest: s.atlasJumpRequest + 1 })),
   requestExtensionSources: () => set((s) => ({ extensionSourcesRequest: s.extensionSourcesRequest + 1 })),
+  requestExtensionThemeImport: () => set({ extensionThemeImportRequest: true }),
+  consumeExtensionThemeImport: () => set({ extensionThemeImportRequest: false }),
   atlasBoardRequest: 0,
   requestAtlasBoardOpen: () => set((s) => ({ atlasBoardRequest: s.atlasBoardRequest + 1 })),
   atlasOpenCardRequest: null,

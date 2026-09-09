@@ -10,6 +10,7 @@ import { ExtensionsPermissions } from './ExtensionsPermissions'
 import { tierLabelKey, tierVariant, verificationKey } from './extensionTrust'
 import { usePluginPolicy } from '../shared/pluginPolicyStore'
 import { ExtensionsNoticed } from './ExtensionsNoticed'
+import { ThemeImportEvidence } from './ThemeImportEvidence'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './ExtensionsSection.module.css'
 
@@ -104,8 +105,9 @@ export function ExtensionsVerificationTab({ plugin, changed }: {
         )}
       </Stack>
       <Text as="p" size="small" data-testid="extensions-verification-sentence">
-        {t(verificationKey(tier, changed))}
+        {plugin.ThemeImport ? t('extensions.verification.themeFile') : t(verificationKey(tier, changed))}
       </Text>
+      {plugin.ThemeImport && <ThemeImportEvidence metadata={plugin.ThemeImport} compact />}
       {plugin.SigningPolicy && (
         <Text as="p" size="small" className={listStyles.muted}>
           {t(plugin.Signed ? 'extensions.verification.signaturePresent' : 'extensions.verification.signatureMissing')}
