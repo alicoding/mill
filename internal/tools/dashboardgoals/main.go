@@ -151,9 +151,9 @@ func splitFrontmatter(source string) (frontmatter, body string, declared bool, e
 	return "", "", true, errors.New("frontmatter opened with --- but never closed")
 }
 
-func decodeFrontmatter(source string) (map[string]*yaml.Node, error) {
+func decodeFrontmatter(source string) (map[string]yaml.Node, error) {
 	if strings.TrimSpace(source) == "" {
-		return map[string]*yaml.Node{}, nil
+		return map[string]yaml.Node{}, nil
 	}
 
 	var document yaml.Node
@@ -168,22 +168,14 @@ func decodeFrontmatter(source string) (map[string]*yaml.Node, error) {
 		return nil, errors.New("frontmatter must be a mapping")
 	}
 
-	var validated map[string]any
-	if err := root.Decode(&validated); err != nil {
+	fields := make(map[string]yaml.Node, len(root.Content)/2)
+	if err := root.Decode(&fields); err != nil {
 		return nil, err
-	}
-	fields := make(map[string]*yaml.Node, len(root.Content)/2)
-	for i := 0; i < len(root.Content); i += 2 {
-		key := dereference(root.Content[i])
-		if key.Kind != yaml.ScalarNode {
-			return nil, errors.New("frontmatter keys must be scalars")
-		}
-		fields[key.Value] = root.Content[i+1]
 	}
 	return fields, nil
 }
 
-func scalarField(fields map[string]*yaml.Node, key string) (string, error) {
+func scalarField(fields map[string]yaml.Node, key string) (string, error) {
 	value, err := optionalScalarField(fields, key)
 	if err != nil || value == nil {
 		return "", err
@@ -191,36 +183,36 @@ func scalarField(fields map[string]*yaml.Node, key string) (string, error) {
 	return *value, nil
 }
 
-func optionalScalarField(fields map[string]*yaml.Node, key string) (*string, error) {
+func optionalScalarField(fields map[string]yaml.Node, key string) (*string, error) {
 	node, ok := fields[key]
 	if !ok {
 		return nil, nil
 	}
-	node = dereference(node)
-	if node.Tag == "!!null" {
+	resolved := dereference(&node)
+	if resolved.Tag == "!!null" {
 		return nil, nil
 	}
-	if node.Kind != yaml.ScalarNode {
+	if resolved.Kind != yaml.ScalarNode {
 		return nil, fmt.Errorf("field %q must be a scalar or null", key)
 	}
-	value := node.Value
+	value := resolved.Value
 	return &value, nil
 }
 
-func listField(fields map[string]*yaml.Node, key string) ([]any, error) {
+func listField(fields map[string]yaml.Node, key string) ([]any, error) {
 	node, ok := fields[key]
 	if !ok {
 		return []any{}, nil
 	}
-	node = dereference(node)
-	if node.Tag == "!!null" {
+	resolved := dereference(&node)
+	if resolved.Tag == "!!null" {
 		return []any{}, nil
 	}
-	if node.Kind != yaml.SequenceNode {
+	if resolved.Kind != yaml.SequenceNode {
 		return nil, fmt.Errorf("field %q must be a list or null", key)
 	}
-	values := make([]any, 0, len(node.Content))
-	for _, item := range node.Content {
+	values := make([]any, 0, len(resolved.Content))
+	for _, item := range resolved.Content {
 		item = dereference(item)
 		if item.Kind != yaml.ScalarNode {
 			return nil, fmt.Errorf("field %q list items must be scalars", key)

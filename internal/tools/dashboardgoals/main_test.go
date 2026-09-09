@@ -95,6 +95,52 @@ func TestParseGoalHandlesDoubleQuotesCRLFAndComments(t *testing.T) {
 	}
 }
 
+func TestParseGoalAppliesYAMLMergeSemantics(t *testing.T) {
+	tests := map[string]struct {
+		source string
+		id     string
+		status string
+		prs    []any
+		proof  []any
+	}{
+		"inherits fields and lexical id": {
+			source: "---\ndefaults: &base\n  id: 0042\n  status: open\n  prs: [42]\n  proof: [fixture]\n<<: *base\n---\n# Inherited\n",
+			id:     "0042",
+			status: "open",
+			prs:    []any{42},
+			proof:  []any{"fixture"},
+		},
+		"explicit fields override merge": {
+			source: "---\ndefaults: &base {status: open, proof: [fixture]}\n<<: *base\nid: 0043\nstatus: shipped\nproof: [override]\n---\n# Override\n",
+			id:     "0043",
+			status: "shipped",
+			proof:  []any{"override"},
+			prs:    []any{},
+		},
+		"earlier merge sequence wins": {
+			source: "---\nfirst: &first {status: ready, proof: [first]}\nsecond: &second {status: planned, proof: [second], prs: [7]}\n<<: [*first, *second]\nid: 0044\n---\n# Sequence\n",
+			id:     "0044",
+			status: "ready",
+			proof:  []any{"first"},
+			prs:    []any{7},
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			goal, err := parseGoal("0042-merge.md", []byte(test.source))
+			if err != nil {
+				t.Fatalf("parseGoal: %v", err)
+			}
+			if goal.ID != test.id || goal.Status == nil || *goal.Status != test.status {
+				t.Fatalf("merged scalar fields = %#v", goal)
+			}
+			if !reflect.DeepEqual(goal.PRs, test.prs) || !reflect.DeepEqual(goal.Proof, test.proof) {
+				t.Fatalf("merged lists prs=%#v proof=%#v", goal.PRs, goal.Proof)
+			}
+		})
+	}
+}
+
 func TestParseGoalRejectsMalformedYAMLAndKnownFieldShapes(t *testing.T) {
 	tests := map[string]struct {
 		source string
@@ -107,6 +153,7 @@ func TestParseGoalRejectsMalformedYAMLAndKnownFieldShapes(t *testing.T) {
 		"list as scalar":    {source: "---\nid: [0042]\n---\n# Title\n", want: `field "id"`},
 		"mapping list item": {source: "---\nid: 0042\nproof: [{path: x}]\n---\n# Title\n", want: `field "proof"`},
 		"nested list item":  {source: "---\nid: 0042\nproof: [[x]]\n---\n# Title\n", want: `field "proof"`},
+		"duplicate field":   {source: "---\nid: 0042\nid: 0043\n---\n# Title\n", want: "already defined"},
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
