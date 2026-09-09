@@ -70,6 +70,7 @@ func TestDeleteCard_ReparentedBoardObjectLandsClearOfExistingContent(t *testing.
 	reparented := findObject(a, obj.ID)
 	if reparented == nil {
 		t.Fatal("re-parented board object missing from Objects() after its parent card was deleted")
+		return // unreachable -- t.Fatal stops this goroutine; staticcheck's SA5011 doesn't always resolve that without an explicit return
 	}
 	if reparented.ParentID != "" {
 		t.Errorf("reparented.ParentID = %q, want root (EffectiveParentID past the deleted card)", reparented.ParentID)
@@ -93,6 +94,7 @@ func TestDeleteCard_ReparentedBoardObjectLandsClearOfExistingContent(t *testing.
 	restored := findObject(a, obj.ID)
 	if restored == nil {
 		t.Fatal("board object missing from Objects() after undoing the delete")
+		return // unreachable -- t.Fatal stops this goroutine; staticcheck's SA5011 doesn't always resolve that without an explicit return
 	}
 	if restored.Position != (atlas.Position{X: 500, Y: 500}) {
 		t.Errorf("restored.Position = %+v, want the original {500 500}", restored.Position)

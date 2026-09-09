@@ -141,6 +141,7 @@ func TestImportInto_AddRehomesAnOrphanAndCarriesLabelWrappers(t *testing.T) {
 	}
 	if wrapped == nil {
 		t.Fatalf("the wrapped cell did not land: %+v", cells)
+		return // unreachable -- t.Fatalf stops this goroutine; staticcheck's SA5011 doesn't always resolve that without an explicit return
 	}
 	if wrapped.Parent != RootLayerID {
 		t.Errorf("orphan parent = %q, want the default layer", wrapped.Parent)
