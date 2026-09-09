@@ -1,0 +1,7 @@
+{
+  "Issues": [
+    { "FromLinter": "gocognit" },
+    { "FromLinter": "govet" },
+    { "FromLinter": "gocognit" }
+  ]
+}

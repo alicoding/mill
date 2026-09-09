@@ -1,0 +1,4 @@
+{
+  "limit": 500,
+  "exclude_regex": "^(frontend/bindings/|frontend/plugin-sdk/|build/ios/|build/android/|frontend/dist/|frontend/node_modules/)"
+}

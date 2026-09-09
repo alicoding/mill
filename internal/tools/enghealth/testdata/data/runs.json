@@ -1,0 +1,7 @@
+[
+  { "id": 1, "name": "ci-gate", "event": "merge_group", "headBranch": "", "conclusion": "success", "createdAt": "2026-09-07T00:00:00Z", "runStartedAt": "2026-09-07T00:00:00Z", "updatedAt": "2026-09-07T00:30:00Z" },
+  { "id": 2, "name": "ci-gate", "event": "merge_group", "headBranch": "", "conclusion": "failure", "createdAt": "2026-09-08T00:00:00Z", "runStartedAt": "2026-09-08T00:00:00Z", "updatedAt": "2026-09-08T01:00:00Z" },
+  { "id": 3, "name": "ci-gate", "event": "merge_group", "headBranch": "", "conclusion": "success", "createdAt": "2026-08-20T00:00:00Z", "runStartedAt": "2026-08-20T00:00:00Z", "updatedAt": "2026-08-20T00:20:00Z" },
+  { "id": 4, "name": "ci-gate", "event": "push", "headBranch": "main", "conclusion": "success", "createdAt": "2026-09-06T00:00:00Z", "runStartedAt": "2026-09-06T00:00:00Z", "updatedAt": "2026-09-06T00:10:00Z" },
+  { "id": 5, "name": "ci-gate", "event": "push", "headBranch": "main", "conclusion": "success", "createdAt": "2026-08-18T00:00:00Z", "runStartedAt": "2026-08-18T00:00:00Z", "updatedAt": "2026-08-18T00:15:00Z" }
+]

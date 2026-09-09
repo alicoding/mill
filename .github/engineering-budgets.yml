@@ -1,0 +1,23 @@
+# Weekly engineering-health budgets (goal 0413 S1 Decision 1, plus the
+# toolchain-currency thresholds goal 0419 S3 folds in here rather than a
+# separate job). Read by internal/tools/enghealth via gopkg.in/yaml.v3 --
+# never `yq` in workflow bash. S1 is reporting-only: a breach marks
+# status "warning" in the table, it never fails the run (S2 makes a
+# breach open its own tracking issue).
+lead_time_p50_hours_max: 24
+merge_group_p50_minutes_max: 45
+queue_wait_p50_minutes_max: 10
+merge_group_failure_rate_pct_max: 10
+retry_passed_rate_pct_max: 1
+dependabot_pr_age_days_max: 7
+open_goal_prs_max: 6
+files_near_loc_cap_max: 10
+# Mirrors scripts/check-go-coverage.sh's FLOOR and
+# frontend/vite.config.ts's coverage.thresholds.lines at authoring time;
+# raise both together with the real gate when real coverage climbs.
+go_coverage_floor_pct: 75
+vitest_coverage_floor_pct: 12
+go_minors_behind_max: 1
+node_minors_behind_max: 1
+wails_betas_behind_max: 1
+playwright_minors_behind_max: 1

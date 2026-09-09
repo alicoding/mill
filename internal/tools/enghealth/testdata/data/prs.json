@@ -1,0 +1,5 @@
+[
+  { "number": 1, "createdAt": "2026-09-08T10:00:00Z", "mergedAt": "2026-09-08T13:00:00Z" },
+  { "number": 2, "createdAt": "2026-09-05T00:00:00Z", "mergedAt": "2026-09-06T00:00:00Z" },
+  { "number": 3, "createdAt": "2026-08-15T00:00:00Z", "mergedAt": "2026-08-20T00:00:00Z" }
+]
