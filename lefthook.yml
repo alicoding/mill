@@ -336,7 +336,7 @@ pre-commit:
       # go-build-desktop below already build the root package locally,
       # so that requirement (this file's own header comment) already
       # applied before this line did.
-      run: ./scripts/with-gate-lock.sh bash -c 'source scripts/lib/build-env.sh && OUT="$(mktemp -t mill-cover)" && go test . ./internal/... -race -coverprofile="$OUT" && bash scripts/check-go-coverage.sh "$OUT"'
+      run: ./scripts/with-gate-lock.sh bash -c 'source scripts/lib/build-env.sh && OUT="$(mktemp "${TMPDIR:-/tmp}/mill-cover.XXXXXX")" && go test . ./internal/... -race -coverprofile="$OUT" && bash scripts/check-go-coverage.sh "$OUT"'
     - name: go-build-desktop
       glob: "*.go"
       # scripts/lib/build-env.sh: see go-vet's own comment -- this is

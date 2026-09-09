@@ -13,7 +13,9 @@ cd "$(git rev-parse --show-toplevel)"
 # shellcheck source=lib/build-env.sh
 . scripts/lib/build-env.sh
 
-out="$(mktemp -t mill-build-warnings)"
+# mktemp with an explicit XXXXXX template: BSD mktemp accepts `-t prefix`
+# but GNU mktemp (the Linux runners) rejects a template without X's.
+out="$(mktemp "${TMPDIR:-/tmp}/mill-build-warnings.XXXXXX")"
 trap 'rm -f "$out"' EXIT
 
 status=0

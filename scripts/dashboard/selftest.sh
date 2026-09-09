@@ -8,9 +8,10 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/../.." && pwd)"
-tmp_out="$(mktemp -t dashboard-selftest-XXXXXX.json)"
-tmp_html="$(mktemp -t dashboard-selftest-XXXXXX.html)"
-trap 'rm -f "$tmp_out" "$tmp_html"' EXIT
+tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/dashboard-selftest.XXXXXX")"
+tmp_out="$tmp_dir/out.json"
+tmp_html="$tmp_dir/out.html"
+trap 'rm -rf "$tmp_dir"' EXIT
 
 "$repo_root/scripts/dashboard/derive.sh" "$tmp_out" >/dev/null
 
@@ -70,8 +71,7 @@ fi
 # invariant 5: turns-per-goal.sh's counting logic against the committed
 # synthetic fixtures (fixtures/turns/session-{a,b}.jsonl -- no real
 # transcript text, see turns-per-goal.sh's own no-storage discipline)
-tmp_turns="$(mktemp -t dashboard-selftest-turns-XXXXXX.json)"
-trap 'rm -f "$tmp_out" "$tmp_html" "$tmp_turns"' EXIT
+tmp_turns="$tmp_dir/turns.json"
 "$repo_root/scripts/dashboard/turns-per-goal.sh" \
   "$repo_root/scripts/dashboard/fixtures/turns" "$tmp_turns" >/dev/null
 

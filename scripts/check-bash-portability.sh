@@ -32,6 +32,12 @@ allow_marker='bash4-ok -- '
 # (never followed by a second &, unlike the real operator). ;;&: case
 # fallthrough-and-keep-testing.
 bash4_patterns='\bmapfile\b|\breadarray\b|\bcoproc\b|(declare|local)[[:space:]]+-[a-zA-Z]*A\b|\$\{[A-Za-z_][A-Za-z0-9_]*(\^\^|\^|,,|,)|&>>|\|&([^&]|$)|;;&'
+# mktemp -t: BSD mktemp treats the argument as a prefix; GNU mktemp (the
+# Linux runners) treats it as a template and rejects one without trailing
+# X's -- a script that passes on a Mac dies on ubuntu (the #853 class).
+# The portable form is an explicit path template:
+#   mktemp "${TMPDIR:-/tmp}/name.XXXXXX"   (or mktemp -d ... for a dir)
+divergent_patterns='\bmktemp[[:space:]]+-t\b'
 
 violations=0
 while IFS= read -r -d '' file; do
@@ -39,6 +45,18 @@ while IFS= read -r -d '' file; do
     continue
   fi
   hits="$(grep -nE -- "$bash4_patterns" "$file" || true)"
+  if [[ -n "$hits" ]]; then
+    while IFS= read -r hit; do
+      lineno="${hit%%:*}"
+      linetext="${hit#*:}"
+      if [[ "$linetext" == *"$allow_marker"* ]]; then
+        continue
+      fi
+      echo "bash-portability: $file:$lineno: bash-4-only construct -- $linetext"
+      violations=$((violations + 1))
+    done <<<"$hits"
+  fi
+  hits="$(grep -nE -- "$divergent_patterns" "$file" || true)"
   [[ -z "$hits" ]] && continue
   while IFS= read -r hit; do
     lineno="${hit%%:*}"
@@ -46,7 +64,7 @@ while IFS= read -r -d '' file; do
     if [[ "$linetext" == *"$allow_marker"* ]]; then
       continue
     fi
-    echo "bash-portability: $file:$lineno: bash-4-only construct -- $linetext"
+    echo "bash-portability: $file:$lineno: BSD/GNU-divergent construct (use mktemp with an explicit XXXXXX path template) -- $linetext"
     violations=$((violations + 1))
   done <<<"$hits"
 done < <(git ls-files -z -- 'scripts/*.sh' 'scripts/**/*.sh' 'build/**/*.sh')
