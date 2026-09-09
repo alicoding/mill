@@ -164,9 +164,8 @@ test('a plugin whose files change after it was allowed stops running until allow
 			hasText: 'its files changed since you allowed it. Allow it again on its row',
 		})
 		await expect(refusal).toBeVisible()
-		// Scoped to the refusal itself: a changed plugin also raises its
-		// own review notice now (goal 0420), so the bare pushed-notice
-		// locator matches more than one element here.
+		// Scoped to the refusal itself: more than one pushed notice can be
+		// showing at once, so the bare pushed-notice locator is ambiguous.
 		await expect(refusal).not.toContainText(' -- ')
 
 		await detail.getByTestId('extensions-plugin-allow').click()
