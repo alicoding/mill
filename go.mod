@@ -1,8 +1,8 @@
 module github.com/alicoding/mill
 
-go 1.26
+go 1.27
 
-toolchain go1.26.8
+toolchain go1.27.1
 
 require (
 	aead.dev/minisign v0.3.0
