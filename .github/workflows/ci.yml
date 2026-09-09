@@ -197,6 +197,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-agent-definitions.sh
 
+  # Fixture-tests the gate above (goal 0414 S2), same shape as
+  # review-report-selftest.
+  agent-definitions-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-agent-definitions-selftest.sh
+
   # Mirrors lefthook.yml's own framework-api-first job -- same script
   # (.claude/rules/architecture.md's "reading its whole API" paragraph is
   # the standard it enforces). Grep-only against go.mod, so like
@@ -1330,6 +1339,7 @@ jobs:
       - workflow-lint
       - comment-hygiene
       - agent-definitions
+      - agent-definitions-selftest
       - framework-api-first
       - framework-api-first-selftest
       - bash-portability

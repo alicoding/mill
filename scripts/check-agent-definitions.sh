@@ -22,6 +22,21 @@ violations=0
 # never routed around via a different tool.
 blocked_action_sentinel='A permission-blocked or classifier-blocked action is reported to the orchestrator, never worked around by another route'
 
+# goal 0414 S2 sentinels: fixed phrases each fix moved into the
+# relevant agent body, checked here instead of trusted to survive a
+# future edit unnoticed.
+subagent_allow_sentinel='only sub-agents you may spawn are reviewer, explorer, research'
+subagent_never_sentinel='never `fork`, never `general-purpose`'
+readonly_bash_sentinel='is for read-only commands only'
+review_report_script_sentinel='scripts/check-review-report.sh'
+review_report_ok_sentinel='review-report: ok'
+poll_forbidden_sentinel='Poll loops are forbidden past this point'
+pgrep_own_shell_sentinel="excludes the caller's own shell"
+worktree_busy_sentinel='names the holding process'
+budget_cumulative_sentinel='CUMULATIVE across resumes'
+budget_resume_cap_sentinel='at most two resumes per brief'
+closeout_batch_sentinel='at most 3 merged PRs per batch'
+
 # A required phrase can wrap across a markdown line break in the body
 # prose, so both matchers check against the file with newlines folded
 # to single spaces, never a per-line grep.
@@ -37,6 +52,18 @@ require_regex() {
   local file="$1" pattern="$2" label="$3"
   if ! tr '\n' ' ' <"$file" | tr -s ' ' | grep -qiE "$pattern"; then
     echo "agent-definitions: $file: missing required phrase -- $label"
+    violations=$((violations + 1))
+  fi
+}
+
+# maxTurns is a size-class contract (goal 0414 S2, README.md's table) --
+# checked against the raw frontmatter block, never the folded whole-file
+# text the two helpers above use, since a `^` anchor against a
+# single-line fold only ever matches the file's first character.
+require_maxturns() {
+  local file="$1" frontmatter_text="$2" want="$3"
+  if ! grep -qE "^maxTurns: *${want}\$" <<<"$frontmatter_text"; then
+    echo "agent-definitions: $file: maxTurns must be $want for its size class (see .claude/agents/README.md)"
     violations=$((violations + 1))
   fi
 }
@@ -67,18 +94,55 @@ while IFS= read -r -d '' file; do
       require_fixed "$file" 'own the PR to merge' "own the PR to merge"
       require_regex "$file" 'timeout:? *600000' "timeout 600000"
       require_fixed "$file" "$blocked_action_sentinel" "blocked-action sentinel"
+      require_fixed "$file" "$subagent_allow_sentinel" "read-only sub-agent allowlist"
+      require_fixed "$file" "$subagent_never_sentinel" "never fork/general-purpose"
+      require_fixed "$file" "$review_report_script_sentinel" "pre-PR check-review-report.sh call"
+      require_fixed "$file" "$review_report_ok_sentinel" "review-report: ok gate"
+      require_fixed "$file" "$poll_forbidden_sentinel" "poll loops forbidden after arming auto-merge"
+      require_fixed "$file" "$pgrep_own_shell_sentinel" "pgrep excludes caller's own shell"
+      require_fixed "$file" "$worktree_busy_sentinel" "worktree busy check names the holding process"
+      require_fixed "$file" "$budget_cumulative_sentinel" "cumulative budget across resumes"
+      require_fixed "$file" "$budget_resume_cap_sentinel" "at most two resumes per brief"
+      require_maxturns "$file" "$frontmatter" 150
       ;;
     pr-shepherd.md)
       require_fixed "$file" 'never rebase + force-push' "never rebase + force-push"
       require_fixed "$file" "$blocked_action_sentinel" "blocked-action sentinel"
+      require_fixed "$file" "$subagent_allow_sentinel" "read-only sub-agent allowlist"
+      require_fixed "$file" "$subagent_never_sentinel" "never fork/general-purpose"
+      require_fixed "$file" "$pgrep_own_shell_sentinel" "pgrep excludes caller's own shell"
+      require_fixed "$file" "$worktree_busy_sentinel" "worktree busy check names the holding process"
+      require_fixed "$file" "$budget_cumulative_sentinel" "cumulative budget across resumes"
+      require_fixed "$file" "$budget_resume_cap_sentinel" "at most two resumes per brief"
+      require_maxturns "$file" "$frontmatter" 100
       ;;
     closeout.md)
       require_fixed "$file" 'single-writer' "docs-repo single-writer rules"
       require_fixed "$file" "$blocked_action_sentinel" "blocked-action sentinel"
+      require_fixed "$file" "$closeout_batch_sentinel" "batches of at most 3 merged PRs"
+      require_fixed "$file" "$budget_cumulative_sentinel" "cumulative budget across resumes"
+      require_fixed "$file" "$budget_resume_cap_sentinel" "at most two resumes per brief"
+      require_maxturns "$file" "$frontmatter" 40
       ;;
     verifier.md)
       require_fixed "$file" 'state matrix' "installed-app state-matrix pass"
       require_fixed "$file" "$blocked_action_sentinel" "blocked-action sentinel"
+      require_fixed "$file" "$subagent_allow_sentinel" "read-only sub-agent allowlist"
+      require_fixed "$file" "$subagent_never_sentinel" "never fork/general-purpose"
+      require_fixed "$file" "$budget_cumulative_sentinel" "cumulative budget across resumes"
+      require_fixed "$file" "$budget_resume_cap_sentinel" "at most two resumes per brief"
+      require_maxturns "$file" "$frontmatter" 60
+      ;;
+    reviewer.md)
+      require_fixed "$file" '## Review' "gate-grammar template heading"
+      require_regex "$file" '(important|nit|pre-existing) — ' "severity-tagged finding grammar"
+      require_fixed "$file" 'Contract match: yes|no —' "Contract match line"
+      require_fixed "$file" 'Important findings open:' "Important findings open line"
+      require_fixed "$file" "$readonly_bash_sentinel" "explicit read-only Bash line"
+      require_maxturns "$file" "$frontmatter" 40
+      ;;
+    explorer.md|research.md)
+      require_fixed "$file" "$readonly_bash_sentinel" "explicit read-only Bash line"
       ;;
   esac
 done < <(find "$agents_dir" -maxdepth 1 -name '*.md' -print0 | sort -z)

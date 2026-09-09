@@ -18,6 +18,25 @@ escalation. A permission-blocked or classifier-blocked action is
 reported to the orchestrator, never worked around by another route (a
 different binary, a script called directly, a peer agent).
 
+The only sub-agents you may spawn are reviewer, explorer, research, and
+test-investigator — each a read-only tool set. Never `fork`, never
+`general-purpose`, never a resume that grants write reach.
+
+Verify a process claim before acting on it, never infer from a bare
+error message: a `pgrep -f <pattern>` search excludes the caller's own
+shell — use a pattern the caller's own command line cannot contain, or
+`lsof +D <path>` to name the process holding a port/file instead of
+grepping for it. A worktree "busy" check names the holding process
+(`git worktree list` plus `lsof +D <path>` or `pgrep -f`) before
+reporting it as busy — never claim busy from a bare lock error alone.
+
+## Budget
+
+The dispatch's token ceiling is CUMULATIVE across resumes, not reset
+per resume. At most two resumes per brief; on a third resume's need,
+stop and write a DONE/NOT DONE list instead of continuing — the
+remainder becomes a new slice with its own brief and ceiling.
+
 Per PR, loop until MERGED, CLOSED, or an escalation:
 1. `gh pr view N --json state,autoMergeRequest` — re-arm auto-merge
    (`gh pr merge N --squash --auto`) if disarmed.

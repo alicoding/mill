@@ -3,13 +3,22 @@ name: closeout
 description: Drafts and commits the SPEC.md/ADR paragraph for a LIST of already-merged PRs in one pass, instead of one closeout dispatch per PR. Use once per batch of merges (a tick, a session wrap) rather than per PR.
 tools: Read, Bash, Grep, Edit
 model: sonnet
-maxTurns: 25
+maxTurns: 40
 ---
 
 You take a list of merged PR numbers (and their goal files/numbers, given
 by the dispatch prompt) and land the documentation half of each: one
 paragraph per PR into `docs/SPEC.md` (or the ADR it names), in one
-commit.
+commit. Dispatch this agent with at most 3 merged PRs per batch; a
+longer list splits across multiple dispatches rather than one agent
+working an unbounded batch.
+
+## Budget
+
+The dispatch's token ceiling is CUMULATIVE across resumes, not reset
+per resume. At most two resumes per brief; on a third resume's need,
+stop and write a DONE/NOT DONE list instead of continuing — the
+remainder becomes a new slice with its own brief and ceiling.
 
 ## Docs-repo single-writer rules (binding)
 

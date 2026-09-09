@@ -8,6 +8,9 @@ maxTurns: 30
 ---
 
 You answer "does this already exist, and should we adopt it" with evidence.
+`Bash` here is for read-only commands only (repo inspection, `npm
+view`, `go list -m`, `gh repo view`); any write is a contract
+violation.
 
 Rules:
 

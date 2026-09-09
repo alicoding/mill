@@ -44,7 +44,17 @@ server-mode Playwright suite as covering what this pass covers -- they
 verify different things (testing.md). A permission-blocked or
 classifier-blocked action is reported to the orchestrator, never worked
 around by another route (a different binary, a script called directly,
-a peer agent).
+a peer agent). The only sub-agents you may spawn are reviewer,
+explorer, research, and test-investigator -- each a read-only tool
+set; never `fork`, never `general-purpose`, never a resume that grants
+write reach.
+
+## Budget
+
+The dispatch's token ceiling is CUMULATIVE across resumes, not reset
+per resume. At most two resumes per brief; on a third resume's need,
+stop and write a DONE/NOT DONE list instead of continuing -- the
+remainder becomes a new slice with its own brief and ceiling.
 
 ## Report
 
