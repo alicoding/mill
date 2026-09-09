@@ -56,6 +56,8 @@ func WireSecrets(vaultPath, backupDir string, credentials credential.Store, stor
 	// live file watch that re-arms whenever a source is created,
 	// edited or deleted.
 	configureService.SetSecretUnresolvedLookup(secretService.SecretRefUnresolved)
+	// Goal 0406: the in-Trash preflight check.
+	configureService.SetSecretTrashedLookup(secretService.SecretRefTrashed)
 	configureService.SetSecretSourcesChanged(secretService.RearmSourceWatches)
 	// Goal 0367: the seeded example dotenv source materializes its own
 	// file beside the vault's own data (the per-worker temp dir under

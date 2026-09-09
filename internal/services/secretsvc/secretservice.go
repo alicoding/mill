@@ -128,14 +128,24 @@ type SecretService struct {
 	watchMu          sync.Mutex
 	sourceWatches    map[string]*filewatch.Binding
 	sourceDebouncers map[string]*time.Timer
+	// trashMu guards lastTrashSweep (secretservice_trash.go, goal
+	// 0406) -- read/written from both the poll goroutine (every
+	// trashSweepInterval) and OnUnlock's own hook, which runs on
+	// whichever goroutine called UnlockVault.
+	trashMu        sync.Mutex
+	lastTrashSweep time.Time
 }
 
 // NewSecretService constructs the service and starts the auto-lock poll
 // loop immediately -- same "ready to use, no second init step" shape as
-// NewConfigureService.
+// NewConfigureService. The Trash retention sweep (goal 0406) rides the
+// same poll goroutine and runs once more right after every unlock, so a
+// vault that was closed across the whole retention window still catches
+// up the moment it opens.
 func NewSecretService(vault secretvault.Vault, credentials credential.Store, store settings.Store) *SecretService {
 	s := &SecretService{vault: vault, credentials: credentials, settings: store}
 	s.stopAutoLock = s.startAutoLock(autoLockPollInterval)
+	s.OnUnlock(s.sweepTrashNow)
 	return s
 }
 

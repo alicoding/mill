@@ -357,6 +357,55 @@ func TestValidateGraph_UnresolvedSecret_WillFailNamingFirstOnly(t *testing.T) {
 	}
 }
 
+// Goal 0406: a vault-backed reference currently sitting in Trash is a
+// WillFail warning naming it distinctly from an unresolved
+// source-backed reference, and only the FIRST one across the graph is
+// ever reported -- the same "first only" reasoning
+// TestValidateGraph_UnresolvedSecret_WillFailNamingFirstOnly pins.
+func TestValidateGraph_TrashedSecret_WillFailNamingFirstOnly(t *testing.T) {
+	SetSecretTrashedCheck(func(requestID string) (bool, string) {
+		switch requestID {
+		case "req-a":
+			return true, "Bank Token"
+		case "req-b":
+			return true, "Other Token"
+		}
+		return false, ""
+	})
+	defer SetSecretTrashedCheck(nil)
+
+	nodes := []Node{
+		{ID: "t1", Kind: KindTrigger, NodeTypeID: "trigger-manual", Config: map[string]string{}},
+		{ID: "n1", Kind: KindProcess, NodeTypeID: "integration-http", Config: map[string]string{"requestId": "req-a"}},
+		{ID: "n2", Kind: KindProcess, NodeTypeID: "integration-http", Config: map[string]string{"requestId": "req-b"}},
+	}
+	edges := []Edge{{ID: "e1", Source: "t1", Target: "n1"}, {ID: "e2", Source: "n1", Target: "n2"}}
+	var willFail []Issue
+	for _, is := range ValidateGraph(nodes, edges, nil) {
+		if is.WillFail {
+			willFail = append(willFail, is)
+		}
+	}
+	if len(willFail) != 1 {
+		t.Fatalf("WillFail issues = %d, want exactly the first trashed reference: %v", len(willFail), willFail)
+	}
+	if willFail[0].NodeID != "n1" {
+		t.Errorf("NodeID = %q, want n1 (the first node with the trashed reference)", willFail[0].NodeID)
+	}
+	if !strings.Contains(willFail[0].Message, "Bank Token") || !strings.Contains(willFail[0].Message, "Trash") {
+		t.Errorf("message = %q, want it to name the entry and Trash", willFail[0].Message)
+	}
+
+	// A request whose reference isn't trashed stays clean.
+	nodes[1].Config["requestId"] = "req-ok"
+	nodes[2].Config["requestId"] = "req-ok"
+	for _, is := range ValidateGraph(nodes, edges, nil) {
+		if is.WillFail {
+			t.Errorf("live request flagged: %+v", is)
+		}
+	}
+}
+
 // Goal 0347: a declared Default applies to attributesEnv's env only
 // when the run supplies nothing at all for that key -- an explicit
 // value (including "") always wins, and an undeclared Default (the Go

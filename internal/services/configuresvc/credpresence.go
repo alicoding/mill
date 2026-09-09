@@ -96,3 +96,35 @@ func (c *ConfigureService) RequestSecretUnresolved(requestID string) (unresolved
 	}
 	return lookup(ref)
 }
+
+// RequestSecretTrashed is graph validation's in-Trash seam
+// (composition.SetSecretTrashedCheck, goal 0406): trashed=true only
+// when the request EXISTS, names a secret reference, and that
+// reference is a vault entry currently sitting in Trash -- the same
+// "exists, names one, and it's currently unusable" shape
+// RequestSecretUnresolved gives a source-backed reference.
+//
+//wails:ignore
+func (c *ConfigureService) RequestSecretTrashed(requestID string) (trashed bool, label string) {
+	c.mu.Lock()
+	var (
+		found bool
+		r     httprequest.HTTPRequest
+	)
+	for _, req := range c.requests {
+		if req.ID == requestID {
+			r, found = req, true
+			break
+		}
+	}
+	lookup := c.secretTrashedLookup
+	c.mu.Unlock()
+	if !found || lookup == nil {
+		return false, ""
+	}
+	ref := strings.TrimSpace(requestOwnSecretRef(r))
+	if ref == "" {
+		return false, ""
+	}
+	return lookup(ref)
+}

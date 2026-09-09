@@ -119,13 +119,13 @@ func (s *SecretService) UpdateSecret(id, title, username, password, url, notes s
 	return updated, nil
 }
 
-// DeleteSecret permanently removes id (and its history) -- no undo.
+// DeleteSecret moves id into Trash (goal 0406) -- recoverable for
+// TrashRetention via RestoreSecret, or permanently removed sooner via
+// DestroySecret. The RPC name stays "Delete" (what the row's own
+// action is still called); TrashSecret carries the real behavior and
+// its own audit line.
 func (s *SecretService) DeleteSecret(id string) error {
-	if err := s.vault.Delete(id); err != nil {
-		return err
-	}
-	dataevent.Emit("secret", id)
-	return nil
+	return s.TrashSecret(id)
 }
 
 // RedactKnownSecrets scrubs every currently-stored password out of

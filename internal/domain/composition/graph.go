@@ -333,6 +333,7 @@ func ValidateGraph(nodes []Node, edges []Edge, attrs []AttributeDef) []Issue {
 	issues = append(issues, validateRequiredRefs(nodes)...)
 	issues = append(issues, validateCredentialGaps(nodes)...)
 	issues = append(issues, validateUnresolvedSecrets(nodes)...)
+	issues = append(issues, validateTrashedSecrets(nodes)...)
 	// The step I/O contract (ADR-0042, payloadkind.go): every edge's
 	// upstream effective produce kind must satisfy the downstream's
 	// Consumes declaration -- the server-side mirror of the canvas's

@@ -81,17 +81,17 @@ const (
 // package directly, same reasoning as CompositionService's Syncer
 // interface for TriggerService.
 type ConfigureService struct {
-	mu                 sync.Mutex
-	undo               deleteUndo
-	store              settings.Store
-	credentials        credential.Store
-	requests           []httprequest.HTTPRequest
-	lists              []list.List
-	mcpServers         []mcpserver.MCPServer
-	decisions          []decision.Decision
-	execEnvs           []execenv.ExecEnv
-	environments       []environment.Environment
-	secretSources      []secretsource.Source
+	mu            sync.Mutex
+	undo          deleteUndo
+	store         settings.Store
+	credentials   credential.Store
+	requests      []httprequest.HTTPRequest
+	lists         []list.List
+	mcpServers    []mcpserver.MCPServer
+	decisions     []decision.Decision
+	execEnvs      []execenv.ExecEnv
+	environments  []environment.Environment
+	secretSources []secretsource.Source
 	// seedAssetsDir is where a file-backed seed asset (goal 0367's
 	// example dotenv file) is written; empty until wiring provides it,
 	// and the asset-backed golden stays unseeded until then (atlas's
@@ -122,6 +122,13 @@ type ConfigureService struct {
 	// exists. Defaults to reporting nothing unresolved, so a check run
 	// before wiring completes never blocks a run on a false positive.
 	secretUnresolvedLookup func(ref string) (unresolved bool, key, sourceLabel string)
+	// secretTrashedLookup answers whether a vault-backed reference
+	// currently names an entry in Trash (goal 0406) -- RequestSecretTrashed's
+	// own seam, wired late via SetSecretTrashedLookup once secretsvc
+	// exists. Defaults to reporting nothing trashed, the same
+	// never-block-on-a-false-positive-before-wiring posture
+	// secretUnresolvedLookup gives.
+	secretTrashedLookup func(ref string) (trashed bool, label string)
 	// secretSourcesChanged tells secretsvc's watch set to recompute
 	// itself (goal 0408 S1) after a secret source is created, edited or
 	// deleted -- wired late via SetSecretSourcesChanged, nil-safe no-op
@@ -182,6 +189,16 @@ func (c *ConfigureService) SetSecretResolver(fn func(id string, actx secretaudit
 //wails:ignore
 func (c *ConfigureService) SetSecretUnresolvedLookup(fn func(ref string) (unresolved bool, key, sourceLabel string)) {
 	c.secretUnresolvedLookup = fn
+}
+
+// SetSecretTrashedLookup wires RequestSecretTrashed's own check to
+// secretsvc.SecretService's SecretRefTrashed (goal 0406) -- called once
+// from main.go after that service exists, same pattern as
+// SetSecretUnresolvedLookup.
+//
+//wails:ignore
+func (c *ConfigureService) SetSecretTrashedLookup(fn func(ref string) (trashed bool, label string)) {
+	c.secretTrashedLookup = fn
 }
 
 // SetSecretSourcesChanged wires secret-source create/update/delete to

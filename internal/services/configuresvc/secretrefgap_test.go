@@ -55,3 +55,49 @@ func TestRequestSecretUnresolved_NamesTheGoneKeyOnlyWhenTheSourceStillExists(t *
 		t.Error("an unset reference reported unresolved")
 	}
 }
+
+// TestRequestSecretTrashed_NamesTheTrashedEntryOnlyWhenTheLookupSaysSo
+// mirrors TestRequestSecretUnresolved's own shape for the in-Trash
+// check (goal 0406): trashed=true only when the request exists,
+// carries a set secret reference, AND the wired lookup reports it
+// trashed.
+func TestRequestSecretTrashed_NamesTheTrashedEntryOnlyWhenTheLookupSaysSo(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	req, err := cfg.CreateHTTPRequest("Bearer example", "https://example.com", "GET", "", httprequest.AuthBearer,
+		"vault:abc123", nil, "", nil, nil, "")
+	if err != nil {
+		t.Fatalf("CreateHTTPRequest: %v", err)
+	}
+
+	// The seam is unwired: never blocks a run on a false positive.
+	if trashed, _ := cfg.RequestSecretTrashed(req.ID); trashed {
+		t.Error("an unwired lookup must never report trashed")
+	}
+
+	var asked string
+	cfg.SetSecretTrashedLookup(func(ref string) (bool, string) {
+		asked = ref
+		return ref == "vault:abc123", "Bank Token"
+	})
+
+	trashed, label := cfg.RequestSecretTrashed(req.ID)
+	if !trashed || label != "Bank Token" {
+		t.Fatalf("RequestSecretTrashed = %v, %q, want true, Bank Token", trashed, label)
+	}
+	if asked != "vault:abc123" {
+		t.Errorf("lookup asked about %q, want the request's own reference", asked)
+	}
+
+	if trashed, _ := cfg.RequestSecretTrashed("no-such-request"); trashed {
+		t.Error("an unknown request reported trashed")
+	}
+
+	unset, err := cfg.CreateHTTPRequest("No secret yet", "https://example.com", "GET", "", httprequest.AuthBearer,
+		"", nil, "", nil, nil, "")
+	if err != nil {
+		t.Fatalf("CreateHTTPRequest: %v", err)
+	}
+	if trashed, _ := cfg.RequestSecretTrashed(unset.ID); trashed {
+		t.Error("an unset reference reported trashed")
+	}
+}

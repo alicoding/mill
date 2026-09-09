@@ -17,5 +17,6 @@ export type {
     SecretAccessRecord,
     SourcesChanged,
     SourcesLister,
-    Status
+    Status,
+    TrashSummary
 } from "./models.js";

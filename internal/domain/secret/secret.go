@@ -119,3 +119,15 @@ func validateFields(fields []Field) error {
 func (e Entry) ToSummary() Summary {
 	return Summary{ID: e.ID, Title: e.Title, Username: e.Username, URL: e.URL, Tags: NormalizeTags(e.Tags), FieldNames: FieldNames(e.Fields), Kind: NormalizeKind(string(e.Kind)), SourceRef: e.SourceRef, Origin: e.Origin, UpdatedAt: e.UpdatedAt}
 }
+
+// TrashSummary is a trashed entry's own row (goal 0406): label, kind
+// and when it was trashed -- never Password/Notes, the same
+// masked-by-construction discipline Summary already gives. ExpiresAt
+// is computed by the caller that knows the retention window
+// (secretsvc owns TrashRetention, not this adapter-facing shape).
+type TrashSummary struct {
+	ID        string
+	Title     string
+	Kind      Kind
+	DeletedAt time.Time
+}

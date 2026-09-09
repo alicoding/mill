@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/localauth"
@@ -105,7 +106,14 @@ func (f *fakeVault) Upsert(e secret.Entry) (secret.Entry, error) {
 	}
 	return e, nil
 }
-func (f *fakeVault) Delete(string) error { return nil }
+func (f *fakeVault) Delete(string) error                       { return nil }
+func (f *fakeVault) TrashEntry(string) error                   { return nil }
+func (f *fakeVault) RestoreEntry(string) error                 { return nil }
+func (f *fakeVault) DestroyEntry(string) error                 { return nil }
+func (f *fakeVault) ListTrash() ([]secret.TrashSummary, error) { return nil, nil }
+func (f *fakeVault) SweepTrash(time.Time, time.Duration) ([]secret.TrashSummary, error) {
+	return nil, nil
+}
 
 func mustKey(t *testing.T) []byte {
 	t.Helper()

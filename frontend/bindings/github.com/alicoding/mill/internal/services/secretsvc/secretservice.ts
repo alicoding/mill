@@ -99,10 +99,22 @@ export function DebugCorruptVaultKeyForTests(): $CancellablePromise<void> {
 }
 
 /**
- * DeleteSecret permanently removes id (and its history) -- no undo.
+ * DeleteSecret moves id into Trash (goal 0406) -- recoverable for
+ * TrashRetention via RestoreSecret, or permanently removed sooner via
+ * DestroySecret. The RPC name stays "Delete" (what the row's own
+ * action is still called); TrashSecret carries the real behavior and
+ * its own audit line.
  */
 export function DeleteSecret(id: string): $CancellablePromise<void> {
     return $Call.ByID(2164504395, id);
+}
+
+/**
+ * DestroySecret permanently removes a TRASHED entry -- "Delete
+ * forever," reachable only from the Trash section.
+ */
+export function DestroySecret(id: string): $CancellablePromise<void> {
+    return $Call.ByID(3047920698, id);
 }
 
 /**
@@ -190,6 +202,14 @@ export function ListSecrets(): $CancellablePromise<secret$0.Summary[] | null> {
 }
 
 /**
+ * ListTrash lists every currently-trashed entry, most recently trashed
+ * first -- the Trash section's own read.
+ */
+export function ListTrash(): $CancellablePromise<$models.TrashSummary[] | null> {
+    return $Call.ByID(3527755490);
+}
+
+/**
  * LockVault discards the in-memory decrypted vault -- manual lock, same
  * effect as auto-lock firing.
  */
@@ -235,6 +255,13 @@ export function RedactKnownSecrets(text: string): $CancellablePromise<string> {
  */
 export function ResetVault(): $CancellablePromise<void> {
     return $Call.ByID(2341448377);
+}
+
+/**
+ * RestoreSecret moves a trashed entry back to its original group.
+ */
+export function RestoreSecret(id: string): $CancellablePromise<void> {
+    return $Call.ByID(1728950594, id);
 }
 
 /**
@@ -336,6 +363,15 @@ export function SetupVault(): $CancellablePromise<void> {
  */
 export function SourceProblems(): $CancellablePromise<{ [_ in string]?: string } | null> {
     return $Call.ByID(2210922477);
+}
+
+/**
+ * TrashSecret moves id into the vault's Recycle Bin (goal 0406) --
+ * what the Secrets view's row "Delete" and the Trash section's own
+ * "Delete" both do; the entry stays recoverable for TrashRetention.
+ */
+export function TrashSecret(id: string): $CancellablePromise<void> {
+    return $Call.ByID(3058654570, id);
 }
 
 /**

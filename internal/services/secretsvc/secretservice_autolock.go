@@ -66,6 +66,7 @@ func (s *SecretService) autoLockTick() {
 	if !s.vault.Unlocked() {
 		return
 	}
+	s.trashSweepTick()
 	threshold := s.lockAfterDuration()
 	if threshold <= 0 {
 		return
