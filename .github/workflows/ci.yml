@@ -49,6 +49,12 @@ jobs:
       pull-requests: read
     outputs:
       code: ${{ steps.decide.outputs.code }}
+      go: ${{ steps.decide.outputs.go }}
+      frontend: ${{ steps.decide.outputs.frontend }}
+      e2e: ${{ steps.decide.outputs.e2e }}
+      plugins: ${{ steps.decide.outputs.plugins }}
+      workflows: ${{ steps.decide.outputs.workflows }}
+      docs: ${{ steps.decide.outputs.docs }}
     steps:
       # dorny/paths-filter fetches the changed-file list via the GitHub
       # REST API for pull_request events -- no actions/checkout needed.
@@ -63,7 +69,20 @@ jobs:
           # positive rule (it does, via '**') AND match none of the
           # negated ones -- i.e. true only if some changed file is
           # outside docs/**, *.md (any depth), .claude/**, and LICENSE.
+          # This quantifier is a step-level setting shared by every
+          # filter below -- harmless for the others (goal 0401's finer
+          # filters carry no negated rule, so some-with-excludes behaves
+          # identically to the 'some' default for them).
           predicate-quantifier: 'some-with-excludes'
+          # Mill is one Go module plus one npm package -- a single flat
+          # dependency graph, not a monorepo workspace of independently
+          # versioned packages (Turborepo/Nx compute affected-ness over
+          # THAT graph; there is none here to compute over, per goal
+          # 0401's precedent research). These hand-listed globs are the
+          # only hand-maintained routing left: the two advisory jobs
+          # below compute real package/test-level affected-ness from
+          # `go`/`frontend`'s coarse booleans instead of finer hand-kept
+          # globs of their own.
           filters: |
             code:
               - '**'
@@ -71,19 +90,58 @@ jobs:
               - '!**/*.md'
               - '!.claude/**'
               - '!LICENSE'
-      - name: Decide code output
+            go:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+            frontend:
+              - 'frontend/src/**'
+              - 'frontend/index.html'
+              - 'frontend/package.json'
+              - 'frontend/package-lock.json'
+              - 'frontend/*.config.*'
+              - 'frontend/tsconfig*.json'
+            e2e:
+              - 'frontend/e2e/**'
+            plugins:
+              - 'examples/plugins/**'
+              - 'frontend/plugin-sdk/**'
+            workflows:
+              - '.github/**'
+            docs:
+              - 'docs/**'
+              - '**/*.md'
+              - '.claude/**'
+              - 'LICENSE'
+      - name: Decide filter outputs
         id: decide
         run: |
           # paths-filter needs a diff base to compare against, which only
           # exists for pull_request events. A `push` to main (the
           # ADR-0034 catch-up push, or the ruleset's own PR-merge commit)
           # has no PR base to diff -- path filtering is skipped entirely
-          # and `code` defaults true, so a push to main always runs the
-          # full suite, never silently skips it.
+          # and every output defaults true, so a push to main always
+          # runs the full suite, never silently skips it.
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "code=${{ steps.filter.outputs.code }}" >> "$GITHUB_OUTPUT"
+            {
+              echo "code=${{ steps.filter.outputs.code }}"
+              echo "go=${{ steps.filter.outputs.go }}"
+              echo "frontend=${{ steps.filter.outputs.frontend }}"
+              echo "e2e=${{ steps.filter.outputs.e2e }}"
+              echo "plugins=${{ steps.filter.outputs.plugins }}"
+              echo "workflows=${{ steps.filter.outputs.workflows }}"
+              echo "docs=${{ steps.filter.outputs.docs }}"
+            } >> "$GITHUB_OUTPUT"
           else
-            echo "code=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "code=true"
+              echo "go=true"
+              echo "frontend=true"
+              echo "e2e=true"
+              echo "plugins=true"
+              echo "workflows=true"
+              echo "docs=true"
+            } >> "$GITHUB_OUTPUT"
           fi
 
   # Mirrors lefthook.yml's own file-loc-limit job -- same script, so the
@@ -147,6 +205,26 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-framework-api-first-selftest.sh
 
+  # Mirrors lefthook.yml's own bash-portability job -- same script (goal
+  # 0403 S2e: a scripts/**/*.sh or build/**/*.sh file using a bash-4-only
+  # construct is a latent exit 127/2 on GitHub's own macOS runner).
+  # Grep-only, so like comment-hygiene it needs no build setup.
+  bash-portability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-bash-portability.sh
+
+  # Fixture-tests the gate above, same shape as
+  # framework-api-first-selftest.
+  bash-portability-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-bash-portability-selftest.sh
+
   # Mirrors lefthook.yml's own test-side-effects job -- same script
   # (goal 0356: tests and e2e servers never touch the host pasteboard).
   # Grep-only, so like comment-hygiene it needs no build setup.
@@ -167,6 +245,24 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-e2e-seed-literals.sh
+
+  # Mirrors lefthook.yml's own e2e-fixed-ports job -- same script (goal
+  # 0358 S6: an e2e server binds an OS-assigned port, never a literal
+  # one). Grep-only, so like comment-hygiene it needs no build setup.
+  e2e-fixed-ports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-e2e-fixed-ports.sh
+
+  # Fixture-tests the gate above, same shape as framework-api-first-selftest.
+  e2e-fixed-ports-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-e2e-fixed-ports-selftest.sh
 
   # Mirrors lefthook.yml's own e2e-edge-hover job -- same script (goal
   # 0358 S8: an Atlas link edge's hover/click is routed through
@@ -206,6 +302,16 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-drag-regions-selftest.sh
+
+  # Goal 0403 S2f: proves gocache-trim.sh's busy-process guard and
+  # --dry-run without hardcache installed. The plist/plutil half of the
+  # selftest SKIPs itself here (Linux runner, no launchd).
+  gocache-trim-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/dev/gocache-trim-selftest.sh
 
   # Goal 0385: semgrep/vendor-names.yml denies a product/vendor name
   # used as a platform CONCEPT (a trigger/node id, a route, a device
@@ -387,6 +493,20 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-selftest-git-isolation-selftest.sh
 
+  # Goal 0403 S2c: probes scripts/with-install-lock.sh -- the
+  # machine-wide lock serializing `task install:app` and the
+  # drive-installed-app skill's quit/install/drive/relaunch pass, so
+  # two concurrent installed-app passes never clobber the same
+  # /Applications/Mill.app bundle or each other's launched process.
+  # Grep/process-only, so like hook-command-guard it needs no build
+  # setup even though the lock itself targets a macOS-only task.
+  install-lock-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-install-lock-selftest.sh
+
   # Fixture-tests check-review-report.sh itself (fixed PR bodies piped
   # on stdin), same shape as hook-command-guard's own probe job -- keeps
   # the gate below from silently drifting either permissive or strict.
@@ -456,6 +576,29 @@ jobs:
           cache: true
       - run: go mod tidy -diff
 
+  # Goal 0401 hotfix: proves scripts/list-affected-go-packages.sh's
+  # per-event base resolution and its dry-run package selection against
+  # two commits in a throwaway fixture module the selftest builds itself
+  # (scripts/lib/git-fixture.sh) -- never a ref borrowed from the real
+  # `origin` remote or this checkout's own history, which job
+  # 102168238051 showed doesn't survive a real CI checkout the way a
+  # dev machine's local clone tolerates. Default (shallow) checkout is
+  # deliberate: the selftest carries its own commit pair, so it must
+  # pass without full history. macos-latest to match test-go-affected's
+  # own runner, whose system /bin/bash (3.2) is what actually caught the
+  # bash-4-only regression this selftest now pins down; a ubuntu
+  # runner's newer bash would never re-catch it.
+  affected-selftest:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26'
+          cache: true
+      - run: ./scripts/check-affected-selftest.sh
+
   # Mirrors lefthook.yml's own sdk-freshness job -- same script. The
   # plugin SDK's committed type package and its generated API reference
   # both derive from frontend/src/plugins/sdk.ts (goal 0319), so both
@@ -482,7 +625,15 @@ jobs:
 
   # Lints and builds frontend/dist once; Go jobs below need frontend/dist
   # present (main.go embeds it via //go:embed all:frontend/dist), so they
-  # download it instead of rebuilding it redundantly per job/OS.
+  # download it instead of rebuilding it redundantly per job/OS. The JOB
+  # itself stays gated on the broad `code` union, not the narrower
+  # `frontend`/`plugins` filters (goal 0401): a Go-only PR still needs
+  # this job to produce the frontend-dist artifact lint-go/build-go/
+  # test-go/e2e download below, so it can't skip outright. What DOES
+  # narrow per goal 0401's Decision 2 is the actual lint/unit-test work
+  # inside it -- the steps below run only when frontend source or a
+  # plugin (which frontend lint/typecheck also covers) changed; npm
+  # ci/build always run, unconditionally, to keep producing the artifact.
   frontend:
     needs: changes
     if: success() && needs.changes.outputs.code == 'true'
@@ -497,18 +648,23 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
         working-directory: frontend
-      - run: npm run lint
+      - if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.plugins == 'true'
+        run: npm run lint
         working-directory: frontend
       # Fixture-tests the NoticeAction inline-onClick ban (goal 0385) --
       # reuses the npm ci above's installed eslint; see the script's own
       # header for why the fixture is a real, transient file.
-      - run: ../scripts/check-notice-action-eslint-selftest.sh
+      - if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.plugins == 'true'
+        run: ../scripts/check-notice-action-eslint-selftest.sh
         working-directory: frontend
-      - run: npm run boundaries
+      - if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.plugins == 'true'
+        run: npm run boundaries
         working-directory: frontend
-      - run: npm run test
+      - if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.plugins == 'true'
+        run: npm run test
         working-directory: frontend
-      - run: npm run plugin:lint
+      - if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.plugins == 'true'
+        run: npm run plugin:lint
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
@@ -520,7 +676,9 @@ jobs:
 
   lint-go:
     needs: [changes, frontend]
-    if: success() && needs.changes.outputs.code == 'true'
+    # goal 0401: go|plugins, not the broad `code` union -- a frontend- or
+    # docs-only change touches no Go source this job would lint.
+    if: success() && (needs.changes.outputs.go == 'true' || needs.changes.outputs.plugins == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -568,7 +726,8 @@ jobs:
 
   build-go:
     needs: [changes, frontend]
-    if: success() && needs.changes.outputs.code == 'true'
+    # goal 0401: go|plugins -- see lint-go's own comment.
+    if: success() && (needs.changes.outputs.go == 'true' || needs.changes.outputs.plugins == 'true')
     strategy:
       # A 2-platform build-verification matrix must report both legs
       # independently -- one platform failing shouldn't cancel the other
@@ -753,7 +912,8 @@ jobs:
 
   test-go:
     needs: [changes, frontend]
-    if: success() && needs.changes.outputs.code == 'true'
+    # goal 0401: go|plugins -- see lint-go's own comment.
+    if: success() && (needs.changes.outputs.go == 'true' || needs.changes.outputs.plugins == 'true')
     # macos-latest, not ubuntu-latest -- resolved a real contradiction the
     # dormant-pipeline period shipped unverified (caught by the first
     # catch-up run after ADR-0034): on ubuntu, CGO_ENABLED=0 is
@@ -792,6 +952,41 @@ jobs:
         with:
           name: go-coverprofile
           path: cover.out
+
+  # Advisory, goal 0401 (Decision 3): sub-5-minute affected-only signal on
+  # top of the correctness-first full `test-go` above, never a
+  # replacement for it -- continue-on-error and outside ci-gate's needs,
+  # the same "heuristic never gates" posture as e2e-affected below.
+  # scripts/list-affected-go-packages.sh does the actual selection (go
+  # list -json's own Deps field is the whole import graph; see its own
+  # header) and writes the step summary itself.
+  test-go-affected:
+    needs: [changes, frontend]
+    if: success() && (needs.changes.outputs.go == 'true' || needs.changes.outputs.plugins == 'true')
+    runs-on: macos-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history: the script computes a merge-base diff against
+          # origin/<base>, which a depth-1 clone cannot resolve.
+          fetch-depth: 0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26'
+          cache: true
+      - run: ./scripts/list-affected-go-packages.sh
+        env:
+          # github.base_ref is empty for a merge_group event; the
+          # script's own resolve_base needs the merge queue's base commit
+          # explicitly to compute a real diff instead of falling back to
+          # "everything affected".
+          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
 
   # Changed-lines coverage (goal 0109 phase 2, the clean-as-you-code
   # counterpart to the gocognit gate): diff-cover reports how much of
@@ -839,7 +1034,17 @@ jobs:
 
   e2e:
     needs: [changes, frontend]
-    if: success() && needs.changes.outputs.code == 'true'
+    # goal 0401: go|frontend|e2e|plugins, not the broad `code` union --
+    # required and correctness-first regardless (Decision 2: the
+    # affected-only heuristic below never gates), but a workflows- or
+    # docs-only change still needs no interaction test at all.
+    if: >-
+      success() && (
+        needs.changes.outputs.go == 'true' ||
+        needs.changes.outputs.frontend == 'true' ||
+        needs.changes.outputs.e2e == 'true' ||
+        needs.changes.outputs.plugins == 'true'
+      )
     runs-on: ubuntu-latest
     # 25, was 15: the suite grew past the old budget in one day
     # (goal 0227 -- shards 1/4 exceeded 15m and GitHub marks timed-out
@@ -932,6 +1137,84 @@ jobs:
           path: frontend/playwright-report
           retention-days: 7
 
+  # Advisory, goal 0401 (Decision 3): Playwright's own `--only-changed`
+  # heuristic (its docs say to back it with a full run, never replace
+  # one -- so it's continue-on-error and outside ci-gate's needs,
+  # exactly like test-go-affected above) gives sub-5-minute signal on
+  # top of the correctness-first, full, REQUIRED `e2e` matrix above.
+  # Same setup as a single e2e shard, just one job, no shard split.
+  e2e-affected:
+    needs: [changes, frontend]
+    if: >-
+      success() && (
+        needs.changes.outputs.go == 'true' ||
+        needs.changes.outputs.frontend == 'true' ||
+        needs.changes.outputs.e2e == 'true' ||
+        needs.changes.outputs.plugins == 'true'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    env:
+      CGO_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history: --only-changed diffs against origin/main below,
+          # which the default shallow/single-ref checkout doesn't fetch.
+          fetch-depth: 0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26'
+          cache: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - name: Resolve Playwright version
+        id: pw-version
+        working-directory: frontend
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
+      - if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install chromium
+        working-directory: frontend
+      # JSON reporter alongside line (human console output) so the step
+      # summary below can PARSE which spec files were selected, rather
+      # than pattern-match line's free-text output.
+      - name: Run Playwright's own changed-file heuristic
+        working-directory: frontend
+        env:
+          # Confirmed against the vendored source (playwright/lib/runner/
+          # index.js's resolveOutputFile), not assumed: the json
+          # reporter's env override is PLAYWRIGHT_JSON_OUTPUT_FILE, not
+          # the *_NAME some other Playwright reporters use.
+          PLAYWRIGHT_JSON_OUTPUT_FILE: /tmp/e2e-affected.json
+        run: npx playwright test --only-changed=origin/main --reporter=line,json
+      - name: Write step summary
+        if: always()
+        run: |
+          {
+            echo "### e2e-affected"
+            echo "Playwright's \`--only-changed=origin/main\` heuristic selected:"
+            echo '```'
+            if [ -s /tmp/e2e-affected.json ]; then
+              jq -r '[.. | .file? // empty] | unique | .[]' /tmp/e2e-affected.json
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
   # The real-webview parity smoke used to run here as a non-required
   # job. It could not hold green on hosted runners, so it moved to
   # .github/workflows/webview-smoke.yml (scheduled + manual dispatch).
@@ -1017,13 +1300,18 @@ jobs:
       - comment-hygiene
       - framework-api-first
       - framework-api-first-selftest
+      - bash-portability
+      - bash-portability-selftest
       - test-side-effects
       - e2e-seed-literals
+      - e2e-fixed-ports
+      - e2e-fixed-ports-selftest
       - e2e-edge-hover
       - sdk-comments
       - ui-copy
       - drag-regions
       - drag-regions-selftest
+      - gocache-trim-selftest
       - vendor-names
       - vendor-names-selftest
       - webhook-naming
@@ -1037,9 +1325,11 @@ jobs:
       - hook-command-guard
       - selftest-git-isolation
       - selftest-git-isolation-selftest
+      - install-lock-selftest
       - review-report-selftest
       - review-report
       - go-mod-tidy
+      - affected-selftest
       - root-file-naming
       - sdk-freshness
       - frontend

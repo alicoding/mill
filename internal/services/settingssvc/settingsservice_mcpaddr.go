@@ -86,8 +86,19 @@ type MCPAddrInfo struct {
 
 // MCPAccessAddressInfo reports the effective bind address and whether
 // MILL_MCP_ADDR is the reason -- the Settings > MCP access address
-// field reads this to decide whether it's editable.
+// field reads this to decide whether it's editable. Prefers the MCP
+// service's own real bound address (mcpService.BoundAddr(), goal 0358
+// S6) over the requested one whenever it's known: a requested port of
+// 0 (an OS-assigned e2e port) resolves to a real port only the service
+// itself learned from its own Listen call, so ResolveMCPAddr's return
+// value alone would report the literal, useless "host:0" the whole
+// run.
 func (s *SettingsService) MCPAccessAddressInfo() MCPAddrInfo {
 	addr, envOverride := ResolveMCPAddr(os.Getenv(MCPAddrEnvVar), s.MCPAccessAddress())
+	if s.mcpService != nil {
+		if bound := s.mcpService.BoundAddr(); bound != "" {
+			addr = bound
+		}
+	}
 	return MCPAddrInfo{Address: addr, EnvOverride: envOverride}
 }

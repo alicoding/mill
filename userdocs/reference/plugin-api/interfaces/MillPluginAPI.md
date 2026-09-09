@@ -57,11 +57,71 @@ contract.
 
 ***
 
+### fetchJSON
+
+```ts
+fetchJSON: <T>(url, init?) => Promise<PluginFetchJSONResult<T>>;
+```
+
+Sugar over fetch for a JSON API: parses the body and never
+throws, not even for a denied request, a non-2xx status or a body
+that isn't JSON — see PluginFetchJSONResult.
+
+#### Type Parameters
+
+##### T
+
+`T` = `unknown`
+
+#### Parameters
+
+##### url
+
+`string`
+
+##### init?
+
+[`PluginFetchInit`](PluginFetchInit.md)
+
+#### Returns
+
+`Promise`\<[`PluginFetchJSONResult`](PluginFetchJSONResult.md)\<`T`\>\>
+
+***
+
 ### files
 
 ```ts
 files: PluginFilesAPI;
 ```
+
+***
+
+### formatDate
+
+```ts
+formatDate: (iso, style?) => string;
+```
+
+Formats an ISO timestamp the way Mill's own interface does:
+'relative' (the default) reads "2m ago"/"yesterday", falling back
+to a short date beyond about a week; 'short' is a locale date;
+'long' is a locale date and time. An unparseable iso answers
+'—'.
+
+#### Parameters
+
+##### iso
+
+`string`
+
+##### style?
+
+`"relative"` \| `"short"` \| `"long"`
+
+#### Returns
+
+`string`
 
 ***
 
@@ -77,6 +137,42 @@ values read against.
 #### Returns
 
 `Promise`\<[`KindInfo`](KindInfo.md)[]\>
+
+***
+
+### linkKinds
+
+```ts
+linkKinds: () => Promise<LinkKindInfo[]>;
+```
+
+Lists the board's relation kinds: the labels a link's own `kind`
+id reads against.
+
+#### Returns
+
+`Promise`\<[`LinkKindInfo`](LinkKindInfo.md)[]\>
+
+***
+
+### links
+
+```ts
+links: (q?) => Promise<LinkInfo[]>;
+```
+
+Lists the board's typed relations between cards — always the
+current state, never a cache.
+
+#### Parameters
+
+##### q?
+
+[`LinkQuery`](LinkQuery.md)
+
+#### Returns
+
+`Promise`\<[`LinkInfo`](LinkInfo.md)[]\>
 
 ***
 

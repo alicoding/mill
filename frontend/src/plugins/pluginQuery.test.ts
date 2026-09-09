@@ -21,4 +21,15 @@ describe('contentEntryFromWire', () => {
     } as unknown as WireEntry
     expect(contentEntryFromWire(wire)).toMatchObject({ subkind: 'kind-topic', parentId: 'p', size: { w: 3, h: 4 }, payload: {} })
   })
+
+  it('carries a mirrored card\'s MirrorPath, and drops an empty one', () => {
+    const mirrored = {
+      ID: 'c1', Kind: 'card', Subkind: 'kind-topic', KindID: 'kind-topic', Title: 'Root', ParentID: '',
+      Position: { X: 0, Y: 0 }, Size: null, Payload: null, MirrorPath: '/tmp/notes.md',
+    } as unknown as WireEntry
+    expect(contentEntryFromWire(mirrored)).toMatchObject({ mirrorPath: '/tmp/notes.md' })
+
+    const unmirrored = { ...mirrored, MirrorPath: '' } as unknown as WireEntry
+    expect(contentEntryFromWire(unmirrored).mirrorPath).toBeUndefined()
+  })
 })

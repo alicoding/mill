@@ -14,10 +14,13 @@ import { buildThirdPartyNoun, seedStyleValues } from './canvasToolAdapter'
 import { settingDeclsFromManifest } from './pluginSettings'
 import { secretTitleOf } from '../shared/secretTitleCache'
 import { buildPluginStorage } from './pluginStorage'
+import { buildFetchJSON } from './pluginFetchJSON'
+import { buildElement } from './pluginElementBuilder'
+import { formatPluginDate } from './pluginDateFormat'
 import { pushNotice } from '../shared/noticeStore'
 import { getExtensionExports } from './extensionExports'
 import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/extensionSettingsStore'
-import type { CanvasObjectDecl, ContentQuery, LifecycleEventPayload, MillPluginAPI, PluginFetchInit, PluginOutputOptions } from './sdk'
+import type { CanvasObjectDecl, ContentQuery, LifecycleEventPayload, LinkQuery, MillPluginAPI, PluginFetchInit, PluginOutputOptions, PluginElAttrs, PluginElChild } from './sdk'
 import type { MenuPath } from '../shared/menuSkeleton'
 import type { Command } from '../shared/commands'
 
@@ -110,6 +113,19 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			actions: input.action ? [{ label: input.action.label, commandId: `plugin.${pluginId}.${input.action.commandId}` }] : undefined,
 		})
 	}
+	// The network door (goal 0288): the bound call does every check --
+	// capability, declared host + method, guardrail -- and executes
+	// host-side; this is only the shape adapter. Named so fetchJSON
+	// (goal 0386 S1) has a fetch function to wrap.
+	const fetchDoor = async (url: string, init: PluginFetchInit = {}) => {
+		const r = await PluginService.FetchForPlugin(pluginId, {
+			method: init.method ?? 'GET', url, headers: init.headers ?? {}, body: init.body ?? '',
+			secret: init.secret ? { settingKey: init.secret.settingKey, header: init.secret.header ?? '', prefix: init.secret.prefix ?? '' } : null,
+		})
+		const headers: Record<string, string> = {}
+		for (const [k, v] of Object.entries(r.headers ?? {})) if (v !== undefined) headers[k] = v
+		return { approved: r.approved, effect: r.effect, ruleLabel: r.ruleLabel, status: r.status, headers, body: r.body }
+	}
 	const api = Object.freeze({
 		millVersion,
 		pluginId,
@@ -130,6 +146,17 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			icon: k.Icon || undefined,
 			fields: (k.Fields ?? []).map((f) => ({ key: f.Key, label: f.Label, type: String(f.Type), options: f.Options ?? undefined })),
 		})),
+		// The links door (goal 0357 S2): an adapter over the same Links()
+		// edge list the board's own Matrix/Coverage panes read, filtered
+		// here rather than by a new query engine -- q narrows an
+		// already-fetched list exactly as query's own kind/parentId do.
+		links: async (q: LinkQuery = {}) => ((await AtlasService.Links()) ?? [])
+			.filter((l) => (!q.kind || l.LinkKindID === q.kind) && (!q.source || l.FromCardID === q.source) && (!q.target || l.ToCardID === q.target))
+			.map((l) => ({ id: l.ID, kind: l.LinkKindID, source: l.FromCardID, target: l.ToCardID })),
+		// The link-kinds door (goal 0357 S2): the same LinkKinds() index
+		// the board's own panes read, restated like kinds above -- a read
+		// needs no capability, exactly as query/kinds do.
+		linkKinds: async () => ((await AtlasService.LinkKinds()) ?? []).map((lk) => ({ id: lk.ID, label: lk.Label })),
 		// The open door (goal 0357): the store write a projection's own
 		// chip click performs (goal 0064's openCardFromProjection) --
 		// board view, then the card's page. The store is imported lazily
@@ -145,16 +172,11 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		},
 		// The network door (goal 0288): the bound call does every check --
 		// capability, declared host + method, guardrail -- and executes
-		// host-side; this is only the shape adapter.
-		fetch: async (url: string, init: PluginFetchInit = {}) => {
-			const r = await PluginService.FetchForPlugin(pluginId, {
-				method: init.method ?? 'GET', url, headers: init.headers ?? {}, body: init.body ?? '',
-				secret: init.secret ? { settingKey: init.secret.settingKey, header: init.secret.header ?? '', prefix: init.secret.prefix ?? '' } : null,
-			})
-			const headers: Record<string, string> = {}
-			for (const [k, v] of Object.entries(r.headers ?? {})) if (v !== undefined) headers[k] = v
-			return { approved: r.approved, effect: r.effect, ruleLabel: r.ruleLabel, status: r.status, headers, body: r.body }
-		},
+		// host-side; this is only the shape adapter. fetchJSON (goal 0386
+		// S1) is pure sugar over this same door, kept as a named const so
+		// it has a fetch function to wrap.
+		fetch: fetchDoor,
+		fetchJSON: buildFetchJSON(fetchDoor),
 		// The content-write door (goal 0289): every check and the write
 		// itself live host-side (WriteContentForPlugin); these are shape
 		// adapters over one bound call.
@@ -185,10 +207,12 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 				return { approved: r.approved, effect: r.effect, ruleLabel: r.ruleLabel, entries: (r.entries ?? []).map((e) => ({ name: e.name, path: e.path, isDir: e.isDir, size: e.size })) }
 			},
 		}),
-		// The convert door (goal 0282): the shared HTML-to-Markdown
-		// converter as a pure transform over one bound call.
+		// The convert door (goal 0282, reverse direction goal 0386 S1):
+		// the shared Markdown<->HTML converters as pure transforms over
+		// one bound call each.
 		convert: Object.freeze({
 			htmlToMarkdown: (html: string) => PluginService.ConvertHTMLToMarkdown(html),
+			markdownToHtml: (markdown: string) => PluginService.ConvertMarkdownToHTML(markdown),
 		}),
 		on: (event, handler, filter) => {
 			if (event === 'contents:changed') {
@@ -309,7 +333,17 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 				void loading.then((m) => m.renderOutputInto(el, value, options, pluginId))
 				return () => { void loading.then((m) => m.unmountOutput(el)) }
 			},
+			// el (goal 0386 S1): the text-safe DOM builder every
+			// createElement/textContent-hand-rolling face already needed --
+			// built in whichever document el's own caller runs in, so a
+			// canvas object's face document works the same as Mill's own.
+			el: <K extends keyof HTMLElementTagNameMap>(tag: K, attrs?: PluginElAttrs, children?: PluginElChild[]) => buildElement(document, tag, attrs, children),
 		}),
+		// formatDate (goal 0386 S1): pure computation, so it is a plain
+		// function rather than a bound call, over shared/inventorySort.ts's
+		// own formatUpdated -- the same relative-time phrasing Mill's own
+		// interface renders everywhere, not a plugin's own Date math.
+		formatDate: formatPluginDate,
 		// The extension-interop door (goal 0364): a declared dependency's
 		// export surface only, gated by ITS OWN manifest exports
 		// allowlist -- never a live handle into another extension.

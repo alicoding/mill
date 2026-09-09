@@ -33,40 +33,30 @@ export function activate(api) {
 		el.replaceChildren()
 		el.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:10px 12px;font:12px system-ui;height:100%;min-width:280px;box-sizing:border-box'
 
-		const title = document.createElement('div')
-		title.style.cssText = 'display:flex;align-items:center;gap:6px;font-weight:600'
-		title.textContent = '✂️ Web clipper'
+		const title = api.ui.el('div', { style: 'display:flex;align-items:center;gap:6px;font-weight:600' }, ['✂️ Web clipper'])
 
-		const input = document.createElement('input')
-		input.type = 'text'
-		input.placeholder = 'https://…'
-		input.value = ctx.object.Payload.url || ''
-		input.setAttribute('data-testid', 'clip-url-input')
-		input.className = 'nodrag'
-		input.style.cssText = 'font:11px ui-monospace,monospace;padding:4px 6px;border:1px solid var(--borderColor-default);border-radius:6px;width:100%;box-sizing:border-box'
-		const commit = () => {
+		function commit() {
 			const next = input.value.trim()
 			if (next === (ctx.object.Payload.url || '')) return
 			void ctx.updatePayload({ url: next }).catch(() => api.notify({ level: 'error', text: 'Could not save the address.' }))
 		}
-		input.addEventListener('keydown', (e) => {
-			if (e.key === 'Enter') { e.preventDefault(); commit() }
-			e.stopPropagation()
+		const input = api.ui.el('input', {
+			type: 'text',
+			placeholder: 'https://…',
+			value: ctx.object.Payload.url || '',
+			'data-testid': 'clip-url-input',
+			class: 'nodrag',
+			style: 'font:11px ui-monospace,monospace;padding:4px 6px;border:1px solid var(--borderColor-default);border-radius:6px;width:100%;box-sizing:border-box',
+			onkeydown: (e) => {
+				if (e instanceof KeyboardEvent && e.key === 'Enter') { e.preventDefault(); commit() }
+				e.stopPropagation()
+			},
+			onblur: commit,
 		})
-		input.addEventListener('blur', commit)
 
-		const row = document.createElement('div')
-		row.style.cssText = 'display:flex;align-items:center;gap:8px'
-		const clip = document.createElement('button')
-		clip.type = 'button'
-		clip.textContent = ctx.object.Payload.clipped ? 'Clip again' : 'Clip to a note'
-		clip.setAttribute('data-testid', 'clip-run')
-		clip.className = 'nodrag'
-		clip.style.cssText = 'font:11px system-ui;padding:3px 10px;border:1px solid var(--borderColor-default);border-radius:6px;background:var(--bgColor-muted);cursor:pointer'
-		const status = document.createElement('span')
-		status.setAttribute('data-testid', 'clip-status')
-		status.style.cssText = 'font:11px system-ui;color:var(--fgColor-muted)'
-		status.textContent = statusByID.get(ctx.object.ID) || (ctx.object.Payload.clipped ? 'Clipped → ' + ctx.object.Payload.clipped : '')
+		const status = api.ui.el('span', { 'data-testid': 'clip-status', style: 'font:11px system-ui;color:var(--fgColor-muted)' }, [
+			statusByID.get(ctx.object.ID) || (ctx.object.Payload.clipped ? 'Clipped → ' + ctx.object.Payload.clipped : ''),
+		])
 		// Write through the face's LIVE status element: the host rebuilds
 		// the face on any data change (its first measured size lands
 		// mid-clip), and a span captured here would then be detached.
@@ -75,8 +65,14 @@ export function activate(api) {
 			const live = el.querySelector('[data-testid="clip-status"]') || status
 			live.textContent = text
 		}
-		clip.addEventListener('click', () => { void clipPage(ctx, input.value.trim(), setStatus).catch((err) => setStatus('Failed: ' + String(err && err.message ? err.message : err))) })
-		row.append(clip, status)
+		const clip = api.ui.el('button', {
+			type: 'button',
+			'data-testid': 'clip-run',
+			class: 'nodrag',
+			style: 'font:11px system-ui;padding:3px 10px;border:1px solid var(--borderColor-default);border-radius:6px;background:var(--bgColor-muted);cursor:pointer',
+			onclick: () => { void clipPage(ctx, input.value.trim(), setStatus).catch((err) => setStatus('Failed: ' + String(err && err.message ? err.message : err))) },
+		}, [ctx.object.Payload.clipped ? 'Clip again' : 'Clip to a note'])
+		const row = api.ui.el('div', { style: 'display:flex;align-items:center;gap:8px' }, [clip, status])
 
 		el.append(title, input, row)
 	}

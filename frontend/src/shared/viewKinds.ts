@@ -10,23 +10,31 @@ import type { Capability } from '../../bindings/github.com/alicoding/mill/intern
 // carries which capability it's standing in for, so PlaceholderView never
 // has to guess or fall back to a default.
 // Which of the ways of looking at an Atlas space is active (goal 0355
-// S2): the canvas itself, one of the four built-in projections, or a
-// plugin-contributed view ('plugin:<pluginId>.<viewId>' -- goal 0357) --
-// panes in the board's own content region the view switcher swaps in
-// place. Declared in shared/ (not atlas/): it is a field OF the
-// persisted View union below, and shared/ may not import from atlas/.
-export type AtlasBoardView = 'board' | 'list' | 'matrix' | 'coverage' | `plugin:${string}`
+// S2): the canvas itself, the one built-in projection (List), or a
+// plugin-contributed view ('plugin:<pluginId>.<viewId>' -- goal 0357,
+// Matrix/Coverage/Roadmap all included since goal 0357 S2) -- panes in
+// the board's own content region the view switcher swaps in place.
+// Declared in shared/ (not atlas/): it is a field OF the persisted
+// View union below, and shared/ may not import from atlas/.
+export type AtlasBoardView = 'board' | 'list' | `plugin:${string}`
+
+// legacyBoardViewMigrations is the ONE table every legacy persisted
+// literal maps through (goal 0357 S2): 'roadmap'/'matrix'/'coverage'
+// were their own core projections' literals before each became a
+// bundled plugin's pane, so a stored value from before that move maps
+// onto the plugin's pane id here -- one table, never three code paths.
+const legacyBoardViewMigrations: Record<string, `plugin:${string}`> = {
+  roadmap: 'plugin:mill-roadmap.roadmap',
+  matrix: 'plugin:mill-matrix.matrix',
+  coverage: 'plugin:mill-coverage.coverage',
+}
 
 // normalizeAtlasBoardView is the ONE read-side mapping persisted board
-// views pass through (goal 0357): 'roadmap' was the roadmap projection's
-// own literal before it became the bundled mill-roadmap plugin's pane,
-// so a stored value from before that move maps onto the plugin's pane
-// id here -- a mapping function, never a migration script. Unknown
-// values fall back to the Board rather than stranding the window on a
-// pane nothing renders.
+// views pass through (goal 0357). Unknown values fall back to the
+// Board rather than stranding the window on a pane nothing renders.
 export function normalizeAtlasBoardView(raw: string | undefined): AtlasBoardView {
-  if (raw === 'roadmap') return 'plugin:mill-roadmap.roadmap'
-  if (raw === 'list' || raw === 'matrix' || raw === 'coverage') return raw
+  if (raw !== undefined && raw in legacyBoardViewMigrations) return legacyBoardViewMigrations[raw]
+  if (raw === 'list') return raw
   if (raw !== undefined && raw.startsWith('plugin:')) return raw as AtlasBoardView
   return 'board'
 }

@@ -198,14 +198,19 @@ export function activeKeyIfPresent(workTabs: WorkTab[], key: string | null | und
 export function restoreWorkTabSnapshot(
   persistedWorkTabs: WorkTab[] | undefined,
   persistedActiveKey: string | null | undefined,
-): { workTabs: WorkTab[]; activeWorkTabKey: string | null } {
+  persistedRecentKeys: string[] | undefined,
+): { workTabs: WorkTab[]; activeWorkTabKey: string | null; recentWorkTabKeys: string[] } {
   const restored = (persistedWorkTabs ?? []).filter(isRestorable).map((t) =>
     t.kind === 'workflow-edit' && t.mode === undefined
       ? { ...t, mode: modeForRestoredCanvasTab(t.key) }
       : t,
   )
   const workTabs = restored.length > 0 ? restored : migrateLegacyWorkTabs()
-  return { workTabs, activeWorkTabKey: activeKeyIfPresent(workTabs, persistedActiveKey) }
+  return {
+    workTabs,
+    activeWorkTabKey: activeKeyIfPresent(workTabs, persistedActiveKey),
+    recentWorkTabKeys: pruneRecentWorkTabKeys(persistedRecentKeys ?? [], workTabs),
+  }
 }
 
 // The pure decision behind store.ts's `pruneWorkTabs` action: drop
@@ -220,11 +225,63 @@ export function restoreWorkTabSnapshot(
 export function pruneStaleWorkTabs(
   workTabs: WorkTab[],
   activeWorkTabKey: string | null,
+  recentWorkTabKeys: string[],
   keep: (tab: WorkTab) => boolean,
-): { workTabs: WorkTab[]; activeWorkTabKey: string | null } | null {
+): { workTabs: WorkTab[]; activeWorkTabKey: string | null; recentWorkTabKeys: string[] } | null {
   const kept = workTabs.filter(keep)
   if (kept.length === workTabs.length) return null
-  return { workTabs: kept, activeWorkTabKey: activeKeyIfPresent(kept, activeWorkTabKey) }
+  return {
+    workTabs: kept,
+    activeWorkTabKey: activeKeyIfPresent(kept, activeWorkTabKey),
+    recentWorkTabKeys: pruneRecentWorkTabKeys(recentWorkTabKeys, kept),
+  }
+}
+
+// docs/goals/0407: the MRU stack every activation path shares --
+// openWorkTab, activateWorkTab and requestOpenWorkflow each set
+// activeWorkTabKey to a real tab key directly (no single shared
+// setter), so each pushes through here rather than re-deriving the
+// dedupe-and-append itself. Most recent last; a re-activated key moves
+// to the end instead of duplicating.
+export function pushRecentWorkTabKey(recent: string[], key: string): string[] {
+  return [...recent.filter((k) => k !== key), key]
+}
+
+// Keeps recentWorkTabKeys consistent with whichever tabs actually
+// remain -- every path that removes a tab (closeWorkTab, the bulk
+// closers, pruneStaleWorkTabs, restoring a persisted snapshot) runs the
+// surviving keys through this rather than letting a closed tab's key
+// linger.
+export function pruneRecentWorkTabKeys(recent: string[], workTabs: WorkTab[]): string[] {
+  const present = new Set(workTabs.map((t) => t.key))
+  return recent.filter((k) => present.has(k))
+}
+
+// docs/goals/0407: which tab activates when the ACTIVE tab closes.
+// Adopts VS Code's focusRecentEditorAfterClose default (most-recently-
+// used remaining tab) over the browser right-neighbour rule -- Mill's
+// strip is a working set, not a strict left-to-right sequence. Falls
+// back to the right neighbour, then the left, when the closed tab left
+// no recorded successor (never activated, or its only successors were
+// also just closed); null once no tab remains. Callers use this ONLY
+// when the closed tab was the active one -- closing an inactive tab
+// never touches what's showing.
+export function nextActiveAfterClose(
+  workTabs: WorkTab[],
+  recentWorkTabKeys: string[],
+  closedKey: string,
+): string | null {
+  const remaining = workTabs.filter((t) => t.key !== closedKey)
+  if (remaining.length === 0) return null
+  for (let i = recentWorkTabKeys.length - 1; i >= 0; i--) {
+    const candidate = recentWorkTabKeys[i]
+    if (candidate !== closedKey && remaining.some((t) => t.key === candidate)) return candidate
+  }
+  const closedIndex = workTabs.findIndex((t) => t.key === closedKey)
+  const right = workTabs[closedIndex + 1]
+  if (right) return right.key
+  const left = workTabs[closedIndex - 1]
+  return left ? left.key : null
 }
 
 // The pure decision behind the unsaved-close guard (docs/goals/0048):

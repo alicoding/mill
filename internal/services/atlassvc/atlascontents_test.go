@@ -12,8 +12,11 @@ import (
 func TestContents_ListsCardsNotesAndObjectsWithDisplayNames(t *testing.T) {
 	svc := newTestAtlasService(t)
 	kindID := svc.Kinds()[0].ID
-	root, err := svc.CreateCard(kindID, "Root card", "", nil, "", nil, "", "", "", "")
+	root, err := svc.CreateCard(kindID, "Root card", "", nil, "", nil, "", "", "/tmp/root.md", "")
 	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.CreateCard(kindID, "Unmirrored card", "", nil, "", nil, "", "", "", ""); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := svc.CreateNote("# Plan\nbody", atlas.Position{X: 1, Y: 2}, root.ID); err != nil {
@@ -34,8 +37,11 @@ func TestContents_ListsCardsNotesAndObjectsWithDisplayNames(t *testing.T) {
 	for _, e := range all {
 		byTitle[e.Kind+"/"+e.Title] = e
 	}
-	if e, ok := byTitle["card/Root card"]; !ok || e.Subkind != kindID {
-		t.Errorf("root card missing or without its Kind as subkind: %+v", e)
+	if e, ok := byTitle["card/Root card"]; !ok || e.Subkind != kindID || e.KindID != kindID || e.MirrorPath != "/tmp/root.md" {
+		t.Errorf("root card missing, without its Kind as subkind/kindID, or without its mirror path: %+v", e)
+	}
+	if e, ok := byTitle["card/Unmirrored card"]; !ok || e.MirrorPath != "" {
+		t.Errorf("unmirrored card must list an empty MirrorPath: %+v", e)
 	}
 	if e, ok := byTitle["note/Plan"]; !ok || e.ParentID != root.ID || e.Payload["text"] != "# Plan\nbody" || e.Position.X != 1 {
 		t.Errorf("filed note listed wrong: %+v", e)

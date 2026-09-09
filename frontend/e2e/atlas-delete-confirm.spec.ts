@@ -28,12 +28,12 @@ async function zoomOutLight(page: import('@playwright/test').Page): Promise<void
 test.setTimeout(180_000)
 
 // The container-delete gate (goal 0149 gap 3): deleting a frame whose
-// children survive by promotion confirms first, naming the promoted
-// count; leaf deletes stay instant-with-undo (asserted by the goals
-// 0092/0093 test above). Dedicated server, same isolation reasoning as
-// this file's header.
+// children survive by re-parenting confirms first, naming the
+// re-parented count; leaf deletes stay instant-with-undo (asserted by
+// the goals 0092/0093 test above). Dedicated server, same isolation
+// reasoning as this file's header.
 // eslint-disable-next-line no-empty-pattern -- this test needs `testInfo` (the second arg), not any fixture.
-test('deleting a frame with children confirms with the promoted count; cancel keeps it', async ({}, testInfo) => {
+test('deleting a frame with children confirms with the reparented count; cancel keeps it', async ({}, testInfo) => {
   const idx = testInfo.parallelIndex
   const dir = mkdtempSync(path.join(tmpdir(), `mill-e2e-atlas-del-confirm-${idx}-`))
   const port = ATLAS_SELECT_GROUP_SERVER_BASE_PORT + 40 + idx
@@ -89,7 +89,7 @@ test('deleting a frame with children confirms with the promoted count; cancel ke
     await page.getByRole('button', { name: 'Cancel' }).click()
     await expect(frame).toBeVisible()
 
-    // Confirming deletes the frame; the children survive, promoted.
+    // Confirming deletes the frame; the children survive, re-parented.
     await frame.getByTestId('atlas-group-header').click({ button: 'right' })
     await expect(menu).toBeVisible()
     await menu.getByText('Delete', { exact: true }).click()

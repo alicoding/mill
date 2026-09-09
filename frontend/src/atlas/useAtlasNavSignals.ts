@@ -5,18 +5,18 @@ import { useUISignalStore } from '../shared/uiSignalStore'
 
 // AtlasView's own one-shot navigation/dialog-opening signals (goal
 // 0071 G17, goal 0072 slice B) -- split out of AtlasView.tsx
-// (architecture.md's 500-line convention): atlas.up/atlas.jump/
-// atlas.matrix/atlas.coverage each bump a shared store counter a
-// palette/keyboard invocation fires, consumed here with the same
-// ref-compared-counter shape every other Atlas signal in this codebase
-// uses. The view commands SWITCH the active projection pane (goal 0355
-// S2) rather than opening dialogs -- a plugin-contributed pane's own
-// command rides the registry directly, never this hook (goal 0357).
-export function useAtlasNavSignals({ viewedID, allCards, setViewedID, onOpenProjection, onOpenCard, onBackToBoard }: {
+// (architecture.md's 500-line convention): atlas.up/atlas.jump each
+// bump a shared store counter a palette/keyboard invocation fires,
+// consumed here with the same ref-compared-counter shape every other
+// Atlas signal in this codebase uses. Every projection view (List,
+// and every plugin-contributed pane -- goal 0357, Matrix/Coverage/
+// Roadmap all included since goal 0357 S2) SWITCHES the active
+// projection pane through its own registry command straight to the
+// store, never through this hook.
+export function useAtlasNavSignals({ viewedID, allCards, setViewedID, onOpenCard, onBackToBoard }: {
   viewedID: string
   allCards: Card[]
   setViewedID: (id: string) => void
-  onOpenProjection: (view: 'matrix' | 'coverage') => void
   // api.open(cardId) consumption (goal 0357): the plugin asked and the
   // store signal fired; the same back-to-board-then-overlay walk a
   // projection's own chip click takes.
@@ -51,24 +51,6 @@ export function useAtlasNavSignals({ viewedID, allCards, setViewedID, onOpenProj
     lastJumpRequest.current = atlasJumpRequest
     setJumpOpen(true)
   }, [atlasJumpRequest])
-
-  // atlas.matrix / atlas.coverage: same signal shape,
-  // switching into the named projection pane.
-  const atlasMatrixRequest = useUISignalStore((s) => s.atlasMatrixRequest)
-  const lastMatrixRequest = useRef(atlasMatrixRequest)
-  useEffect(() => {
-    if (atlasMatrixRequest === lastMatrixRequest.current) return
-    lastMatrixRequest.current = atlasMatrixRequest
-    onOpenProjection('matrix')
-  }, [atlasMatrixRequest, onOpenProjection])
-
-  const atlasCoverageRequest = useUISignalStore((s) => s.atlasCoverageRequest)
-  const lastCoverageRequest = useRef(atlasCoverageRequest)
-  useEffect(() => {
-    if (atlasCoverageRequest === lastCoverageRequest.current) return
-    lastCoverageRequest.current = atlasCoverageRequest
-    onOpenProjection('coverage')
-  }, [atlasCoverageRequest, onOpenProjection])
 
   // api.open(cardId) (goal 0357): a plugin's own "show me this card"
   // door, consumed here the way a projection chip's click already is --

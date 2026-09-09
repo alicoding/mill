@@ -29,18 +29,22 @@ const (
 // note. For cards, KindID repeats Subkind and Fields carries the
 // card's own typed field values (docs/goals/0357): the schema those
 // values read against stays with the Kind itself (ListKinds/
-// api.kinds), never folded into the entry.
+// api.kinds), never folded into the entry. MirrorPath rides cards
+// only (docs/goals/0357 S2): "" for a card with none, never
+// distinguished from "not a card" -- a reader that cares checks Kind
+// first, the same rule Fields/KindID already carry.
 type ContentEntry struct {
-	ID       string
-	Kind     string
-	Subkind  string
-	KindID   string
-	Title    string
-	ParentID string
-	Position atlas.Position
-	Size     *atlas.Dimensions
-	Payload  map[string]string
-	Fields   map[string]string
+	ID         string
+	Kind       string
+	Subkind    string
+	KindID     string
+	Title      string
+	ParentID   string
+	Position   atlas.Position
+	Size       *atlas.Dimensions
+	Payload    map[string]string
+	Fields     map[string]string
+	MirrorPath string
 }
 
 // ContentsFilter narrows the index: Kind to one kind ("card", "note",
@@ -105,7 +109,7 @@ func cardEntry(c atlas.Card) ContentEntry {
 	for k, v := range c.Fields {
 		fields[k] = v
 	}
-	return ContentEntry{ID: c.ID, Kind: ContentKindCard, Subkind: c.KindID, KindID: c.KindID, Title: c.Title, ParentID: c.ParentID, Position: pos, Size: c.Size, Fields: fields}
+	return ContentEntry{ID: c.ID, Kind: ContentKindCard, Subkind: c.KindID, KindID: c.KindID, Title: c.Title, ParentID: c.ParentID, Position: pos, Size: c.Size, Fields: fields, MirrorPath: c.MirrorPath}
 }
 
 func noteEntry(n atlas.Note) ContentEntry {

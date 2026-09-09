@@ -3,6 +3,8 @@ package composition
 import (
 	"net/http"
 	"net/http/httptest"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/alicoding/mill/internal/domain/guardrail"
@@ -229,5 +231,35 @@ func TestDeclaredNodeType_Exec_DelegatesToEngineWithPinnedConfigWinning(t *testi
 	}
 	if gotRequestID != "pinned-request" {
 		t.Errorf("lookupHTTPRequestFn received id %q, want the PINNED requestId %q to win over the node-local value", gotRequestID, "pinned-request")
+	}
+}
+
+// TestDeclaredNodeType_Exec_CapsRunawayMergedConfig pins the
+// go/allocation-size-overflow guard (CWE-190) on the Config map a
+// declared step's exec merges from the authored node and the
+// binding's PinnedConfig: a combined entry count past
+// maxMergedMapEntries is rejected with a typed error before it ever
+// reaches make()'s capacity hint. TestDeclaredNodeType_Exec_
+// DelegatesToEngineWithPinnedConfigWinning above already pins the
+// normal-sized case still executing.
+func TestDeclaredNodeType_Exec_CapsRunawayMergedConfig(t *testing.T) {
+	pinned := make(map[string]string, maxMergedMapEntries+1)
+	for i := 0; i <= maxMergedMapEntries; i++ {
+		pinned[strconv.Itoa(i)] = "x"
+	}
+	withDeclaredNodeTypeLookup(t, DeclaredStepBinding{
+		ID: "declared-oversized", Label: "Oversized", Description: "d",
+		PaletteGroup:     "actions",
+		EngineNodeTypeID: "integration-http",
+		PinnedConfig:     pinned,
+	})
+
+	entry, ok := lookupNodeTypeEntry("declared-oversized")
+	if !ok {
+		t.Fatalf("lookupNodeTypeEntry(%q): ok = false", "declared-oversized")
+	}
+	_, err := entry.exec(Node{NodeTypeID: "declared-oversized"}, ExecContext{})
+	if err == nil || !strings.Contains(err.Error(), "too many entries to merge") {
+		t.Fatalf("expected the too-many-entries error, got %v", err)
 	}
 }

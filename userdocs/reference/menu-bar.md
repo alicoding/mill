@@ -131,8 +131,6 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Jump to a card or object | ⌘K | `atlas.jump` |
 | Undo | — | `atlas.undo` |
 | Redo | — | `atlas.redo` |
-| Open traceability matrix | — | `atlas.matrix` |
-| Open coverage | — | `atlas.coverage` |
 | Auto-arrange | — | `atlas.arrange` |
 | Contents | — | `atlas.contents.open` |
 | Import atlas | — | `atlas.import` |

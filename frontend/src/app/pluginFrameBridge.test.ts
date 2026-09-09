@@ -26,13 +26,17 @@ function fakeApi(overrides: Partial<MillPluginAPI> = {}): MillPluginAPI {
     },
     query: vi.fn(async () => []),
     kinds: vi.fn(async () => []),
+    links: vi.fn(async () => []),
+    linkKinds: vi.fn(async () => []),
     open: vi.fn(),
     on: vi.fn(() => () => {}),
     fetch: vi.fn(),
+    fetchJSON: vi.fn(),
     content: { createNote: vi.fn(), createCard: vi.fn(), updateCard: vi.fn(), appendListRow: vi.fn(), createList: vi.fn(), setCardFields: vi.fn() },
-    convert: { htmlToMarkdown: vi.fn() },
+    convert: { htmlToMarkdown: vi.fn(), markdownToHtml: vi.fn() },
     files: { list: vi.fn() },
-    ui: { renderOutput: vi.fn(() => () => {}) },
+    ui: { renderOutput: vi.fn(() => () => {}), el: vi.fn() },
+    formatDate: vi.fn(),
     extensions: { get: vi.fn(async () => undefined) },
     ...overrides,
   } as unknown as MillPluginAPI
@@ -50,10 +54,24 @@ describe('callFrameMethod', () => {
     expect(api.settings.get).toHaveBeenCalledWith('mode')
   })
 
+  it('routes links and linkKinds, the two read doors a projection pane calls', async () => {
+    const api = fakeApi()
+    await callFrameMethod(api, 'links', [{ kind: 'blocks' }])
+    expect(api.links).toHaveBeenCalledWith({ kind: 'blocks' })
+    await callFrameMethod(api, 'linkKinds', [])
+    expect(api.linkKinds).toHaveBeenCalled()
+  })
+
   it('answers true for notify, whose own return value is a function', async () => {
     const api = fakeApi()
     await expect(callFrameMethod(api, 'notify', [{ text: 'listed' }])).resolves.toBe(true)
     expect(api.notify).toHaveBeenCalledWith({ text: 'listed' })
+  })
+
+  it('routes convert.markdownToHtml onto the plugin api, the frame bridge\'s one new door', async () => {
+    const api = fakeApi()
+    await callFrameMethod(api, 'convert.markdownToHtml', ['# Title'])
+    expect(api.convert.markdownToHtml).toHaveBeenCalledWith('# Title')
   })
 
   it('round-trips a value through the plugin storage door', async () => {

@@ -21,7 +21,7 @@ const tombstoneGraceWindow = 48 * time.Hour
 // CardIDs, DeleteNote only NoteIDs, DeleteBoardObject only ObjectIDs,
 // so the frontend's undo toast can pass this straight back to
 // UndoDelete without re-deriving what it touched. LinksRemoved and
-// ChildrenPromoted are the delete's blast radius, counted against the
+// ChildrenReparented are the delete's blast radius, counted against the
 // state immediately BEFORE this call's own tombstone lands: links that
 // were visible and now touch a tombstoned endpoint, and direct live
 // children (cards + notes) whose effective parent is about to shift
@@ -32,7 +32,7 @@ type TombstoneResult struct {
 	NoteIDs          []string
 	ObjectIDs        []string
 	LinksRemoved     int
-	ChildrenPromoted int
+	ChildrenReparented int
 	// EntityRefKind (goal 0392 S1) is the deleted board object's own
 	// declared entityRef.EntityKind ("list" for a table), or "" for a
 	// DeleteCard/DeleteNote result or a DeleteBoardObject call whose
@@ -75,7 +75,7 @@ func (a *AtlasService) liveLinkTouchCountLocked(cardID string) int {
 
 // directLiveChildCountLocked counts live cards, notes, and board
 // objects whose stored ParentID is exactly cardID -- the direct
-// children about to be virtually promoted to cardID's own effective
+// children about to be virtually re-parented to cardID's own effective
 // parent. Caller must hold a.mu.
 func (a *AtlasService) directLiveChildCountLocked(cardID string) int {
 	n := 0
@@ -194,7 +194,7 @@ func (a *AtlasService) DeleteCard(id string) (TombstoneResult, error) {
 	previous := a.cards[idx]
 	wasBuiltIn := previous.BuiltIn
 	linksRemoved := a.liveLinkTouchCountLocked(id)
-	childrenPromoted := a.directLiveChildCountLocked(id)
+	childrenReparented := a.directLiveChildCountLocked(id)
 	now := time.Now()
 	a.cards[idx].DeletedAt = now
 	a.cards[idx].UpdatedAt = now
@@ -220,13 +220,13 @@ func (a *AtlasService) DeleteCard(id string) (TombstoneResult, error) {
 	a.perspectives = kept
 	// goal 0233: id's own DeletedAt above already resolves
 	// EffectiveParentID to the POST-delete parent, so this repositions
-	// any promoted board-object children into it before persisting.
-	promotion := a.preparePromotionLocked(id)
+	// any re-parented board-object children into it before persisting.
+	reparent := a.prepareReparentLocked(id)
 	perr := a.persistLocked()
 	if perr != nil {
 		a.cards[idx] = previous
 		a.perspectives = previousPerspectives
-		a.rollbackPromotionLocked(promotion)
+		a.rollbackReparentLocked(reparent)
 	}
 	a.mu.Unlock()
 	if perr != nil {
@@ -235,10 +235,10 @@ func (a *AtlasService) DeleteCard(id string) (TombstoneResult, error) {
 	dataevent.Emit("atlas", id)
 	a.disarmMirrorWatch(id)
 	a.recordUndo(actorUI, "card", id, previous.Title,
-		func(a *AtlasService) error { return a.undoCardDeleteWithPromotion(id, promotion) },
+		func(a *AtlasService) error { return a.undoCardDeleteWithReparent(id, reparent) },
 		func(a *AtlasService) error { _, err := a.DeleteCard(id); return err },
 	)
-	return TombstoneResult{CardIDs: []string{id}, LinksRemoved: linksRemoved, ChildrenPromoted: childrenPromoted}, nil
+	return TombstoneResult{CardIDs: []string{id}, LinksRemoved: linksRemoved, ChildrenReparented: childrenReparented}, nil
 }
 
 // DeleteNote soft-deletes a note -- same tombstone contract as

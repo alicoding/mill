@@ -14,11 +14,11 @@ const ENTITY_DELETE_TOAST_KEYS: Record<string, { stays: string; unused: string }
 // The board's quick-delete toast (goal 0093): the shared UndoToast with
 // the board's own message segments and its in-board position.
 export function AtlasUndoToast({
-  count, linksRemoved, childrenPromoted, objectKind, entityRefKind, entityStillUsed, onUndo,
+  count, linksRemoved, childrenReparented, objectKind, entityRefKind, entityStillUsed, onUndo,
 }: {
   count: number
   linksRemoved: number
-  childrenPromoted: number
+  childrenReparented: number
   // The deleted board object's own entity-reference outcome (goal 0392
   // S1) -- objectKind/entityRefKind are '' for a card/note delete or a
   // kind with no declared entityRef, in which case no entity-outcome
@@ -39,6 +39,6 @@ export function AtlasUndoToast({
     ? [t(entityStillUsed ? entityCopy.stays : entityCopy.unused)]
     : [t('board.deletedToast', { count })]
   if (linksRemoved > 0) segments.push(t('board.linksHiddenToast', { count: linksRemoved }))
-  if (childrenPromoted > 0) segments.push(t('board.childrenMovedToast', { count: childrenPromoted }))
+  if (childrenReparented > 0) segments.push(t('board.childrenMovedToast', { count: childrenReparented }))
   return <UndoToast className={styles.toast} message={segments.join(' ')} undoLabel={t('board.undo')} onUndo={onUndo} testId="atlas-undo-toast" />
 }
