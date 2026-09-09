@@ -21,10 +21,23 @@ export interface ListSelectionHandle {
   selectAll: () => void
   clear: () => void
   hasSelection: () => boolean
+  // The live selection's own size -- list.destroySelection's bulk
+  // confirm (goal 0406 S2) interpolates it into "Delete {{count}}
+  // forever?" before the batch actually runs.
+  selectedCount: () => number
   // Deletes the current selection through its own entity's bulk-delete
   // door and posts the outcome toast -- InventoryList builds this
   // closure, since only it knows which entity/items are selected.
-  deleteSelected: () => void | Promise<void>
+  // Omitted for a list mounted in Trash mode (goal 0406 S2): its own
+  // selection deletes nothing, so list.deleteSelection's enabled()
+  // stays false there rather than rendering a button that no-ops.
+  deleteSelected?: () => void | Promise<void>
+  // Restore / Delete forever over the current selection (goal 0406 S2)
+  // -- present only for a list mounted in Trash mode
+  // (InventoryList's `selection.mode`), so list.restoreSelection/
+  // list.destroySelection stay honestly unavailable everywhere else.
+  restoreSelected?: () => void | Promise<void>
+  destroySelected?: () => void | Promise<void>
   // Space/x and Shift+Space on the row Tab landed on (goal 0404 S1):
   // act on `useListSelection`'s own
   // `focusedId` (set by the row's real onFocus, InventoryList.tsx),

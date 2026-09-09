@@ -2006,6 +2006,16 @@ still names it, so putting the key back resolves it again — and
 starting a run that needs it refuses before anything runs, naming the
 missing key.
 
+## Trash
+
+Deleting a vault entry moves it to Trash instead of destroying it. A
+trashed entry can only be restored or deleted forever — it can't be
+revealed, copied, edited, or picked by a field. A reference that still
+names a trashed entry says so, distinctly from one that names an entry
+that no longer exists at all, and a run that would need it refuses
+before anything runs. Trash empties itself automatically 30 days after
+each entry lands there.
+
 ## The lock policy
 
 **Settings › Security** decides when the vault closes itself: after a
@@ -2994,7 +3004,9 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
 | `list.clearSelection` | Clear selection | `ESCAPE` | configure, composition, secrets | Conditional — available only in a matching state |
 | `list.deleteSelection` | Delete | `⌫` | configure, composition, secrets | Conditional — available only in a matching state |
+| `list.destroySelection` | Delete forever | — | configure, composition, secrets | Conditional — available only in a matching state |
 | `list.extendSelection` | Extend selection | `⇧SPACE` | configure, composition, secrets | Conditional — available only in a matching state |
+| `list.restoreSelection` | Restore | — | configure, composition, secrets | Conditional — available only in a matching state |
 | `list.selectAll` | Select all | `⌘A` | configure, composition, secrets | Conditional — available only in a matching state |
 | `list.toggleSelection` | Toggle selection | `SPACE` | configure, composition, secrets | Conditional — available only in a matching state |
 | `listGrid.addColumn` | Add a column | — | Global | Acts on the selected table rows |
@@ -3025,10 +3037,13 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `run.stop` | Stop run | — | Global | Acts on the selected run |
 | `runMonitor.open` | Run monitor | — | Global | Conditional — available only in a matching state |
 | `secret.copyReference` | Copy reference | — | Global | Acts on the selected entity |
+| `secret.destroy` | Delete forever | — | Global | Acts on the selected entity |
+| `secret.restore` | Restore | — | Global | Acts on the selected entity |
 | `secret.row.delete` | Delete | — | Global | Acts on the selected entity |
 | `secret.row.edit` | Edit | — | Global | Acts on the selected entity |
 | `secret.row.history` | History | — | Global | Acts on the selected entity |
 | `secret.row.openSource` | Open source | — | Global | Acts on the selected entity |
+| `secret.showTrash` | Show Trash | — | Global | Always available |
 | `secrets.findDotenvFiles` | Find .env files… | — | Global | Always available |
 | `secrets.lockVault` | Lock vault | — | Global | Conditional — available only in a matching state |
 | `secrets.resetVault` | Start a new vault | — | Global | Conditional — available only in a matching state |
@@ -4375,6 +4390,45 @@ export const SECRETS_COMMANDS: Command[] = [
       if (!target) return
       await writeClipboardText(toReference(target.id))
     },
+  },
+  {
+    // Restore (goal 0406 S2): the Trash section's own row/bulk action --
+    // moves a trashed vault entry back to its original group.
+    id: 'secret.restore',
+    label: 'commands.secret.restore',
+    defaultBinding: null,
+    needs: 'entity',
+    enabled: (ctx) => entityContext(ctx, 'secret') !== null,
+    run: async (ctx) => {
+      const target = entityContext(ctx, 'secret')
+      if (!target) return
+      await SecretService.RestoreSecret(target.id)
+    },
+  },
+  {
+    // Delete forever (goal 0406 S2): permanently removes a TRASHED
+    // entry -- reachable only from the Trash section's own row menu
+    // (the confirm asking about it lives on that row's own menuAction,
+    // shared/secretsTrashRowItems.ts) and the selection bar's
+    // list.destroySelection.
+    id: 'secret.destroy',
+    label: 'commands.secret.destroy',
+    defaultBinding: null,
+    needs: 'entity',
+    enabled: (ctx) => entityContext(ctx, 'secret') !== null,
+    run: async (ctx) => {
+      const target = entityContext(ctx, 'secret')
+      if (!target) return
+      await SecretService.DestroySecret(target.id)
+    },
+  },
+  {
+    // Show Trash (goal 0406 S2): the delete toast's own action --
+    // navigates to the Secrets view's Trash section.
+    id: 'secret.showTrash',
+    label: 'commands.secret.showTrash',
+    defaultBinding: null,
+    run: () => { useAppStore.getState().setView({ kind: 'secrets', tab: 'trash' }) },
   },
   {
     // "Find .env files…" (goal 0367): opens the Sources section's scan

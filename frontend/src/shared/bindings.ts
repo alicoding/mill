@@ -110,6 +110,7 @@ export type {
   LockPolicy,
   SecretAccessRecord,
   Status as VaultStatus,
+  TrashSummary,
 } from '../../bindings/github.com/alicoding/mill/internal/services/secretsvc/models'
 export type { Entry as SecretEntry, Summary as SecretSummary } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
 export { SettingsService } from '../../bindings/github.com/alicoding/mill/internal/services/settingssvc'

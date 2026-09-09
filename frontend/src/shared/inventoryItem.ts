@@ -35,7 +35,7 @@ export interface InventoryMenuAction {
   // naming the entity before the command fires, instead of destroying
   // straight off the kebab click. Every current caller sets this only
   // on a Delete action.
-  confirm?: { title: string; body: string }
+  confirm?: { title: string; body: string; confirmLabel?: string }
 }
 
 export interface InventoryItem {

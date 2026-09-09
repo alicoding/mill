@@ -15,6 +15,11 @@ let titles: Record<string, string> = {}
 // key field listing keys -- answers synchronously from the same cache
 // the titles come from.
 let kinds: Record<string, Kind> = {}
+// trashed mirrors ListTrash's own id -> label (goal 0406 S2): a picker
+// showing a vault-backed reference that currently names a Trashed entry
+// says so distinctly, rather than falling into the generic "gone"
+// caption a picker's own not-in-titles state otherwise reads as.
+let trashed: Record<string, string> = {}
 let loadError = ''
 let loaded = false
 const listeners = new Set<() => void>()
@@ -32,21 +37,29 @@ function notify(): void {
 
 export async function refreshSecretTitles(): Promise<void> {
   try {
-    // The vault's entries, then every enabled secret source's keys
-    // (ADR-0050) -- titles only, keyed by the reference each resolves as.
-    const [vault, providers] = await Promise.all([SecretService.ListSecrets(), SecretService.ListProviderSecrets()])
+    // The vault's entries, every enabled secret source's keys (ADR-0050),
+    // and the vault's own Trash (goal 0406 S2) -- titles/labels only,
+    // keyed by the reference each resolves as (ListTrash's ids are bare
+    // vault ids, the same shape a vault entry's own id already is).
+    const [vault, providers, trash] = await Promise.all([SecretService.ListSecrets(), SecretService.ListProviderSecrets(), SecretService.ListTrash()])
     const next: Record<string, string> = {}
     const nextKinds: Record<string, Kind> = {}
     for (const e of [...(vault ?? []), ...(providers ?? [])]) {
       next[e.ID] = e.Title
       nextKinds[e.ID] = e.Kind || Kind.KindText
     }
+    const nextTrashed: Record<string, string> = {}
+    for (const t of trash ?? []) {
+      nextTrashed[t.id] = t.label
+    }
     titles = next
     kinds = nextKinds
+    trashed = nextTrashed
     loadError = ''
   } catch (err) {
     titles = {}
     kinds = {}
+    trashed = {}
     loadError = String(err)
   }
   loaded = true
@@ -64,13 +77,14 @@ export function secretTitlesSnapshot(): SecretTitles {
 export interface SecretTitles {
   titles: Record<string, string>
   kinds: Record<string, Kind>
+  trashed: Record<string, string>
   error: string
   loaded: boolean
 }
 
-let snapshot: SecretTitles = { titles, kinds, error: loadError, loaded }
+let snapshot: SecretTitles = { titles, kinds, trashed, error: loadError, loaded }
 function rebuildSnapshot(): void {
-  snapshot = { titles, kinds, error: loadError, loaded }
+  snapshot = { titles, kinds, trashed, error: loadError, loaded }
 }
 listeners.add(rebuildSnapshot)
 

@@ -74,6 +74,45 @@ export const SECRETS_COMMANDS: Command[] = [
     },
   },
   {
+    // Restore (goal 0406 S2): the Trash section's own row/bulk action --
+    // moves a trashed vault entry back to its original group.
+    id: 'secret.restore',
+    label: 'commands.secret.restore',
+    defaultBinding: null,
+    needs: 'entity',
+    enabled: (ctx) => entityContext(ctx, 'secret') !== null,
+    run: async (ctx) => {
+      const target = entityContext(ctx, 'secret')
+      if (!target) return
+      await SecretService.RestoreSecret(target.id)
+    },
+  },
+  {
+    // Delete forever (goal 0406 S2): permanently removes a TRASHED
+    // entry -- reachable only from the Trash section's own row menu
+    // (the confirm asking about it lives on that row's own menuAction,
+    // shared/secretsTrashRowItems.ts) and the selection bar's
+    // list.destroySelection.
+    id: 'secret.destroy',
+    label: 'commands.secret.destroy',
+    defaultBinding: null,
+    needs: 'entity',
+    enabled: (ctx) => entityContext(ctx, 'secret') !== null,
+    run: async (ctx) => {
+      const target = entityContext(ctx, 'secret')
+      if (!target) return
+      await SecretService.DestroySecret(target.id)
+    },
+  },
+  {
+    // Show Trash (goal 0406 S2): the delete toast's own action --
+    // navigates to the Secrets view's Trash section.
+    id: 'secret.showTrash',
+    label: 'commands.secret.showTrash',
+    defaultBinding: null,
+    run: () => { useAppStore.getState().setView({ kind: 'secrets', tab: 'trash' }) },
+  },
+  {
     // "Find .env files…" (goal 0367): opens the Sources section's scan
     // dialog from anywhere. Navigation first, the set-then-consume
     // signal second -- the section may mount fresh on that navigation,

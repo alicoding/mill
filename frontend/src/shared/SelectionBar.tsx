@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionBar, IconButton, Stack, Text } from '@primer/react'
 import { XIcon } from '@primer/octicons-react'
 import { COMMANDS, commandAvailable, commandLabel, runCommand } from './commands'
 import { useAppStore } from './store'
 import { useListSelectionFocusStore } from './listSelectionFocus'
+import { ConfirmDialog } from './ConfirmDialog'
 import styles from './SelectionBar.module.css'
 
 // Replaces ListToolbar in place while a list is in selection mode
@@ -36,6 +38,16 @@ export function SelectionBar({ count, totalCount, onSelectAllOf, onCancel }: {
   useListSelectionFocusStore((s) => s.focused)
   const bulkCommands = COMMANDS.filter((c) => c.bulk && (!c.surface || c.surface.includes(surface)) && commandAvailable(c))
   const partial = count < totalCount
+  // A bulk action that asks first (goal 0406 S2's Delete forever, the
+  // one irreversible bulk action here) shows its Command.confirm before
+  // running -- every other bulk command omits confirm and runs
+  // straight off the click, unchanged.
+  const [pendingConfirm, setPendingConfirm] = useState<{ id: string; title: string; body: string; confirmLabel?: string } | null>(null)
+  const invoke = (c: (typeof bulkCommands)[number]) => {
+    const confirm = c.confirm?.()
+    if (confirm) setPendingConfirm({ id: c.id, ...confirm })
+    else void runCommand(c.id)
+  }
 
   return (
     <Stack direction="horizontal" gap="condensed" align="center" className={styles.bar} data-testid="selection-bar">
@@ -53,8 +65,8 @@ export function SelectionBar({ count, totalCount, onSelectAllOf, onCancel }: {
             <ActionBar.Button
               key={c.id}
               data-testid={`selection-bar-action-${c.id}`}
-              variant={c.id === 'list.deleteSelection' ? 'danger' : 'default'}
-              onClick={() => void runCommand(c.id)}
+              variant={c.id === 'list.deleteSelection' || c.id === 'list.destroySelection' ? 'danger' : 'default'}
+              onClick={() => invoke(c)}
             >
               {commandLabel(c)}
             </ActionBar.Button>
@@ -69,6 +81,19 @@ export function SelectionBar({ count, totalCount, onSelectAllOf, onCancel }: {
         onClick={onCancel}
         data-testid="selection-bar-cancel"
       />
+      {pendingConfirm && (
+        <ConfirmDialog
+          title={pendingConfirm.title}
+          body={pendingConfirm.body}
+          confirmLabel={pendingConfirm.confirmLabel}
+          onCancel={() => setPendingConfirm(null)}
+          onConfirm={() => {
+            const id = pendingConfirm.id
+            setPendingConfirm(null)
+            void runCommand(id)
+          }}
+        />
+      )}
     </Stack>
   )
 }

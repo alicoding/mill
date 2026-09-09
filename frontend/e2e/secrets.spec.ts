@@ -208,11 +208,11 @@ test('secret manager: create vault, store/reveal/copy/edit/history/delete a pass
     await expect(globalAccessHistory.getByText('Copied to the clipboard').or(globalAccessHistory.getByText("Couldn't be read"))).toBeVisible()
     await globalAccessHistory.getByLabel('Close').click()
 
-    // --- Delete via the row's kebab menu, confirmed by name ---
+    // --- Delete via the row's kebab menu moves it to Trash (goal 0406 S2) ---
     const bankRow = page.getByTestId('inventory-row').filter({ hasText: 'Bank of Testing' })
     await bankRow.getByTestId('inventory-row-menu').click()
     await page.getByRole('menuitem', { name: 'Delete' }).click()
-    await page.getByRole('button', { name: 'Delete', exact: true }).click()
+    await page.getByRole('button', { name: 'Move to Trash', exact: true }).click()
     await expect(list.getByText('Bank of Testing', { exact: true })).toHaveCount(0)
 
     // --- Lock, then unlock: the seeded entry is still there ---

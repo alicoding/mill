@@ -1504,9 +1504,33 @@
     "needs": null
   },
   {
+    "id": "list.destroySelection",
+    "label": "Delete forever",
+    "binding": null,
+    "surface": [
+      "configure",
+      "composition",
+      "secrets"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "list.extendSelection",
     "label": "Extend selection",
     "binding": "⇧SPACE",
+    "surface": [
+      "configure",
+      "composition",
+      "secrets"
+    ],
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "list.restoreSelection",
+    "label": "Restore",
+    "binding": null,
     "surface": [
       "configure",
       "composition",
@@ -1772,6 +1796,22 @@
     "needs": "entity"
   },
   {
+    "id": "secret.destroy",
+    "label": "Delete forever",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "secret.restore",
+    "label": "Restore",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
     "id": "secret.row.delete",
     "label": "Delete",
     "binding": null,
@@ -1802,6 +1842,14 @@
     "surface": null,
     "enabled": true,
     "needs": "entity"
+  },
+  {
+    "id": "secret.showTrash",
+    "label": "Show Trash",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
   },
   {
     "id": "secrets.findDotenvFiles",

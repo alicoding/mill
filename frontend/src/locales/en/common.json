@@ -27,6 +27,11 @@
     "cancelAriaLabel": "Cancel selection",
     "actionsAriaLabel": "Bulk actions"
   },
+  "bulkTrash": {
+    "destroyConfirmTitle": "Delete {{count}} forever?",
+    "destroyConfirmBody": "This cannot be undone.",
+    "destroyConfirmButton": "Delete forever"
+  },
   "bulkDelete": {
     "deleted": "Deleted {{count}} {{kind}}.",
     "deletedKept": "Deleted {{deleted}} {{kind}}. {{kept}} kept: still in use.",
@@ -517,6 +522,8 @@
       "selectAll": "Select all",
       "clearSelection": "Clear selection",
       "deleteSelection": "Delete",
+      "restoreSelection": "Restore",
+      "destroySelection": "Delete forever",
       "toggleSelection": "Toggle selection",
       "extendSelection": "Extend selection"
     },
@@ -527,6 +534,9 @@
     },
     "secret": {
       "copyReference": "Copy reference",
+      "restore": "Restore",
+      "destroy": "Delete forever",
+      "showTrash": "Show Trash",
       "row": {
         "edit": "Edit",
         "history": "History",

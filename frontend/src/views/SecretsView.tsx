@@ -5,8 +5,7 @@ import { Blankslate } from '@primer/react/experimental'
 import { Button, Heading, IconButton, Link, SegmentedControl, Stack, Text } from '@primer/react'
 import { DownloadIcon, HistoryIcon, KeyIcon, LockIcon, PlusIcon } from '@primer/octicons-react'
 import { SecretService } from '../shared/bindings'
-import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
-import type { SecretSummary } from '../shared/bindings'
+import type { SecretSummary, TrashSummary } from '../shared/bindings'
 import { runCommand } from '../shared/commands'
 import { refreshVaultBackupTime, refreshVaultStatus, useVaultStatusStore } from '../shared/vaultStatusStore'
 import { vaultErrorKind } from '../shared/secretsCommands'
@@ -14,8 +13,10 @@ import { humanizeLockAfter, unlockStatusKey } from '../shared/vaultLockCopy'
 import type { TFunction } from 'i18next'
 import { InventoryList } from '../shared/InventoryList'
 import { SecretsLockedPanel } from './SecretsLockedPanel'
+import { SecretsTrashSection } from './SecretsTrashSection'
 import { useUISignalStore } from '../shared/uiSignalStore'
-import { useConfirmDelete } from '../shared/useConfirmDelete'
+import { ConfirmDialog } from '../shared/ConfirmDialog'
+import { postMovedToTrashToast } from '../shared/secretTrashToast'
 import { useUndoJournal } from '../shared/useUndoJournal'
 import PageContainer from '../shared/PageContainer'
 import { FirstRunIntro } from '../shared/FirstRunIntro'
@@ -30,21 +31,22 @@ import { SecretsAccessHistoryDialog } from './SecretsAccessHistoryDialog'
 import { SecretsImportDialog } from './SecretsImportDialog'
 import styles from './SecretsView.module.css'
 
-type SecretsSection = 'vault' | 'sources'
+type SecretsSection = 'vault' | 'sources' | 'trash'
 
-// The page's two sections, and the deep-link tab values that land on
+// The page's three sections, and the deep-link tab values that land on
 // each. An unrecognized tab lands on the entries, which is the section
 // the page is named for. Lock policy moved to Settings > Security
 // (goal 0360 S1 follow-up) -- it configures the kernel, not this
 // vault's own content, the same reasoning Extensions' own move out of
 // Settings already established in reverse.
 function sectionFromTab(tab: string | undefined): SecretsSection {
-  return tab === 'sources' ? tab : 'vault'
+  return tab === 'sources' || tab === 'trash' ? tab : 'vault'
 }
 
 const SECTION_SUBTITLE_KEY: Record<SecretsSection, string> = {
   vault: 'subtitle',
   sources: 'sections.sourcesSubtitle',
+  trash: 'sections.trashSubtitle',
 }
 
 // The status line is two sentences composed from state: what it takes
@@ -93,6 +95,11 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   // secret entry, vault or source-backed, and the gate stays the one
   // the design contract names ("same actions, same gate").
   const [providerList, setProviderList] = useState<SecretSummary[] | null>(null)
+  // The Trash section's own rows and its nav badge count (goal 0406
+  // S2) -- fetched alongside vault/providers, behind the SAME unlock
+  // gate: Trash is vault CONTENT (the KDBX Recycle Bin group), unlike
+  // Sources' own file-backed config, which stays reachable locked.
+  const [trashList, setTrashList] = useState<TrashSummary[] | null>(null)
   const secretSources = useConfigureEntityStore((s) => s.secretSources)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -136,6 +143,14 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
       <SegmentedControl.Button selected={section === 'sources'} onClick={() => setSection('sources')} data-testid="secrets-section-sources">
         {t('sections.sources')}
       </SegmentedControl.Button>
+      <SegmentedControl.Button
+        selected={section === 'trash'}
+        onClick={() => setSection('trash')}
+        count={trashList !== null ? trashList.length : undefined}
+        data-testid="secrets-section-trash"
+      >
+        {t('sections.trash')}
+      </SegmentedControl.Button>
     </SegmentedControl>
   )
 
@@ -178,9 +193,11 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
       if (s?.Unlocked) {
         SecretService.ListSecrets().then(setList).catch((err) => setError(String(err)))
         SecretService.ListProviderSecrets().then(setProviderList).catch(() => setProviderList([]))
+        SecretService.ListTrash().then(setTrashList).catch(() => setTrashList([]))
       } else {
         setList(null)
         setProviderList(null)
+        setTrashList(null)
       }
     })
   }
@@ -278,14 +295,27 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   }, [status, vaultError])
 
   const remove = (id: string) => {
-    SecretService.DeleteSecret(id).then(() => { setDetailID(null); refresh() }).catch((err) => setError(String(err)))
+    SecretService.DeleteSecret(id)
+      .then(() => { setDetailID(null); refresh(); postMovedToTrashToast(id) })
+      .catch((err) => setError(String(err)))
   }
 
-  const { requestDelete, dialog: confirmDialog } = useConfirmDelete<SecretSummary>({
-    entityType: 'secret',
-    labelOf: (s) => s.Title,
-    onConfirm: (s) => remove(s.ID),
-  })
+  // The detail panel's own Delete button (goal 0406 S2): its own small
+  // confirm, not shared/useConfirmDelete's generic wording -- that hook
+  // is the GENERIC "Delete this X?" every other entity type still uses;
+  // Secrets' own delete now trashes, so its confirm names that instead
+  // (the same copy secretRowItems.tsx's row-menu confirm shows, so
+  // the two entry points read identically).
+  const [pendingDeleteID, setPendingDeleteID] = useState<string | null>(null)
+  const confirmDialog = pendingDeleteID !== null && (
+    <ConfirmDialog
+      title={t('deleteConfirmTitle')}
+      body={t('deleteConfirmBody')}
+      confirmLabel={t('trash.moveToTrashButton')}
+      onCancel={() => setPendingDeleteID(null)}
+      onConfirm={() => { remove(pendingDeleteID); setPendingDeleteID(null) }}
+    />
+  )
 
   if (status === null) return null
 
@@ -387,27 +417,29 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
         {changeInSettingsLink}
       </Stack>
       {error && <Text as="p" size="small" className={styles.error} data-testid="secrets-error">{error}</Text>}
-      <InventoryList
-        listId="secrets"
-        items={items}
-        searchPlaceholder={t('searchPlaceholder')}
-        searchQuery={search}
-        onSearchQueryChange={setSearch}
-        // No Undo (goal 0404 S1 amendment): a secret's delete registers
-        // nothing in the journal -- an undo journal holding a deleted
-        // secret's VALUE is the wrong primitive (goal 0406 is the
-        // recently-deleted trash instead). The bulk toast still reports
-        // the outcome, just with no Undo button
-        // (shared/entityDeleteDoors.ts reads `secrets`' own
-        // `undoable: false`).
-        selection={{ entity: 'secret' }}
-        emptyState={{
-          icon: KeyIcon,
-          heading: t('emptyHeading'),
-          description: t('emptyDescription'),
-          action: <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate}>{t('newSecret')}</Button>,
-        }}
-      />
+      {section === 'trash' ? (
+        <SecretsTrashSection list={trashList} />
+      ) : (
+        <InventoryList
+          listId="secrets"
+          items={items}
+          searchPlaceholder={t('searchPlaceholder')}
+          searchQuery={search}
+          onSearchQueryChange={setSearch}
+          // No Undo (goal 0404 S1 amendment): a secret's delete registers
+          // nothing in the journal -- an undo journal holding a deleted
+          // secret's VALUE is the wrong primitive; goal 0406 S2's own
+          // Trash is the way back instead, its own toast pointing at it
+          // (shared/secretTrashToast.ts).
+          selection={{ entity: 'secret' }}
+          emptyState={{
+            icon: KeyIcon,
+            heading: t('emptyHeading'),
+            description: t('emptyDescription'),
+            action: <Button leadingVisual={PlusIcon} variant="primary" onClick={startCreate}>{t('newSecret')}</Button>,
+          }}
+        />
+      )}
       {formOpen && (
         <SecretsEntryDialog
           editID={editingID}
@@ -422,7 +454,7 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
           onEdit={() => startEdit(detailID)}
           onHistory={() => setHistoryID(detailID)}
           onAccessHistory={() => setAccessHistoryID(detailID)}
-          onDelete={() => requestDelete(sorted.find((s) => s.ID === detailID) ?? { ID: detailID, Title: detailID, Username: '', URL: '', Tags: [], FieldNames: [], Kind: Kind.KindText, SourceRef: '', Origin: '', UpdatedAt: '' })}
+          onDelete={() => setPendingDeleteID(detailID)}
         />
       )}
       {providerDetailID && (() => {

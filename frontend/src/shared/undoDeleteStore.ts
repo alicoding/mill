@@ -13,12 +13,19 @@ export interface PendingUndoDelete {
   // 0404 S1's amendment) -- the toast then renders no Undo button at
   // all, rather than one that would always fail.
   undo: (() => Promise<void>) | null
+  // The button's own label, whenever `undo` is set. Defaults to "Undo"
+  // (undoDelete.undo) -- Secrets' own Move-to-Trash toast (goal 0406
+  // S2) instead posts "Show Trash": that button navigates rather than
+  // reversing anything, since the Trash itself is the way back, not
+  // this toast.
+  actionLabel?: string
   // The undo journal entry (ADR-0044) this toast offers a way back to
   // -- 'configure-entity'/`${entity}/${id}` for a Configure kind,
-  // 'workflow'/id for a bulk workflow delete. Required whenever `undo`
-  // is set: it's what lets the toast hide itself once the journal has
-  // moved past this step (goal 0352 part 2), the same watch a single-
-  // row delete's toast already does.
+  // 'workflow'/id for a bulk workflow delete. Omitted for an action
+  // (like Secrets' "Show Trash") that isn't a journal Undo at all --
+  // the toast's own journal-advance watch (UndoDeleteToast.tsx) simply
+  // never matches, so it stays up for its fixed timer like any
+  // no-journal entry.
   journalKind?: string
   journalId?: string
 }

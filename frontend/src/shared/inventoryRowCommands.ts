@@ -6,6 +6,7 @@ import { refreshSeedRevisions, shippedRevision } from './seedRevisionStore'
 import { refreshWorkflows, useAppStore } from './store'
 import { useUISignalStore } from './uiSignalStore'
 import { parseSourceRef } from './secretReference'
+import { postMovedToTrashToast } from './secretTrashToast'
 
 // A row's id tells the two secret backings apart (goal 0408 S2): a
 // vault entry's id never carries a colon, a source-backed reference
@@ -87,7 +88,12 @@ const secrets: EntityRowFamily<EntityRowItem> = {
     },
   ],
   remove: {
-    run: (item) => SecretService.DeleteSecret(item.ID),
+    // Trashes, not deletes (goal 0406, S1's own DeleteSecret) -- the
+    // Trash itself is the way back, so this posts its OWN "Moved to
+    // Trash" toast (secretTrashToast.ts) rather than routing through
+    // deleteWithUndo's journal-Undo shape, which is why `undo: false`
+    // stays set (no journal entry exists to point an Undo button at).
+    run: (item) => SecretService.DeleteSecret(item.ID).then(() => postMovedToTrashToast(item.ID)),
     undo: false,
     enabled: (item) => !isSourceBackedID(item.ID),
   },

@@ -42,7 +42,7 @@ export type SecretPickerProps = {
 // an entity's field stores and the secret service resolves.
 export function SecretPicker({ value, onChange, kinds, newEntryTitle, ariaLabel, testID }: SecretPickerProps) {
   const { t } = useTranslation('views')
-  const { titles, kinds: entryKinds, error, loaded } = useSecretTitles()
+  const { titles, kinds: entryKinds, trashed: trashedTitles, error, loaded } = useSecretTitles()
   const secretSources = useConfigureEntityStore((s) => s.secretSources)
   const [adding, setAdding] = useState<Kind | null>(null)
   // Refreshed on every mount, not just the first: an entry added in
@@ -70,7 +70,12 @@ export function SecretPicker({ value, onChange, kinds, newEntryTitle, ariaLabel,
   const sourceRef = notCurrentlyListed ? parseSourceRef(selected) : null
   const unresolvedSource = sourceRef ? (secretSources ?? []).find((s) => s.ID === sourceRef.sourceID) : undefined
   const unresolved = notCurrentlyListed && sourceRef !== null && unresolvedSource !== undefined
-  const gone = notCurrentlyListed && !unresolved
+  // A vault-backed reference (never a source ref, which parseSourceRef
+  // already claims above) currently sitting in the vault's own Trash
+  // (goal 0406 S2, S1's ErrInTrash) -- distinct from "gone": the entry
+  // still exists, just not usable until restored.
+  const trashed = notCurrentlyListed && sourceRef === null && trashedTitles[selected] !== undefined
+  const gone = notCurrentlyListed && !unresolved && !trashed
 
   return (
     <>
@@ -92,6 +97,7 @@ export function SecretPicker({ value, onChange, kinds, newEntryTitle, ariaLabel,
           )}
           {gone && <Select.Option value={selected}>{t('settings.extensions.secretRefGone')}</Select.Option>}
           {unresolved && sourceRef && <Select.Option value={selected}>{sourceRef.key}</Select.Option>}
+          {trashed && <Select.Option value={selected}>{trashedTitles[selected]}</Select.Option>}
         </Select>
         <Button size="small" onClick={() => setAdding(kinds?.[0] ?? Kind.KindText)} data-testid="secret-ref-add">
           {t('settings.extensions.secretRefAdd')}
@@ -103,6 +109,11 @@ export function SecretPicker({ value, onChange, kinds, newEntryTitle, ariaLabel,
       {unresolved && sourceRef && (
         <Text as="p" size="small" className={styles.attention} data-testid="secret-ref-unresolved">
           {t('settings.extensions.secretRefUnresolved', { key: sourceRef.key, source: unresolvedSource?.Label })}
+        </Text>
+      )}
+      {trashed && (
+        <Text as="p" size="small" className={styles.attention} data-testid="secret-ref-trashed">
+          {t('settings.extensions.secretRefTrashed')}
         </Text>
       )}
       {error && (

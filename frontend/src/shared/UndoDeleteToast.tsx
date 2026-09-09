@@ -49,7 +49,7 @@ export function UndoDeleteToast() {
       className={styles.toast}
       message={pending.message}
       testId="undo-delete-toast"
-      undoLabel={t('undoDelete.undo')}
+      undoLabel={pending.actionLabel ?? t('undoDelete.undo')}
       onUndo={() => { dismiss(pending.key); void undo() }}
     />
   ) : (
