@@ -3,6 +3,7 @@ import { pluginThemes, subscribePluginThemes, type PluginThemeEntry } from '../s
 import type { ResolvedMode } from '../shared/appearance'
 
 export interface ThemeOption {
+  family: ResolvedMode
   scheme: string
   label: string
   pluginName?: string
@@ -21,7 +22,7 @@ function emptyThemes(): PluginThemeEntry[] {
 export function useThemeOptions(family: ResolvedMode, builtIn: readonly string[], labelOf: (scheme: string) => string): ThemeOption[] {
   const contributed = useSyncExternalStore(subscribePluginThemes, pluginThemes, emptyThemes)
   return useMemo(() => [
-    ...builtIn.map((scheme) => ({ scheme, label: labelOf(scheme) })),
-    ...contributed.filter((c: PluginThemeEntry) => c.family === family).map((c: PluginThemeEntry) => ({ scheme: c.schemeId, label: c.label, pluginName: c.pluginName })),
+    ...builtIn.map((scheme) => ({ family, scheme, label: labelOf(scheme) })),
+    ...contributed.filter((c: PluginThemeEntry) => c.family === family).map((c: PluginThemeEntry) => ({ family, scheme: c.schemeId, label: c.label, pluginName: c.pluginName })),
   ], [family, builtIn, contributed, labelOf])
 }

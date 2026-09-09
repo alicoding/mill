@@ -6,7 +6,7 @@ import {
   subscribeAppearance,
   type ResolvedMode,
 } from '../shared/appearance'
-import { getThemePreview, previewedSchemes, subscribeThemePreview } from '../shared/appearancePreview'
+import { getThemePreview, previewedAppearance, subscribeThemePreview } from '../shared/appearancePreview'
 import { pluginThemes, subscribePluginThemes, type PluginThemeEntry } from '../shared/appearanceThemes'
 
 export interface Resolved {
@@ -51,14 +51,14 @@ export function useResolvedAppearance(): Resolved {
   const preview = useSyncExternalStore(subscribeThemePreview, getThemePreview, nullPreview)
   return useMemo(() => {
     const contributed = themes.map((t) => t.schemeId)
-    const { lightTheme, darkTheme } = previewedSchemes(resolveSchemes(appearance, moreContrast, contributed), preview)
+    const { lightTheme, darkTheme } = resolveSchemes(appearance, moreContrast, contributed)
     const resolvedMode = appearance.mode === 'auto' ? (systemDark ? 'dark' : 'light') : normalizeMode(appearance.mode)
-    return {
+    return previewedAppearance({
       mode: appearance.mode,
       lightTheme,
       darkTheme,
       resolvedMode,
       scheme: resolvedMode === 'dark' ? darkTheme : lightTheme,
-    }
+    }, preview)
   }, [appearance, moreContrast, systemDark, preview, themes])
 }

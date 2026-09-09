@@ -7,7 +7,7 @@
 // window or survive a reload. That is the whole reason it does not go
 // through setAppearance, which exists to do exactly those two things.
 
-import type { ResolvedMode } from './appearance'
+import type { ColorMode, ResolvedMode } from './appearance'
 
 export interface ThemePreview {
 	family: ResolvedMode
@@ -52,16 +52,29 @@ export function subscribeThemePreview(onChange: () => void): () => void {
 	return () => listeners.delete(onChange)
 }
 
-// previewedSchemes applies a preview over the committed pair. The
-// preview replaces its own family's scheme only, so previewing a light
-// theme while the window is showing dark changes nothing on screen --
-// the honest answer, since that theme is not what the window paints.
-export function previewedSchemes(
-	committed: { lightTheme: string; darkTheme: string },
+export interface PreviewableAppearance {
+	mode: ColorMode
+	lightTheme: string
+	darkTheme: string
+	resolvedMode: ResolvedMode
+	scheme: string
+}
+
+// A preview is a complete window-local appearance. Its family becomes
+// the active Primer mode as well as Mill's resolved family, which lets
+// an opposite-family option paint immediately without changing the
+// committed mode or either saved preference.
+export function previewedAppearance<T extends PreviewableAppearance>(
+	committed: T,
 	preview: ThemePreview | null,
-): { lightTheme: string; darkTheme: string } {
+): T {
 	if (preview === null) return committed
-	return preview.family === 'dark'
-		? { lightTheme: committed.lightTheme, darkTheme: preview.scheme }
-		: { lightTheme: preview.scheme, darkTheme: committed.darkTheme }
+	return {
+		...committed,
+		mode: preview.family,
+		resolvedMode: preview.family,
+		lightTheme: preview.family === 'light' ? preview.scheme : committed.lightTheme,
+		darkTheme: preview.family === 'dark' ? preview.scheme : committed.darkTheme,
+		scheme: preview.scheme,
+	}
 }

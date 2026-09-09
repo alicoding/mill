@@ -9,11 +9,11 @@ import { applyCpuThrottle } from './fixtures/throttle'
 // Theming (goal 0320): the color scheme per mode, one theme across
 // every window, and the plugin theme contract.
 //
-// The first two run on the SHARED worker pool: the appearance choice
-// lives in this browser context's own localStorage, which Playwright
-// gives each test fresh, so nothing here reads or writes state another
-// test can see. The plugin face test needs a plugins directory, so it
-// takes a dedicated server (offset 70) like every runtime-plugin spec.
+// The appearance interaction tests run on the SHARED worker pool: the
+// choice lives in this browser context's own localStorage, which
+// Playwright gives each test fresh. The plugin face test needs a
+// plugins directory, so it takes a dedicated server (offset 70) like
+// every runtime-plugin spec.
 
 const htmlAttr = (page: import('@playwright/test').Page, name: string) =>
   page.evaluate((n) => document.documentElement.getAttribute(n), name)
@@ -21,110 +21,171 @@ const htmlAttr = (page: import('@playwright/test').Page, name: string) =>
 const bgDefault = (page: import('@playwright/test').Page) =>
   page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bgColor-default').trim())
 
-test('the theme pickers follow the mode, and picking Dimmed repaints', async ({ page }) => {
-  await page.goto('/')
-  await openSettings(page, 'appearance')
-  await expect(page.getByTestId('settings-view')).toBeVisible()
+for (const systemAppearance of ['light', 'dark'] as const) {
+  test(`an opposite-family hover previews the whole window and cancels under ${systemAppearance} system appearance`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: systemAppearance })
+    await page.goto('/')
+    await openSettings(page, 'appearance')
+    const committed = await bgDefault(page)
+    const oppositeFamily = systemAppearance === 'light' ? 'dark' : 'light'
+    const firstScheme = systemAppearance === 'light' ? 'dark_dimmed' : 'light_high_contrast'
+    const secondScheme = systemAppearance === 'light' ? 'dark_high_contrast' : 'light_colorblind'
 
-  const light = page.getByTestId('light-scheme-select')
-  const dark = page.getByTestId('dark-scheme-select')
-  // Match system is the default mode, so BOTH families are in play and
-  // both are listed, each captioned with when it applies.
-  await expect(light).toBeVisible()
-  await expect(dark).toBeVisible()
-  await expect(page.getByText('Used when the system is in light mode.')).toBeVisible()
-  await expect(page.getByText('Used when the system is in dark mode.')).toBeVisible()
-  // Primer's schemes under Mill's copy, in the listed order.
-  await expect(light.getByRole('option')).toHaveText([
-    'Default', 'High contrast', 'Colorblind', 'Colorblind high contrast', 'Tritanopia', 'Tritanopia high contrast',
-  ])
+    await page.getByTestId(`${oppositeFamily}-scheme-select-option-${firstScheme}`).hover()
+    await expect.poll(() => htmlAttr(page, 'data-color-mode')).toBe(oppositeFamily)
+    await expect.poll(() => htmlAttr(page, 'data-mill-theme')).toBe(oppositeFamily)
+    await expect.poll(() => htmlAttr(page, 'data-mill-scheme')).toBe(firstScheme)
+    await expect.poll(() => bgDefault(page)).not.toBe(committed)
+    expect(await page.evaluate(() => localStorage.getItem('mill-color-mode'))).toBeNull()
 
-  await page.getByRole('button', { name: 'Dark', exact: true }).click()
+    await page.keyboard.press('Escape')
+    await expect.poll(() => htmlAttr(page, 'data-color-mode')).toBe('auto')
+    await expect.poll(() => htmlAttr(page, 'data-mill-theme')).toBe(systemAppearance)
+    await expect.poll(() => bgDefault(page)).toBe(committed)
+
+    await page.getByTestId(`${oppositeFamily}-scheme-select-option-${secondScheme}`).hover()
+    await expect.poll(() => htmlAttr(page, 'data-mill-scheme')).toBe(secondScheme)
+    await page.getByTestId('settings-view').hover({ position: { x: 2, y: 2 } })
+    await expect.poll(() => htmlAttr(page, 'data-color-mode')).toBe('auto')
+    await expect.poll(() => bgDefault(page)).toBe(committed)
+  })
+}
+
+test('Single theme groups both families and commits a dark choice from light', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.setViewportSize({ width: 360, height: 720 })
+  await page.goto('/#/settings/appearance')
+  await expect(page.getByTestId('settings-pane-appearance')).toBeVisible()
+  await page.getByTestId('theme-mode-select').selectOption('single')
+
+  const themes = page.getByTestId('single-theme-select')
+  await expect(themes).toBeVisible()
+  await expect(themes.getByText('Light themes', { exact: true })).toBeVisible()
+  await expect(themes.getByText('Dark themes', { exact: true })).toBeVisible()
+  await expect(themes.getByRole('option', { name: 'Light Default' })).toHaveAttribute('aria-selected', 'true')
+  await expect(themes.getByRole('option', { name: 'Dark Default' })).toHaveAttribute('aria-selected', 'false')
+  const lightPreference = await page.evaluate(() => localStorage.getItem('mill-light-scheme'))
+  const lightBackground = await bgDefault(page)
+
+  await page.getByTestId('single-theme-select-option-dark_dimmed').click()
   await expect.poll(() => htmlAttr(page, 'data-color-mode')).toBe('dark')
-  // Under a fixed mode only that family's list remains: the other one
-  // could not affect this window, so it is not on screen.
-  await expect(dark).toBeVisible()
-  await expect(light).toHaveCount(0)
-  await expect(dark.getByRole('option')).toHaveText([
-    'Default', 'Dimmed', 'High contrast', 'Colorblind', 'Colorblind high contrast', 'Tritanopia', 'Tritanopia high contrast',
-  ])
-  const plainDark = await bgDefault(page)
-  expect(plainDark).not.toBe('')
-
-  await page.getByTestId('dark-scheme-select-option-dark_dimmed').click()
-  await expect.poll(() => htmlAttr(page, 'data-dark-theme')).toBe('dark_dimmed')
+  await expect.poll(() => htmlAttr(page, 'data-mill-theme')).toBe('dark')
   await expect.poll(() => htmlAttr(page, 'data-mill-scheme')).toBe('dark_dimmed')
-  // A different scheme is a different palette, not just a different
-  // attribute -- the page background itself moves.
-  await expect.poll(() => bgDefault(page)).not.toBe(plainDark)
+  await expect.poll(() => bgDefault(page)).not.toBe(lightBackground)
+  expect(await page.evaluate(() => localStorage.getItem('mill-light-scheme'))).toBe(lightPreference)
+  expect(await page.evaluate(() => localStorage.getItem('mill-dark-scheme'))).toBe('dark_dimmed')
+  expect(await page.evaluate(() => localStorage.getItem('mill-color-mode'))).toBe('dark')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+
+  await page.reload()
+  await expect(page.getByTestId('theme-mode-select')).toHaveValue('single')
+  await expect.poll(() => htmlAttr(page, 'data-mill-scheme')).toBe('dark_dimmed')
+  await expect(page.getByRole('option', { name: 'Dark Dimmed' })).toHaveAttribute('aria-selected', 'true')
 })
 
-test('pointing at a theme previews it, and leaving the list puts the old one back', async ({ page }) => {
+test('keyboard focus previews across families, and cancel or focus exit restores the committed theme', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' })
   await page.goto('/')
   await openSettings(page, 'appearance')
-  await page.getByRole('button', { name: 'Dark', exact: true }).click()
-  await expect.poll(() => htmlAttr(page, 'data-color-mode')).toBe('dark')
-  const committed = await bgDefault(page)
+  await page.getByTestId('theme-mode-select').selectOption('single')
+  const selected = page.getByRole('option', { name: 'Light Default' })
 
-  await page.getByTestId('dark-scheme-select-option-dark_high_contrast').hover()
-  await expect.poll(() => bgDefault(page)).not.toBe(committed)
-  // A preview is not a choice: it repaints this window and writes
-  // nothing, so the stored scheme has not moved.
-  expect(await page.evaluate(() => localStorage.getItem('mill-dark-scheme'))).toBe('dark')
-
+  await selected.click()
+  await page.keyboard.press('End')
+  await expect(page.getByRole('option', { name: 'Dark Tritanopia high contrast' })).toBeFocused()
+  await expect.poll(() => htmlAttr(page, 'data-mill-theme')).toBe('dark')
   await page.keyboard.press('Escape')
-  await expect.poll(() => bgDefault(page)).toBe(committed)
+  await expect.poll(() => htmlAttr(page, 'data-mill-theme')).toBe('light')
+  await expect(page.getByRole('option', { name: 'Dark Tritanopia high contrast' })).toBeFocused()
 
-  // A different item, because the pointer never left the first one:
-  // preview follows the pointer entering a row, and Escape above did
-  // not move it.
-  await page.getByTestId('dark-scheme-select-option-dark_dimmed').hover()
-  await expect.poll(() => bgDefault(page)).not.toBe(committed)
-  await page.getByTestId('settings-view').hover({ position: { x: 2, y: 2 } })
-  await expect.poll(() => bgDefault(page)).toBe(committed)
+  await page.keyboard.press('ArrowUp')
+  await expect.poll(() => htmlAttr(page, 'data-mill-theme')).toBe('dark')
+  await page.keyboard.press('Tab')
+  await expect.poll(() => htmlAttr(page, 'data-mill-theme')).toBe('light')
 
-  await page.getByTestId('dark-scheme-select-option-dark_high_contrast').click()
-  await expect.poll(() => htmlAttr(page, 'data-dark-theme')).toBe('dark_high_contrast')
-  await expect.poll(() => bgDefault(page)).not.toBe(committed)
+  await selected.click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Space')
+  await expect.poll(() => htmlAttr(page, 'data-color-mode')).toBe('dark')
+  await expect.poll(() => htmlAttr(page, 'data-mill-scheme')).toBe('dark_tritanopia_high_contrast')
+  expect(await page.evaluate(() => localStorage.getItem('mill-color-mode'))).toBe('dark')
+
+  const committed = page.getByRole('option', { name: 'Dark Tritanopia high contrast' })
+  await committed.click()
+  await page.keyboard.press('Home')
+  await expect(page.getByRole('option', { name: 'Light Default' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect.poll(() => htmlAttr(page, 'data-color-mode')).toBe('light')
+  await expect.poll(() => htmlAttr(page, 'data-mill-scheme')).toBe('light')
 })
 
-test('a light theme picked while the window is dark applies when the mode turns light', async ({ page }) => {
+test('Follow system saves both preferences, while mode transitions preserve them and follow the OS', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' })
   await page.goto('/')
   await openSettings(page, 'appearance')
-  // Match system with the system in dark: the window is dark, and the
-  // light list is still there because the system can turn light.
-  await expect.poll(() => htmlAttr(page, 'data-mill-theme')).toBe('dark')
-  const whileDark = await bgDefault(page)
-
+  await page.getByTestId('dark-scheme-select-option-dark_dimmed').click()
   await page.getByTestId('light-scheme-select-option-light_high_contrast').click()
-  await expect.poll(() => htmlAttr(page, 'data-light-theme')).toBe('light_high_contrast')
-  // Nothing repaints yet: the choice is for the other appearance.
-  expect(await bgDefault(page)).toBe(whileDark)
+  expect(await page.evaluate(() => localStorage.getItem('mill-color-mode'))).toBe('auto')
+  expect(await page.evaluate(() => localStorage.getItem('mill-light-scheme'))).toBe('light_high_contrast')
+  expect(await page.evaluate(() => localStorage.getItem('mill-dark-scheme'))).toBe('dark_dimmed')
+  await expect.poll(() => htmlAttr(page, 'data-mill-scheme')).toBe('dark_dimmed')
 
-  await page.getByRole('button', { name: 'Light', exact: true }).click()
+  await page.getByTestId('theme-mode-select').selectOption('single')
+  await expect.poll(() => htmlAttr(page, 'data-color-mode')).toBe('dark')
+  await expect.poll(() => htmlAttr(page, 'data-mill-scheme')).toBe('dark_dimmed')
+  await page.getByTestId('theme-mode-select').selectOption('auto')
+  await page.emulateMedia({ colorScheme: 'light' })
+  await expect.poll(() => htmlAttr(page, 'data-color-mode')).toBe('auto')
   await expect.poll(() => htmlAttr(page, 'data-mill-scheme')).toBe('light_high_contrast')
-  await expect.poll(() => bgDefault(page)).not.toBe(whileDark)
+  expect(await page.evaluate(() => localStorage.getItem('mill-dark-scheme'))).toBe('dark_dimmed')
 })
 
-test('a theme change reaches an already-open second window without a reload', async ({ page, context }) => {
+test('preview stays in one window, then a Single theme commit reaches the already-open second window', async ({ page, context }) => {
+  await page.emulateMedia({ colorScheme: 'light' })
   await page.goto('/')
   const panel = await context.newPage()
+  await panel.emulateMedia({ colorScheme: 'light' })
   await panel.goto('/#/quickpanel')
   await expect.poll(() => htmlAttr(panel, 'data-color-mode')).toBe('auto')
+  const panelBackground = await bgDefault(panel)
 
   await openSettings(page, 'appearance')
-  await expect(page.getByTestId('settings-view')).toBeVisible()
-  await page.getByRole('button', { name: 'Dark', exact: true }).click()
+  await page.getByTestId('dark-scheme-select-option-dark_dimmed').hover()
+  await expect.poll(() => htmlAttr(page, 'data-mill-theme')).toBe('dark')
+  await expect.poll(() => htmlAttr(panel, 'data-color-mode')).toBe('auto')
+  await expect.poll(() => htmlAttr(panel, 'data-mill-theme')).toBe('light')
+  expect(await bgDefault(panel)).toBe(panelBackground)
 
-  // The Quick Panel window follows -- never reloaded here, so a stale
-  // first-paint seed would fail this.
+  await page.keyboard.press('Escape')
+  await page.getByTestId('theme-mode-select').selectOption('single')
+  await page.getByTestId('single-theme-select-option-dark_dimmed').click()
   await expect.poll(() => htmlAttr(panel, 'data-color-mode')).toBe('dark')
   await expect.poll(() => htmlAttr(panel, 'data-mill-theme')).toBe('dark')
-
-  await page.getByTestId('dark-scheme-select-option-dark_high_contrast').click()
-  await expect.poll(() => htmlAttr(panel, 'data-dark-theme')).toBe('dark_high_contrast')
+  await expect.poll(() => htmlAttr(panel, 'data-mill-scheme')).toBe('dark_dimmed')
   await panel.close()
+})
+
+test('navigation clears preview to the latest system and remote committed appearance', async ({ page, context }) => {
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.goto('/')
+  await openSettings(page, 'appearance')
+  await page.getByTestId('dark-scheme-select-option-dark_high_contrast').hover()
+  await expect.poll(() => htmlAttr(page, 'data-mill-scheme')).toBe('dark_high_contrast')
+
+  const updater = await context.newPage()
+  await updater.goto('/')
+  await openSettings(updater, 'appearance')
+  await updater.getByTestId('dark-scheme-select-option-dark_dimmed').click()
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('mill-dark-scheme'))).toBe('dark_dimmed')
+
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await expect.poll(() => htmlAttr(page, 'data-mill-scheme')).toBe('dark_high_contrast')
+  await page.getByTestId('settings-group-item-backups').click()
+  await expect(page.getByTestId('settings-pane-backups')).toBeVisible()
+  await expect.poll(() => htmlAttr(page, 'data-color-mode')).toBe('auto')
+  await expect.poll(() => htmlAttr(page, 'data-mill-theme')).toBe('dark')
+  await expect.poll(() => htmlAttr(page, 'data-mill-scheme')).toBe('dark_dimmed')
+  await updater.close()
 })
 
 pluginTest('a plugin face and view carry the resolved theme, and it flips with the mode', async () => {
@@ -151,8 +212,8 @@ pluginTest('a plugin face and view carry the resolved theme, and it flips with t
     await applyCpuThrottle(settings)
     await settings.goto('/')
     await openSettings(settings, 'appearance')
-    await settings.getByRole('button', { name: 'Dark', exact: true }).click()
-    await settings.getByTestId('dark-scheme-select-option-dark_dimmed').click()
+    await settings.getByTestId('theme-mode-select').selectOption('single')
+    await settings.getByTestId('single-theme-select-option-dark_dimmed').click()
 
     await baseExpect(face).toHaveAttribute('data-mill-theme', 'dark')
     await baseExpect(face).toHaveAttribute('data-mill-scheme', 'dark_dimmed')
@@ -168,8 +229,7 @@ pluginTest('a plugin face and view carry the resolved theme, and it flips with t
     // A theme the Scribble example contributes: listed under its own
     // family with the plugin that shipped it, and painting the real
     // page once chosen.
-    await settings.getByRole('button', { name: 'Light', exact: true }).click()
-    const sepia = settings.getByTestId('light-scheme-select-option-mill-scribble.sepia')
+    const sepia = settings.getByTestId('single-theme-select-option-mill-scribble.sepia')
     await baseExpect(sepia).toBeVisible()
     await baseExpect(sepia).toContainText('Sepia')
     await baseExpect(sepia).toContainText('From Scribble')

@@ -20,10 +20,10 @@
       "updates": "Updates"
     },
     "appearance": {
-      "themeLabel": "Color theme",
-      "lightLabel": "Light",
-      "darkLabel": "Dark",
-      "systemLabel": "System",
+      "themeLabel": "Theme mode",
+      "themeCaption": "Choose one theme or follow your system appearance.",
+      "singleOption": "Single theme",
+      "systemOption": "Follow system",
       "colorSchemeLabel": "Color scheme",
       "lightAppearanceLabel": "Light appearance",
       "darkAppearanceLabel": "Dark appearance",
@@ -44,10 +44,17 @@
     },
     "theme": {
       "label": "Theme",
+      "caption": "Preview a theme, then select it to apply it.",
       "lightLabel": "Light theme",
       "darkLabel": "Dark theme",
+      "lightGroup": "Light themes",
+      "darkGroup": "Dark themes",
       "lightCaption": "Used when the system is in light mode.",
       "darkCaption": "Used when the system is in dark mode.",
+      "family": {
+        "light": "Light",
+        "dark": "Dark"
+      },
       "fromPlugin": "From {{plugin}}",
       "rejected": "This theme's file has a line the host cannot accept: line {{line}}.",
       "previewLabel": "Preview"

@@ -5,16 +5,17 @@ import { openSettings } from './fixtures/settingsNav'
 // Design-wave-1 fix #3: three dark-mode bugs caught in the full-app
 // design audit (screenshots: canvas-*-dark.png showed a light-hardcoded
 // MiniMap, settings-mid-dark.png showed a white "Away after" number
-// input). This spec proves the fix over the REAL Settings dark-theme
-// toggle (SegmentedControl, SettingsView.tsx) rather than emulating
-// prefers-color-scheme -- Primer's ThemeProvider colorMode is driven by
-// that control (via useTheme()/App.tsx's data-color-mode mirroring),
-// so clicking it is the same real path a user takes, not a stand-in.
+// input). This spec proves the fix over the real Settings theme
+// controls rather than emulating prefers-color-scheme -- Primer's
+// ThemeProvider colorMode is driven by that choice (via
+// useTheme()/App.tsx's data-color-mode mirroring), so selecting it is
+// the same path a user takes.
 
 async function switchToDarkTheme(page: import('@playwright/test').Page) {
   await openSettings(page, 'appearance')
   await expect(page.getByTestId('settings-view')).toBeVisible()
-  await page.getByRole('button', { name: 'Dark', exact: true }).click()
+  await page.getByTestId('theme-mode-select').selectOption('single')
+  await page.getByTestId('single-theme-select-option-dark').click()
   // Primer's ThemeProvider mirrors the resolved mode onto <html data-color-mode>
   // (App.tsx) -- wait for that instead of an arbitrary timeout.
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.colorMode)).toBe('dark')
