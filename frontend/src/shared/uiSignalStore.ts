@@ -100,6 +100,17 @@ interface UISignalState {
   secretsDotenvScanRequest: boolean
   requestSecretsDotenvScan: () => void
   consumeSecretsDotenvScan: () => void
+  // Sources ▸ "Show n keys in the list" (goal 0408 S2): the merged
+  // Secrets list's own search term, so the row's key count links
+  // straight into the list already narrowed to that source's group --
+  // the same tag-chip convention SecretsView's own labelBadges already
+  // use (`tag:${tag}`), here `source:<sourceID>`. Set-then-consume, the
+  // same remount reason secretsDotenvScanRequest above carries: the
+  // vault section may mount fresh on the navigation the link itself
+  // raises.
+  secretsListFilterRequest: string | null
+  requestSecretsListFilter: (term: string) => void
+  consumeSecretsListFilter: () => void
   // browser.pairRequest.focus (goal 0379): an incoming pair-request's
   // desktop-banner click lands on Settings > Connections > Browsers,
   // which may mount FRESH on that navigation -- same set-then-consume
@@ -337,6 +348,9 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   secretsDotenvScanRequest: false,
   requestSecretsDotenvScan: () => set({ secretsDotenvScanRequest: true }),
   consumeSecretsDotenvScan: () => set({ secretsDotenvScanRequest: false }),
+  secretsListFilterRequest: null,
+  requestSecretsListFilter: (term) => set({ secretsListFilterRequest: term }),
+  consumeSecretsListFilter: () => set({ secretsListFilterRequest: null }),
   browserPairRequestFocus: false,
   requestBrowserPairRequestFocus: () => set({ browserPairRequestFocus: true }),
   consumeBrowserPairRequestFocus: () => set({ browserPairRequestFocus: false }),

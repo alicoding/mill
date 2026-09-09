@@ -70,6 +70,8 @@ export interface EntityRowRemove<T> {
   /** The command-id suffix and label key, where a family already spells its delete differently. */
   suffix?: string
   label?: string
+  /** Unavailable means ABSENT (goal 0343) -- a row this family can't delete (a source-backed key has no wrapping entry to delete) omits the action rather than failing when clicked. Every existing family omits this and keeps deleting every row it lists. */
+  enabled?: (item: T) => boolean
 }
 
 export interface EntityRowFamily<T extends EntityRowItem> {
@@ -236,7 +238,7 @@ export function entityRowCommands<T extends EntityRowItem>(family: EntityRowFami
       remove: () => Promise.resolve(remove.run(item)),
       refetch: family.refetch,
     })
-  }, undefined, remove.confirm))
+  }, remove.enabled, remove.confirm))
 
   return commands
 }
