@@ -17,50 +17,82 @@ for bridge in .agents/skills/*; do
   [[ -d ".claude/skills/${bridge##*/}" ]] || fail "extra skill bridge $bridge"
 done
 
-# Native TOML is deliberately a tiny fixed shape. Compare complete contract
-# lines rather than inventing a TOML parser or adding a gate dependency.
-for source in .claude/agents/*.md; do
-  name="${source##*/}"; name="${name%.md}"
-  [[ "$name" == README ]] && continue
-  profile=".codex/agents/$name.toml"
-  [[ -f "$profile" ]] || fail "missing profile $name"
-  case "$name" in
-    explorer) model=gpt-5.6-luna; effort=medium ;;
-    reviewer) model=gpt-5.6-luna; effort=high ;;
-    architect) model=gpt-6-astra; effort=high ;;
-    builder|closeout|pr-shepherd|research|test-investigator|verifier) model=gpt-5.6-sol; effort=high ;;
-    *) fail "new canonical role $name needs an explicit native assignment" ;;
-  esac
-  # Descriptions are the only editorial line; constrain their TOML syntax.
-  description=$(sed -n '2p' "$profile")
-  [[ "$description" =~ ^description\ =\ \"[^\"\\]+\"$ ]] || fail "invalid description in $profile"
-  expected=$(printf 'name = "%s"\n%s\nmodel = "%s"\nmodel_reasoning_effort = "%s"\n' "$name" "$description" "$model" "$effort"
-    case "$name" in architect|explorer|research|reviewer) echo 'sandbox_mode = "read-only"' ;; esac
-    printf 'developer_instructions = """\nRead AGENTS.md first, then .claude/agents/%s.md.\nExecute that canonical role body with the Codex translations in AGENTS.md.\nHonor the dispatched brief, role boundaries and available runtime limits.\n"""' "$name")
-  [[ "$(cat "$profile")" == "$expected" ]] || fail "native profile contract drift: $profile"
-done
-for profile in .codex/agents/*; do
-  name="${profile##*/}"; name="${name%.toml}"
-  [[ "$profile" == *.toml && "$name" != README && -f ".claude/agents/$name.md" ]] || fail "extra profile $profile"
-done
-[[ "$(cat .codex/config.toml)" == $'[agents]\nmax_concurrent_threads_per_session = 3' ]] || fail 'native concurrency configuration drift'
+# tomllib preserves semantic checks while allowing native TOML formatting.
+python3 - <<'PYTHON'
+from pathlib import Path
+import tomllib
+
+sources = {p.stem for p in Path('.claude/agents').glob('*.md') if p.stem != 'README'}
+profiles = {p.stem for p in Path('.codex/agents').glob('*.toml')}
+assert sources == profiles, 'canonical and native role sets differ'
+assert all(p.suffix == '.toml' for p in Path('.codex/agents').iterdir()), 'extra native profile entry'
+assignments = {
+    'explorer': ('gpt-5.6-luna', 'medium'),
+    'reviewer': ('gpt-5.6-luna', 'high'),
+    'architect': ('gpt-6-astra', 'high'),
+    **dict.fromkeys(('builder', 'closeout', 'pr-shepherd', 'research',
+                     'test-investigator', 'verifier'), ('gpt-5.6-sol', 'high')),
+}
+assert sources == assignments.keys(), 'new role needs explicit native assignment'
+for name in sources:
+    path = Path('.codex/agents') / f'{name}.toml'
+    profile = tomllib.loads(path.read_text())
+    description = profile.get('description')
+    assert isinstance(description, str) and description.strip(), f'{path}: missing description'
+    model, effort = assignments[name]
+    expected = dict(name=name, description=description, model=model,
+                    model_reasoning_effort=effort,
+                    developer_instructions=(
+                        f'Read AGENTS.md first, then .claude/agents/{name}.md.\n'
+                        'Execute that canonical role body with the Codex translations in AGENTS.md.\n'
+                        'Honor the dispatched brief, role boundaries and available runtime limits.\n'))
+    if name in ('architect', 'explorer', 'research', 'reviewer'):
+        expected['sandbox_mode'] = 'read-only'
+    assert profile == expected, f'{path}: native role contract drift'
+config = tomllib.loads(Path('.codex/config.toml').read_text())
+assert config == {'agents': {'max_concurrent_threads_per_session': 3}}, 'native configuration drift'
+PYTHON
 for rule in .claude/rules/*.md; do
   grep -Fq "$rule" AGENTS.md || fail "router missing $rule"
 done
 grep -Fq 'CLAUDE.md' AGENTS.md || fail 'router missing canonical context'
 
-jq -e --slurpfile canonical .claude/settings.json '
-  . == {hooks: {
-    UserPromptSubmit: $canonical[0].hooks.UserPromptSubmit,
-    PreToolUse: [{matcher:"Bash", hooks:[
-      {type:"command",command:"bash \"$(git rev-parse --show-toplevel)/scripts/hook-build-guard.sh\""},
-      {type:"command",command:"bash \"$(git rev-parse --show-toplevel)/scripts/hook-command-guard.sh\""}
-    ]}],
-    SessionStart: [{hooks:[{type:"command",command:"bash \"$(git rev-parse --show-toplevel)/scripts/sweep-stale-servers.sh\""}]}]
-  }}' .codex/hooks.json >/dev/null || fail 'native hooks differ from intended canonical mappings'
+# Unsupported lifecycle events stay explicitly classified. A source change
+# must be reviewed before any corresponding native handler can be exercised.
+validate_hooks() {
+  local canonical="$1" native="$2"
+  jq -e '
+    (.hooks | keys) == ["PermissionDenied","PreToolUse","SessionStart","TaskCompleted","UserPromptSubmit","WorktreeRemove"] and
+    (.hooks.PreToolUse | length) == 2 and
+    (.hooks.PreToolUse | map(.matcher) | sort) == ["Bash","Monitor"] and
+    ([.hooks.PreToolUse[] | select(.matcher == "Bash")] == [{matcher:"Bash",hooks:[
+      {type:"command",command:"${CLAUDE_PROJECT_DIR}/scripts/hook-build-guard.sh",args:[]},
+      {type:"command",command:"${CLAUDE_PROJECT_DIR}/scripts/hook-command-guard.sh",args:[]}
+    ]}]) and
+    (.hooks.SessionStart == [{hooks:[{type:"command",command:"${CLAUDE_PROJECT_DIR}/scripts/sweep-stale-servers.sh",args:[]}]}]) and
+    ([.hooks | to_entries[] | select(.key != "PreToolUse") | .value |
+      (length == 1 and (.[0] | has("matcher") | not))] | all) and
+    ([.hooks.PreToolUse[] | select(.matcher == "Monitor") | .hooks | length] == [1])
+  ' "$canonical" >/dev/null || return 1
+  jq -e --slurpfile canonical "$canonical" '
+    . == {hooks: {
+      UserPromptSubmit: $canonical[0].hooks.UserPromptSubmit,
+      PreToolUse: [{matcher:"Bash", hooks:[
+        {type:"command",command:"bash \"$(git rev-parse --show-toplevel)/scripts/hook-build-guard.sh\""},
+        {type:"command",command:"bash \"$(git rev-parse --show-toplevel)/scripts/hook-command-guard.sh\""}
+      ]}],
+      SessionStart: [{hooks:[{type:"command",command:"bash \"$(git rev-parse --show-toplevel)/scripts/sweep-stale-servers.sh\""}]}]
+    }}' "$native" >/dev/null
+}
+validate_hooks .claude/settings.json .codex/hooks.json || fail 'canonical/native hook registration drift needs review'
 
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/mill-codex-context.XXXXXX")
 trap 'rm -rf "$scratch"' EXIT
+jq '(.hooks.PreToolUse[] | select(.matcher == "Bash") | .hooks) +=
+  [{type:"command",command:"inert-extra-handler"}]' .claude/settings.json >"$scratch/extra-hook.json"
+if validate_hooks "$scratch/extra-hook.json" .codex/hooks.json; then
+  fail 'canonical extra-handler regression probe was not rejected'
+fi
 source scripts/lib/git-fixture.sh
 # Fixture environment changes stay in a subshell; a commit hook's exported
 # git environment must never redirect these operations at the real index.

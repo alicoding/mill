@@ -84,9 +84,12 @@ continuations; no detached or unlimited watch loop.
 ## Checks
 
 `bash scripts/check-codex-context.sh` checks bridges against canonical sets,
-requires the intended native hook mappings, and feeds inert native-shaped
+requires reviewed canonical/native hook mappings, and feeds inert native-shaped
 PreToolUse JSON to the configured guards. It never executes the command
 inside `tool_input`. It also runs the existing command-guard probe suite.
-Lefthook always runs this small gate; CI runs it in the required
+Validation requires Bash, jq and Python 3.11+ (`tomllib`, standard library).
+Canonical hook additions fail until classified and mapped; an inert fixture
+proves this rejection. Native TOML checks parse semantics, allowing comments
+and whitespace. Lefthook always runs this small gate; CI runs it in the required
 `standing-context` job. `check-standing-context.sh` separately budgets AGENTS
 at 120 lines / 1,500 words, preserving the existing CLAUDE/rule budgets.
