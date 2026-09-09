@@ -14,6 +14,8 @@ export type {
     ListSecretAccessRequest,
     ListSecretAccessResponse,
     LockPolicy,
+    Reference,
+    ReferenceSource,
     SecretAccessRecord,
     SourcesChanged,
     SourcesLister,

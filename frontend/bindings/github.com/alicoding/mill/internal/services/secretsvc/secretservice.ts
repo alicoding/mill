@@ -180,6 +180,20 @@ export function ListProviderSecrets(): $CancellablePromise<secret$0.Summary[] | 
 }
 
 /**
+ * ListReferences lists every current reference by NAME, never a value
+ * -- vault entries (Trash excluded: ListSecrets already never lists a
+ * trashed entry, goal 0406) and every enabled source's own keys
+ * (ListProviderSecrets, live-read). A vault entry backed by a source
+ * (SourceRef set) carries that source and is marked unresolved exactly
+ * as the picker's own caption already computes it (SecretRefUnresolved)
+ * plus the "the source itself is gone" state that function doesn't
+ * cover on its own.
+ */
+export function ListReferences(): $CancellablePromise<$models.Reference[] | null> {
+    return $Call.ByID(2165687122);
+}
+
+/**
  * ListSecretAccess is the bound read API the Secrets view's Access
  * history list calls -- newest first, optionally filtered to one entry,
  * limit/offset paged. Returns an empty page (never an error) when no

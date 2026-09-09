@@ -380,6 +380,10 @@ export function ExportMCPServer(id: string): $CancellablePromise<string> {
     return $Call.ByID(766088645, id);
 }
 
+export function ExportSecretSource(id: string): $CancellablePromise<string> {
+    return $Call.ByID(2339067251, id);
+}
+
 /**
  * GetList returns one List by id -- the grid's schema edits read the
  * current record through this instead of fetching every list (goal
@@ -472,6 +476,20 @@ export function ImportList(jsonData: string): $CancellablePromise<list$0.List> {
  */
 export function ImportMCPServer(jsonData: string): $CancellablePromise<mcpserver$0.MCPServer> {
     return $Call.ByID(337785048, jsonData);
+}
+
+/**
+ * ImportSecretSource applies ADR-0036 decision 3's uniform import rule
+ * (configureservice_export.go's own header comment). A path naming a
+ * file this machine doesn't have is never rejected here -- the source
+ * still lands, exactly as decision 6 states: "a missing path lands the
+ * source with its problem text, never an import error." Its row's own
+ * SourceProblems (secretsvc) reports the problem once the source is
+ * watched, the same state a source whose file moves or is deleted
+ * after creation already produces.
+ */
+export function ImportSecretSource(jsonData: string): $CancellablePromise<secretsource$0.Source> {
+    return $Call.ByID(3918269428, jsonData);
 }
 
 /**
