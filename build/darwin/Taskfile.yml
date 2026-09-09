@@ -62,9 +62,11 @@ tasks:
       GOOS: darwin
       CGO_ENABLED: 1
       GOARCH: '{{.ARCH | default ARCH}}'
-      CGO_CFLAGS: "-mmacosx-version-min=12.0"
-      CGO_LDFLAGS: "-mmacosx-version-min=12.0"
-      MACOSX_DEPLOYMENT_TARGET: "12.0"
+      # MACOSX_DEPLOYMENT_TARGET/CGO_CFLAGS/CGO_LDFLAGS: root
+      # Taskfile.yml's own env: block sets the one 12.0 value every
+      # task inherits (goal 0419 S1) -- not repeated here so this task
+      # can't silently drift from it (this task's own -Wl,
+      # -no_warn_duplicate_libraries addition lives there, once).
 
   build:docker:
     summary: Cross-compiles for macOS using Docker (for Linux/Windows hosts)

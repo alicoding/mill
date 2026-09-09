@@ -5,11 +5,12 @@ package presencekey
 // framework-api-audit: wails/v3@v3.0.0-beta.15 lacks any macOS Security-framework/keychain API -- SecureSet/SecureGet/SecureDelete (pkg/application/mobile_features_ios.go) are gated `//go:build ios` only, no desktop equivalent exists.
 
 /*
-#cgo CFLAGS: -mmacosx-version-min=10.15 -x objective-c -Wno-unguarded-availability-new
-#cgo LDFLAGS: -framework Foundation -framework Security
+#cgo CFLAGS: -x objective-c -Wall -Wextra -Werror
+#cgo LDFLAGS: -framework Foundation -framework Security -framework LocalAuthentication
 
 #import <Foundation/Foundation.h>
 #import <Security/Security.h>
+#import <LocalAuthentication/LocalAuthentication.h>
 #import <string.h>
 #import <stdlib.h>
 
@@ -46,8 +47,11 @@ static OSStatus millDeleteItem(const char *service, const char *account) {
 // but the call itself blocks synchronously through the prompt, so
 // Apple directs calling it off the main thread). Go's Read() wraps this
 // call in its own fresh goroutine so it never runs on a thread the app
-// needs back promptly. prompt is shown in the system sheet via
-// kSecUseOperationPrompt.
+// needs back promptly. prompt is shown in the system sheet via an
+// LAContext's localizedReason, handed to the query through
+// kSecUseAuthenticationContext -- kSecUseOperationPrompt (the prior
+// mechanism) has been deprecated since macOS 11 in favour of this pair
+// (Security/SecItem.h).
 static OSStatus millReadPresenceItem(const char *service, const char *account, const char *prompt, void **outData, int *outLen) {
 	@autoreleasepool {
 		NSMutableDictionary *query = [NSMutableDictionary dictionaryWithDictionary:@{
@@ -57,11 +61,15 @@ static OSStatus millReadPresenceItem(const char *service, const char *account, c
 			(__bridge id)kSecReturnData: @YES,
 			(__bridge id)kSecUseDataProtectionKeychain: @NO,
 		}];
+		LAContext *authContext = nil;
 		if (prompt != NULL) {
-			query[(__bridge id)kSecUseOperationPrompt] = [NSString stringWithUTF8String:prompt];
+			authContext = [[LAContext alloc] init];
+			authContext.localizedReason = [NSString stringWithUTF8String:prompt];
+			query[(__bridge id)kSecUseAuthenticationContext] = authContext;
 		}
 		CFTypeRef result = NULL;
 		OSStatus status = SecItemCopyMatching((__bridge CFDictionaryRef)query, &result);
+		[authContext release];
 		if (status != errSecSuccess) {
 			return status;
 		}

@@ -5,7 +5,7 @@ package localauth
 // framework-api-audit: wails/v3@v3.0.0-beta.15 lacks any macOS LocalAuthentication/LAContext API -- its only authentication surface, MobileManager.BiometricAuthenticate, is a desktop no-op stub (pkg/application/mobile_stub.go) that returns no result.
 
 /*
-#cgo CFLAGS: -mmacosx-version-min=10.15 -x objective-c -Wno-unguarded-availability-new
+#cgo CFLAGS: -x objective-c -Wall -Wextra -Werror
 #cgo LDFLAGS: -framework Foundation -framework LocalAuthentication
 
 #import <Foundation/Foundation.h>
@@ -74,7 +74,8 @@ static int millLocalAuthEvaluate(const char *reason) {
 // millLocalAuthCapability answers the three prompt-free
 // canEvaluatePolicy reads Describe maps, packed into a bitmask so one
 // cgo call covers all of them: bit 0 the device-owner policy Mill
-// actually evaluates, bit 1 Touch ID, bit 2 a paired Apple Watch.
+// actually evaluates, bit 1 Touch ID, bit 2 a paired companion device
+// (Apple Watch on every Mac that ships one today).
 //
 // biometryType is documented as meaningful only after
 // canEvaluatePolicy has been called on that context (LAContext.h), so
@@ -97,8 +98,26 @@ static int millLocalAuthCapability(void) {
 			mask |= 2;
 		}
 		err = nil;
-		if ([ctx canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithWatch error:&err]) {
-			mask |= 4;
+		// LAPolicyDeviceOwnerAuthenticationWithWatch was renamed
+		// WithCompanion in macOS 15 (LAContext.h) -- same capability
+		// under a wider companion-device umbrella than Watch alone.
+		// WithCompanion isn't declared before 15, so the pre-15
+		// branch below still evaluates the deprecated symbol (still
+		// functional through macOS 14, per its own API_DEPRECATED
+		// range); -Wno-deprecated-declarations is scoped to that one
+		// reference, never the file, since the 12.0 floor genuinely
+		// needs it.
+		if (@available(macOS 15, *)) {
+			if ([ctx canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithCompanion error:&err]) {
+				mask |= 4;
+			}
+		} else {
+			#pragma clang diagnostic push
+			#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+			if ([ctx canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithWatch error:&err]) {
+				mask |= 4;
+			}
+			#pragma clang diagnostic pop
 		}
 		[ctx release];
 		return mask;
