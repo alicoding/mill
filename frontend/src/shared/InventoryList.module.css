@@ -116,3 +116,28 @@
 [data-testid='inventory-row'][data-selection-mode='true'] .checkboxSlot {
     opacity: 1;
 }
+
+/* A backing's own header (goal 0408 S2's merged Secrets list): plain
+   caption type, never competing with a row's own label for weight --
+   the FIRST group's heading sits flush with the toolbar above it, every
+   later one gets a small gap so consecutive runs read as distinct
+   sections rather than one continuous list. */
+.groupHeading {
+    font-size: var(--text-body-size-small, 12px);
+    font-weight: var(--base-text-weight-semibold, 600);
+    color: var(--fgColor-muted);
+    margin: var(--base-size-12) 0 var(--base-size-4);
+    padding: 0;
+}
+.groupHeading:first-child {
+    margin-top: 0;
+}
+.groupIcon {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    border-radius: var(--borderRadius-small);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

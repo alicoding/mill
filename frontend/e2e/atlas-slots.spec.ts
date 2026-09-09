@@ -13,7 +13,7 @@ import {
 import { contextMenu } from './fixtures/contextMenu'
 import { ATLAS_KIND_TOPIC, selectKind } from './fixtures/kindPicker'
 import { clickCorner, closeCard, dragBetween, noteCard, openCard, submitCreatePopover, zoomAllTheWayOut } from './fixtures/atlasBoard'
-import { clickEdgeOffChip, hoverEdgeOffChip } from './fixtures/atlasEdge'
+import { hoverEdgeOffChip, rightClickEdgeOffChip } from './fixtures/atlasEdge'
 
 // Atlas typed link slots (goal 0081 slice A4, relocated by goal 0106
 // contract item 1): the card page's own slot-row block, slot-drag from
@@ -174,9 +174,7 @@ test('atlas typed link slots: page slot rows, hover-handle slot-drag linking, ch
     }, { timeout: 10_000 }).toBe(0)
 
     // --- Edge right-click: Change link kind / Edit label / Remove link ---
-    await clickEdgeOffChip(page, edge, { button: 'right' })
-    await expect(menu).toBeVisible()
-    await expect(menu.getByText('Change link kind', { exact: true })).toBeVisible()
+    await rightClickEdgeOffChip(page, edge, menu, 'Change link kind')
     await expect(menu.getByText('Remove link', { exact: true })).toBeVisible()
     await menu.getByText('Edit label…', { exact: true }).click()
     const labelInput = page.getByTestId('atlas-edge-label-input')
@@ -185,8 +183,7 @@ test('atlas typed link slots: page slot rows, hover-handle slot-drag linking, ch
     await labelInput.press('Enter')
     await expect(labelInput).not.toBeVisible()
 
-    await clickEdgeOffChip(page, edge, { button: 'right' })
-    await expect(menu).toBeVisible()
+    await rightClickEdgeOffChip(page, edge, menu, 'Remove link')
     await menu.getByText('Remove link', { exact: true }).click()
     await expect(page.locator('.react-flow__edge')).toHaveCount(seededEdgeCount)
     await openCard(page, cardA)

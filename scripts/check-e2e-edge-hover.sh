@@ -20,6 +20,13 @@
 #   B) a variable this file assigned from a `.react-flow__edge`
 #      locator, later called with a bare .hover(/.click( -- the exact
 #      shape atlas-slots:173 and atlas-linking:121 recurred as.
+#   C) that same variable passed to `button: 'right'` on ANY call, not
+#      just a `.click(` method call -- a right-click's own remount
+#      hazard needs rightClickEdgeOffChip's post-click menu-content
+#      verification (goal 0358 S9), which a plain method-call regex
+#      can't tell apart from a left click; this catches the case in
+#      function-call form too (e.g. a future helper reintroducing
+#      clickEdgeOffChip's old signature), not just `edge.click(...)`.
 #
 # Escape hatch, same line as the call: a genuinely non-Atlas React
 # Flow edge (a composition/workflow canvas edge -- no chip, a
@@ -47,6 +54,10 @@ while IFS= read -r -d '' file; do
     if [[ -n "$varhits" ]]; then
       hits="$(printf '%s\n%s' "$hits" "$varhits")"
     fi
+    rightvarhits="$(grep -nE "\b${var}\b" "$file" | grep -E "button: *['\"]right['\"]" | grep -v 'rightClickEdgeOffChip(' | grep -v "$allow" || true)"
+    if [[ -n "$rightvarhits" ]]; then
+      hits="$(printf '%s\n%s' "$hits" "$rightvarhits")"
+    fi
   done <<< "$vars"
 
   hits="$(printf '%s\n' "$hits" | grep -v '^$' || true)"
@@ -61,15 +72,20 @@ done < <(git ls-files -z -- 'frontend/e2e/**/*.ts' 'frontend/e2e/*.ts')
 if (( violations > 0 )); then
   cat >&2 <<'MSG'
 
-A .react-flow__edge locator was hovered/clicked directly instead of
-through fixtures/atlasEdge.ts's hoverEdgeOffChip/clickEdgeOffChip.
+A .react-flow__edge locator was hovered/clicked/right-clicked directly
+instead of through fixtures/atlasEdge.ts's hoverEdgeOffChip/
+rightClickEdgeOffChip.
 
 The chip AtlasLinkEdge renders on hover/select sits at the edge's own
 bounding-box center -- the exact point a bare hover()/click() targets
 -- so every actionability retry re-intercepts on the chip until the
-test times out (goal 0358 S8). Use:
+test times out (goal 0358 S8). A right-click carries a second hazard on
+top of that (goal 0358 S9): a remount between the click's own
+verification and its dispatch can hand the click to the pane behind
+the edge, opening the wrong context menu -- a bare
+`expect(menu).toBeVisible()` can't tell the two menus apart. Use:
   await hoverEdgeOffChip(page, edge)
-  await clickEdgeOffChip(page, edge, { button: 'right' })
+  await rightClickEdgeOffChip(page, edge, menu, 'Change link kind')
 
 A genuinely non-Atlas React Flow edge (a composition/workflow canvas
 edge, no chip) may suppress this with a same-line comment:

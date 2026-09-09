@@ -49,6 +49,18 @@ export function ChooseScanFolder(): $CancellablePromise<string> {
 }
 
 /**
+ * CopyProviderSecretToClipboard mirrors CopySecretToClipboard for a
+ * provider-qualified reference (goal 0408 S2): resolves through the
+ * provider port (which records its own ContextUICopy audit line, naming
+ * the source) and writes the clipboard with the same "don't clobber a
+ * newer copy" auto-clear CopySecretToClipboard already gives vault
+ * entries.
+ */
+export function CopyProviderSecretToClipboard(ref: string): $CancellablePromise<void> {
+    return $Call.ByID(4261433181, ref);
+}
+
+/**
  * CopySecretToClipboard reveals id's password and writes it to the
  * clipboard, then clears the clipboard after clipboardAutoClear --
  * but ONLY if the clipboard still holds exactly that value at that
@@ -240,6 +252,19 @@ export function ResetVault(): $CancellablePromise<void> {
  */
 export function RestoreVaultFromLatestBackup(): $CancellablePromise<void> {
     return $Call.ByID(3591040275);
+}
+
+/**
+ * RevealProviderSecret resolves ref (a provider-qualified reference,
+ * "env:<source>/<KEY>" and friends) and returns its value -- the
+ * source-backed counterpart to RevealSecret, for a Secrets-list row
+ * backed by a configured source rather than the vault (goal 0408 S2).
+ * Records one ContextUIReveal audit line via resolveProvider itself,
+ * naming the source. Errors when ref is a bare vault id -- that row
+ * reveals through RevealSecret instead.
+ */
+export function RevealProviderSecret(ref: string): $CancellablePromise<string> {
+    return $Call.ByID(1128432160, ref);
 }
 
 /**

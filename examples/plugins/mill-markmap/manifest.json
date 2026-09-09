@@ -10,7 +10,20 @@
   "contributes": {
     "canvasObjects": [
       {
-        "kind": "mindmap"
+        "kind": "mindmap",
+        "example": {
+          "title": "Mind map example",
+          "payload": {},
+          "revision": 1,
+          "fixtures": [
+            {
+              "kind": "note",
+              "title": "Mind map example",
+              "body": "# Mind map example\n## Idea\n### Detail\n### Another detail\n## Plan\n### Step one\n### Step two\n## Notes\nA quick reminder that stays off the map.",
+              "payloadKey": "noteId"
+            }
+          ]
+        }
       }
     ]
   }

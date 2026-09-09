@@ -73,6 +73,39 @@ func validateCanvasObjectContributions(objects []CanvasObjectContribution) strin
 		if problem := entryPathProblem("canvas object", obj.Kind, obj.Entry); problem != "" {
 			return problem
 		}
+		if problem := validateCanvasObjectExample(obj.Kind, obj.Example); problem != "" {
+			return problem
+		}
+	}
+	return ""
+}
+
+// validateCanvasObjectExample fail-closes a declared example (goal
+// 0411): nil is legal (a kind that ships none yet), but a declared one
+// must be complete enough for the host to seed and to insert with --
+// a title to show, a revision to reconcile against, and every fixture
+// naming a supported kind, real content, and a payload key the host
+// can inject its created id at.
+func validateCanvasObjectExample(kind string, ex *CanvasObjectExample) string {
+	if ex == nil {
+		return ""
+	}
+	if strings.TrimSpace(ex.Title) == "" {
+		return fmt.Sprintf("canvas object %q example needs a title", kind)
+	}
+	if ex.Revision < 1 {
+		return fmt.Sprintf("canvas object %q example needs a revision of 1 or more", kind)
+	}
+	for _, f := range ex.Fixtures {
+		if f.Kind != "note" {
+			return fmt.Sprintf("canvas object %q example fixture has unknown kind %q (only \"note\" is declarable today)", kind, f.Kind)
+		}
+		if strings.TrimSpace(f.Body) == "" {
+			return fmt.Sprintf("canvas object %q example fixture needs a body", kind)
+		}
+		if !settingKeyPattern.MatchString(f.PayloadKey) {
+			return fmt.Sprintf("canvas object %q example fixture payloadKey %q must start with a letter and use only letters, digits, - and _", kind, f.PayloadKey)
+		}
 	}
 	return ""
 }

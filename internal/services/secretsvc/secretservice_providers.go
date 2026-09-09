@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"context"
 
@@ -133,6 +134,48 @@ func (s *SecretService) resolveProvider(id string, actx secretaudit.AccessContex
 	}
 	s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeRead, "", "")
 	return v, true, nil
+}
+
+// RevealProviderSecret resolves ref (a provider-qualified reference,
+// "env:<source>/<KEY>" and friends) and returns its value -- the
+// source-backed counterpart to RevealSecret, for a Secrets-list row
+// backed by a configured source rather than the vault (goal 0408 S2).
+// Records one ContextUIReveal audit line via resolveProvider itself,
+// naming the source. Errors when ref is a bare vault id -- that row
+// reveals through RevealSecret instead.
+func (s *SecretService) RevealProviderSecret(ref string) (string, error) {
+	value, handled, err := s.resolveProvider(ref, secretaudit.AccessContext{Context: secretaudit.ContextUIReveal})
+	if !handled {
+		return "", fmt.Errorf("secret reference %q is not a source reference", ref)
+	}
+	return value, err
+}
+
+// CopyProviderSecretToClipboard mirrors CopySecretToClipboard for a
+// provider-qualified reference (goal 0408 S2): resolves through the
+// provider port (which records its own ContextUICopy audit line, naming
+// the source) and writes the clipboard with the same "don't clobber a
+// newer copy" auto-clear CopySecretToClipboard already gives vault
+// entries.
+func (s *SecretService) CopyProviderSecretToClipboard(ref string) error {
+	value, handled, err := s.resolveProvider(ref, secretaudit.AccessContext{Context: secretaudit.ContextUICopy})
+	if !handled {
+		return fmt.Errorf("secret reference %q is not a source reference", ref)
+	}
+	if err != nil {
+		return err
+	}
+	if err := clipboardWriteFn(value); err != nil {
+		return err
+	}
+	time.AfterFunc(clipboardAutoClear, func() {
+		current, err := clipboardReadFn()
+		if err != nil || current != value {
+			return
+		}
+		_ = clipboardWriteFn("")
+	})
+	return nil
 }
 
 // ErrUnresolvedReference is a source-backed reference whose source

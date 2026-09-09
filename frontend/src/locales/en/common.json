@@ -526,10 +526,12 @@
       "delete": "Delete certificate"
     },
     "secret": {
+      "copyReference": "Copy reference",
       "row": {
         "edit": "Edit",
         "history": "History",
-        "delete": "Delete"
+        "delete": "Delete",
+        "openSource": "Open source"
       }
     },
     "guardrail": {

@@ -1,31 +1,30 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Events } from '@wailsio/runtime'
 import { Blankslate } from '@primer/react/experimental'
-import { Button, Heading, IconButton, Label, Link, SegmentedControl, Stack, Text } from '@primer/react'
+import { Button, Heading, IconButton, Link, SegmentedControl, Stack, Text } from '@primer/react'
 import { DownloadIcon, HistoryIcon, KeyIcon, LockIcon, PlusIcon } from '@primer/octicons-react'
 import { SecretService } from '../shared/bindings'
 import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
 import type { SecretSummary } from '../shared/bindings'
-import { findCommand, runCommand } from '../shared/commands'
+import { runCommand } from '../shared/commands'
 import { refreshVaultBackupTime, refreshVaultStatus, useVaultStatusStore } from '../shared/vaultStatusStore'
 import { vaultErrorKind } from '../shared/secretsCommands'
-import { messageOf } from '../shared/userError'
 import { humanizeLockAfter, unlockStatusKey } from '../shared/vaultLockCopy'
 import type { TFunction } from 'i18next'
-import { ConfirmDialog } from '../shared/ConfirmDialog'
-import { InventoryList, type InventoryItem } from '../shared/InventoryList'
-import { entityRowContext } from '../shared/entityRowCommands'
+import { InventoryList } from '../shared/InventoryList'
+import { SecretsLockedPanel } from './SecretsLockedPanel'
 import { useUISignalStore } from '../shared/uiSignalStore'
-import { ENTITY_ICON } from '../shared/entityIcons'
-import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
 import { useConfirmDelete } from '../shared/useConfirmDelete'
 import { useUndoJournal } from '../shared/useUndoJournal'
 import PageContainer from '../shared/PageContainer'
 import { FirstRunIntro } from '../shared/FirstRunIntro'
 import { ConfigureSecretSources } from '../configure/ConfigureSecretSources'
+import { refreshSecretSources, useConfigureEntityStore } from '../shared/configureEntityStore'
+import { buildSecretRowItems } from './secretRowItems'
 import { SecretsEntryDialog } from '../shared/SecretsEntryDialog'
 import { SecretsDetailDialog } from './SecretsDetailDialog'
+import { SecretsProviderDetailDialog } from './SecretsProviderDetailDialog'
 import { SecretsHistoryDialog } from './SecretsHistoryDialog'
 import { SecretsAccessHistoryDialog } from './SecretsAccessHistoryDialog'
 import { SecretsImportDialog } from './SecretsImportDialog'
@@ -69,6 +68,11 @@ function protectionSentences(t: TFunction<'secrets'>, requireAuth: boolean, capa
 // doc comment has the full reasoning).
 export default function SecretsView({ initialTab }: { initialTab?: string } = {}) {
   const { t } = useTranslation('secrets')
+  // kindLabel (configure/secretSourceFields.ts) is the ONE existing
+  // resolver for a source's kind wording -- passed into
+  // buildSecretRowItems (secretRowItems.tsx) for the row's own kind
+  // badge rather than a second copy of the same switch.
+  const { t: tConfigure } = useTranslation('configure')
   // Two sections, one page (goal 0306): the entries themselves, and the
   // stores Mill reads entries from. Sources are reachable while the
   // vault is locked -- they are configuration, not vault content.
@@ -84,11 +88,18 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   // way than a returned promise.
   const vaultError = useVaultStatusStore((s) => s.vaultError)
   const [list, setList] = useState<SecretSummary[] | null>(null)
+  // Every enabled source's own keys (goal 0408 S2): fetched alongside
+  // the vault's own list, behind the SAME unlock gate -- a row is a
+  // secret entry, vault or source-backed, and the gate stays the one
+  // the design contract names ("same actions, same gate").
+  const [providerList, setProviderList] = useState<SecretSummary[] | null>(null)
+  const secretSources = useConfigureEntityStore((s) => s.secretSources)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editingID, setEditingID] = useState<string | null>(null)
   const [detailID, setDetailID] = useState<string | null>(null)
+  const [providerDetailID, setProviderDetailID] = useState<string | null>(null)
   // The browse list's own search, held here so a tag chip in a row can
   // set it (goal 0306 S4).
   const [search, setSearch] = useState('')
@@ -166,14 +177,17 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
       const s = useVaultStatusStore.getState().vaultStatus
       if (s?.Unlocked) {
         SecretService.ListSecrets().then(setList).catch((err) => setError(String(err)))
+        SecretService.ListProviderSecrets().then(setProviderList).catch(() => setProviderList([]))
       } else {
         setList(null)
+        setProviderList(null)
       }
     })
   }
 
   useEffect(() => {
     SecretService.UnlockCapability().then(setCapability).catch(() => setCapability('none'))
+    void refreshSecretSources()
   }, [])
 
   useEffect(() => {
@@ -181,6 +195,17 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     return Events.On('mill-data-changed', (evt) => {
       const entity = (evt.data as { entity?: string })?.entity
       if (entity === 'secret') refresh()
+    })
+  }, [])
+
+  // A source's file changing on disk (goal 0408 S1's watcher) reaches
+  // this list live -- a key added or removed is a row appearing or
+  // vanishing, not just the Sources row's own count.
+  useEffect(() => {
+    return Events.On('secrets:sources-changed', () => {
+      void refreshSecretSources()
+      const s = useVaultStatusStore.getState().vaultStatus
+      if (s?.Unlocked) SecretService.ListProviderSecrets().then(setProviderList).catch(() => setProviderList([]))
     })
   }, [])
 
@@ -217,12 +242,29 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
     // eslint-disable-next-line react-hooks/exhaustive-deps -- startEdit/consumeSecretPanel deliberately excluded, the same set-then-consume shape ConfigureLists.tsx's own signal effect documents
   }, [secretPanelRequest])
 
+  // Sources ▸ "Show n keys in the list" (goal 0408 S2): narrows this
+  // section's own search to the source's label, the same tag-chip
+  // convention this view's own labelBadges already use.
+  const secretsListFilterRequest = useUISignalStore((s) => s.secretsListFilterRequest)
+  const consumeSecretsListFilter = useUISignalStore((s) => s.consumeSecretsListFilter)
+  useEffect(() => {
+    if (secretsListFilterRequest === null) return
+    setSearch(secretsListFilterRequest)
+    consumeSecretsListFilter()
+  }, [secretsListFilterRequest, consumeSecretsListFilter])
+
   // A deleted secret's detail panel has nothing left to show; the row
   // command that deleted it cannot reach this state, so the list it
   // re-read is what closes the panel.
   useEffect(() => {
     if (detailID && list !== null && !list.some((s) => s.ID === detailID)) setDetailID(null)
   }, [list, detailID])
+
+  // The same closing rule for a source-backed row (goal 0408 S2): its
+  // key can vanish from the file between one refresh and the next.
+  useEffect(() => {
+    if (providerDetailID && providerList !== null && !providerList.some((s) => s.ID === providerDetailID)) setProviderDetailID(null)
+  }, [providerList, providerDetailID])
 
   // The key-mismatch caption + secrets.restoreVaultFromBackup's own
   // enablement (goal 0359): only fetched while that exact state is
@@ -286,126 +328,27 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   const protectionStatus = protectionSentences(t, status.RequireAuth, capability, lockAfterSeconds)
 
   if (!status.Unlocked) {
-    // One line, in this view's own words, for each way an unlock ends
-    // badly. Anything the tokens don't name falls through to the error
-    // itself rather than being hidden.
-    const kind = vaultErrorKind(vaultError)
-    const isKeyMismatch = kind === 'keyMismatch'
-    // The key-mismatch state names the cause in its own heading/body
-    // (goal 0359) rather than the generic locked copy plus a red error
-    // line -- every other unlock failure keeps today's shape.
-    const lockedMessage = {
-      keyMismatch: '',
-      noKey: t('common:errors.no-vault-key'),
-      cancelled: t('common:errors.unlock-cancelled'),
-      authUnavailable: t('common:errors.auth-unavailable'),
-      other: messageOf(vaultError ?? { code: 'unexpected', message: '' }, t),
-      none: '',
-    }[kind]
-    const resetCommand = findCommand('secrets.resetVault')
-    const restoreCommand = findCommand('secrets.restoreVaultFromBackup')
-
     return (
       <PageContainer variant="wide" data-testid="secrets-view">
         {firstRunIntro}
         {pageHeader}
-        <Blankslate>
-          <Blankslate.Visual><LockIcon size={32} /></Blankslate.Visual>
-          <Blankslate.Heading>{isKeyMismatch ? t('locked.keyMismatchHeading') : t('locked.heading')}</Blankslate.Heading>
-          <Blankslate.Description>{isKeyMismatch ? t('locked.keyMismatchBody') : t('locked.description')}</Blankslate.Description>
-          <Stack direction="horizontal" gap="condensed" align="center" justify="center">
-            <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-protection-status">{protectionStatus}</Text>
-            {changeInSettingsLink}
-          </Stack>
-          <Stack direction="horizontal" gap="condensed" align="center" justify="center">
-            <Button
-              variant="primary"
-              onClick={() => void runCommand('secrets.unlockVault')}
-              disabled={busy}
-              data-testid="secrets-unlock-cta"
-            >
-              {t('locked.cta')}
-            </Button>
-            {resetCommand?.enabled?.() && (
-              <Button onClick={() => setConfirmReset(true)} data-testid="secrets-reset-cta">
-                {t('reset.cta')}
-              </Button>
-            )}
-            {restoreCommand?.enabled?.() && (
-              <Button onClick={() => void runCommand('secrets.restoreVaultFromBackup')} data-testid="secrets-restore-backup-cta">
-                {t('locked.restoreBackupCta')}
-              </Button>
-            )}
-          </Stack>
-          {lockedMessage && <Text as="p" size="small" className={styles.error} data-testid="secrets-unlock-error">{lockedMessage}</Text>}
-          {isKeyMismatch && vaultBackupTime?.present && (
-            <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-vault-backup-caption">
-              {t('locked.lastBackup', { time: new Date(vaultBackupTime.time).toLocaleString() })}
-            </Text>
-          )}
-          {restoreCommand?.enabled?.() && (
-            <Text as="p" size="small" className={styles.subtitle} data-testid="secrets-restore-backup-caption">
-              {t('locked.restoreBackupCaption')}
-            </Text>
-          )}
-        </Blankslate>
-        {confirmReset && (
-          <ConfirmDialog
-            title={t('reset.confirmTitle')}
-            body={t('reset.confirmBody')}
-            confirmLabel={t('reset.confirmCta')}
-            cancelLabel={t('reset.cancel')}
-            onCancel={() => setConfirmReset(false)}
-            onConfirm={() => {
-              setConfirmReset(false)
-              void runCommand('secrets.resetVault')
-            }}
-          />
-        )}
+        <SecretsLockedPanel
+          t={t}
+          vaultError={vaultError}
+          protectionStatus={protectionStatus}
+          busy={busy}
+          changeInSettingsLink={changeInSettingsLink}
+          confirmReset={confirmReset}
+          setConfirmReset={setConfirmReset}
+          vaultBackupTime={vaultBackupTime}
+        />
       </PageContainer>
     )
   }
 
-  const sorted = sortByUpdatedDesc(list ?? [], (s) => s.UpdatedAt)
-  const items: InventoryItem[] = sorted.map((s) => ({
-    id: s.ID,
-    entity: 'secret',
-    icon: ENTITY_ICON.secret,
-    label: s.Title,
-    // A tag is clickable: it narrows the list to everything carrying
-    // it, which is the whole reason to put one on an entry.
-    labelBadges: (s.Tags ?? []).length === 0 ? undefined : (
-      <>
-        {(s.Tags ?? []).map((tag) => (
-          <Label
-            key={tag}
-            as="button"
-            onClick={(e: React.MouseEvent) => { e.stopPropagation(); setSearch(`tag:${tag}`) }}
-            data-testid={`secret-tag-${tag}`}
-          >
-            {tag}
-          </Label>
-        ))}
-      </>
-    ),
-    // The list's search finds an entry by a tag or by the NAME of a
-    // field it carries -- never by a value, which is not here at all.
-    searchTerms: [...(s.Tags ?? []), ...(s.Tags ?? []).map((tag) => `tag:${tag}`), ...(s.FieldNames ?? [])],
-    description: s.Username || s.URL || undefined,
-    updatedLabel: formatUpdated(s.UpdatedAt),
-    updatedAt: s.UpdatedAt,
-    onOpen: () => setDetailID(s.ID),
-    menuActions: [
-      { commandId: 'secret.row.edit', ctx: entityRowContext('secret', s.ID) },
-      { commandId: 'secret.row.history', ctx: entityRowContext('secret', s.ID) },
-      {
-        commandId: 'secret.row.delete',
-        ctx: entityRowContext('secret', s.ID),
-        danger: true,
-        confirm: { title: t('deleteConfirmTitle'), body: t('deleteConfirmBody', { label: s.Title }) },
-      },
-    ],
-  }))
+  const { sorted, providerRows, items } = buildSecretRowItems({
+    list, providerList, secretSources, t, tConfigure, setSearch, setDetailID, setProviderDetailID,
+  })
 
   return (
     <PageContainer variant="wide" data-testid="secrets-view">
@@ -482,13 +425,25 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
           onDelete={() => requestDelete(sorted.find((s) => s.ID === detailID) ?? { ID: detailID, Title: detailID, Username: '', URL: '', Tags: [], FieldNames: [], Kind: Kind.KindText, SourceRef: '', Origin: '', UpdatedAt: '' })}
         />
       )}
+      {providerDetailID && (() => {
+        const row = providerRows.find((r) => r.id === providerDetailID)
+        return row ? (
+          <SecretsProviderDetailDialog
+            id={row.id}
+            keyName={row.key}
+            sourceLabel={row.sourceLabel}
+            onClose={() => setProviderDetailID(null)}
+            onAccessHistory={() => setAccessHistoryID(row.id)}
+          />
+        ) : null
+      })()}
       {importOpen && <SecretsImportDialog onClose={() => setImportOpen(false)} onImported={() => { setImportOpen(false); refresh() }} />}
       {historyID && <SecretsHistoryDialog id={historyID} onClose={() => setHistoryID(null)} />}
       {showAccessHistory && <SecretsAccessHistoryDialog onClose={() => setShowAccessHistory(false)} />}
       {accessHistoryID && (
         <SecretsAccessHistoryDialog
           entryId={accessHistoryID}
-          entryLabel={sorted.find((s) => s.ID === accessHistoryID)?.Title ?? accessHistoryID}
+          entryLabel={sorted.find((s) => s.ID === accessHistoryID)?.Title ?? providerRows.find((r) => r.id === accessHistoryID)?.key ?? accessHistoryID}
           onClose={() => setAccessHistoryID(null)}
         />
       )}

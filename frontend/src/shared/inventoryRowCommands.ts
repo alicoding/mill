@@ -5,6 +5,13 @@ import { atlasFacts } from './atlasSelectionFacts'
 import { refreshSeedRevisions, shippedRevision } from './seedRevisionStore'
 import { refreshWorkflows, useAppStore } from './store'
 import { useUISignalStore } from './uiSignalStore'
+import { parseSourceRef } from './secretReference'
+
+// A row's id tells the two secret backings apart (goal 0408 S2): a
+// vault entry's id never carries a colon, a source-backed reference
+// always does ("env:<source>/<KEY>" and friends) -- the same test
+// SecretPicker.tsx's own vault/source option split already relies on.
+const isSourceBackedID = (id: string): boolean => id.includes(':')
 
 // The two inventories outside Configure whose rows use the same row
 // contract (goal 0346): Workflows and the secrets vault. They are here
@@ -46,6 +53,12 @@ const workflows: EntityRowFamily<EntityRowItem & { Seed: { SeedRevision: number;
 // Secrets view's own, reached through a signal, and the delete is a
 // bare id. The list itself stays that view's state (it exists only
 // while the vault is unlocked), so this family declares no `load`.
+//
+// A source-backed row (goal 0408 S2, a key ListProviderSecrets
+// enumerates directly, never a vault entry) has no wrapping entry to
+// edit, no version history and nothing here to delete -- the file owns
+// the key. edit/history/delete gate on isSourceBackedID; openSource is
+// its own row's replacement, gating the other way.
 const secrets: EntityRowFamily<EntityRowItem> = {
   entity: 'secret',
   namespace: 'secret.row',
@@ -54,16 +67,30 @@ const secrets: EntityRowFamily<EntityRowItem> = {
     {
       suffix: 'edit',
       label: 'commands.secret.row.edit',
+      enabled: (item) => !isSourceBackedID(item.ID),
       run: (item) => useUISignalStore.getState().requestSecretPanel('edit', item.ID),
     },
     {
       suffix: 'history',
       label: 'commands.secret.row.history',
+      enabled: (item) => !isSourceBackedID(item.ID),
       run: (item) => useUISignalStore.getState().requestSecretPanel('history', item.ID),
     },
+    {
+      suffix: 'openSource',
+      label: 'commands.secret.row.openSource',
+      enabled: (item) => isSourceBackedID(item.ID),
+      run: (item) => {
+        if (!parseSourceRef(item.ID)) return
+        useAppStore.getState().setView({ kind: 'secrets', tab: 'sources' })
+      },
+    },
   ],
-  remove: (id) => SecretService.DeleteSecret(id),
-  undoable: false,
+  remove: {
+    run: (item) => SecretService.DeleteSecret(item.ID),
+    undo: false,
+    enabled: (item) => !isSourceBackedID(item.ID),
+  },
 }
 
 // A guardrail rule row (views/GuardrailRulesPanel.tsx): the rows are

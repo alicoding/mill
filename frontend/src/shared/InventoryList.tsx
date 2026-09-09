@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionList, Pagination, Stack, Text } from '@primer/react'
+import { ActionList, Heading, Pagination, Stack, Text } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { ContextMenu, type ContextMenuState } from './ContextMenu'
 import { ExamplesSection } from './ExamplesSection'
-import { InventoryRow } from './InventoryRow'
+import { InventoryRow, type InventoryRowSelection } from './InventoryRow'
 import { ListToolbar } from './ListToolbar'
 import { SelectionBar } from './SelectionBar'
 import { useListState } from './useListState'
@@ -16,7 +16,7 @@ import { useListSelectionFocusStore, type ListSelectionHandle } from './listSele
 import {
   LIST_PAGE_SIZE, availableSorts, clampPage, listCountLabel, pageCountFor, pageItems, sortItems, splitExamples,
 } from './listStandard'
-import type { InventoryEmptyState, InventoryItem } from './inventoryItem'
+import { groupOrder, listRuns, type InventoryEmptyState, type InventoryItem } from './inventoryItem'
 import styles from './InventoryList.module.css'
 
 export type {
@@ -70,7 +70,14 @@ export function InventoryList({ items, emptyState, searchPlaceholder, listId, fi
 
   const sortOptions = useMemo(() => availableSorts(items), [items])
   const sort = sortOptions.includes(state.sort) ? state.sort : 'updated'
-  const { own, examples } = useMemo(() => splitExamples(sortItems(items, sort)), [items, sort])
+  // groupOrder reorders `own` into its backing buckets (goal 0408 S2's
+  // merged Secrets list: vault first, then one bucket per source) --
+  // a no-op for every other list, none of whose items carry `group`,
+  // so sortItems' own order passes straight through unchanged.
+  const { own, examples } = useMemo(() => {
+    const split = splitExamples(sortItems(items, sort))
+    return { own: groupOrder(split.own), examples: split.examples }
+  }, [items, sort])
 
   const q = query.trim().toLowerCase()
   const matches = (item: InventoryItem) =>
@@ -145,6 +152,26 @@ export function InventoryList({ items, emptyState, searchPlaceholder, listId, fi
     })
     selection.clear()
   }
+
+  // The row's own selection projection (goal 0404 S1), shared between
+  // however many group runs render below -- a row with no group and a
+  // row inside a source's own run both wire the identical checkbox/
+  // long-press contract.
+  const rowSelection = (item: InventoryItem): InventoryRowSelection | undefined => (selectionConfig ? {
+    isSelected: selection.isSelected(item.id),
+    isSelectionMode: selection.isSelectionMode,
+    onActivate: (mods) => selection.activate(item.id, mods),
+    onActivateCheckbox: (mods) => selection.activateCheckbox(item.id, mods),
+    onRowFocus: () => selection.setFocusedId(item.id),
+    ...(isNarrowViewport ? {
+      longPress: {
+        onPointerDown: (e) => selection.handlePointerDown(item.id, e),
+        onPointerMove: selection.handlePointerMove,
+        onPointerUp: selection.handlePointerUp,
+        onPointerCancel: selection.handlePointerCancel,
+      },
+    } : {}),
+  } : undefined)
 
   // Space/x/Shift+Space (goal 0404 S1) act on whichever row's own
   // real onFocus last called selection.setFocusedId
@@ -235,35 +262,32 @@ export function InventoryList({ items, emptyState, searchPlaceholder, listId, fi
       ) : (
         <>
           {ownPage.length > 0 && (
-            <ActionList
-              role="list"
-              showDividers
-              className={styles.list}
-              data-testid="inventory-items"
-            >
-              {ownPage.map((item) => (
-                <InventoryRow
-                  key={item.id}
-                  item={item}
-                  onOpenMenu={setRowMenu}
-                  selection={selectionConfig ? {
-                    isSelected: selection.isSelected(item.id),
-                    isSelectionMode: selection.isSelectionMode,
-                    onActivate: (mods) => selection.activate(item.id, mods),
-                    onActivateCheckbox: (mods) => selection.activateCheckbox(item.id, mods),
-                    onRowFocus: () => selection.setFocusedId(item.id),
-                    ...(isNarrowViewport ? {
-                      longPress: {
-                        onPointerDown: (e) => selection.handlePointerDown(item.id, e),
-                        onPointerMove: selection.handlePointerMove,
-                        onPointerUp: selection.handlePointerUp,
-                        onPointerCancel: selection.handlePointerCancel,
-                      },
-                    } : {}),
-                  } : undefined}
-                />
+            // One run per contiguous backing (goal 0408 S2) -- a list
+            // with no grouped item collapses to exactly one run with no
+            // header, so this renders identically to the single
+            // ActionList every other InventoryList consumer already
+            // gets (listRuns' own doc comment).
+            <div data-testid="inventory-items">
+              {listRuns(ownPage).map((run, i) => (
+                <div key={run.group?.key ?? `ungrouped-${i}`}>
+                  {run.group && (
+                    <Heading as="h3" className={styles.groupHeading} data-testid={`inventory-group-${run.group.key}`}>
+                      <Stack direction="horizontal" gap="condensed" align="center">
+                        <span className={styles.groupIcon} style={{ background: run.group.icon.bg }}>
+                          <run.group.icon.Icon size={12} fill={run.group.icon.fg} />
+                        </span>
+                        {run.group.label}
+                      </Stack>
+                    </Heading>
+                  )}
+                  <ActionList role="list" showDividers className={styles.list}>
+                    {run.items.map((item) => (
+                      <InventoryRow key={item.id} item={item} onOpenMenu={setRowMenu} selection={rowSelection(item)} />
+                    ))}
+                  </ActionList>
+                </div>
               ))}
-            </ActionList>
+            </div>
           )}
           {pageCount > 1 && (
             <Pagination

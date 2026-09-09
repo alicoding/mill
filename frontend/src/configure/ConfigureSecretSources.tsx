@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Events } from '@wailsio/runtime'
 import { useTranslation } from 'react-i18next'
-import { Button, FormControl, IconButton, Select, Spinner, Stack, Text, TextInput } from '@primer/react'
+import { Button, FormControl, IconButton, Select, Stack, Text, TextInput } from '@primer/react'
 import { LockIcon, PencilIcon, PlusIcon, SearchIcon, TrashIcon } from '@primer/octicons-react'
 import { DataTable } from '@primer/react/experimental'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
@@ -17,6 +17,7 @@ import { InventoryList, type InventoryItem } from '../shared/InventoryList'
 import { entityRowContext } from '../shared/entityRowCommands'
 import { useEntityActionError } from '../shared/entityActionErrorStore'
 import { runCommand } from '../shared/commands'
+import { useAppStore } from '../shared/store'
 import { messageFor } from '../shared/userError'
 import { ENTITY_ICON } from '../shared/entityIcons'
 import { formatUpdated, sortByUpdatedDesc } from '../shared/inventorySort'
@@ -60,12 +61,11 @@ export function ConfigureSecretSources() {
   const [scanOpen, setScanOpen] = useState(false)
   // A dotenv source's own key NAMES (goal 0367): keyCounts feeds the
   // collapsed row's "{count} keys" caption (the read-back error's
-  // sentence takes its place), keyLists backs the disclosure expander.
-  // The list is read fresh on every expand, never cached between
-  // expansions, so the row always answers the file as it is now.
+  // sentence takes its place) and the "Show n keys in the list" link's
+  // own count (goal 0408 S2 -- the row's key read-back now opens the
+  // merged Secrets list rather than expanding inline, since every key
+  // is a secret entry there).
   const [keyCounts, setKeyCounts] = useState<Record<string, { count: number; error: string }>>({})
-  const [keyLists, setKeyLists] = useState<Record<string, { keys: string[]; error: string }>>({})
-  const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({})
   // Bumped on every live file change (goal 0408 S1) to re-run the key-
   // count effect below without re-fetching the source LIST itself --
   // the file changed, not which sources exist.
@@ -88,21 +88,15 @@ export function ConfigureSecretSources() {
   // -- no polling. The picker's own titles refresh through
   // secretTitleCache's own subscription; this page refreshes the two
   // things only it shows: problems, and (via liveChangeSignal) the key
-  // counts/lists below.
+  // counts below.
   useEffect(() => {
     return Events.On('secrets:sources-changed', () => {
       SecretService.SourceProblems()
         .then((p) => setProblems(Object.fromEntries(Object.entries(p ?? {}).flatMap(([id, v]) => (v ? [[id, v]] : [])))))
         .catch(() => setProblems({}))
       setLiveChangeSignal((n) => n + 1)
-      for (const sourceID of Object.keys(expandedKeys)) {
-        if (!expandedKeys[sourceID]) continue
-        SecretService.ListDotenvSourceKeys(sourceID)
-          .then((keys) => setKeyLists((prev) => ({ ...prev, [sourceID]: { keys: keys ?? [], error: '' } })))
-          .catch((err) => setKeyLists((prev) => ({ ...prev, [sourceID]: { keys: [], error: messageFor(err, t) } })))
-      }
     })
-  }, [expandedKeys, t])
+  }, [])
 
   const startCreate = () => {
     setEditingID(null)
@@ -148,33 +142,17 @@ export function ConfigureSecretSources() {
     return () => { live = false }
   }, [sources, liveChangeSignal])
 
-  // The disclosure reads fresh on every expand; collapsing forgets the
-  // last answer entirely rather than showing a stale list next time.
-  const toggleKeys = (sourceID: string, expanded: boolean) => {
-    setExpandedKeys((prev) => ({ ...prev, [sourceID]: expanded }))
-    if (!expanded) {
-      setKeyLists((prev) => {
-        const next = { ...prev }
-        delete next[sourceID]
-        return next
-      })
-      return
-    }
-    setKeyLists((prev) => ({ ...prev, [sourceID]: { keys: [], error: '' } }))
-    SecretService.ListDotenvSourceKeys(sourceID)
-      .then((keys) => setKeyLists((prev) => ({ ...prev, [sourceID]: { keys: keys ?? [], error: '' } })))
-      .catch((err) => setKeyLists((prev) => ({ ...prev, [sourceID]: { keys: [], error: messageFor(err, t) } })))
-  }
-
-  const keysContent = (sourceID: string) => {
-    const entry = keyLists[sourceID]
-    if (!entry) return <Spinner size="small" data-testid={`secretsource-keys-loading-${sourceID}`} />
-    if (entry.error) return <Text size="small" className={styles.error} data-testid={`secretsource-keys-error-${sourceID}`}>{entry.error}</Text>
-    return (
-      <ul className={styles.keyList} data-testid={`secretsource-keys-${sourceID}`}>
-        {entry.keys.map((k) => <li key={k}>{k}</li>)}
-      </ul>
-    )
+  // Sources ▸ a dotenv row's own key read-back opens the merged Secrets
+  // list rather than expanding inline (goal 0408 S2): every key is a
+  // secret entry there now, with the actions (reveal, copy, copy
+  // reference, access history) a name-only list here never had.
+  // Navigation first, the set-then-consume filter signal second --
+  // the vault section remounts fresh on this navigation (App.tsx keys
+  // SecretsView by its own tab), the same order secrets.findDotenvFiles
+  // already establishes.
+  const showKeysInList = (s: SecretSource) => {
+    useAppStore.getState().setView({ kind: 'secrets', tab: 'vault' })
+    useUISignalStore.getState().requestSecretsListFilter(s.Label)
   }
 
   const keyCountCaption = (s: SecretSource) => {
@@ -214,35 +192,40 @@ export function ConfigureSecretSources() {
   }
 
   const sorted = useMemo(() => sortByUpdatedDesc(sources ?? [], (s) => s.UpdatedAt), [sources])
-  const items: InventoryItem[] = sorted.map((s) => ({
-    id: s.ID,
-    entity: 'secretsource',
-    icon: ENTITY_ICON.secretsource,
-    label: s.Label,
-    updatedLabel: formatUpdated(s.UpdatedAt),
-    builtIn: s.BuiltIn,
-    updatedAt: s.UpdatedAt,
-    createdAt: s.CreatedAt,
-    // The key count leads the path: the row's one-line description
-    // truncates the tail, and the count is the glanceable part.
-    description: [
-      kindLabel(s.Kind),
-      s.Kind === Kind.KindEnv ? keyCountCaption(s) : '',
-      s.Path,
-      problems[s.ID] ? `⚠ ${problemText(problems[s.ID], t)}` : '',
-    ].filter(Boolean).join(' · '),
-    disclosure: s.Kind === Kind.KindEnv ? {
-      showLabel: t('configureSecretSources.showKeys'),
-      hideLabel: t('configureSecretSources.hideKeys'),
-      expanded: expandedKeys[s.ID] === true,
-      onToggle: (next) => toggleKeys(s.ID, next),
-      content: keysContent(s.ID),
-    } : undefined,
-    onOpen: () => startEdit(s),
-    menuActions: [
-      { commandId: 'configure.secretsource.delete', ctx: entityRowContext('secretsource', s.ID), danger: true },
-    ],
-  }))
+  const items: InventoryItem[] = sorted.map((s) => {
+    // The read-back link (goal 0408 S2): only while there is something
+    // to show -- an unreadable file already states why in the
+    // description above, and an empty file has nothing to jump to.
+    const keysEntry = s.Kind === Kind.KindEnv ? keyCounts[s.ID] : undefined
+    const showKeysLink = keysEntry !== undefined && keysEntry.error === '' && keysEntry.count > 0
+    return {
+      id: s.ID,
+      entity: 'secretsource',
+      icon: ENTITY_ICON.secretsource,
+      label: s.Label,
+      updatedLabel: formatUpdated(s.UpdatedAt),
+      builtIn: s.BuiltIn,
+      updatedAt: s.UpdatedAt,
+      createdAt: s.CreatedAt,
+      // The key count leads the path: the row's one-line description
+      // truncates the tail, and the count is the glanceable part.
+      description: [
+        kindLabel(s.Kind),
+        s.Kind === Kind.KindEnv ? keyCountCaption(s) : '',
+        s.Path,
+        problems[s.ID] ? `⚠ ${problemText(problems[s.ID], t)}` : '',
+      ].filter(Boolean).join(' · '),
+      primaryAction: showKeysLink ? (
+        <Button size="small" variant="invisible" onClick={() => showKeysInList(s)} data-testid={`secretsource-show-in-list-${s.ID}`}>
+          {t('configureSecretSources.showKeysInList', { count: keysEntry!.count })}
+        </Button>
+      ) : undefined,
+      onOpen: () => startEdit(s),
+      menuActions: [
+        { commandId: 'configure.secretsource.delete', ctx: entityRowContext('secretsource', s.ID), danger: true },
+      ],
+    }
+  })
 
   return (
     <ConfigureEntityPage

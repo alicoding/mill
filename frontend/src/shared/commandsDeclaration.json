@@ -1764,6 +1764,14 @@
     "needs": null
   },
   {
+    "id": "secret.copyReference",
+    "label": "Copy reference",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
     "id": "secret.row.delete",
     "label": "Delete",
     "binding": null,
@@ -1782,6 +1790,14 @@
   {
     "id": "secret.row.history",
     "label": "History",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "secret.row.openSource",
+    "label": "Open source",
     "binding": null,
     "surface": null,
     "enabled": true,

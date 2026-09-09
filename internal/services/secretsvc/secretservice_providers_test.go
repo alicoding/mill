@@ -302,3 +302,57 @@ func assertUnreadableCase(t *testing.T, s *SecretService, actx secretaudit.Acces
 		t.Error("an unreadable file must not report unresolved")
 	}
 }
+
+// RevealProviderSecret/CopyProviderSecretToClipboard (goal 0408 S2) are
+// the Secrets list's own reveal/copy for a row backed by a source
+// rather than the vault -- both dispatch through resolveProvider, so
+// they inherit its audit line and its unresolved/unreadable errors
+// unchanged; only a bare (non-provider) id is new behaviour to pin
+// here.
+func TestRevealProviderSecret_ReadsTheValueAndRecordsAccess(t *testing.T) {
+	s := envSourceService(t)
+	v, err := s.RevealProviderSecret("env:proj-env/API_TOKEN")
+	if err != nil || v != "tok-123" {
+		t.Fatalf("reveal = %q, %v", v, err)
+	}
+	if _, err := s.RevealProviderSecret("some-vault-id"); err == nil || !strings.Contains(err.Error(), "not a source reference") {
+		t.Errorf("bare id must refuse: %v", err)
+	}
+	var unresolvedErr *ErrUnresolvedReference
+	if _, err := s.RevealProviderSecret("env:proj-env/GONE"); !errors.As(err, &unresolvedErr) {
+		t.Errorf("a vanished key must report unresolved, got %v", err)
+	}
+}
+
+func TestCopyProviderSecretToClipboard_WritesAndAutoClears(t *testing.T) {
+	s := envSourceService(t)
+	fake := &fakeClipboard{}
+	origWrite, origRead := clipboardWriteFn, clipboardReadFn
+	t.Cleanup(func() { clipboardWriteFn, clipboardReadFn = origWrite, origRead })
+	clipboardWriteFn, clipboardReadFn = fake.write, fake.read
+	origClear := clipboardAutoClear
+	t.Cleanup(func() { clipboardAutoClear = origClear })
+	clipboardAutoClear = 5 * time.Millisecond
+
+	if err := s.CopyProviderSecretToClipboard("env:proj-env/API_TOKEN"); err != nil {
+		t.Fatalf("CopyProviderSecretToClipboard: %v", err)
+	}
+	if got := fake.get(); got != "tok-123" {
+		t.Fatalf("clipboard = %q, want tok-123", got)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if fake.get() == "" {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if fake.get() != "" {
+		t.Fatal("clipboard was not auto-cleared within the deadline")
+	}
+
+	if err := s.CopyProviderSecretToClipboard("some-vault-id"); err == nil || !strings.Contains(err.Error(), "not a source reference") {
+		t.Errorf("bare id must refuse: %v", err)
+	}
+}
