@@ -505,6 +505,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-hook-command-guard.sh
 
+  # Mirrors lefthook.yml's hook-subagent-stop-selftest job: the
+  # SubagentStop hook that refuses a builder's stop turn while its
+  # goal-branch worktree is still dirty (goal 0414 S3), probed against
+  # synthetic mktemp worktree fixtures -- same probe-on-touch shape as
+  # hook-command-guard's own job just above.
+  hook-subagent-stop-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/hook-subagent-stop-selftest.sh
+
   # Mirrors lefthook.yml's own selftest-git-isolation job -- same script
   # (goal 0394: a scripts/*.sh creating a throwaway git repo sources
   # scripts/lib/git-fixture.sh, which clears the calling process's git
@@ -1429,6 +1441,7 @@ jobs:
       - rules-frontmatter
       - standing-context
       - hook-command-guard
+      - hook-subagent-stop-selftest
       - selftest-git-isolation
       - selftest-git-isolation-selftest
       - install-lock-selftest

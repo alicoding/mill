@@ -39,7 +39,9 @@ never boot-loaded.
 
 ## Size classes (`maxTurns`) and the resume rule
 
-- **builder**: 150 (a hotfix brief with an ≤80k-token ceiling: 60)
+- **builder**: 120 (a hotfix brief with an ≤80k-token ceiling: 60), with
+  a mandatory self-checkpoint commit at turn ~80 (see the agent body's
+  "Checkpoint commits" section)
 - **pr-shepherd**: 100
 - **closeout**: 40 (batches of at most 3 merged PRs per dispatch)
 - **verifier**: 60

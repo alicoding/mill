@@ -77,6 +77,17 @@
           }
         ]
       }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/scripts/hook-subagent-stop.sh",
+            "args": []
+          }
+        ]
+      }
     ]
   }
 }
