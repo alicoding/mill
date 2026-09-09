@@ -1,5 +1,6 @@
 import { ActionList, ActionMenu, Button, Text } from '@primer/react'
-import { KeyComboChip } from '../shared/KeyComboChip'
+import { KeybindingHint } from '@primer/react/experimental'
+import { hintKeysFromLabel } from '../shared/keybinding'
 import { runRowAction, type RowAction } from './useQuickPanelWorkflowActions'
 import styles from './QuickPanel.module.css'
 
@@ -23,13 +24,13 @@ export function QuickPanelFooter({ status, hasWorkflowRow, actions, open, onOpen
       <span className={styles.footerHints}>
         {hasWorkflowRow && (
           <span className={styles.footerHint}>
-            {t('quickPanel.actions.run')} <KeyComboChip label="↩" data-testid="quick-panel-run-hint" />
+            {t('quickPanel.actions.run')} <span data-testid="quick-panel-run-hint"><KeybindingHint keys={hintKeysFromLabel('↩')} /></span>
           </span>
         )}
         <ActionMenu open={open} onOpenChange={onOpenChange}>
           <ActionMenu.Anchor>
             <Button size="small" variant="invisible" disabled={!hasWorkflowRow} data-testid="quick-panel-actions-button">
-              {t('quickPanel.actions.menu')} <KeyComboChip label="⌘K" data-testid="quick-panel-actions-hint" />
+              {t('quickPanel.actions.menu')} <span data-testid="quick-panel-actions-hint"><KeybindingHint keys={hintKeysFromLabel('⌘K')} /></span>
             </Button>
           </ActionMenu.Anchor>
           <ActionMenu.Overlay align="end" side="outside-top">
@@ -38,7 +39,9 @@ export function QuickPanelFooter({ status, hasWorkflowRow, actions, open, onOpen
                 <ActionList.Item key={action.id} onSelect={() => runRowAction(action)} data-testid={`quick-panel-action-${action.id}`}>
                   {action.label}
                   <ActionList.TrailingVisual>
-                    <KeyComboChip label={action.shortcut} data-testid={`quick-panel-action-${action.id}-shortcut`} />
+                    <span data-testid={`quick-panel-action-${action.id}-shortcut`}>
+                      <KeybindingHint keys={hintKeysFromLabel(action.shortcut)} />
+                    </span>
                   </ActionList.TrailingVisual>
                 </ActionList.Item>
               ))}

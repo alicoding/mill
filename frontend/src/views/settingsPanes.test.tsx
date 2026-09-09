@@ -81,6 +81,15 @@ vi.mock('@primer/react', () => {
   }
 })
 
+// @primer/react/experimental (goal 0405 S1's KeybindingHint, the
+// summon-hotkey chip SettingsShortcutsPane.tsx now renders for real)
+// pulls in its own stylesheet exactly like '@primer/react' above, and
+// is a SEPARATE module specifier vi.mock('@primer/react', ...) does
+// not cover.
+vi.mock('@primer/react/experimental', () => ({
+  KeybindingHint: ({ keys }: { keys: string }) => <kbd data-testid="keybinding-hint">{keys}</kbd>,
+}))
+
 // Resolves the real English strings from the three namespaces these
 // panes read from (same pattern RequestTestPanel.test.tsx uses for
 // 'configure') -- a copy regression fails this test the same way a

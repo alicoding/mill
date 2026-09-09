@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next'
 import { Button, Stack, Text } from '@primer/react'
+import { KeybindingHint } from '@primer/react/experimental'
 import { StatusStamp } from '../shared/StatusStamp'
 import { KeyIcon } from '@primer/octicons-react'
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { TruncatedCell } from '../shared/ResizableTable'
-import { KeyComboChip } from '../shared/KeyComboChip'
+import { hintKeysFromLabel } from '../shared/keybinding'
 import { useHotkeyCapture } from './hotkeyCapture'
 import { describeCron } from './cronDescribe'
 import { findRootNode } from './triggerRowInfo'
@@ -177,9 +178,7 @@ function HotkeyRowLabel({ workflow, armed, publishing, onPublish, onHotkeyChange
             onClick={hk.startRecording}
             data-testid="trigger-row-hotkey-combo"
           >
-            {/* Design-wave-1 fix #5: same keycap-chip renderer
-                KeyboardShortcutsSection.tsx now uses -- was bare text. */}
-            <KeyComboChip label={hk.binding} />
+            <KeybindingHint keys={hintKeysFromLabel(hk.binding)} />
           </Button>
           {armed ? (
             <StatusStamp variant="success">{t('armed')}</StatusStamp>

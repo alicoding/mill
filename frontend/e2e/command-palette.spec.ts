@@ -6,6 +6,7 @@ import { workflowRow, activePanel, dragBetweenHandles, dragPaletteItemToCanvas }
 import { waitForViewportStable } from './fixtures/animation'
 import { paletteDialog } from './fixtures/palette'
 import { gotoAppReady } from './fixtures/appReady'
+import { hintText } from './fixtures/keybindingHint'
 
 // Exercises the ⌘K command palette (docs/goals/0015-summon-quick-invoke.md,
 // app/CommandPalette.tsx) over real Go bindings (Wails3 server mode),
@@ -155,7 +156,7 @@ test('Meta+K opens the palette; typing filters to a command and shows its effect
   await paletteDialog(page).getByRole('combobox').fill('tab')
   const nextTabOption = paletteDialog(page).getByRole('option', { name: /Next tab/ })
   await expect(nextTabOption).toBeVisible()
-  await expect(nextTabOption).toContainText('⌃TAB')
+  await expect.poll(() => hintText(nextTabOption)).toBe('⌃TAB')
 
   // A command not matching "tab" at all is filtered out.
   await expect(paletteDialog(page).getByText('Open Settings', { exact: true })).toHaveCount(0)
@@ -229,7 +230,7 @@ test('a workflow row shows its own hotkey-trigger combo inline; a non-hotkey tri
   await paletteDialog(page).getByRole('combobox').fill(hotkeyLabel)
   const hotkeyOption = paletteDialog(page).getByRole('option', { name: new RegExp(`Run: ${hotkeyLabel}`) })
   await expect(hotkeyOption).toBeVisible()
-  await expect(hotkeyOption.getByTestId('workflow-hotkey-chip')).toHaveText('⌘⇧M')
+  await expect.poll(() => hintText(hotkeyOption.getByTestId('workflow-hotkey-chip'))).toBe('⌘⇧M')
 
   // A manual-trigger row's Run entry carries no hotkey-chip testid at
   // all -- not just an empty one -- since WorkflowRowTrailingVisual only

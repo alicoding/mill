@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { comboFromEvent, comboKey, describeCombo, formatCombo, isEditableTarget, isUndoJournalCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from './keybinding'
+import { comboFromEvent, comboKey, describeCombo, formatCombo, hintKeysFromLabel, isEditableTarget, isUndoJournalCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from './keybinding'
 
 describe('keyFromEventCode', () => {
   it('strips the Key prefix from letter codes', () => {
@@ -121,6 +121,40 @@ describe('formatCombo', () => {
   // atlasBoardCommands.ts) -- never dispatched, but rendered as ⌫.
   it('renders Delete as the ⌫ glyph', () => {
     expect(formatCombo([], 'Delete')).toBe('⌫')
+  })
+})
+
+describe('hintKeysFromLabel', () => {
+  it('is the exact reverse of formatCombo across every combo the app actually declares', () => {
+    const cases: [string[], string][] = [
+      [['cmd', 'shift'], 'W'],
+      [['ctrl'], 'Tab'],
+      [['cmd'], ','],
+      [['cmd'], 'Enter'],
+      [[], 'Delete'],
+      [['cmd'], 'K'],
+      [['cmd', 'option'], '/'],
+      [['ctrl', 'shift', 'cmd'], 'S'],
+      [['shift'], 'F'],
+      [['cmd'], '+'],
+      [['cmd'], '-'],
+      [['cmd'], 'ArrowUp'],
+      [['ctrl'], 'Space'],
+      [[], 'Escape'],
+    ]
+    for (const [mods, key] of cases) {
+      const label = formatCombo(mods, key)
+      const want = [...mods.map((m) => ({ cmd: 'meta', ctrl: 'control', shift: 'shift', option: 'alt' })[m]), key === '+' ? 'Plus' : key].join('+').toLowerCase()
+      expect(hintKeysFromLabel(label).toLowerCase()).toBe(want)
+    }
+  })
+
+  it('maps the + key to the word "Plus", the one token KeybindingHint\'s own chord separator would otherwise corrupt', () => {
+    expect(hintKeysFromLabel('⌘+')).toBe('meta+Plus')
+  })
+
+  it('passes a mod-less label through as a single key token (QuickPanelFooter\'s hardcoded ↩)', () => {
+    expect(hintKeysFromLabel('↩')).toBe('enter')
   })
 })
 

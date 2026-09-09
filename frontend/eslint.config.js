@@ -16,7 +16,11 @@ export default tseslint.config(
   // never load together, ASI edge cases). Not Mill's own hand-written
   // code -- same carve-out check-loc.sh/`.golangci.yml` already give
   // vendored/generated trees.
-  { ignores: ['dist', 'bindings', 'public/vendor'] },
+  // coverage/ is v8's own generated lcov-report (vitest --coverage,
+  // vite.config.ts) -- gitignored, but a lefthook pre-commit run has
+  // vitest and eslint racing in parallel, so a report left on disk from
+  // an earlier run gets scanned as if it were source.
+  { ignores: ['dist', 'bindings', 'public/vendor', 'coverage'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],

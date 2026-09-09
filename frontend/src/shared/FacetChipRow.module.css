@@ -1,7 +1,6 @@
 /* Faceted-search suggestion chips (goal 0086) -- a token-chip look
-   consistent with shared/KeyComboChip.module.css's own idiom (Primer
-   tokens, bordered pill), but interactive: hover/focus states since
-   these are real completion buttons, not static hints. */
+   (Primer tokens, bordered pill), but interactive: hover/focus states
+   since these are real completion buttons, not static hints. */
 .row {
   display: flex;
   flex-wrap: wrap;

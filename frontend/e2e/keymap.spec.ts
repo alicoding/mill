@@ -3,6 +3,7 @@ import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel } from './fixtures/canvas'
 import { openSettings } from './fixtures/settingsNav'
 import { gotoAppReady } from './fixtures/appReady'
+import { hintText } from './fixtures/keybindingHint'
 
 // Exercises docs/goals/0016-keymap-system.md's command registry +
 // in-window keybinding dispatch (shared/commands.ts, App.tsx's one
@@ -137,25 +138,18 @@ test('Settings: rebinding a command persists, the new combo works, and a conflic
 
   const saveRow = page.locator('[data-testid="keymap-row"][data-command-id="workflow.save"]')
   await expect(saveRow).toBeVisible()
-  await expect(saveRow.getByTestId('keymap-row-combo')).toHaveText('⌘S')
-
-  // Design-wave-1 fix #5: the combo renders through the shared keycap
-  // chip (shared/KeyComboChip.tsx) -- the same monospace/bordered look
-  // the command palette's inline hints already use -- not bare text
-  // next to the Change button anymore. Selected by KeyComboChip's own
-  // default testid, not a bare `span` search -- Primer's `Button`
-  // nests several of its own internal wrapper spans around any
-  // children, so a generic `span` locator resolves to more than one
-  // element (a real strict-mode failure hit while writing this test).
-  const comboChip = saveRow.getByTestId('keymap-row-combo').getByTestId('key-combo-chip')
-  await expect(comboChip).toHaveText('⌘S')
-  await expect(comboChip).toHaveCSS('font-family', /monospace/)
+  // goal 0405 S1: the combo renders through Primer's own KeybindingHint
+  // (@primer/react/experimental) -- hintText() reads its aria-hidden
+  // glyph span, not the full textContent (which also carries a
+  // visually-hidden accessible name Playwright's own toHaveText would
+  // otherwise match against too).
+  await expect.poll(() => hintText(saveRow.getByTestId('keymap-row-combo'))).toBe('⌘S')
 
   // Rebind workflow.save off its ⌘S default onto ⌘⇧S.
   await saveRow.getByTestId('keymap-row-combo').click()
   await expect(saveRow.getByText(/press a combo/i)).toBeVisible()
   await page.keyboard.press('Meta+Shift+S')
-  await expect(saveRow.getByTestId('keymap-row-combo')).toHaveText('⌘⇧S')
+  await expect.poll(() => hintText(saveRow.getByTestId('keymap-row-combo'))).toBe('⌘⇧S')
   await expect(saveRow.getByTestId('keymap-row-reset')).toBeVisible()
 
   // Persists across a reload (SettingsService.SetKeybinding, a real
@@ -163,7 +157,7 @@ test('Settings: rebinding a command persists, the new combo works, and a conflic
   await page.reload()
   await openSettings(page, 'shortcuts')
   const reloadedRow = page.locator('[data-testid="keymap-row"][data-command-id="workflow.save"]')
-  await expect(reloadedRow.getByTestId('keymap-row-combo')).toHaveText('⌘⇧S')
+  await expect.poll(() => hintText(reloadedRow.getByTestId('keymap-row-combo'))).toBe('⌘⇧S')
 
   // The new combo actually works end to end -- open a workflow editor,
   // press the REBOUND combo (not the old ⌘S default, which no command
@@ -187,14 +181,14 @@ test('Settings: rebinding a command persists, the new combo works, and a conflic
   await page.keyboard.press('Meta+n')
   await expect(saveRowAgain.getByText(/already bound to command/i)).toBeVisible()
   // Rejected -- still shows the ⌘⇧S override from above, never ⌘N.
-  await expect(saveRowAgain.getByTestId('keymap-row-combo')).toHaveText('⌘⇧S')
+  await expect.poll(() => hintText(saveRowAgain.getByTestId('keymap-row-combo'))).toBe('⌘⇧S')
 
   // Cleanup -- reset workflow.save back to its default so this doesn't
   // leak into any other spec sharing this worker's settings file
   // (.claude/rules/testing.md's within-file/within-worker discipline).
   await saveRowAgain.getByTestId('keymap-row-reset').click()
   await expect(saveRowAgain.getByTestId('keymap-row-reset')).toHaveCount(0)
-  await expect(saveRowAgain.getByTestId('keymap-row-combo')).toHaveText('⌘S')
+  await expect.poll(() => hintText(saveRowAgain.getByTestId('keymap-row-combo'))).toBe('⌘S')
 })
 
 // docs/goals/BACKLOG.md Standing #6 -- ⌘/ as palette.open's own extra
@@ -222,13 +216,71 @@ test('Settings shows palette.open\'s extra binding as a read-only secondary chip
   await openSettings(page, 'shortcuts')
 
   const paletteRow = page.locator('[data-testid="keymap-row"][data-command-id="palette.open"]')
-  await expect(paletteRow.getByTestId('keymap-row-combo')).toHaveText('⌘K')
+  await expect.poll(() => hintText(paletteRow.getByTestId('keymap-row-combo'))).toBe('⌘K')
 
   const extraChips = paletteRow.getByTestId('keymap-row-extra-binding')
   await expect(extraChips).toHaveCount(1)
-  await expect(extraChips.nth(0)).toHaveText('⌘/')
+  await expect.poll(() => hintText(extraChips.nth(0))).toBe('⌘/')
 
   // A command with no extraBindings (e.g. workflow.save) renders none.
   const saveRow = page.locator('[data-testid="keymap-row"][data-command-id="workflow.save"]')
   await expect(saveRow.getByTestId('keymap-row-extra-binding')).toHaveCount(0)
+})
+
+// goal 0405 S1: grouped by surface, bound-first, the unbound tail
+// collapsed per group rather than one flat scroll -- and the two new
+// ways into it (a facet, or capturing the chord itself).
+test('Settings: groups by surface, folds the unbound tail behind a closed disclosure that a search or the Unbound facet reveals, and find-by-shortcut filters to the pressed chord', async ({ page }) => {
+  await page.goto('/')
+  await openSettings(page, 'shortcuts')
+
+  // Bound-first, grouped by surface -- "Everywhere" (global commands,
+  // workflow.save among them) and "Atlas" (atlas.up, atlas-scoped) both
+  // render as their own ActionList.Group.
+  const everywhereGroup = page.locator('[data-surface="everywhere"]')
+  const atlasGroup = page.locator('[data-surface="atlas"]')
+  await expect(everywhereGroup).toBeVisible()
+  await expect(everywhereGroup.getByRole('heading', { name: 'Everywhere' })).toBeVisible()
+  await expect(atlasGroup).toBeVisible()
+  await expect(atlasGroup.getByRole('heading', { name: 'Atlas' })).toBeVisible()
+  await expect(everywhereGroup.locator('[data-testid="keymap-row"][data-command-id="workflow.save"]')).toBeVisible()
+
+  // Everywhere's own Unbound (n) disclosure starts closed -- workflow.runStepped
+  // (shared/commands.ts's own defaultBinding: null) is inside it. A
+  // closed native <details> keeps its content in the DOM (never
+  // toHaveCount(0)) but not visible -- the same distinction every other
+  // closed-by-default disclosure in this suite asserts on.
+  const everywhereUnbound = page.getByTestId('keymap-unbound-everywhere')
+  await expect(everywhereUnbound).toBeVisible()
+  await expect(everywhereUnbound).not.toHaveAttribute('open', '')
+  await expect(page.locator('[data-testid="keymap-row"][data-command-id="workflow.runStepped"]')).not.toBeVisible()
+
+  // A non-empty search opens it automatically -- searching narrows to
+  // exactly the unbound command and reveals it without an extra click.
+  await page.getByTestId('keymap-search').fill('runStepped')
+  await expect(everywhereUnbound).toHaveAttribute('open', '')
+  await expect(page.locator('[data-testid="keymap-row"][data-command-id="workflow.runStepped"]')).toBeVisible()
+  await page.getByTestId('keymap-search').fill('')
+
+  // The Bound facet hides the unbound tail entirely (nothing left to
+  // disclose in that group).
+  await page.getByTestId('keymap-facet-bound').click()
+  await expect(page.getByTestId('keymap-unbound-everywhere')).toHaveCount(0)
+  await expect(everywhereGroup.locator('[data-testid="keymap-row"][data-command-id="workflow.save"]')).toBeVisible()
+  await page.getByTestId('keymap-facet-all').click()
+
+  // Find by shortcut: press the recorder, then the workflow.save combo
+  // -- only commands bound to that exact chord remain, everywhere else
+  // (including the Atlas group) drops out entirely.
+  await page.getByTestId('keymap-find-by-shortcut').click()
+  await expect(page.getByText(/press the shortcut/i)).toBeVisible()
+  await page.keyboard.press('Meta+s')
+  await expect(everywhereGroup.locator('[data-testid="keymap-row"][data-command-id="workflow.save"]')).toBeVisible()
+  await expect(page.locator('[data-surface="atlas"]')).toHaveCount(0)
+  await expect.poll(() => hintText(page.getByTestId('keymap-find-by-shortcut'))).toBe('⌘S')
+
+  // Clicking the armed find-by-shortcut button again clears it, back to
+  // the full list.
+  await page.getByTestId('keymap-find-by-shortcut').click()
+  await expect(page.locator('[data-surface="atlas"]')).toBeVisible()
 })

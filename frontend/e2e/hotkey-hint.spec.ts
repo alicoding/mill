@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/server'
 import { wheelAt } from './fixtures/pointer'
 import { openSettings } from './fixtures/settingsNav'
+import { hintText } from './fixtures/keybindingHint'
 
 // docs/goals/0015-summon-quick-invoke.md's inline-hotkey-hint remainder:
 // the tab-overflow dropdown (app/WorkTabShell.tsx) now shows each
@@ -39,8 +40,8 @@ test('the tab-overflow dropdown shows Close-other/Close-all inline hints, and Cm
   // shared/keybinding.ts's formatCombo output for each command's real
   // default binding -- read live off shared/commands.ts + the store's
   // keybindingOverrides via app/HotkeyHint.tsx, not a hardcoded label.
-  await expect(closeOthersItem.getByTestId('hotkey-hint')).toHaveText('⌘⌥W')
-  await expect(closeAllItem.getByTestId('hotkey-hint')).toHaveText('⌘⇧W')
+  await expect.poll(() => hintText(closeOthersItem.getByTestId('hotkey-hint'))).toBe('⌘⌥W')
+  await expect.poll(() => hintText(closeAllItem.getByTestId('hotkey-hint'))).toBe('⌘⇧W')
 
   await page.keyboard.press('Escape')
   await expect(page.getByRole('menu')).toHaveCount(0)
@@ -77,7 +78,7 @@ test('Settings: rebinding Close other tabs updates the SAME inline hint the tab-
   const overflow = page.getByTestId('work-tab-overflow')
   await overflow.click()
   const closeOthersItem = page.getByRole('menuitem', { name: 'Close other tabs' })
-  await expect(closeOthersItem.getByTestId('hotkey-hint')).toHaveText('⌘⌥W')
+  await expect.poll(() => hintText(closeOthersItem.getByTestId('hotkey-hint'))).toBe('⌘⌥W')
   await page.keyboard.press('Escape')
 
   // Rebind tab.closeOthers off its ⌘⌥W default onto Ctrl+Shift+O (no
@@ -85,10 +86,10 @@ test('Settings: rebinding Close other tabs updates the SAME inline hint the tab-
   // entry, shared/keybinding.ts).
   await openSettings(page, 'shortcuts')
   const row = page.locator('[data-testid="keymap-row"][data-command-id="tab.closeOthers"]')
-  await expect(row.getByTestId('keymap-row-combo')).toHaveText('⌘⌥W')
+  await expect.poll(() => hintText(row.getByTestId('keymap-row-combo'))).toBe('⌘⌥W')
   await row.getByTestId('keymap-row-combo').click()
   await page.keyboard.press('Control+Shift+O')
-  await expect(row.getByTestId('keymap-row-combo')).toHaveText('⌃⇧O')
+  await expect.poll(() => hintText(row.getByTestId('keymap-row-combo'))).toBe('⌃⇧O')
 
   // Back on Workflows, the tab-overflow dropdown's hint -- reading off
   // the exact same shared/store.ts keybindingOverrides Settings just
@@ -103,7 +104,7 @@ test('Settings: rebinding Close other tabs updates the SAME inline hint the tab-
   // `disabled={activeWorkTabKey === null}`).
   await page.getByRole('tab', { name: 'New workflow' }).first().click()
   await overflow.click()
-  await expect(closeOthersItem.getByTestId('hotkey-hint')).toHaveText('⌃⇧O')
+  await expect.poll(() => hintText(closeOthersItem.getByTestId('hotkey-hint'))).toBe('⌃⇧O')
   await page.keyboard.press('Escape')
 
   // And the rebound combo is the one that's actually live now -- not
@@ -117,7 +118,7 @@ test('Settings: rebinding Close other tabs updates the SAME inline hint the tab-
   await openSettings(page, 'shortcuts')
   const rowAgain = page.locator('[data-testid="keymap-row"][data-command-id="tab.closeOthers"]')
   await rowAgain.getByTestId('keymap-row-reset').click()
-  await expect(rowAgain.getByTestId('keymap-row-combo')).toHaveText('⌘⌥W')
+  await expect.poll(() => hintText(rowAgain.getByTestId('keymap-row-combo'))).toBe('⌘⌥W')
 
   await page.getByRole('link', { name: 'Workflows' }).click()
   await page.getByRole('button', { name: 'Close tab' }).click()

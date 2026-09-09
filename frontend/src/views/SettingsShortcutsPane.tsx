@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Stack, Text } from '@primer/react'
+import { KeybindingHint } from '@primer/react/experimental'
 import { KeyIcon } from '@primer/octicons-react'
-import { KeyComboChip } from '../shared/KeyComboChip'
 import { SettingsService } from '../shared/bindings'
-import { describeCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from '../shared/keybinding'
+import { describeCombo, hintKeysFromLabel, keyFromEventCode, modsFromEvent, reservedByMacOS } from '../shared/keybinding'
 import { isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from '../composition/hotkeyCapture'
 import KeyboardShortcutsSection from './KeyboardShortcutsSection'
 import { SettingsRow } from './SettingsRow'
@@ -110,7 +110,7 @@ export default function SettingsShortcutsPane() {
           ) : summonBinding ? (
             <>
               <KeyIcon size={12} />
-              <KeyComboChip label={summonBinding} />
+              <KeybindingHint keys={hintKeysFromLabel(summonBinding)} />
               <Button size="small" variant="invisible" onClick={() => setSummonRecording(true)}>{t('common:actions.change')}</Button>
               <Button size="small" variant="invisible" onClick={clearSummonHotkey}>{t('common:actions.clear')}</Button>
             </>

@@ -382,7 +382,21 @@ export const test = base.extend<Record<string, never>, WorkerFixtures>({
   // fixtures/throttle.ts's applyCpuThrottle (goal 0358 S8): every
   // dedicated-server spec's own page must apply the same rate, so the
   // logic lives there and this fixture is one caller of it.
+  //
+  // navigator.platform pin (goal 0405 S1): Mill only ships a macOS
+  // .app, but Primer KeybindingHint (@primer/react/experimental) picks
+  // its own glyph-vs-spelled-out rendering off the REAL browser's
+  // navigator.platform, with no override hook in this version -- on
+  // the ubuntu-latest CI runner that resolves to "other" ("Meta"
+  // instead of "⌘"), diverging from every developer's own Mac and from
+  // the real installed app. Pinning it here (before any script on the
+  // page runs) makes every worker -- local or CI -- render the SAME
+  // mac glyphs the shipped app does, rather than chasing an
+  // environment-dependent text assertion.
   page: async ({ page }, use) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window.navigator, 'platform', { value: 'MacIntel', configurable: true })
+    })
     await applyCpuThrottle(page)
     // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(page)

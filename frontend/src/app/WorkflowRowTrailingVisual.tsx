@@ -1,6 +1,7 @@
 import { Stack } from '@primer/react'
+import { KeybindingHint } from '@primer/react/experimental'
 import { PinIcon } from '@primer/octicons-react'
-import { KeyComboChip } from '../shared/KeyComboChip'
+import { hintKeysFromLabel } from '../shared/keybinding'
 
 // The workflow-row trailing-visual composition app/CommandPalette.tsx
 // and app/QuickPanel.tsx both need: an optional hotkey-trigger combo
@@ -24,7 +25,11 @@ export function WorkflowRowTrailingVisual({
 }) {
   return (
     <Stack direction="horizontal" gap="condensed" align="center">
-      {combo && <KeyComboChip label={combo} data-testid="workflow-hotkey-chip" />}
+      {combo && (
+        <span data-testid="workflow-hotkey-chip">
+          <KeybindingHint keys={hintKeysFromLabel(combo)} />
+        </span>
+      )}
       {/* A plain role=button, never a focusable control: the list's
           focus zone counts every element carrying a tabindex as a
           stop, so a real button here became the first ArrowDown target

@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/server'
 import { gotoAppReady } from './fixtures/appReady'
+import { hintText } from './fixtures/keybindingHint'
 
 // The bare-?/⌘? shortcuts-help overlay (goal 0071, app/ShortcutsHelpDialog.tsx):
 // context-first ("On this page" bindings ahead of "Everywhere"),
@@ -71,7 +72,7 @@ test('the command palette on Atlas lists "Jump to a card" with its ⌘K chip und
   await expect(palette.getByText('On this page')).toBeVisible()
   const jumpOption = palette.getByRole('option', { name: /Jump to a card/ })
   await expect(jumpOption).toBeVisible()
-  await expect(jumpOption).toContainText('⌘K')
+  await expect.poll(() => hintText(jumpOption)).toBe('⌘K')
   await page.keyboard.press('Escape')
 })
 
@@ -128,10 +129,10 @@ test('the overlay shows hint chips for the new Atlas commands, and omits unbound
 
   const selectAllRow = dialog.locator('[data-command-id="atlas.selectAll"]')
   await expect(selectAllRow).toContainText('Select all')
-  await expect(selectAllRow).toContainText('⌘A')
+  await expect.poll(() => hintText(selectAllRow)).toBe('⌘A')
 
-  await expect(dialog.locator('[data-command-id="atlas.delete.selection"]')).toContainText('⌫')
-  await expect(dialog.locator('[data-command-id="atlas.group.selection"]')).toContainText('G')
+  await expect.poll(() => hintText(dialog.locator('[data-command-id="atlas.delete.selection"]'))).toBe('⌫')
+  await expect.poll(() => hintText(dialog.locator('[data-command-id="atlas.group.selection"]'))).toBe('G')
 
   await expect(dialog.locator('[data-command-id="atlas.arrange"]')).toHaveCount(0)
   await expect(dialog.locator('[data-command-id="atlas.import"]')).toHaveCount(0)
@@ -148,11 +149,13 @@ test('the board keyboard-nav key table (goal 0104) is fully advertised here, eac
   const dialog = helpDialog(page)
   await expect(dialog).toBeVisible()
 
-  await expect(dialog.locator('[data-command-id="atlas.focusNext"]')).toContainText('TAB')
-  await expect(dialog.locator('[data-command-id="atlas.focusPrevious"]')).toContainText('TAB')
-  await expect(dialog.locator('[data-command-id="atlas.focusDirection"]')).toContainText('⌥→')
-  await expect(dialog.locator('[data-command-id="atlas.openFocused"]')).toContainText('↩')
-  await expect(dialog.locator('[data-command-id="atlas.nudgeSelection"]')).toContainText('→')
+  // focusNext/focusPrevious differ only by the Shift mod (Tab / Shift+Tab) --
+  // both keep a substring check on the shared 'TAB' spelled-out key.
+  expect(await hintText(dialog.locator('[data-command-id="atlas.focusNext"]'))).toContain('TAB')
+  expect(await hintText(dialog.locator('[data-command-id="atlas.focusPrevious"]'))).toContain('TAB')
+  await expect.poll(() => hintText(dialog.locator('[data-command-id="atlas.focusDirection"]'))).toBe('⌥→')
+  await expect.poll(() => hintText(dialog.locator('[data-command-id="atlas.openFocused"]'))).toBe('↩')
+  await expect.poll(() => hintText(dialog.locator('[data-command-id="atlas.nudgeSelection"]'))).toBe('→')
   await expect(dialog.locator('[data-command-id="atlas.escapeLadder"]')).toBeVisible()
 
   await page.keyboard.press('Escape')
