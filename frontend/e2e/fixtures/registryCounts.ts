@@ -41,3 +41,27 @@ export async function registeredStepTypes(page: Page): Promise<RegisteredStepTyp
   }
   return types
 }
+
+// One scanned plugin as PluginService.ListPlugins reports it. Only the
+// fields a built-in count needs.
+export interface ListedPlugin {
+  Manifest: { ID: string }
+  Builtin: boolean
+}
+
+const LIST_PLUGINS = 'github.com/alicoding/mill/internal/services/pluginsvc.PluginService.ListPlugins'
+
+// builtInPluginCount is the Extensions "Built in" disclosure's own
+// source (goal 0357 S2): the same ListPlugins scan the page reads,
+// counted here instead of hand-kept, so a future bundled plugin never
+// needs a matching edit to this door's caller.
+export async function builtInPluginCount(page: Page): Promise<number> {
+  const plugins = await callBindingViaRPC<ListedPlugin[]>(page, LIST_PLUGINS, [])
+  const count = plugins.filter((p) => p.Builtin).length
+  // A door answering nothing would make the assertion trivially true --
+  // the floor is what stops a silent zero from passing.
+  if (count < 1) {
+    throw new Error(`builtInPluginCount: the registry answered with ${count} built-in plugins, far below any real build`)
+  }
+  return count
+}

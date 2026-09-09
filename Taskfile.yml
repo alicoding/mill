@@ -112,7 +112,15 @@ tasks:
       Task-level conditional only reaching the first build shipped a
       bundle without the hook). Omit both for the everyday reinstall
       the everyday plain reinstall; that stays bridge-free.
+
+      Runs under scripts/with-install-lock.sh (goal 0403 S2c): two
+      concurrent installed-app passes clobber the same bundle mid-copy
+      and each other's launched process, so this whole quit/build/
+      install sequence holds one machine-wide lock, released even on
+      failure via `defer:`.
     cmds:
+      - scripts/with-install-lock.sh --acquire
+      - defer: scripts/with-install-lock.sh --release
       - '{{if ne .GOOS "darwin"}}echo "install:app is macOS-only"; exit 1{{end}}'
       - cd frontend && {{.PACKAGE_MANAGER}} run build
       - rm -rf {{.BIN_DIR}}/{{.APP_NAME}}.app
@@ -253,6 +261,24 @@ tasks:
     summary: Installs Lefthook's git hooks (run once after cloning)
     cmds:
       - lefthook install
+
+  setup:gocache-trim:
+    summary: Installs a LaunchAgent that trims the Go build cache to a size cap every 30 minutes (macOS)
+    desc: |
+      go install's hardcache at the pinned version, copies
+      scripts/dev/gocache-trim.sh to ~/go/bin/mill-gocache-trim.sh (so the
+      running job survives this worktree/checkout being removed later),
+      writes ~/Library/LaunchAgents/com.alicoding.mill.gocache-trim.plist
+      (StartInterval 1800s) pointing at that copy, and loads it. Idempotent
+      -- rerun after any change to gocache-trim.sh to refresh the copy.
+      `task setup:gocache-trim:remove` unloads and deletes both.
+    cmds:
+      - './scripts/dev/gocache-trim-setup.sh'
+
+  setup:gocache-trim:remove:
+    summary: Unloads and removes the Go build cache trim LaunchAgent
+    cmds:
+      - './scripts/dev/gocache-trim-setup.sh --remove'
 
   build:server:
     summary: Builds the application in server mode (no GUI, HTTP server only)

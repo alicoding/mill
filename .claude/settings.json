@@ -67,6 +67,16 @@
           }
         ]
       }
+    ],
+    "PermissionDenied": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/scripts/hook-permission-denied.sh"
+          }
+        ]
+      }
     ]
   }
 }

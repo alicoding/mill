@@ -91,9 +91,7 @@
   "viewSwitcher": {
     "ariaLabel": "Board view",
     "board": "Board",
-    "list": "List",
-    "matrix": "Matrix",
-    "coverage": "Coverage"
+    "list": "List"
   },
   "morePanel": {
     "trigger": "More tools",
@@ -227,25 +225,6 @@
       "statusValuesLabel": "Status values"
     }
   },
-  "matrix": {
-    "title": "Traceability matrix",
-    "cardColumn": "Card",
-    "rowKindLabel": "Kind",
-    "columnFilterLabel": "Link kind",
-    "anyLinkKind": "Any",
-    "absentCell": "None",
-    "empty": "No cards of this kind in this space yet."
-  },
-  "coverage": {
-    "title": "Coverage",
-    "linkKindLabel": "Link kind",
-    "linkedStat": "{{covered}}/{{total}} linked",
-    "mirrorHeading": "Mirrors",
-    "mirroredStat": "{{covered}}/{{total}} mirrored",
-    "noLinkKinds": "No link kinds are declared yet.",
-    "viewMissing": "View missing ({{count}})",
-    "hideMissing": "Hide missing"
-  },
   "contents": {
     "title": "Contents",
     "filterPlaceholder": "Filter by name",
@@ -360,6 +339,7 @@
     "openCard": "Open {{title}}",
     "groupIntoArea": "Group into new area",
     "dissolveArea": "Dissolve area",
+    "demote": "Turn back into object",
     "delete": "Delete",
     "openFile": "Open file",
     "revealInFileManager": "Reveal in file manager",
@@ -381,11 +361,14 @@
     "dissolveBody_one": "Its {{count}} item moves up a level.",
     "dissolveBody_other": "Its {{count}} items move up a level.",
     "dissolveConfirm": "Dissolve",
-    "deletePromoteTitle_one": "Delete {{count}} item?",
-    "deletePromoteTitle_other": "Delete {{count}} items?",
-    "deletePromoteBody_one": "{{count}} item inside moves up a level. You can undo right after.",
-    "deletePromoteBody_other": "{{count}} items inside move up a level. You can undo right after.",
-    "deletePromoteConfirm": "Delete"
+    "deleteReparentTitle_one": "Delete {{count}} item?",
+    "deleteReparentTitle_other": "Delete {{count}} items?",
+    "deleteReparentBody_one": "{{count}} item inside moves up a level. You can undo right after.",
+    "deleteReparentBody_other": "{{count}} items inside move up a level. You can undo right after.",
+    "deleteReparentConfirm": "Delete",
+    "demoteTitle": "Turn back into an object?",
+    "demoteBody": "Its title, kind, fields and links are removed; the diagram/image/table itself is kept.",
+    "demoteConfirm": "Turn back"
   },
   "kinds": {
     "dialogTitle": "Kinds",

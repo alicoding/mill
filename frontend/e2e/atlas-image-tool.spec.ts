@@ -81,11 +81,37 @@ test('picking an image via the native file dialog lands a board object, never a 
   // unit's Face loader) -- never only once opened.
   await expect(card.locator('img')).toBeVisible()
 
-  await openCard(page, card)
+  // "Turn back into object" (goal 0410 Decision 3): the promotion's own
+  // reverse. The confirm names exactly what is lost (fields/links/kind)
+  // before it fires -- this card carries neither, but the copy is fixed
+  // regardless of what a given card actually holds.
+  await card.click({ button: 'right' })
+  await expect(menu).toBeVisible()
+  await menu.getByText('Turn back into object', { exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Turn back into an object?' })).toBeVisible()
+  await expect(page.getByText('Its title, kind, fields and links are removed; the diagram/image/table itself is kept.')).toBeVisible()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Turn back', exact: true }).click()
+
+  await expect(card).toHaveCount(0)
+  const demotedObject = imageObjects(page)
+  await expect(demotedObject).toHaveCount(1)
+  // The SAME mirrored file, still rendering -- demote keeps the exact
+  // content, only the card's own title/Kind/fields/links are gone.
+  await expect(demotedObject.locator('img')).toBeVisible()
+
+  // Undo restores the exact card -- title, Kind and face all back.
+  await page.keyboard.press('Meta+z')
+  await expect(demotedObject).toHaveCount(0)
+  const restoredCard = page.getByTestId('atlas-note-card').filter({ hasText: 'logo' })
+  await expect(restoredCard).toBeVisible()
+  await expect(restoredCard.getByText('IMG')).toBeVisible()
+  await expect(restoredCard.locator('img')).toBeVisible()
+
+  await openCard(page, restoredCard)
   const overlay = page.locator('[data-component="atlas-card-overlay"]')
   await expect(overlay.getByTestId('atlas-mirror-image')).toBeVisible()
   await deleteViaPageMenu(page, overlay)
-  await expect(card).not.toBeVisible()
+  await expect(restoredCard).not.toBeVisible()
 })
 
 test('pasting a clipboard image lands a board object -- selectable, draggable, deletable with undo', async ({ page }) => {

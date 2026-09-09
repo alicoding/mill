@@ -3,7 +3,7 @@ package atlas
 // EffectiveParentID resolves parentID to the nearest LIVE ancestor,
 // walking up byID's ParentID chain past every tombstoned
 // (DeletedAt-nonzero) card in between -- the read-time virtual
-// promotion goal 0093's soft-delete relies on: a tombstoned
+// re-parent goal 0093's soft-delete relies on: a tombstoned
 // container's own children keep their stored ParentID untouched until
 // the boot-time purge does the real rewrite, so every listing/render
 // calls this to resolve what they should appear filed under right

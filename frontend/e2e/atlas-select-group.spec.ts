@@ -154,7 +154,7 @@ test.fixme('atlas multi-select: the selection-overlay context menu reaches Group
     await expect(groupedArea.getByTestId('atlas-group-header')).toContainText('2 items')
 
     // Cleanup (testing.md's within-file discipline): dissolving the
-    // area promotes both cards back to top level, then delete them.
+    // area re-parents both cards back to top level, then delete them.
     await groupedArea.getByTestId('atlas-group-header').click({ button: 'right' })
     await expect(menu).toBeVisible()
     await menu.getByText('Dissolve area', { exact: true }).click()
