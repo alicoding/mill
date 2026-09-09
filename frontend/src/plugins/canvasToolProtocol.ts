@@ -1,4 +1,4 @@
-import type { CanvasPreviewDecl, CanvasPreviewKind, CanvasToolDecl, CanvasToolMenuItemDecl, CanvasToolPhase, CanvasToolPoint } from './sdk/canvasTools'
+import type { CanvasPreviewDecl, CanvasPreviewKind, CanvasToolDecl, CanvasToolPhase, CanvasToolPoint } from './sdk/canvasTools'
 import type { CanvasStyleFieldDecl } from './sdk/canvasObjects'
 
 // The wire contract between a framed tool and the host (docs/goals/
@@ -125,7 +125,6 @@ export interface CanvasToolDescriptor {
   fadeMs?: number
   styleFields: CanvasStyleFieldDecl[]
   preview?: CanvasPreviewDecl
-  menuItems: CanvasToolMenuItemDecl[]
 }
 
 // toolWireDescriptor is what register.tool carries: the declaration
@@ -153,7 +152,6 @@ export function toolWireDescriptor(decl: CanvasToolDecl): Record<string, unknown
     fadeMs: decl.fadeMs,
     styleFields: decl.styleFields ? [...decl.styleFields] : [],
     preview: decl.preview,
-    menuItems: decl.menuItems ? decl.menuItems.map((item) => ({ ...item })) : [],
   }
 }
 
@@ -168,22 +166,6 @@ function parsePreview(value: unknown): CanvasPreviewDecl | undefined {
     strokeWidth: optStr(raw.strokeWidth, 'preview.strokeWidth'),
     opacity: optStr(raw.opacity, 'preview.opacity'),
   }
-}
-
-// A menu item's `when` is REQUIRED (Decision 4's conformance rule): an
-// always-enabled item says so with when: "true" rather than leaving
-// the reader to guess whether the author forgot a predicate.
-function parseMenuItems(value: unknown): CanvasToolMenuItemDecl[] {
-  if (value === undefined || value === null) return []
-  if (!Array.isArray(value)) throw new CanvasProtocolError('menuItems', 'must be an array')
-  return value.map((entry, i) => {
-    const raw = obj(entry, `menuItems[${i}]`)
-    return {
-      id: slug(raw.id, `menuItems[${i}].id`),
-      label: str(raw.label, `menuItems[${i}].label`),
-      when: str(raw.when, `menuItems[${i}].when`),
-    }
-  })
 }
 
 // Style fields cross unvalidated in SHAPE only -- canvasToolAdapter's
@@ -218,7 +200,6 @@ export function parseRegisterTool(value: unknown): CanvasToolDescriptor {
     fadeMs: raw.fadeMs === undefined || raw.fadeMs === null ? undefined : num(raw.fadeMs, 'fadeMs'),
     styleFields: parseStyleFields(raw.styleFields),
     preview: parsePreview(raw.preview),
-    menuItems: parseMenuItems(raw.menuItems),
   }
 }
 

@@ -28,7 +28,6 @@ const TOOL = {
   source: 'file',
   editRoute: 'none',
   preview: { kind: 'path', from: 'trail', fill: 'trailFill' },
-  menuItems: [{ id: 'tips', label: 'Drawing tips', when: 'true' }],
 }
 
 function fieldOf(fn: () => unknown): string {
@@ -49,7 +48,6 @@ describe('register.tool', () => {
     expect(parsed.ephemeral).toBe(false)
     expect(parsed.styleFields).toEqual([])
     expect(parsed.preview).toEqual({ kind: 'path', from: 'trail', fill: 'trailFill', stroke: undefined, strokeWidth: undefined, opacity: undefined })
-    expect(parsed.menuItems).toEqual([{ id: 'tips', label: 'Drawing tips', when: 'true' }])
   })
 
   it('names the field it refused, never "invalid message"', () => {
@@ -59,7 +57,6 @@ describe('register.tool', () => {
     expect(fieldOf(() => parseRegisterTool({ ...TOOL, cursor: 'wiggle' }))).toBe('cursor')
     expect(fieldOf(() => parseRegisterTool({ ...TOOL, group: 'nowhere' }))).toBe('group')
     expect(fieldOf(() => parseRegisterTool({ ...TOOL, preview: { kind: 'blob', from: 'x' } }))).toBe('preview.kind')
-    expect(fieldOf(() => parseRegisterTool({ ...TOOL, menuItems: [{ id: 'tips', label: 'Tips' }] }))).toBe('menuItems[0].when')
     expect(fieldOf(() => parseRegisterTool('pencil'))).toBe('register.tool')
   })
 

@@ -33,14 +33,6 @@ export interface CanvasPreviewShape {
     strokeWidth?: string;
     opacity?: string;
 }
-/** One context-menu item on this tool's own objects. `when` decides
- * when it shows, over the facts Mill computes about the object and the
- * selection — an item that always shows says so with `when: 'true'`. */
-export interface CanvasToolMenuItemDecl {
-    id: string;
-    label: string;
-    when: string;
-}
 /** The pointer phases Mill drives a tool through: 'down' opens the
  * gesture, 'move' arrives once per frame, 'up' ends it, and 'cancel'
  * abandons it (Escape, or the pointer leaving). 'fade' arrives once per
@@ -168,7 +160,10 @@ export interface CanvasToolDecl {
     fadeMs?: number;
     styleFields?: readonly CanvasStyleFieldDecl[];
     preview?: CanvasPreviewDecl;
-    menuItems?: readonly CanvasToolMenuItemDecl[];
+    /** Context-menu items are declared in the manifest, not here:
+     * `contributes.menus`'s `editor/context` entries seat a command on
+     * this tool's objects, and each entry's own `when` clause decides
+     * when it shows. */
     onPointer: (event: CanvasToolPointerEvent, ctx: CanvasToolCtx) => void | Promise<void>;
 }
 /** The size some markup takes at a maximum width, measured by Mill off

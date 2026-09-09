@@ -112,14 +112,6 @@ optional lockable?: boolean;
 
 ***
 
-### menuItems?
-
-```ts
-optional menuItems?: readonly CanvasToolMenuItemDecl[];
-```
-
-***
-
 ### objectKind?
 
 ```ts
@@ -133,6 +125,11 @@ optional objectKind?: string;
 ```ts
 onPointer: (event, ctx) => void | Promise<void>;
 ```
+
+Context-menu items are declared in the manifest, not here:
+`contributes.menus`'s `editor/context` entries seat a command on
+this tool's objects, and each entry's own `when` clause decides
+when it shows.
 
 #### Parameters
 

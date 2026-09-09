@@ -21,7 +21,6 @@
 - [CanvasRect](interfaces/CanvasRect.md)
 - [CanvasToolCtx](interfaces/CanvasToolCtx.md)
 - [CanvasToolDecl](interfaces/CanvasToolDecl.md)
-- [CanvasToolMenuItemDecl](interfaces/CanvasToolMenuItemDecl.md)
 - [CanvasToolPoint](interfaces/CanvasToolPoint.md)
 - [CanvasToolPointerEvent](interfaces/CanvasToolPointerEvent.md)
 - [ContentEntry](interfaces/ContentEntry.md)
