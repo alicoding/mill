@@ -145,10 +145,10 @@ test('Meta+K opens the palette; typing filters to a command and shows its effect
   await expect(paletteDialog(page)).toBeVisible()
 
   // "Next tab" (tab.next) defaults to Ctrl+Tab (docs/SPEC.md §3.7's
-  // keymap entry) -- formatCombo renders it as the glyph string "⌃TAB",
-  // the same function Settings' own Keyboard Shortcuts section uses, so
-  // this is asserting the SAME effective-binding text a rebind would
-  // change, not a hardcoded copy of it.
+  // keymap entry) -- KeybindingHint's own condensed glyph for the Tab
+  // key is "⇥" (key-names.ts's condensedKeyName map), not Mill's old
+  // spelled-out "TAB" formatCombo produced; hintKeysFromLabel adapts to
+  // the kit's own vocabulary, so this asserts what the kit renders.
   // Primer's FilteredActionListInput renders the search box as
   // role="combobox" (an ARIA 1.2 combobox-driving-a-listbox pattern),
   // not a plain textbox -- confirmed against a real accessibility
@@ -156,7 +156,7 @@ test('Meta+K opens the palette; typing filters to a command and shows its effect
   await paletteDialog(page).getByRole('combobox').fill('tab')
   const nextTabOption = paletteDialog(page).getByRole('option', { name: /Next tab/ })
   await expect(nextTabOption).toBeVisible()
-  await expect.poll(() => hintText(nextTabOption)).toBe('⌃TAB')
+  await expect.poll(() => hintText(nextTabOption)).toBe('⌃⇥')
 
   // A command not matching "tab" at all is filtered out.
   await expect(paletteDialog(page).getByText('Open Settings', { exact: true })).toHaveCount(0)

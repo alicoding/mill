@@ -128,7 +128,10 @@ test('a seeded workflow is listed and Enter runs it, showing the outcome in the 
   await expect(runOption).toBeVisible()
 
   // The footer names the active row's actions before anything runs.
-  await expect.poll(() => hintText(page.getByTestId('quick-panel-run-hint'))).toBe('↩')
+  // KeybindingHint's own condensed glyph for Enter is "⏎" (key-names.ts's
+  // condensedKeyName map), not Mill's old "↩" -- hintKeysFromLabel
+  // adapts to the kit's own vocabulary.
+  await expect.poll(() => hintText(page.getByTestId('quick-panel-run-hint'))).toBe('⏎')
   await page.keyboard.press('Enter')
   // Outcome stays put (goal 0294): no auto-dismiss, the footer says
   // whether it worked and how long it took.
@@ -141,12 +144,12 @@ test('a seeded workflow is listed and Enter runs it, showing the outcome in the 
   await expect(menu).toBeVisible()
   await expect(page.getByTestId('quick-panel-action-run')).toContainText('Run')
   await expect(page.getByTestId('quick-panel-action-run-watch')).toContainText('Run and watch')
-  await expect.poll(() => hintText(page.getByTestId('quick-panel-action-run-watch-shortcut'))).toBe('⌘⇧↩')
+  await expect.poll(() => hintText(page.getByTestId('quick-panel-action-run-watch-shortcut'))).toBe('⌘⇧⏎')
   // ⌘↩ names the run this panel just started, not the workflow (goal
   // 0343): the row's action IS the run.open command with that run as
   // its target, so the label says what it will actually open.
   await expect(page.getByTestId('quick-panel-action-open')).toContainText('Open run')
-  await expect.poll(() => hintText(page.getByTestId('quick-panel-action-open-shortcut'))).toBe('⌘↩')
+  await expect.poll(() => hintText(page.getByTestId('quick-panel-action-open-shortcut'))).toBe('⌘⏎')
   await expect(page.getByTestId('quick-panel-action-pin')).toContainText('Pin')
   await page.keyboard.press('Escape')
   await expect(menu).toHaveCount(0)

@@ -108,7 +108,11 @@ test('"Rebind in Settings" in the overlay footer navigates to Settings and close
   await page.getByTestId('shortcuts-help-rebind').click()
   await expect(helpDialog(page)).toHaveCount(0)
   await expect(page.getByTestId('settings-view')).toBeVisible()
-  await expect(page.locator('[data-testid="keymap-list"]')).toBeVisible()
+  // goal 0405 S1: the editor now renders one `keymap-list` ActionList
+  // PER SURFACE GROUP (Everywhere/Atlas/Workflows/Review/Settings), not
+  // one flat list -- `.first()` just proves the shortcuts editor
+  // rendered, same as this test's own intent before the grouping.
+  await expect(page.locator('[data-testid="keymap-list"]').first()).toBeVisible()
 })
 
 // shared/atlasBoardCommands.ts's new Atlas commands: hintOnly ones
@@ -131,7 +135,10 @@ test('the overlay shows hint chips for the new Atlas commands, and omits unbound
   await expect(selectAllRow).toContainText('Select all')
   await expect.poll(() => hintText(selectAllRow)).toBe('⌘A')
 
-  await expect.poll(() => hintText(dialog.locator('[data-command-id="atlas.delete.selection"]'))).toBe('⌫')
+  // KeybindingHint's own condensed glyph for Delete is "Del"
+  // (key-names.ts's condensedKeyName map), not Mill's old "⌫" --
+  // hintKeysFromLabel adapts to the kit's own vocabulary.
+  await expect.poll(() => hintText(dialog.locator('[data-command-id="atlas.delete.selection"]'))).toBe('Del')
   await expect.poll(() => hintText(dialog.locator('[data-command-id="atlas.group.selection"]'))).toBe('G')
 
   await expect(dialog.locator('[data-command-id="atlas.arrange"]')).toHaveCount(0)
@@ -150,11 +157,15 @@ test('the board keyboard-nav key table (goal 0104) is fully advertised here, eac
   await expect(dialog).toBeVisible()
 
   // focusNext/focusPrevious differ only by the Shift mod (Tab / Shift+Tab) --
-  // both keep a substring check on the shared 'TAB' spelled-out key.
-  expect(await hintText(dialog.locator('[data-command-id="atlas.focusNext"]'))).toContain('TAB')
-  expect(await hintText(dialog.locator('[data-command-id="atlas.focusPrevious"]'))).toContain('TAB')
+  // both keep a substring check on the shared Tab glyph. KeybindingHint's
+  // own condensed glyph for Tab is "⇥" (key-names.ts's condensedKeyName
+  // map), not Mill's old spelled-out "TAB".
+  expect(await hintText(dialog.locator('[data-command-id="atlas.focusNext"]'))).toContain('⇥')
+  expect(await hintText(dialog.locator('[data-command-id="atlas.focusPrevious"]'))).toContain('⇥')
   await expect.poll(() => hintText(dialog.locator('[data-command-id="atlas.focusDirection"]'))).toBe('⌥→')
-  await expect.poll(() => hintText(dialog.locator('[data-command-id="atlas.openFocused"]'))).toBe('↩')
+  // KeybindingHint's own condensed glyph for Enter is "⏎", not Mill's
+  // old "↩" -- same adapter-vocabulary note as above.
+  await expect.poll(() => hintText(dialog.locator('[data-command-id="atlas.openFocused"]'))).toBe('⏎')
   await expect.poll(() => hintText(dialog.locator('[data-command-id="atlas.nudgeSelection"]'))).toBe('→')
   await expect(dialog.locator('[data-command-id="atlas.escapeLadder"]')).toBeVisible()
 
