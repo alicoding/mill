@@ -39,7 +39,7 @@ rewriting anything:
 | --- | --- | --- | --- |
 | `contributes.configuration` | `contributes.configuration` | Accepted as-is | Same shape: a typed setting with a default and a description. |
 | `contributes.commands` | `contributes.commands` | Accepted as-is | Same shape: an id and a label. The function it runs is rewritten (see below). |
-| `contributes.menus` | `contributes.menus` | Mapped | Foreign menu ids land on the Mill surface that plays the same role — see the seat table below. An id with no equivalent is accepted and ignored, never a load failure. |
+| `contributes.menus` | `contributes.menus` | Mapped and rendered | A foreign menu id renders on the Mill surface that plays the same role — see the seat table below. An id with no equivalent is accepted and ignored, never a load failure. |
 | `contributes.views` | `contributes.views` | Mapped, narrower | Both declare an id, a title, and where the page's own code lives; Mill has no nested view-container tree — every view is a flat work tab. |
 | `contributes.viewsContainers` | — | Not supported | Mill's own chrome (the sidebar's fixed sections) is not a plugin-extensible tree; a view still declares which existing tab it opens in. |
 | `contributes.themes` | `contributes.themes` | Accepted as-is | Both are a CSS/JSON color file with no code behind it. |
@@ -53,8 +53,8 @@ rewriting anything:
 | Source menu id | Mill seat |
 | --- | --- |
 | `commandPalette` | Already true for every command Mill knows about; declaring it does nothing extra. |
-| `editor/context` | The canvas object's own right-click menu. |
-| `view/title` | The work tab's title area. |
+| `editor/context` | Renders in the canvas object's own right-click menu, after a separator. |
+| `view/title` | Renders as an icon-only action in the work tab's title area. |
 | any other id | Accepted and ignored — named once in the extension's status so you know it was silently dropped, never a load failure. |
 
 ## Three ported jobs, classified
