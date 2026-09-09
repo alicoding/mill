@@ -5,7 +5,7 @@ import { groupCard, noteCard } from './fixtures/atlasCards'
 import { contextMenu, rightClickEmptyArea } from './fixtures/contextMenu'
 import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel } from './fixtures/canvas'
-import { clickEdgeOffChip } from './fixtures/atlasEdge'
+import { rightClickEdgeOffChip } from './fixtures/atlasEdge'
 
 // The right-click context menu (goal 0075): one shared Primer-native
 // menu, surfaces own their items. Proof surfaces per the goal's
@@ -198,10 +198,8 @@ test('right-click on a seeded Atlas artery offers Open for each connected card',
   await expect(page.getByTestId('atlas-board')).toBeVisible()
 
   const edge = page.locator('.react-flow__edge').first()
-  await clickEdgeOffChip(page, edge, { button: 'right' })
   const menu = contextMenu(page)
-  await expect(menu).toBeVisible()
-  await expect(menu.getByText('Open Discovery workstream', { exact: true })).toBeVisible()
+  await rightClickEdgeOffChip(page, edge, menu, 'Open Discovery workstream')
   await expect(menu.getByText('Open Client records', { exact: true })).toBeVisible()
 
   await menu.getByText('Open Discovery workstream', { exact: true }).click()
