@@ -197,6 +197,14 @@ export interface InstallPreview {
     "AlreadyInstalled": boolean;
 
     /**
+     * CanvasHost is true when this manifest earns the "canvas-host"
+     * grant (pluginGrants, docs/goals/0375 S1b/S2): it declares a
+     * canvas object and runs same-DOM in Mill's own window rather than
+     * the sandboxed activation frame. Always false for a built-in.
+     */
+    "CanvasHost": boolean;
+
+    /**
      * PolicyRefusal is the organisation policy's sentence when it
      * refuses this install (policy_match.go), "" when it does not or
      * no policy is set; the prompt shows it and disables Install.
@@ -562,9 +570,17 @@ export interface PluginInfo {
     /**
      * ContentHash is the folder's current content hash
      * (pluginservice_hash.go), "" for a built-in or an invalid plugin
-     * -- what the lock compares against.
+     * -- what signature verification (Signed) checks against. NOT what
+     * the lock compares against; that is CodeHash (docs/goals/0375 S2).
      */
     "ContentHash": string;
+
+    /**
+     * CodeHash excludes manifest.json (docs/goals/0375 S2): the trust
+     * lock's own comparison input, so a manifest-only edit never trips
+     * it -- only Widened does.
+     */
+    "CodeHash": string;
 
     /**
      * SigningPolicy reports whether an administrator pinned signing
@@ -602,6 +618,15 @@ export interface PluginInfo {
      * built-in's do. Always empty for a built-in.
      */
     "Grants": string[] | null;
+
+    /**
+     * Widened is non-nil for a non-built-in plugin whose manifest
+     * declares MORE than its own consent covered (docs/goals/0375 S2,
+     * MV3's re-consent-on-widen rule): the NEW elements only, in the
+     * shape permissionLines() renders. Nil when narrowed/unchanged,
+     * never allowed, or built-in.
+     */
+    "Widened": InstallPreview | null;
 
     /**
      * Warnings are non-blocking manifest notices -- a deprecated key
@@ -726,8 +751,9 @@ export interface SecretSourcePathContribution {
  * SettingContribution is one declared plugin setting. Type is the
  * four-type floor every declarative settings platform shares --
  * "boolean", "string", "number", "enum" -- plus "secretRef" (ADR-0048):
- * the user picks a vault entry, the stored value is that entry's id,
- * and the plugin only ever reads its title. Default is the value in
+ * the user picks any reference the picker offers -- a vault entry or a
+ * configured source's key (goal 0408 S1) -- the stored value is that
+ * reference, and the plugin only ever reads its title. Default is the value in
  * effect until the user touches the control (the converged
  * `default` spelling), decoded as whatever JSON scalar the manifest
  * wrote; validateContributes pins it to Type. Options is enum-only;

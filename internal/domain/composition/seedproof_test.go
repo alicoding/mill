@@ -248,6 +248,11 @@ var workflowProofRegistry = map[string]seedProof{
 	ExampleScheduledSecretReadWorkflowID: proven(
 		"executionsvc.TestSeededScheduledSecretRead_WaitsForVaultThenCompletes",
 	),
+	ExampleSourceSecretWorkflowID: proven(
+		"secretsvc.TestResolveSecretValue_UnresolvedVsUnreadableVsResolved",
+		"composition.TestValidateGraph_UnresolvedSecret_WillFailNamingFirstOnly",
+		"e2e: secret-references.spec.ts",
+	),
 	ExampleBrunoRunWorkflowID: proven(
 		"composition.TestSeededBrunoRun_MapsTheReportOntoTheSeededList",
 		"e2e: bruno-run.spec.ts",

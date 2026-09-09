@@ -117,6 +117,11 @@ export function ConfigureAttributes() {
           listId="configure.attributes"
           items={items}
           searchPlaceholder={t('configureAttributes.searchPlaceholder')}
+          // Attributes' rows ARE workflows (this page's own doc comment
+          // above) -- reusing the 'workflow' entity means a bulk delete
+          // here goes through the exact same door/undo Workflows' own
+          // page uses, never a second one.
+          selection={{ entity: 'workflow' }}
           emptyState={{
             icon: WorkflowIcon,
             heading: t('configureAttributes.emptyHeading'),

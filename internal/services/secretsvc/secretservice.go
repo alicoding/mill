@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
+	"github.com/alicoding/mill/internal/adapters/filewatch"
 	"github.com/alicoding/mill/internal/adapters/secretauditstore"
 	"github.com/alicoding/mill/internal/adapters/secretvault"
 	"github.com/alicoding/mill/internal/adapters/settings"
@@ -121,6 +122,12 @@ type SecretService struct {
 	// wires it, which makes RestoreVaultFromLatestBackup refuse rather
 	// than search a directory nobody configured (secretservice_restore.go).
 	backupDir string
+	// watchMu guards sourceWatches/sourceDebouncers (secretservice_
+	// watch.go, goal 0408 S1) -- its own lock, separate from mu, so a
+	// live fsnotify callback never contends with an in-flight resolve.
+	watchMu          sync.Mutex
+	sourceWatches    map[string]*filewatch.Binding
+	sourceDebouncers map[string]*time.Timer
 }
 
 // NewSecretService constructs the service and starts the auto-lock poll

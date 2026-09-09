@@ -74,14 +74,18 @@ func WireSettingsEraSeams(settings *settingssvc.SettingsService, notif *notifica
 // reader (pluginsvc.PluginTrustReader).
 type settingsTrust struct {
 	settings *settingssvc.SettingsService
-	// hashOf answers a plugin's current content hash ("" when unknown);
-	// signedOK answers the signed tier's verdict; both nil in the
-	// paste-chain wiring's own tests.
+	// hashOf answers a plugin's current CodeHash ("" when unknown, docs/
+	// goals/0375 S2); signedOK answers the signed tier's verdict; both
+	// nil in the paste-chain wiring's own tests.
 	hashOf   func(id string) string
 	signedOK func(id string) bool
 	// policyOK answers the organisation policy's verdict (goal 0349
 	// S6); nil in the paste-chain wiring's own tests.
 	policyOK func(id string) bool
+	// widenedOf answers whether id currently declares more than its
+	// recorded consent covers (docs/goals/0375 S2); nil in the
+	// paste-chain wiring's own tests.
+	widenedOf func(id string) bool
 }
 
 func (t settingsTrust) Enabled(id string) bool {
@@ -106,9 +110,49 @@ func (t settingsTrust) Allowlist() []string { return t.settings.GetPluginAllowli
 
 func (t settingsTrust) LockedHash(id string) string { return t.settings.GetPluginLock()[id].Hash }
 
-// unchanged reports whether the plugin's files still match the hash
-// its consent covered (ADR-0051 §4, slice 5) -- true with no hasher
-// wired or nothing recorded.
+// GrantOf adapts the settings service's recorded grant to the plugin
+// service's own shape (docs/goals/0375 S2) -- the pluginsvc package
+// never imports settingssvc, so this is the one conversion seam.
+func (t settingsTrust) GrantOf(id string) (pluginsvc.PluginGrant, bool) {
+	entry, ok := t.settings.PluginGrant(id)
+	if !ok {
+		return pluginsvc.PluginGrant{}, false
+	}
+	return pluginsvc.PluginGrant{
+		Capabilities: entry.Capabilities, Hosts: entry.Hosts, AnyHost: entry.AnyHost,
+		Kinds: entry.Kinds, UsesSecrets: entry.UsesSecrets, CanvasHost: entry.CanvasHost,
+	}, true
+}
+
+// pluginGrantSnapshotter builds the hasher SetPluginHasher installs: a
+// plugin's version, its CodeHash (docs/goals/0375 S2 -- the trust
+// lock's own comparison input, manifest.json excluded so a manifest
+// edit alone never trips it), and its currently-declared grant shape,
+// read off the SAME preview the Verification sheet shows -- there is
+// exactly one place that computes "what this manifest declares".
+func pluginGrantSnapshotter(plugins *pluginsvc.PluginService) settingssvc.PluginHasher {
+	return func(id string) settingssvc.PluginGrantSnapshot {
+		hash := plugins.CodeHashOf(id)
+		if hash == "" {
+			return settingssvc.PluginGrantSnapshot{}
+		}
+		version := plugins.VersionOf(id)
+		pv, err := plugins.PreviewInstalled(id)
+		if err != nil {
+			return settingssvc.PluginGrantSnapshot{Version: version, Hash: hash}
+		}
+		return settingssvc.PluginGrantSnapshot{
+			Version: version, Hash: hash,
+			Capabilities: pv.Capabilities, Hosts: pv.NetworkHosts, AnyHost: pv.AnyHost,
+			Kinds: pv.Kinds, UsesSecrets: pv.UsesSecrets, CanvasHost: pv.CanvasHost,
+		}
+	}
+}
+
+// unchanged reports whether the plugin's CodeHash still matches its
+// consent (ADR-0051 §4 slice 5, narrowed by docs/goals/0375 S2 to
+// exclude manifest.json -- a manifest edit is Widened's question, not
+// this one) -- true with no hasher wired or nothing recorded.
 func (t settingsTrust) unchanged(id string) bool {
 	if t.hashOf == nil {
 		return true
@@ -119,9 +163,11 @@ func (t settingsTrust) unchanged(id string) bool {
 // mayRun is the ONE run-policy predicate the Go side applies (the
 // frontend loader mirrors it in plugins/pluginTrust.ts): a plugin must
 // be on the administrator's allow-list when one is set, not turned off,
-// and allowed to run by the user after the install-time review
-// (ADR-0051 §4). A built-in skips the two trust gates but never the
-// user's own on/off switch.
+// allowed to run by the user after the install-time review, and not
+// currently declaring more than that review covered (ADR-0051 §4,
+// widened by docs/goals/0375 S2's re-consent-on-widen rule). A
+// built-in skips every trust gate but never the user's own on/off
+// switch.
 func (t settingsTrust) mayRun(id string, builtin bool) bool {
 	if !t.Enabled(id) {
 		return false
@@ -144,6 +190,9 @@ func (t settingsTrust) mayRun(id string, builtin bool) bool {
 	if t.signedOK != nil && !t.signedOK(id) {
 		return false
 	}
+	if t.widenedOf != nil && t.widenedOf(id) {
+		return false
+	}
 	return t.Allowed(id) && t.unchanged(id)
 }
 
@@ -152,12 +201,10 @@ func (t settingsTrust) mayRun(id string, builtin bool) bool {
 // plugin present is recorded as allowed -- an upgrade never turns a
 // working plugin off), and installs the audit export's read seams.
 func WirePluginTrust(plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService, secrets *secretsvc.SecretService) {
-	settings.SetPluginHasher(func(id string) (string, string) {
-		return plugins.VersionOf(id), plugins.ContentHashOf(id)
-	})
+	settings.SetPluginHasher(pluginGrantSnapshotter(plugins))
 	plugins.SetSigningKeys(settings.GetPluginSigningKeys)
 	grandfatherInstalledPlugins(plugins, settings)
-	trust := settingsTrust{settings: settings, hashOf: plugins.ContentHashOf, signedOK: plugins.SignedOK, policyOK: plugins.PolicyAllows}
+	trust := settingsTrust{settings: settings, hashOf: plugins.CodeHashOf, signedOK: plugins.SignedOK, policyOK: plugins.PolicyAllows, widenedOf: plugins.Widened}
 	plugins.WireAudit(trust, pluginSecretAccessReader(secrets))
 	// The step-pack door (ADR-0051 §5): every runnable plugin's declared
 	// steps join the catalog and the executor, read fresh per lookup.
@@ -237,12 +284,23 @@ func WirePluginSecretRefs(plugins *pluginsvc.PluginService, secrets *secretsvc.S
 
 type pluginSecretResolver struct{ secrets *secretsvc.SecretService }
 
+// TitleOf checks the vault's own entries first, then every enabled
+// secret source's keys (goal 0408 S1) -- a plugin's secretRef setting
+// accepts anything the picker offers, and the picker's own Sources
+// group is exactly ListProviderSecrets.
 func (r pluginSecretResolver) TitleOf(id string) (string, bool) {
-	entries, err := r.secrets.ListSecrets()
+	if entries, err := r.secrets.ListSecrets(); err == nil {
+		for _, e := range entries {
+			if e.ID == id {
+				return e.Title, true
+			}
+		}
+	}
+	providers, err := r.secrets.ListProviderSecrets()
 	if err != nil {
 		return "", false
 	}
-	for _, e := range entries {
+	for _, e := range providers {
 		if e.ID == id {
 			return e.Title, true
 		}
@@ -262,7 +320,7 @@ func (r pluginSecretResolver) Resolve(id, pluginID string) (string, error) {
 // in precedence order: the user's preferred kind (Settings >
 // Extensions, ADR-0051 slice 2) first, then ListPlugins' id order.
 func WirePluginIngestion(atlas *atlassvc.AtlasService, plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService) {
-	trust := settingsTrust{settings: settings, hashOf: plugins.ContentHashOf, signedOK: plugins.SignedOK, policyOK: plugins.PolicyAllows}
+	trust := settingsTrust{settings: settings, hashOf: plugins.CodeHashOf, signedOK: plugins.SignedOK, policyOK: plugins.PolicyAllows, widenedOf: plugins.Widened}
 	atlas.WirePluginPasteClaims(func() []atlassvc.PluginPasteClaim {
 		return orderPasteClaims(plugins.URLPasteClaims(), func(c pluginsvc.IngestionClaim) bool { return trust.mayRun(c.PluginID, c.Builtin) }, settings.GetPreferredLinkPasteKind())
 	})

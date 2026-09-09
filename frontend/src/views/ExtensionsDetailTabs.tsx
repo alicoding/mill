@@ -118,7 +118,7 @@ export function ExtensionsVerificationTab({ plugin, changed }: {
             : t('extensions.verification.policyAllowed', { org: policy.ManagedBy })}
         </Text>
       )}
-      <ExtensionsPermissions preview={preview} testId="extensions-verification-permissions" />
+      <ExtensionsPermissions preview={preview} widened={plugin.Widened ?? null} testId="extensions-verification-permissions" />
       <ExtensionsNoticed warnings={preview?.Warnings ?? []} testId="extensions-verification-noticed" />
     </Stack>
   )

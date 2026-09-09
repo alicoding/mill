@@ -67,11 +67,19 @@ export interface MCPAddrInfo {
 }
 
 /**
- * PluginLockEntry is one recorded trust moment.
+ * PluginLockEntry is one recorded trust moment: the version and
+ * content hash the consent covered, plus the capability-shaped set the
+ * manifest declared at that moment.
  */
 export interface PluginLockEntry {
     "version": string;
     "hash": string;
+    "capabilities"?: string[] | null;
+    "hosts"?: string[] | null;
+    "anyHost"?: boolean;
+    "kinds"?: string[] | null;
+    "usesSecrets"?: boolean;
+    "canvasHost"?: boolean;
 }
 
 /**

@@ -131,6 +131,14 @@ export interface SecretAccessRecord {
 }
 
 /**
+ * SourcesChanged is SourcesChangedEvent's payload: which source's file
+ * just changed on disk.
+ */
+export interface SourcesChanged {
+    "sourceId": string;
+}
+
+/**
  * SourcesLister hands the service the user's enabled secret sources
  * (the Configure entity); wired late like every other seam.
  */

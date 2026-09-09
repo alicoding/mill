@@ -58,6 +58,11 @@ var httpRequestProofRegistry = map[string]seedProof{
 		"pluginsvc.TestPerformGuardedActionForPlugin_Allow_PerformsAndAudits (the same two operations this seed declares)",
 		"e2e: runtime-plugin-live-view.spec.ts (against a local stub server, never a real vendor)",
 	),
+	httprequest.ExampleSourceSecretID: proven(
+		"secretsvc.TestResolveSecretValue_UnresolvedVsUnreadableVsResolved",
+		"configuresvc.TestRequestSecretUnresolved_NamesTheGoneKeyOnlyWhenTheSourceStillExists",
+		"e2e: secret-references.spec.ts",
+	),
 }
 
 // decisionProofRegistry: every decision.BuiltIn() ID.

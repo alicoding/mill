@@ -284,6 +284,7 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 	}
 	info.Manifest = m
 	info.Grants = pluginGrants(false, m)
+	info.Widened = widenedInfo(p.trust, m)
 	info.Warnings = manifestWarnings(m)
 	_, mainErr := os.Stat(filepath.Join(dir, "main.js")) // #nosec G703 -- folder passed pluginIDPattern (no separators, no dots)
 	info.Error = manifestProblem(m, folder, mainErr == nil, p.appVersion)
@@ -302,6 +303,9 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 	if info.Error == "" {
 		if h, err := ContentHash(dir); err == nil {
 			info.ContentHash = h
+		}
+		if h, err := CodeHash(dir); err == nil {
+			info.CodeHash = h
 		}
 	}
 	if keys := p.signingKeySet(); len(keys) > 0 {

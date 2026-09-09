@@ -45,6 +45,16 @@ Why every such field is a pick, not a text box, is in
 4. Its keys appear in every picker under **Secret sources**. Pick one
    exactly as you would a vault entry; Mill reads the value at run
    time and never copies it into the vault.
+5. Edit the file in place any time — every open picker and the Sources
+   list pick up the change on their own.
+
+## If a picked key is gone
+
+The field says "Unresolved" and names the key and the source: someone
+removed it from the file, or renamed it. The pick still names the
+source, so putting the key back (with the same name) resolves it
+again. Starting a run that needs a key like this refuses before
+anything runs, naming the same key.
 
 ## If the picker is greyed out
 

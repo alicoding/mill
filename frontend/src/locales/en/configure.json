@@ -120,7 +120,6 @@
     "usageFilterAriaLabel": "Filter lists by usage",
     "usageFilterAll": "All lists",
     "usageFilterUnused": "Unused",
-    "unusedSelectAriaLabel": "Select {{label}} for deletion",
     "unusedEmpty": "No lists are unused.",
     "unset": "(unset)",
     "rowStatusAriaLabel": "Row status",

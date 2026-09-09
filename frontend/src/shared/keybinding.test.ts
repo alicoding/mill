@@ -1,5 +1,6 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { comboFromEvent, comboKey, describeCombo, formatCombo, isUndoJournalCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from './keybinding'
+import { comboFromEvent, comboKey, describeCombo, formatCombo, isEditableTarget, isUndoJournalCombo, keyFromEventCode, modsFromEvent, reservedByMacOS } from './keybinding'
 
 describe('keyFromEventCode', () => {
   it('strips the Key prefix from letter codes', () => {
@@ -201,5 +202,32 @@ describe('isUndoJournalCombo', () => {
 
   it('rejects another ⌘ combo', () => {
     expect(isUndoJournalCombo(press({ key: 'f', metaKey: true }))).toBe(false)
+  })
+})
+
+describe('isEditableTarget', () => {
+  it('is true for a text input and a textarea', () => {
+    expect(isEditableTarget(document.createElement('textarea'))).toBe(true)
+    const text = document.createElement('input')
+    text.type = 'text'
+    expect(isEditableTarget(text)).toBe(true)
+  })
+
+  it('is false for a checkbox/radio input -- goal 0404 S1: neither consumes a shortcut as text, so a selection checkbox holding focus must never swallow ⌘A/⌘Z/Delete', () => {
+    const checkbox = document.createElement('input')
+    checkbox.type = 'checkbox'
+    expect(isEditableTarget(checkbox)).toBe(false)
+    const radio = document.createElement('input')
+    radio.type = 'radio'
+    expect(isEditableTarget(radio)).toBe(false)
+  })
+
+  it('is false for a plain button/range/color/file input and for a non-element target', () => {
+    for (const type of ['button', 'submit', 'reset', 'range', 'color', 'file']) {
+      const el = document.createElement('input')
+      el.type = type
+      expect(isEditableTarget(el)).toBe(false)
+    }
+    expect(isEditableTarget(null)).toBe(false)
   })
 })

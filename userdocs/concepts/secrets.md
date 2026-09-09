@@ -39,6 +39,13 @@ value when something uses it and never stores it. An extension can add
 a source of its own the same way, and never sees another source's
 values.
 
+A `.env` or Bruno source is watched: edit the file and every open
+picker and the Sources list update on their own, no reload. If a
+picked key disappears from the file, the field says so — the pick
+still names it, so putting the key back resolves it again — and
+starting a run that needs it refuses before anything runs, naming the
+missing key.
+
 ## The lock policy
 
 **Settings › Security** decides when the vault closes itself: after a

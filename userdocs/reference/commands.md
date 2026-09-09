@@ -137,7 +137,6 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.list.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.list.export` | Export | — | Global | Acts on the selected entity |
 | `configure.list.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
-| `configure.lists.deleteUnused` | Delete {{count}} lists | — | Global | Acts on the selected entitySelection |
 | `configure.mcpserver.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.mcpserver.export` | Export | — | Global | Acts on the selected entity |
 | `configure.mcpserver.listTools` | List tools | — | Global | Acts on the selected entity |
@@ -194,6 +193,11 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `help.openDataFolder` | Open data folder | — | Global | Always available |
 | `help.reportIssue` | Report an issue… | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
+| `list.clearSelection` | Clear selection | `ESCAPE` | configure, composition, secrets | Conditional — available only in a matching state |
+| `list.deleteSelection` | Delete | `⌫` | configure, composition, secrets | Conditional — available only in a matching state |
+| `list.extendSelection` | Extend selection | `⇧SPACE` | configure, composition, secrets | Conditional — available only in a matching state |
+| `list.selectAll` | Select all | `⌘A` | configure, composition, secrets | Conditional — available only in a matching state |
+| `list.toggleSelection` | Toggle selection | `SPACE` | configure, composition, secrets | Conditional — available only in a matching state |
 | `listGrid.addColumn` | Add a column | — | Global | Acts on the selected table rows |
 | `listGrid.addRow` | Add a row | — | Global | Acts on the selected table rows |
 | `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected table rows |

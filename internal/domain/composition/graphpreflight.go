@@ -122,6 +122,62 @@ func nodeCredentialGaps(n Node) []Issue {
 	return issues
 }
 
+// secretUnresolvedFn reports whether a request's own secret reference
+// (its SecretRef, or OAuth1's ConsumerSecretRef) is a source-backed
+// reference whose source still exists but no longer has the named key
+// (goal 0408 S1) -- distinct from validateCredentialGaps' "no
+// reference set at all". Injected from the composition root, the same
+// seam shape as credentialGapFn.
+var secretUnresolvedFn func(requestID string) (unresolved bool, key, sourceLabel string)
+
+// SetSecretUnresolvedCheck wires the Configure-side unresolved-secret
+// check. Same injected-seam shape as SetCredentialGapCheck.
+func SetSecretUnresolvedCheck(fn func(requestID string) (unresolved bool, key, sourceLabel string)) {
+	secretUnresolvedFn = fn
+}
+
+// validateUnresolvedSecrets flags the FIRST set "request" reference
+// whose secret is a source-backed reference the source can no longer
+// answer -- unlike every other check in this file, only the first is
+// ever reported: the run pre-flight refuses the same way on one
+// unresolved reference as on ten, and naming just the first is what
+// lets someone fix and re-run rather than reading a wall of lines.
+func validateUnresolvedSecrets(nodes []Node) []Issue {
+	if secretUnresolvedFn == nil {
+		return nil
+	}
+	for _, n := range nodes {
+		if n.Kind == KindTrigger {
+			continue
+		}
+		if issue, found := nodeUnresolvedSecret(n); found {
+			return []Issue{issue}
+		}
+	}
+	return nil
+}
+
+// nodeUnresolvedSecret checks one node's request references.
+func nodeUnresolvedSecret(n Node) (Issue, bool) {
+	nt, ok := nodeType(n.NodeTypeID)
+	if !ok {
+		return Issue{}, false
+	}
+	for _, field := range nt.ConfigFields {
+		if field.RefKind != "request" {
+			continue
+		}
+		id := strings.TrimSpace(n.Config[field.Key])
+		if id == "" {
+			continue // validateRequiredRefs owns the unset case
+		}
+		if unresolved, key, sourceLabel := secretUnresolvedFn(id); unresolved {
+			return willFailIssue(n.ID, fmt.Sprintf("Unresolved secret reference: %s (%s)", key, sourceLabel)), true
+		}
+	}
+	return Issue{}, false
+}
+
 // environmentVarGapFn answers which {{var}} names a request carries
 // that the given Environment cannot resolve (goal 0306 S5). Injected
 // from the composition root, exactly like credentialGapFn above: the

@@ -15,6 +15,7 @@ export type {
     ListSecretAccessResponse,
     LockPolicy,
     SecretAccessRecord,
+    SourcesChanged,
     SourcesLister,
     Status
 } from "./models.js";

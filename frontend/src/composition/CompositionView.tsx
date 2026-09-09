@@ -31,6 +31,7 @@ import { findRootNode } from './triggerRowInfo'
 import { hasDraftDrift } from './draftDrift'
 import { newLocalID } from '../shared/localId'
 import { background } from '../shared/background'
+import { useUndoJournal } from '../shared/useUndoJournal'
 
 // The Workflows list page (SPEC.md §3 / ADR-0005). Editor tabs no
 // longer live here: opening/editing a workflow goes through the store's
@@ -58,6 +59,10 @@ function CompositionView() {
   const [runningId, setRunningId] = useState<string | null>(null)
   const [results, setResults] = useState<Record<string, string>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
+  // ⌘Z/⇧⌘Z over the app's one undo journal (goal 0404 S1: a bulk
+  // workflow delete registers into it, ADR-0044).
+  const [undoNotice, setUndoNotice] = useState('')
+  useUndoJournal({ onSkip: setUndoNotice, onApplied: () => setUndoNotice('') })
   // Test-input form (docs/adr/0008, SPEC.md §3.2's "per-record test
   // harness"): set only while the dialog for a workflow with declared
   // Attributes is open.
@@ -370,6 +375,7 @@ function CompositionView() {
       <Heading as="h1" variant="medium" className={styles.subtitle}>
         {t('compositionView.subtitle')}
       </Heading>
+      {undoNotice && <Text as="p" size="small" className={styles.error} data-testid="composition-undo-notice">{undoNotice}</Text>}
 
       <Stack direction="horizontal" justify="space-between" align="center" className={styles.sectionHeading}>
         <Heading as="h2" variant="small" id="workflows-heading">{t('compositionView.savedWorkflowsHeading')}</Heading>
@@ -436,6 +442,7 @@ function CompositionView() {
           listId="workflows"
           items={workflowItems}
           searchPlaceholder={t('compositionView.searchPlaceholder')}
+          selection={{ entity: 'workflow' }}
           emptyState={{
             icon: WorkflowIcon,
             heading: t('compositionView.emptyHeading'),

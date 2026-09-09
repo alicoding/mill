@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionList, Pagination, Stack, Text } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
@@ -6,7 +6,13 @@ import { ContextMenu, type ContextMenuState } from './ContextMenu'
 import { ExamplesSection } from './ExamplesSection'
 import { InventoryRow } from './InventoryRow'
 import { ListToolbar } from './ListToolbar'
+import { SelectionBar } from './SelectionBar'
 import { useListState } from './useListState'
+import { useListSelection } from './useListSelection'
+import { useIsNarrowViewport } from './useNarrowViewport'
+import { bulkDeleteDoorFor } from './entityDeleteDoors'
+import { bulkDeleteWithUndo } from './bulkDeleteWithUndo'
+import { useListSelectionFocusStore, type ListSelectionHandle } from './listSelectionFocus'
 import {
   LIST_PAGE_SIZE, availableSorts, clampPage, listCountLabel, pageCountFor, pageItems, sortItems, splitExamples,
 } from './listStandard'
@@ -30,7 +36,7 @@ export type {
 // rejection reasoning) over its OWN ActionList -- role="list" on the
 // owning ActionList is what makes InventoryRow's Items render as divs
 // rather than nested buttons, same as the own-items list below.
-export function InventoryList({ items, emptyState, searchPlaceholder, listId, filters, searchQuery, onSearchQueryChange }: {
+export function InventoryList({ items, emptyState, searchPlaceholder, listId, filters, searchQuery, onSearchQueryChange, selection: selectionConfig }: {
   items: InventoryItem[]
   emptyState: InventoryEmptyState
   searchPlaceholder?: string
@@ -42,6 +48,16 @@ export function InventoryList({ items, emptyState, searchPlaceholder, listId, fi
   // -- an unnamed list would silently share another one's state.
   listId: string
   filters?: ReactNode
+  // Opt-in multi-select + bulk delete (goal 0404 S1): `entity` is the
+  // same family slug every row's own menuActions already carry
+  // (InventoryItem.entity), looked up in shared/entityDeleteDoors.ts
+  // for the SAME delete door and refetch a row's own Delete action
+  // uses -- the one line a consumer adds to inherit selection, never a
+  // hand-rebuilt hook/bar/checkbox per page. Selection covers the
+  // user's OWN items on the current page (never the Examples group,
+  // a separate ActionList by design) and, for "Select all {N}", the
+  // full filtered set.
+  selection?: { entity: string }
 }) {
   const { t } = useTranslation('common')
   const [ownQuery, setOwnQuery] = useState('')
@@ -88,6 +104,90 @@ export function InventoryList({ items, emptyState, searchPlaceholder, listId, fi
     resetPage()
   }
 
+  // The selection model (goal 0404 S1) is always constructed -- React's
+  // own hook-order rule -- but only WIRED (rendered checkbox, ⌘A/Esc/⌫
+  // focus publish, the bar) while a caller opts in. Bound to the
+  // CURRENT PAGE's own ids: a header checkbox/⌘A means "everything
+  // visible," matching Gmail/Drive's own split from a broader
+  // cross-page "Select all {N}" (selectAllOf below, over the full
+  // filtered set).
+  const pageIDs = ownPage.map((i) => i.id)
+  const selection = useListSelection(pageIDs)
+  const isNarrowViewport = useIsNarrowViewport()
+  const door = selectionConfig ? bulkDeleteDoorFor(selectionConfig.entity) : undefined
+
+  // A changed search/sort/filter (Configure Lists' own Unused toggle is
+  // the proving case) must never leave a phantom row checked -- prunes
+  // against the full FILTERED set, not just the current page, so a
+  // selection made via "Select all {N}" survives a page change but not
+  // a filter that actually drops the row.
+  const filteredIDsKey = JSON.stringify(ownFiltered.map((i) => i.id))
+  useEffect(() => {
+    selection.pruneTo(JSON.parse(filteredIDsKey) as string[])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the id set's own content, not the selection object's identity
+  }, [filteredIDsKey])
+
+  const deleteSelected = async () => {
+    if (!selectionConfig || !door) return
+    const targets = ownFiltered
+      .filter((item) => selection.selected.has(item.id))
+      .map((item) => ({ id: item.id, label: item.label }))
+    if (targets.length === 0) return
+    const entity = selectionConfig.entity
+    await bulkDeleteWithUndo({
+      entity,
+      items: targets,
+      remove: door.remove,
+      refetch: door.refetch,
+      journal: door.undoable
+        ? { kind: () => (entity === 'workflow' ? 'workflow' : 'configure-entity'), id: (id) => (entity === 'workflow' ? id : `${entity}/${id}`) }
+        : null,
+    })
+    selection.clear()
+  }
+
+  // Space/x/Shift+Space (goal 0404 S1) act on whichever row's own
+  // real onFocus last called selection.setFocusedId
+  // -- a no-op with nothing focused (Tab never reached a row yet, or
+  // focus left the list entirely).
+  const toggleFocusedRow = () => {
+    if (selection.focusedId !== null) selection.toggle(selection.focusedId)
+  }
+  const extendFocusedRow = () => {
+    if (selection.focusedId !== null) selection.range(selection.focusedId)
+  }
+
+  // Published to shared/listSelectionFocus.ts on real DOM focus (the
+  // container's onFocus/onBlur below) -- the same focus-scoped "which
+  // mounted surface currently owns the shortcut" shape
+  // listGridSearchFocus.ts already uses, since Configure's panes stay
+  // mounted (hidden) once visited and more than one InventoryList can
+  // exist in the DOM at once. Re-published every render while this
+  // instance is ALREADY the focused one, so ⌘A/⌫ always act on
+  // whatever this render's own selection/items actually are, never a
+  // stale closure captured back at the original focus event.
+  const selectionHandle: ListSelectionHandle | null = selectionConfig
+    ? {
+      id: listId, selectAll: selection.selectAll, clear: selection.clear, hasSelection: () => selection.selected.size > 0,
+      deleteSelected, toggleFocusedRow, extendFocusedRow,
+    }
+    : null
+  useEffect(() => {
+    if (!selectionHandle) return
+    if (useListSelectionFocusStore.getState().focused?.id !== selectionHandle.id) return
+    useListSelectionFocusStore.getState().setFocused(selectionHandle)
+  })
+  // A non-empty selection publishes itself as the focused list
+  // unconditionally, even with no real DOM focus event behind it --
+  // a touch long-press toggles a row through the hook's own timer,
+  // never a native input interaction, so SelectionBar's own bulk
+  // commands (which read this same handle) must still resolve.
+  useEffect(() => {
+    if (selectionHandle && selection.isSelectionMode) {
+      useListSelectionFocusStore.getState().setFocused(selectionHandle)
+    }
+  })
+
   // A truly empty inventory (nothing to search) gets the full
   // Blankslate treatment, not a search box over zero rows.
   if (items.length === 0) {
@@ -95,25 +195,73 @@ export function InventoryList({ items, emptyState, searchPlaceholder, listId, fi
   }
 
   return (
-    <Stack direction="vertical" gap="condensed">
-      <ListToolbar
-        query={query}
-        onQueryChange={changeQuery}
-        searchPlaceholder={searchPlaceholder}
-        sort={sort}
-        sortOptions={sortOptions}
-        onSortChange={setSort}
-        filters={filters}
-        count={count}
-      />
+    <Stack
+      direction="vertical"
+      gap="condensed"
+      // Publishes/releases this instance as the list.selectAll/
+      // clearSelection/deleteSelection commands' live target on real
+      // DOM focus entering/leaving anywhere in this subtree (a row, its
+      // checkbox, the search box) -- listGridSearchFocus.ts's own
+      // pattern, needed because Configure's panes stay mounted-hidden
+      // once visited (more than one InventoryList can exist at once).
+      onFocus={() => { if (selectionHandle) useListSelectionFocusStore.getState().setFocused(selectionHandle) }}
+      onBlur={(e) => {
+        if (!selectionHandle) return
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+        useListSelectionFocusStore.getState().clearFocused(selectionHandle.id)
+      }}
+    >
+      {selection.isSelectionMode ? (
+        <SelectionBar
+          count={selection.selected.size}
+          totalCount={ownFiltered.length}
+          onSelectAllOf={() => selection.selectAllOf(ownFiltered.map((i) => i.id))}
+          onCancel={selection.clear}
+        />
+      ) : (
+        <ListToolbar
+          query={query}
+          onQueryChange={changeQuery}
+          searchPlaceholder={searchPlaceholder}
+          sort={sort}
+          sortOptions={sortOptions}
+          onSortChange={setSort}
+          filters={filters}
+          count={count}
+        />
+      )}
       {ownFiltered.length === 0 && examplesFiltered.length === 0 ? (
         <Text as="p" size="small" className={styles.muted}>{t('inventoryList.noMatchesFor', { query })}</Text>
       ) : (
         <>
           {ownPage.length > 0 && (
-            <ActionList role="list" showDividers className={styles.list} data-testid="inventory-items">
+            <ActionList
+              role="list"
+              showDividers
+              className={styles.list}
+              data-testid="inventory-items"
+            >
               {ownPage.map((item) => (
-                <InventoryRow key={item.id} item={item} onOpenMenu={setRowMenu} />
+                <InventoryRow
+                  key={item.id}
+                  item={item}
+                  onOpenMenu={setRowMenu}
+                  selection={selectionConfig ? {
+                    isSelected: selection.isSelected(item.id),
+                    isSelectionMode: selection.isSelectionMode,
+                    onActivate: (mods) => selection.activate(item.id, mods),
+                    onActivateCheckbox: (mods) => selection.activateCheckbox(item.id, mods),
+                    onRowFocus: () => selection.setFocusedId(item.id),
+                    ...(isNarrowViewport ? {
+                      longPress: {
+                        onPointerDown: (e) => selection.handlePointerDown(item.id, e),
+                        onPointerMove: selection.handlePointerMove,
+                        onPointerUp: selection.handlePointerUp,
+                        onPointerCancel: selection.handlePointerCancel,
+                      },
+                    } : {}),
+                  } : undefined}
+                />
               ))}
             </ActionList>
           )}

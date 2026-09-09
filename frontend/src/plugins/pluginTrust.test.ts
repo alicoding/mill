@@ -35,4 +35,10 @@ describe('pluginRunState', () => {
   it('turned off wins over not-yet-reviewed', () => {
     expect(pluginRunState('mill-a', false, { ...none, disabled: ['mill-a'] })).toBe('disabled')
   })
+  it('a widened plugin returns to the same waits-for-you state as a fresh install, and never a built-in', () => {
+    const allowed = { ...none, allowed: ['mill-a'] }
+    expect(pluginRunState('mill-a', false, allowed, { contentHash: 'x', signingPolicy: false, signed: false, widened: true })).toBe('unallowed')
+    expect(pluginRunState('mill-a', false, allowed, { contentHash: 'x', signingPolicy: false, signed: false, widened: false })).toBe('run')
+    expect(pluginRunState('mill-drawing', true, none, { contentHash: '', signingPolicy: false, signed: false, widened: true })).toBe('run')
+  })
 })

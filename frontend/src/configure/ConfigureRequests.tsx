@@ -231,6 +231,7 @@ export function ConfigureRequests() {
           listId="configure.requests"
           items={requestItems}
           searchPlaceholder={t('configureRequests.searchPlaceholder')}
+          selection={{ entity: 'request' }}
           emptyState={{
             icon: PlugIcon,
             heading: t('configureRequests.emptyHeading'),

@@ -202,3 +202,67 @@ test('with signing keys pinned, an unsigned plugin cannot run and the bar says s
 		await close()
 	}
 })
+
+// A widened manifest re-gates even though it was already allowed (goal
+// 0375 S2, MV3's re-consent-on-widen rule): the row returns to the same
+// "waits for you" state a fresh install shows, and the Verification
+// sheet's "now also asks to" block names only what is NEW. Offset 60
+// (60-20=40 and 60+20=80 both unclaimed).
+test('a plugin that widens what it asks for waits for review again: the sheet names only what is new', async () => {
+	const { page, pluginsDir, close } = await launchWithPlugins(60)
+	try {
+		await page.goto('/')
+		await page.getByRole('link', { name: 'Atlas' }).click()
+		await expect(await moreToolRow(page, 'Bookmark')).toBeVisible()
+		await page.keyboard.press('Escape')
+
+		// A plugin arrives after boot and asks for one capability.
+		mkdirSync(path.join(pluginsDir, 'widen-probe'))
+		const manifestPath = path.join(pluginsDir, 'widen-probe', 'manifest.json')
+		writeFileSync(manifestPath, JSON.stringify({ id: 'widen-probe', name: 'Widen probe', version: '1.0.0', capabilities: ['open-url'] }))
+		writeFileSync(path.join(pluginsDir, 'widen-probe', 'main.js'), `export function activate(api) {
+	api.registerCommand({ id: 'hello', label: 'Say hello', run: () => {} })
+}
+`)
+		await page.reload()
+
+		await openExtensions(page)
+		let detail = await openExtensionDetail(page, pluginRow(page, 'widen-probe'), 'widen-probe')
+		await expect(detail.getByTestId('extensions-plugin-review')).toContainText('Not running yet')
+		await detail.getByTestId('extensions-plugin-allow').click()
+		await expect(detail.getByTestId('extensions-plugin-review')).toContainText('Allowed. Reload to load it.')
+
+		await page.reload()
+		await openExtensions(page)
+		await expect(pluginRow(page, 'widen-probe').getByTestId('extensions-plugin-toggle')).toBeVisible()
+
+		// The manifest widens: one more capability than the grant covers.
+		const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { capabilities: string[] }
+		manifest.capabilities = ['open-url', 'write-content']
+		writeFileSync(manifestPath, JSON.stringify(manifest))
+		await page.reload()
+
+		await openExtensions(page)
+		const widenedRow = pluginRow(page, 'widen-probe')
+		// The row waits again, the same state a fresh install shows.
+		await expect(widenedRow.getByTestId('extensions-plugin-toggle')).toHaveCount(0)
+		detail = await openExtensionDetail(page, widenedRow, 'widen-probe')
+		await expect(detail.getByTestId('extensions-plugin-review')).toContainText('This update asks for more than you allowed before.')
+		await openExtensionDetailTab(detail, 'verification')
+		const widened = detail.getByTestId('extensions-permissions-widened')
+		await expect(widened).toContainText('Now also asks to')
+		await expect(widened).toContainText('Write cards, notes and list rows')
+		// Only the NEW line -- the one already granted does not repeat.
+		await expect(widened).not.toContainText('Open links')
+		await expect(detail.getByTestId('extensions-plugin-allow')).toContainText('Allow the new permissions')
+
+		await detail.getByTestId('extensions-plugin-allow').click()
+		await expect(detail.getByTestId('extensions-plugin-review')).toContainText('Allowed. Reload to load it.')
+
+		await page.reload()
+		await openExtensions(page)
+		await expect(pluginRow(page, 'widen-probe').getByTestId('extensions-plugin-toggle')).toBeVisible()
+	} finally {
+		await close()
+	}
+})

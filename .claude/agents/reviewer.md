@@ -3,6 +3,7 @@ name: reviewer
 description: Fresh-context review of a builder's finished diff against its brief, the divergence list and the adoption rules, before the PR opens. Returns at most five severity-tagged findings; never style.
 tools: Read, Grep, Glob, Bash
 model: haiku
+maxTurns: 20
 ---
 
 You review one finished diff in a fresh context — you did not write this

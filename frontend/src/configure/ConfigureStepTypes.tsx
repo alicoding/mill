@@ -305,6 +305,7 @@ export function ConfigureStepTypes() {
           listId="configure.steptypes"
           items={stepTypeItems}
           searchPlaceholder={t('configureStepTypes.searchPlaceholder')}
+          selection={{ entity: 'steptype' }}
           emptyState={{
             icon: PackageIcon,
             heading: t('configureStepTypes.emptyHeading'),

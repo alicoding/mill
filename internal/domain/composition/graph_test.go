@@ -308,6 +308,55 @@ func TestValidateGraph_CredentialGap_WillFailNamingTheIntegration(t *testing.T) 
 	}
 }
 
+// Goal 0408 S1: an unresolved source-backed secret is a WillFail
+// warning naming the key and the source, and only the FIRST unresolved
+// reference across the graph is ever reported -- a run pre-flight
+// refuses the same way on one as on ten. An unwired seam (nil) checks
+// nothing, same posture SetCredentialGapCheck's own test pins.
+func TestValidateGraph_UnresolvedSecret_WillFailNamingFirstOnly(t *testing.T) {
+	SetSecretUnresolvedCheck(func(requestID string) (bool, string, string) {
+		switch requestID {
+		case "req-a":
+			return true, "API_TOKEN", "Project .env"
+		case "req-b":
+			return true, "OTHER_KEY", "Project .env"
+		}
+		return false, "", ""
+	})
+	defer SetSecretUnresolvedCheck(nil)
+
+	nodes := []Node{
+		{ID: "t1", Kind: KindTrigger, NodeTypeID: "trigger-manual", Config: map[string]string{}},
+		{ID: "n1", Kind: KindProcess, NodeTypeID: "integration-http", Config: map[string]string{"requestId": "req-a"}},
+		{ID: "n2", Kind: KindProcess, NodeTypeID: "integration-http", Config: map[string]string{"requestId": "req-b"}},
+	}
+	edges := []Edge{{ID: "e1", Source: "t1", Target: "n1"}, {ID: "e2", Source: "n1", Target: "n2"}}
+	var willFail []Issue
+	for _, is := range ValidateGraph(nodes, edges, nil) {
+		if is.WillFail {
+			willFail = append(willFail, is)
+		}
+	}
+	if len(willFail) != 1 {
+		t.Fatalf("WillFail issues = %d, want exactly the first unresolved reference: %v", len(willFail), willFail)
+	}
+	if willFail[0].Message != "Unresolved secret reference: API_TOKEN (Project .env)" {
+		t.Errorf("message = %q", willFail[0].Message)
+	}
+	if willFail[0].NodeID != "n1" {
+		t.Errorf("NodeID = %q, want n1 (the first node with the unresolved reference)", willFail[0].NodeID)
+	}
+
+	// A request whose reference resolves stays clean.
+	nodes[1].Config["requestId"] = "req-ok"
+	nodes[2].Config["requestId"] = "req-ok"
+	for _, is := range ValidateGraph(nodes, edges, nil) {
+		if is.WillFail {
+			t.Errorf("resolved request flagged: %+v", is)
+		}
+	}
+}
+
 // Goal 0347: a declared Default applies to attributesEnv's env only
 // when the run supplies nothing at all for that key -- an explicit
 // value (including "") always wins, and an undeclared Default (the Go

@@ -326,6 +326,7 @@ export function ConfigureMCPServers() {
           listId="configure.mcpservers"
           items={serverItems}
           searchPlaceholder={t('configureMCPServers.searchPlaceholder')}
+          selection={{ entity: 'mcpserver' }}
           emptyState={{
             icon: ServerIcon,
             heading: t('configureMCPServers.emptyHeading'),

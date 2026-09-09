@@ -45,6 +45,11 @@ export function verificationKey(tier: string, changed: boolean): string {
 export interface PermissionLine {
   key: string
   params?: Record<string, string>
+  // captionKey names a second, muted sentence under this line -- only
+  // the canvas-host line carries one (docs/goals/0375 S2): it is the
+  // one grant that means "not sandboxed", which the other lines never
+  // need to explain.
+  captionKey?: string
 }
 
 // The capability vocabulary, in the order a reader should meet it:
@@ -84,6 +89,11 @@ export function capabilityDeedKey(capability: string): string {
 export function permissionLines(preview: InstallPreview | null): PermissionLine[] {
   if (!preview) return []
   const lines: PermissionLine[] = []
+  // canvas-host leads (docs/goals/0375 S2): it is the one grant that
+  // means "not sandboxed", so a reader meets it before anything else.
+  if (preview.CanvasHost) {
+    lines.push({ key: 'extensions.can.canvasHost', captionKey: 'extensions.can.canvasHostCaption' })
+  }
   if (preview.AnyHost) {
     lines.push({ key: 'extensions.can.reachAnyHost' })
   } else if ((preview.NetworkHosts ?? []).length > 0) {

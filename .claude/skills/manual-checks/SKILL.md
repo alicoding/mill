@@ -512,6 +512,35 @@ This registry stays the ONLY list of checks that need this Mac specifically.
   **Check for updates**, confirm the tab reads **Updates (1)**, press
   **Update**, and confirm the version and tier the Verification tab
   now shows.
+- **Bulk delete in Secrets behind a real Touch ID unlock** (goal 0404
+  S1) -- Secrets' selection/bulk-delete is deliberately undo-less (no
+  journal registration, unlike every other bulk-deletable list), so
+  its only proof of correctness is the real no-Undo toast and the rows
+  actually gone; reaching it also needs the vault unlocked, which is
+  goal 0330's own real authentication sheet (`internal/adapters/
+  localauth`) that no headless build can trigger, so `secrets.spec.ts`
+  drives bulk delete only against a server build where the vault is
+  never Touch-ID-gated at all. Verify on an installed build on a Mac
+  with Touch ID enrolled: unlock the vault via the real sheet, select
+  two or more secrets and press Delete, confirm the toast reads
+  "Deleted {n} secrets." with NO Undo button (unlike every other
+  entity's bulk-delete toast) and the rows are gone; confirm ⌘Z does
+  nothing for this deletion; lock the vault again and confirm the
+  deleted secrets stay gone, never recoverable.
+- **Long-press on a real touchscreen** (goal 0404 S1,
+  `useListSelection`'s `pointerType === 'touch'` gate) --
+  `list-selection.spec.ts`'s companion-width long-press case proves
+  the state machine via a synthetic `pointerdown`/`pointerup` pair
+  (testing.md's own last-resort carve-out, since Playwright's
+  touchscreen API offers only `tap()`, no real press-and-hold), so a
+  genuine touch-and-hold gesture's timing and cancel-on-move have
+  never been driven by an actual touch digitizer. Verify on an
+  installed build on a touch-capable device (or iOS/iPadOS companion
+  once that surface exists): at companion width, press and hold a row
+  with a finger past the threshold -- it enters selection mode; press
+  and hold, then drag before releasing -- it does NOT enter selection
+  mode (the same move-tolerance the pointer-based e2e case never
+  exercises with a real finger's jitter).
 - **The Accessibility grant survives a beta update** (goal 0363 S1b,
   `.github/workflows/ci.yml`'s beta-release job +
   `scripts/import-beta-signing-cert.sh`) — whether a real beta
