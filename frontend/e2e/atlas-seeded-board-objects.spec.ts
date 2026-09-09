@@ -1,7 +1,8 @@
 import { test, expect } from './fixtures/server'
+import { chromium, test as dedicatedTest } from '@playwright/test'
 import { createBoardObjectViaRPC, ATLAS_DEFAULT_SPACE_ID } from './fixtures/atlasNativeDropEscapeHatch'
 import { nonSeededBoardObjects } from './fixtures/atlasBoard'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { waitForViewportStable } from './fixtures/animation'
@@ -9,6 +10,10 @@ import { wheelAt } from './fixtures/pointer'
 import { expectSelectedFaceOwnsWheel } from './fixtures/atlasActivationContract'
 import { pdfBytes } from './fixtures/pdfBytes'
 import { callBindingViaRPC } from './fixtures/wailsRpc'
+import { pluginCanvasObjectExampleKinds } from './fixtures/registryCounts'
+import { spawnMillServer } from './fixtures/server'
+import { PLUGIN_EXAMPLE_GALLERY_MCP_BASE_PORT, PLUGIN_EXAMPLE_GALLERY_SERVER_BASE_PORT } from './fixtures/serverPorts'
+import { EXAMPLES_PLUGINS_DIR } from './fixtures/runtimePlugins'
 
 // Goal 0223: the live-app proof that the seeded board-object examples
 // (shape/ink/image, plus a diagram this test creates for itself --
@@ -198,6 +203,59 @@ test('the seeded "Board gallery" board demonstrates every seeded board-object ki
     await page.keyboard.press('Escape')
     await expect(objectMenu).toHaveCount(0)
   } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+// goal 0411 S2, the e2e half of S1's own gate: every REGISTERED plugin
+// kind that declares a working example (pluginCanvasObjectExampleKinds,
+// read off the same PluginService.ListPlugins binding the Extensions
+// pane reads) has a real, rendering gallery instance -- the id scheme
+// atlasservice_pluginexamples.go's own pluginExampleObjectID mints
+// ("atlas-object-example-plugin-<kind>"), enumerated rather than
+// hand-listed so a sixth declaring plugin never needs a matching edit
+// to this test.
+//
+// Its OWN dedicated server (testing.md's dedicated-spec exception):
+// MILL_PLUGINS_DIR is process-wide, so the shared pool every other
+// test in this file runs on must never inherit a plugin set -- this is
+// the one place a real, unmodified boot with every example plugin
+// present proves the gallery reconcile end to end. The plugins dir is
+// a per-test COPY of examples/plugins (the exact folder a user copies
+// from), every directory entry copied in so a new example plugin never
+// needs a matching edit here either.
+dedicatedTest('every plugin-declared canvas-object example is seeded into Board gallery', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mill-e2e-plugin-example-gallery-'))
+  const pluginsDir = path.join(dir, 'plugins')
+  mkdirSync(pluginsDir, { recursive: true })
+  for (const entry of readdirSync(EXAMPLES_PLUGINS_DIR, { withFileTypes: true })) {
+    if (entry.isDirectory()) cpSync(path.join(EXAMPLES_PLUGINS_DIR, entry.name), path.join(pluginsDir, entry.name), { recursive: true })
+  }
+  const server = await spawnMillServer({
+    port: PLUGIN_EXAMPLE_GALLERY_SERVER_BASE_PORT,
+    mcpPort: PLUGIN_EXAMPLE_GALLERY_MCP_BASE_PORT,
+    settingsPath: path.join(dir, 'settings.json'),
+    executionDbPath: path.join(dir, 'exec.db'),
+    backupDir: path.join(dir, 'backups'),
+    extraEnv: { MILL_PLUGINS_DIR: pluginsDir },
+  })
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage()
+    await page.goto(`http://127.0.0.1:${PLUGIN_EXAMPLE_GALLERY_SERVER_BASE_PORT}`)
+    await page.getByRole('link', { name: 'Atlas' }).click()
+    await expect(page.getByTestId('atlas-board')).toBeVisible()
+    const kinds = await pluginCanvasObjectExampleKinds(page)
+
+    await page.locator('[data-testid="atlas-group-card"]').filter({ has: page.locator('[aria-label="Zoom into Board gallery"]') }).getByTestId('atlas-group-header').click()
+    await expect(page.getByTestId('atlas-breadcrumb')).toContainText('Board gallery')
+
+    for (const kind of kinds) {
+      await expect(page.locator(`.react-flow__node[data-id="atlas-object-example-plugin-${kind}"]`)).toBeVisible()
+    }
+  } finally {
+    await browser.close()
+    await server.stop()
     rmSync(dir, { recursive: true, force: true })
   }
 })

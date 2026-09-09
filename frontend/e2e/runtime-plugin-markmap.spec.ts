@@ -52,7 +52,7 @@ test('a mind map over a note shows its headings as a tree, follows edits, and re
 	}
 })
 
-test('a fresh mind map offers the board\'s notes by first line; choosing one renders it, and the menu item returns to the picker', async () => {
+test('inserting a fresh Mind map from the More panel shows its declared example at once, and the menu still switches to a real note', async () => {
 	const { page, close } = await launchWithPlugins(30)
 	try {
 		await page.goto('/')
@@ -66,25 +66,44 @@ test('a fresh mind map offers the board\'s notes by first line; choosing one ren
 		const bb = await board.boundingBox()
 		if (!bb) throw new Error('board has no bounding box')
 		await board.click({ position: { x: spot.x - bb.x + 10, y: spot.y - bb.y + 10 } })
+
+		// goal 0411 S2: an empty-payload insert is materialized from the
+		// plugin's OWN declared example before the first render -- the
+		// SVG shows real content immediately, never the blank picker.
 		const face = page.locator('[data-testid="plugin-face-mindmap"]')
 		await expect(face).toBeVisible()
-		await expect(face).toContainText("Show a note's headings as a mind map")
-		const picker = face.getByTestId('mindmap-note-picker')
-		await expect(picker.locator('option', { hasText: 'Reading list' })).toHaveCount(1)
-		await picker.selectOption({ label: 'Reading list' })
 		const svg = face.getByTestId('mindmap-svg')
 		await expect(svg).toBeVisible()
-		await expect(svg).toContainText('Fiction')
-		await expect(svg).toContainText('History')
+		await expect(svg).toContainText('Idea')
+		await expect(svg).toContainText('Plan')
+		await expect(svg).toContainText('Notes')
+		await expect(face.getByTestId('mindmap-note-picker')).toHaveCount(0)
+		if (process.env.MILL_E2E_SHOT) await page.screenshot({ path: process.env.MILL_E2E_SHOT })
 
-		const object = page.locator('[data-testid="atlas-board-object"][data-object-kind="mindmap"]')
-		await object.click({ button: 'right' })
+		// The object's own payload carries the example's title (the
+		// generic Payload.title search/reference convention) and a real
+		// linked fixture note -- the same shape the gallery seed produces.
+		const objects = await callBindingViaRPC<{ Kind: string; Payload: Record<string, string> }[]>(page, ATLAS + 'Objects', [])
+		const object = objects.find((o) => o.Kind === 'mindmap')
+		if (!object) throw new Error('no mindmap object found')
+		expect(object.Payload.title).toBe('Mind map example')
+		const notes = await callBindingViaRPC<{ ID: string; Text: string }[]>(page, ATLAS + 'Notes', [])
+		const fixtureNote = notes.find((n) => n.ID === object.Payload.noteId)
+		expect(fixtureNote?.Text).toContain('Mind map example')
+
+		// The menu still offers switching to a note already on the board.
+		const objectLocator = page.locator('[data-testid="atlas-board-object"][data-object-kind="mindmap"]')
+		await objectLocator.click({ button: 'right' })
 		const menu = contextMenu(page)
 		await expect(menu).toBeVisible()
 		await menu.getByText('Change source note…', { exact: true }).click()
+		const picker = face.getByTestId('mindmap-note-picker')
 		await expect(picker).toBeVisible()
 		await expect(svg).toHaveCount(0)
-		if (process.env.MILL_E2E_SHOT) await page.screenshot({ path: process.env.MILL_E2E_SHOT })
+		await picker.selectOption({ label: 'Reading list' })
+		await expect(svg).toBeVisible()
+		await expect(svg).toContainText('Fiction')
+		await expect(svg).toContainText('History')
 	} finally {
 		await close()
 	}

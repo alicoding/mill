@@ -108,6 +108,7 @@
       "pluginCapabilities": "Can request: {{list}}",
       "pluginCatchesFiles": "Catches {{list}} files dropped on the board",
       "pluginCatchesLinks": "Catches web links pasted on the board",
+      "pluginMissingExampleWarning": "Declare a working example so a new object shows something on insert.",
       "reviewHint": "A newly installed plugin waits here until you allow it to run.",
       "allowlistActive": "Only plugins on this Mill's allow-list can run: {{list}}",
       "exportAudit": "Export plugin audit",

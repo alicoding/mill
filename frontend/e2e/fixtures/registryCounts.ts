@@ -65,3 +65,35 @@ export async function builtInPluginCount(page: Page): Promise<number> {
   }
   return count
 }
+
+// One scanned plugin's contributed canvas objects, as ListPlugins
+// reports them -- only the fields the example-seed enumeration below
+// needs.
+export interface ListedPluginCanvasObjects {
+  Error: string
+  Manifest: { contributes?: { canvasObjects?: { kind: string; example: unknown }[] } }
+}
+
+// pluginCanvasObjectExampleKinds is atlas-seeded-board-objects.spec.ts's
+// own source for "every declaring plugin kind" (goal 0411 S2, the e2e
+// half of S1's gate): every VALID plugin's canvasObjects entries that
+// declare an example, deduplicated by kind -- the same claim
+// pluginsvc.CanvasObjectExamples() reads server-side to seed Board
+// gallery, read back through the registry door instead of hand-kept so
+// a sixth declaring plugin never needs a matching edit here.
+export async function pluginCanvasObjectExampleKinds(page: Page): Promise<string[]> {
+  const plugins = await callBindingViaRPC<ListedPluginCanvasObjects[]>(page, LIST_PLUGINS, [])
+  const kinds = new Set<string>()
+  for (const p of plugins) {
+    if (p.Error) continue
+    for (const obj of p.Manifest.contributes?.canvasObjects ?? []) {
+      if (obj.example) kinds.add(obj.kind)
+    }
+  }
+  // A door answering nothing would make the assertion trivially true --
+  // the floor is what stops a silent zero from passing.
+  if (kinds.size < 1) {
+    throw new Error(`pluginCanvasObjectExampleKinds: the registry answered with ${kinds.size} declaring kinds, far below any real build`)
+  }
+  return [...kinds]
+}
