@@ -28,10 +28,10 @@ const tombstoneGraceWindow = 48 * time.Hour
 // past this card. Both stay zero for DeleteNote/DeleteBoardObject -- a
 // note or board object can carry neither a link endpoint nor a child.
 type TombstoneResult struct {
-	CardIDs          []string
-	NoteIDs          []string
-	ObjectIDs        []string
-	LinksRemoved     int
+	CardIDs            []string
+	NoteIDs            []string
+	ObjectIDs          []string
+	LinksRemoved       int
 	ChildrenReparented int
 	// EntityRefKind (goal 0392 S1) is the deleted board object's own
 	// declared entityRef.EntityKind ("list" for a table), or "" for a
@@ -322,11 +322,12 @@ func (a *AtlasService) DeleteBoardObject(id string) (TombstoneResult, error) {
 			refs := a.entityReferences(decl.EntityRef.EntityKind, entityID)
 			result.EntityStillUsed = !refs.Empty()
 			dataevent.EmitEntityDereferenced(decl.EntityRef.EntityKind, entityID,
-				dataevent.LifecycleBy{BoardID: previous.ParentID, ObjectID: id}, len(refs.Boards)+len(refs.Workflows))
+				dataevent.LifecycleBy{BoardID: previous.ParentID, ObjectID: id}, refs.Count())
 		}
 	}
 	return result, nil
 }
+
 // purgeTombstonesLocked hard-removes every card/note tombstoned more
 // than tombstoneGraceWindow before now -- called once from restore()
 // at boot, never a background timer. A purged card's surviving

@@ -71,3 +71,56 @@ func TestDeleteList_BlockedByBoardReference_NamesIt(t *testing.T) {
 		t.Fatalf("DeleteList after the board reference clears: %v", err)
 	}
 }
+
+// TestReferences_IncludesPluginReferences and
+// TestDeleteHTTPRequest_BlockedByPluginReference_NamesIt are docs/
+// goals/0400's own addition to the combined index: a plugin's
+// entityRef setting counts exactly like a board object or workflow
+// node reference.
+func TestReferences_IncludesPluginReferences(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	cfg.WirePluginReferenceLookup(func(entityKind, id string) []reference.PluginRef {
+		if entityKind == "request" && id == "req-under-test" {
+			return []reference.PluginRef{{PluginID: "mill-live-view", SettingKey: "integrationId", Label: "Live view"}}
+		}
+		return nil
+	})
+
+	refs := cfg.References("request", "req-under-test")
+	if len(refs.Plugins) != 1 || refs.Plugins[0].Label != "Live view" {
+		t.Fatalf("References().Plugins = %v, want one ref labeled Live view", refs.Plugins)
+	}
+	if refs.Empty() {
+		t.Error("References().Empty() = true with a plugin reference present, want false")
+	}
+	if got := refs.Count(); got != 1 {
+		t.Errorf("References().Count() = %d, want 1", got)
+	}
+}
+
+func TestDeleteHTTPRequest_BlockedByPluginReference_NamesIt(t *testing.T) {
+	cfg, _ := newTestConfigureService(t)
+	req, err := cfg.CreateHTTPRequest("Tracked items", "https://example.invalid", "GET", "", "none", "", nil, "", nil, nil, "")
+	if err != nil {
+		t.Fatalf("CreateHTTPRequest: %v", err)
+	}
+	cfg.WirePluginReferenceLookup(func(entityKind, id string) []reference.PluginRef {
+		if entityKind == "request" && id == req.ID {
+			return []reference.PluginRef{{PluginID: "mill-live-view", SettingKey: "integrationId", Label: "Live view"}}
+		}
+		return nil
+	})
+
+	err = cfg.DeleteHTTPRequest(req.ID)
+	if err == nil {
+		t.Fatal("DeleteHTTPRequest while a plugin references it returned nil error, want it blocked")
+	}
+	if !strings.Contains(err.Error(), "Live view") {
+		t.Errorf("DeleteHTTPRequest blocked-error = %q, want it to name the referencing extension", err.Error())
+	}
+
+	cfg.WirePluginReferenceLookup(func(string, string) []reference.PluginRef { return nil })
+	if err := cfg.DeleteHTTPRequest(req.ID); err != nil {
+		t.Fatalf("DeleteHTTPRequest after the plugin reference clears: %v", err)
+	}
+}

@@ -3,5 +3,6 @@
 
 export type {
     ObjectRef,
+    PluginRef,
     Refs
 } from "./models.js";

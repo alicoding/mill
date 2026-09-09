@@ -17,13 +17,29 @@ export interface ObjectRef {
 }
 
 /**
+ * PluginRef names one installed plugin whose declared entityRef
+ * setting currently holds a reference to a Configure entity (docs/
+ * goals/0400): PluginID+SettingKey identify the reference the same way
+ * ObjectRef's BoardID+ObjectID do; Label is the plugin's own display
+ * name (falling back to its id) for an error/listing that has to name
+ * it.
+ */
+export interface PluginRef {
+    "PluginID": string;
+    "SettingKey": string;
+    "Label": string;
+}
+
+/**
  * Refs is the combined answer to "what still references this Configure
- * entity" -- board objects (Atlas) and workflow nodes (compositionsvc),
- * the two sources refIntegrityError and Configure's own usage
- * indicator both read (docs/goals/0392 Decision 3, extending ADR-0040
- * decision 3's workflow-only reverse lookup).
+ * entity" -- board objects (Atlas), workflow nodes (compositionsvc),
+ * and plugin settings (pluginsvc), the sources refIntegrityError and
+ * Configure's own usage indicator all read (docs/goals/0392 Decision
+ * 3, extending ADR-0040 decision 3's workflow-only reverse lookup;
+ * docs/goals/0400 adds the plugin-settings source).
  */
 export interface Refs {
     "Boards": ObjectRef[] | null;
     "Workflows": string[] | null;
+    "Plugins": PluginRef[] | null;
 }

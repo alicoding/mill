@@ -340,14 +340,15 @@ back through `api.settings`. A plugin never builds a settings screen.
 }
 ```
 
-Five types: `boolean` (a checkbox), `string` (a text field),
+Six types: `boolean` (a checkbox), `string` (a text field),
 `number` (a number field, with optional `min` and `max`), `enum`
-(a dropdown over `options`), and `secretRef` (a picker over the
-vault's entries — see below). `default` is the value in effect until
+(a dropdown over `options`), `secretRef` (a picker over the
+vault's entries — see below), and `entityRef` (a picker over a
+Configure entity — see below). `default` is the value in effect until
 the user changes the control; a mistyped manifest — a default of the
 wrong type, an enum default missing from its options, a default on a
-`secretRef` — blocks the plugin from loading and names the key on its
-page.
+`secretRef` or `entityRef` — blocks the plugin from loading and names
+the key on its page.
 
 A `secretRef` setting names a credential without ever holding it:
 
@@ -363,6 +364,23 @@ value itself only ever travels inside `api.fetch` — see Reaching the
 network. A picked entry that is later deleted shows "This secret no
 longer exists. Pick another." on its page, and a request naming it is
 refused with the same words.
+
+An `entityRef` setting points at a Configure entity — an Integration,
+a List, an MCP server, and the rest of the kinds a workflow node's own
+reference field can point at — through `entityKind`:
+
+```json
+{ "key": "integrationId", "type": "entityRef", "entityKind": "request",
+  "label": "Integration",
+  "description": "Which Integration this view reads from." }
+```
+
+The user picks it from the same live picker a workflow node's own
+reference field uses; the stored value is the entity's id, and
+`api.settings.get('integrationId')` answers that id back — never a
+label, since the plugin already has the doors that resolve one.
+Deleting an entity a plugin still has picked is refused, naming the
+plugin.
 
 ```js
 export function activate(api) {

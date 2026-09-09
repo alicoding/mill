@@ -18,6 +18,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/launchatlogin"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/adapters/windowing"
+	"github.com/alicoding/mill/internal/domain/reference"
 	"github.com/alicoding/mill/internal/services/mcpsvc"
 	"github.com/alicoding/mill/internal/services/notificationsvc"
 	"github.com/alicoding/mill/internal/services/triggersvc"
@@ -242,6 +243,12 @@ type SettingsService struct {
 	// windowing, not here -- this only counts concurrent recorders.
 	menuMu           sync.Mutex
 	menuSuspendCount int
+
+	// entityRefLookup / referenceIndex: the entityRef plugin-setting
+	// lifecycle seam (settingsservice_entityref.go), nil-means-off like
+	// every other cross-service seam here until WireEntityReferenceEvents runs.
+	entityRefLookup func(pluginID, key string) (entityKind string, ok bool)
+	referenceIndex  func(entityKind, id string) reference.Refs
 }
 
 // isolatedData is true whenever MILL_SETTINGS_PATH was set explicitly

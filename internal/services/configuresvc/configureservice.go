@@ -161,6 +161,10 @@ type ConfigureService struct {
 	// panicking, so a test that never wires it still exercises the
 	// workflow half.
 	boardRefs func(entityKind, id string) []reference.ObjectRef
+	// pluginRefs is pluginsvc's own entityRef-setting reference index
+	// (docs/goals/0400) -- wired late via WirePluginReferenceLookup, the
+	// same nil-means-off discipline boardRefs above follows.
+	pluginRefs func(entityKind, id string) []reference.PluginRef
 }
 
 // WireBoardReferenceLookup injects atlassvc's ObjectsReferencing.
@@ -169,6 +173,14 @@ type ConfigureService struct {
 //wails:ignore
 func (c *ConfigureService) WireBoardReferenceLookup(fn func(entityKind, id string) []reference.ObjectRef) {
 	c.boardRefs = fn
+}
+
+// WirePluginReferenceLookup injects pluginsvc's PluginsReferencing.
+// Called once from wiring.go, after both services exist.
+//
+//wails:ignore
+func (c *ConfigureService) WirePluginReferenceLookup(fn func(entityKind, id string) []reference.PluginRef) {
+	c.pluginRefs = fn
 }
 
 // SetSecretResolver wires ConfigureService's own vault-reference

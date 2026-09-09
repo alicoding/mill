@@ -44,6 +44,8 @@ function settingDeclFromContribution(c: SettingContribution): ExtensionSettingDe
       return { ...base, type: 'number', defaultValue: Number(c.default), min: c.min ?? undefined, max: c.max ?? undefined }
     case 'secretRef':
       return { ...base, type: 'secretRef', defaultValue: '' }
+    case 'entityRef':
+      return { ...base, type: 'entityRef', defaultValue: '', entityKind: c.entityKind }
     case 'enum':
       return {
         ...base,

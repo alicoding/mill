@@ -26,6 +26,12 @@ export type ExtensionSettingDecl =
   // ('' = nothing picked); the host renders a picker over the vault's
   // titles and the plugin only ever reads the title back.
   | (ExtensionSettingDeclBase & { type: 'secretRef'; defaultValue: '' })
+  // A Configure entity reference (docs/goals/0400): the stored value is
+  // the entity's own id ('' = nothing picked); the host renders the
+  // SAME picker a node ConfigField of this entityKind uses
+  // (configure/EntityRefField.tsx), and the plugin reads the id back
+  // (never a label -- it already has the doors that resolve one).
+  | (ExtensionSettingDeclBase & { type: 'entityRef'; defaultValue: ''; entityKind: string })
 
 // ExtensionSettingValue -- what a stored or resolved setting can be.
 export type ExtensionSettingValue = boolean | string | number

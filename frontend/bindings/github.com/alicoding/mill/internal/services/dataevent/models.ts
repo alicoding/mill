@@ -31,15 +31,18 @@ export interface Changed {
 
 /**
  * LifecycleBy names what added or removed one reference to an entity:
- * a board object (BoardID+ObjectID) or a workflow (WorkflowID) -- the
- * two sources reference.Refs already distinguishes. Exactly one side
- * populated per event; a pointer field on LifecycleEvent so an event
- * with no By (entity.created/entity.deleted) carries neither.
+ * a board object (BoardID+ObjectID), a workflow (WorkflowID), or a
+ * plugin's own declared setting (PluginID+SettingKey, docs/goals/0400)
+ * -- the three sources reference.Refs distinguishes. Exactly one
+ * group populated per event; a pointer field on LifecycleEvent so an
+ * event with no By (entity.created/entity.deleted) carries neither.
  */
 export interface LifecycleBy {
     "boardId"?: string;
     "objectId"?: string;
     "workflowId"?: string;
+    "pluginId"?: string;
+    "settingKey"?: string;
 }
 
 /**

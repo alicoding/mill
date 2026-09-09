@@ -9,17 +9,23 @@ import (
 
 // References answers "what currently references this Configure
 // entity" from every source that can hold one (docs/goals/0392
-// Decision 3): board objects (atlassvc, via boardRefs -- nil-safe, see
-// its own field comment) and workflow nodes (compositionsvc's existing
-// WorkflowsReferencing). The one combined index refIntegrityError below
-// and Configure's own per-row usage indicator (configurelistusage.go)
-// both read, so the two surfaces can never answer this differently.
+// Decision 3, extended by docs/goals/0400): board objects (atlassvc,
+// via boardRefs -- nil-safe, see its own field comment), workflow
+// nodes (compositionsvc's existing WorkflowsReferencing), and plugin
+// entityRef settings (pluginsvc, via pluginRefs -- nil-safe the same
+// way). The one combined index refIntegrityError below and Configure's
+// own per-row usage indicator (configurelistusage.go) both read, so
+// the surfaces can never answer this differently.
 func (c *ConfigureService) References(entityKind, id string) reference.Refs {
 	var boards []reference.ObjectRef
 	if c.boardRefs != nil {
 		boards = c.boardRefs(entityKind, id)
 	}
-	return reference.Refs{Boards: boards, Workflows: c.composition.WorkflowsReferencing(entityKind, id)}
+	var plugins []reference.PluginRef
+	if c.pluginRefs != nil {
+		plugins = c.pluginRefs(entityKind, id)
+	}
+	return reference.Refs{Boards: boards, Workflows: c.composition.WorkflowsReferencing(entityKind, id), Plugins: plugins}
 }
 
 // refIntegrityError returns nil when nothing references id under
@@ -45,6 +51,13 @@ func (c *ConfigureService) refIntegrityError(refKind, entityNoun, id string) err
 			labels[i] = b.Label
 		}
 		by = append(by, fmt.Sprintf("board object(s) %s", strings.Join(labels, ", ")))
+	}
+	if len(refs.Plugins) > 0 {
+		labels := make([]string, len(refs.Plugins))
+		for i, p := range refs.Plugins {
+			labels[i] = p.Label
+		}
+		by = append(by, fmt.Sprintf("extension(s) %s", strings.Join(labels, ", ")))
 	}
 	return fmt.Errorf("%s %q is still referenced by %s -- remove the reference before deleting it", entityNoun, id, strings.Join(by, " and "))
 }

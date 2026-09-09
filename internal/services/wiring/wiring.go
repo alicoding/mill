@@ -172,6 +172,9 @@ func WireConfigureSeams(atlas *atlassvc.AtlasService, cfg *configuresvc.Configur
 	WireListUndoJournal(atlas, cfg)
 	WirePluginIntegrations(plugins)
 	WireWorkflowUndoJournal(atlas, comp)
+	// docs/goals/0400: a plugin's entityRef setting counts as a live
+	// reference the same way a board object or workflow node does.
+	cfg.WirePluginReferenceLookup(plugins.PluginsReferencing)
 }
 
 // WirePluginIntegrations connects a plugin's live-view/guarded-write

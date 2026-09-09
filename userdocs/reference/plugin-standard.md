@@ -178,6 +178,17 @@ platform](port-a-vscode-extension.md).
     `registerCapture` work the same either way — write one `main.js`
     for both. (checked: refuses the install)
 
+## Entity references
+
+33. An `entityRef` setting names a known `entityKind` — one of the
+    Configure entity kinds the picker supports (`request`, `list`,
+    `mcpserver`, `workflow`, `workflow-scope`, `decision`, `execenv`,
+    `environment`, `aiprovider`, `conversionprofile`, `atlas-kind`,
+    `atlas-linkkind`); an unknown or missing `entityKind` blocks the
+    load. The stored value is the picked entity's id, chosen through
+    the same picker a workflow node's own reference field uses.
+    (checked)
+
 ## SDK conveniences
 
 The SDK carries a few small helpers so a plugin never re-invents them:

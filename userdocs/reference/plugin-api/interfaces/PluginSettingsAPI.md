@@ -20,7 +20,9 @@ declare, naming the plugin. A secretRef setting answers the picked
 secret's TITLE ('' when none is picked, or it no longer exists) —
 never the value itself. The pick can name a vault entry or a key
 from a configured source; either way, only the title ever reaches
-plugin code.
+plugin code. An entityRef setting answers the picked Configure
+entity's own id ('' when none is picked) — the same id its own
+doors already take, never a label.
 
 #### Parameters
 

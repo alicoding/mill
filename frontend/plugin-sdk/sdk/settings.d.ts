@@ -5,7 +5,9 @@ export interface PluginSettingsAPI {
      * secret's TITLE ('' when none is picked, or it no longer exists) —
      * never the value itself. The pick can name a vault entry or a key
      * from a configured source; either way, only the title ever reaches
-     * plugin code. */
+     * plugin code. An entityRef setting answers the picked Configure
+     * entity's own id ('' when none is picked) — the same id its own
+     * doors already take, never a label. */
     get: (key: string) => boolean | string | number;
     /** Fires fn whenever the user changes this key, and returns the
      * unsubscribe function. Use it to redraw a face that depends on a

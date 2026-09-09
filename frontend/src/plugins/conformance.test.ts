@@ -126,7 +126,7 @@ function fixtureManifest(contributes: Partial<RealManifest['contributes']>): Rea
 }
 
 describe('the VS Code recognisability contract (goal 0349 S2)', () => {
-  const apiKeySetting = { key: 'apiKey', type: 'string' as const, label: 'API key', description: 'd', default: 'x', options: null, min: null, max: null }
+  const apiKeySetting = { key: 'apiKey', type: 'string' as const, label: 'API key', description: 'd', default: 'x', options: null, min: null, max: null, entityKind: '' }
 
   it('reads configuration when it is the only key declared', () => {
     const decls = settingDeclsFromManifest(fixtureManifest({ configuration: [apiKeySetting] }))
