@@ -90,7 +90,13 @@ export default defineConfig({
   // instead of bare text logs. `open: 'never'` so a
   // local `npx playwright test` run never pops a browser tab
   // mid-session.
-  reporter: [['html', { open: 'never' }], ['list']],
+  // CI only, alongside html/list: the `json` reporter's machine-readable
+  // per-test results (status, retry count) are what
+  // internal/tools/enghealth's retry-passed metrics read off ci.yml's
+  // e2e job artifact -- local runs have no consumer for it.
+  reporter: process.env.CI
+    ? [['html', { open: 'never' }], ['list'], ['json', { outputFile: 'test-results/playwright-report.json' }]]
+    : [['html', { open: 'never' }], ['list']],
   globalSetup: './e2e/global-setup.ts',
   use: {
     // Diagnostics exist exactly when needed (goal 0080, the official
