@@ -45,6 +45,7 @@ export type AtlasSelectionRequest =
   | { action: 'group'; cards: string[]; notes: string[]; objects: string[]; pos?: { x: number; y: number } }
   | { action: 'delete'; cards: string[]; notes: string[]; objects: string[] }
   | { action: 'dissolve'; card: string }
+  | { action: 'demote'; card: string }
   | { action: 'editLinkLabel'; link: string; pos?: { x: number; y: number } }
   | { action: 'editDiagram'; object: string }
   | { action: 'pluginAction'; object: string; item: string }

@@ -91,21 +91,26 @@ test('atlas creation core: tray, placement popover, right-click create, sticky n
     // landscape was de-seeded, ADR-0041's Update; Board gallery nests
     // goal 0223's seeded board-object examples) -- a hand-countable 1/4
     // linked, 0/4 mirrored (same census atlas-projections.spec.ts's own
-    // coverage test pins).
-    await openToolbarAction(page, 'atlas-open-coverage')
-    const coverageDialog = page.locator('[data-component="atlas-coverage-pane"]')
-    await expect(coverageDialog).toBeVisible()
+    // coverage test pins). Coverage and Matrix are the bundled
+    // mill-coverage/mill-matrix plugins (goal 0357 S2): each pane's
+    // content is a sandboxed iframe (PluginFrame), reached through a
+    // FrameLocator rather than a plain page/pane Locator.
+    await openToolbarAction(page, 'atlas-open-plugin-mill-coverage-coverage')
+    const coverageHost = page.getByTestId('plugin-view-mill-coverage-coverage')
+    await expect(coverageHost).toBeVisible()
+    const coverageDialog = page.frameLocator('[data-testid="plugin-view-mill-coverage-coverage"]')
     await expect(coverageDialog.getByTestId('atlas-coverage-link-value')).toHaveText('1/4 linked')
     await expect(coverageDialog.getByTestId('atlas-coverage-mirror-value')).toHaveText('0/4 mirrored')
     await page.keyboard.press('Escape')
-    await expect(coverageDialog).not.toBeVisible()
+    await expect(coverageHost).not.toBeVisible()
 
-    await openToolbarAction(page, 'atlas-open-matrix')
-    const matrixDialog = page.locator('[data-component="atlas-matrix-pane"]')
-    await expect(matrixDialog).toBeVisible()
-    await expect(matrixDialog).not.toContainText('ZzE2eStickyNoteText')
+    await openToolbarAction(page, 'atlas-open-plugin-mill-matrix-matrix')
+    const matrixHost = page.getByTestId('plugin-view-mill-matrix-matrix')
+    await expect(matrixHost).toBeVisible()
+    const matrixDialog = page.frameLocator('[data-testid="plugin-view-mill-matrix-matrix"]')
+    await expect(matrixDialog.locator('body')).not.toContainText('ZzE2eStickyNoteText')
     await page.keyboard.press('Escape')
-    await expect(matrixDialog).not.toBeVisible()
+    await expect(matrixHost).not.toBeVisible()
 
     // --- Right-click pane menu shows Add card/Add note above the
     // dialog-based "Add card…" -- top-center stays empty: content sits

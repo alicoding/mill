@@ -16,7 +16,7 @@ import { openBoardMenu } from './fixtures/toolbarActions'
 // Scoped to the SHARED worker pool (.claude/rules/testing.md): every
 // assertion reads only the toolbar's own layout/DOM.
 
-const VIEW_SEGMENTS = ['atlas-open-board', 'atlas-open-contents', 'atlas-open-matrix', 'atlas-open-coverage', 'atlas-open-plugin-mill-roadmap-roadmap']
+const VIEW_SEGMENTS = ['atlas-open-board', 'atlas-open-contents', 'atlas-open-plugin-mill-coverage-coverage', 'atlas-open-plugin-mill-matrix-matrix', 'atlas-open-plugin-mill-roadmap-roadmap']
 const ROW_CONTROLS = ['atlas-board-menu', ...VIEW_SEGMENTS, 'atlas-space-share', 'atlas-open-companion']
 // Every action that moved into the Board menu, by the testid its own
 // menu item declares (shared/atlasBoardCommands.ts).

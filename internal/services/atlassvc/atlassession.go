@@ -59,7 +59,7 @@ func (a *AtlasService) SetAtlasSession(state AtlasSessionState) error {
 // AtlasSession returns the persisted state, DEGRADED to what still
 // exists: a fully-gone viewed card falls back to root; a tombstoned
 // one (goal 0093) resolves to its own effective parent -- the same
-// virtual-promotion walk every other read surface applies
+// virtual-re-parent walk every other read surface applies
 // (atlas.EffectiveParentID) -- so a session parked inside a container
 // deleted just before restart lands one level up, not all the way to
 // root. A deleted (gone or tombstoned) open card is dropped. The

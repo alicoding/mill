@@ -128,7 +128,11 @@ func resolveDeclaredEntry(b DeclaredStepBinding) (nodeTypeEntry, bool) {
 	}
 
 	exec := func(node Node, ctx ExecContext) (ExecContext, error) {
-		merged := make(map[string]string, len(node.Config)+len(b.PinnedConfig))
+		capHint, err := boundedMapCapacity(len(node.Config), len(b.PinnedConfig), "declared step type "+b.ID)
+		if err != nil {
+			return ctx, err
+		}
+		merged := make(map[string]string, capHint)
 		for k, v := range node.Config {
 			merged[k] = v
 		}

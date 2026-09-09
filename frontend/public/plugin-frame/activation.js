@@ -131,6 +131,45 @@
 		return function () { throw new Error('plugin ' + pluginId + ': ' + name + ' is not available for a framed extension; use an entry page') }
 	}
 
+	// fetchJSON/storage.pushList/storage.getList/formatDate (goal 0386
+	// S1) mirror hostApi.ts's own pure sugar (buildFetchJSON,
+	// buildPluginStorage, formatPluginDate) over the doors already
+	// bridged above -- kept in sync by hand, like resolveActivate below:
+	// this file is served static, never built from the loader's
+	// TypeScript.
+	function fetchJSON(url, requestInit) {
+		return call('fetch', url, requestInit || {}).then(function (r) {
+			if (!r.approved) return { ok: false, status: r.status, errorText: r.ruleLabel || 'Not allowed.' }
+			if (r.status < 200 || r.status >= 300) return { ok: false, status: r.status, errorText: r.body ? r.body.slice(0, 500) : ('The server answered ' + r.status + '.') }
+			try {
+				return { ok: true, status: r.status, data: JSON.parse(r.body) }
+			} catch (err) {
+				return { ok: false, status: r.status, errorText: 'The response was not valid JSON.' }
+			}
+		})
+	}
+
+	var RELATIVE_UNITS = [['year', 31536000000], ['month', 2592000000], ['week', 604800000], ['day', 86400000], ['hour', 3600000], ['minute', 60000]]
+	var relativeFormatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+	function formatDate(iso, style) {
+		var ms = Date.parse(iso)
+		if (isNaN(ms)) return '—'
+		if (style === 'short') return new Date(ms).toLocaleDateString()
+		if (style === 'long') return new Date(ms).toLocaleString()
+		var diffMs = ms - Date.now()
+		var absDiffMs = Math.abs(diffMs)
+		if (absDiffMs < 604800000) {
+			for (var i = 0; i < RELATIVE_UNITS.length; i++) {
+				var unit = RELATIVE_UNITS[i][0], unitMs = RELATIVE_UNITS[i][1]
+				if (absDiffMs >= unitMs || unit === 'minute') {
+					var value = Math.round(diffMs / unitMs)
+					return value === 0 ? 'just now' : relativeFormatter.format(value, unit)
+				}
+			}
+		}
+		return new Date(ms).toLocaleDateString()
+	}
+
 	var api = Object.freeze({
 		millVersion: init.millVersion,
 		pluginId: pluginId,
@@ -154,6 +193,23 @@
 			keys: function () { return Object.keys(storageSnapshot) },
 			set: function (key, value) { storageSnapshot[key] = value; return call('storage.set', key, value).then(function () {}) },
 			delete: function (key) { delete storageSnapshot[key]; return call('storage.delete', key).then(function () {}) },
+			getList: function (key) {
+				var v = storageSnapshot[key]
+				return Promise.resolve(Array.isArray(v) ? v.slice() : [])
+			},
+			pushList: function (key, item, opts) {
+				var list = Array.isArray(storageSnapshot[key]) ? storageSnapshot[key].slice() : []
+				var dedupeBy = opts && opts.dedupeBy
+				if (dedupeBy) {
+					var itemKey = dedupeBy(item)
+					list = list.filter(function (x) { return dedupeBy(x) !== itemKey })
+				}
+				list.unshift(item)
+				var max = opts && opts.max
+				if (typeof max === 'number') list = list.slice(0, max)
+				storageSnapshot[key] = list
+				return call('storage.set', key, list).then(function () {})
+			},
 		}),
 		query: function (q) { return call('query', q || {}) },
 		kinds: function () { return call('kinds') },
@@ -187,6 +243,8 @@
 			throw new Error('plugin ' + pluginId + ': unknown event "' + event + '"')
 		},
 		fetch: function (url, requestInit) { return call('fetch', url, requestInit || {}) },
+		fetchJSON: fetchJSON,
+		formatDate: formatDate,
 		content: Object.freeze({
 			createNote: function (input) { return call('content.createNote', input) },
 			createCard: function (input) { return call('content.createCard', input) },
@@ -196,7 +254,10 @@
 			setCardFields: function (cardId, fields) { return call('content.setCardFields', cardId, fields) },
 		}),
 		files: Object.freeze({ list: function (path) { return call('files.list', path) } }),
-		convert: Object.freeze({ htmlToMarkdown: function (html) { return call('convert.htmlToMarkdown', html) } }),
+		convert: Object.freeze({
+			htmlToMarkdown: function (html) { return call('convert.htmlToMarkdown', html) },
+			markdownToHtml: function (md) { return call('convert.markdownToHtml', md) },
+		}),
 		requestGuardedAction: function (kind, attributes, description) { return call('requestGuardedAction', kind, attributes, description) },
 		registerCanvasObject: notAvailable('registerCanvasObject'),
 		registerCommand: function (decl) {
@@ -213,7 +274,10 @@
 			void call('register.capture', { id: decl.id, hasMessageHandler: !!decl.onMessage }).catch(function (err) { console.error('plugin ' + pluginId + ': registerCapture failed', err) })
 			return { postMessage: function (message) { void call('capture.postMessage', { id: decl.id, payload: message }) } }
 		},
-		ui: Object.freeze({ renderOutput: notAvailable('ui.renderOutput') }),
+		// el has nowhere to mount into here: a framed activation's own
+		// document is never attached anywhere Mill's UI can reach, unlike
+		// a canvas object's own face element.
+		ui: Object.freeze({ renderOutput: notAvailable('ui.renderOutput'), el: notAvailable('ui.el') }),
 		// The extension-interop door (goal 0364): the host answers
 		// {data, methods} (a live function cannot cross postMessage),
 		// wrapped here into callable stubs that call 'extensions.call'

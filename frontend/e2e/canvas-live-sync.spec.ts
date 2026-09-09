@@ -1,10 +1,10 @@
 import type { Page } from '@playwright/test'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { MCP_BASE_PORT, test, expect } from './fixtures/server'
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { test, expect } from './fixtures/server'
 import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel } from './fixtures/canvas'
 import { openSettings } from './fixtures/settingsNav'
+import { connectMCPClient } from './mcpTestClient'
 
 // Live canvas sync for external (MCP) activity (docs/SPEC.md §1's
 // realtime lock, applied to authoring): an open workflow editor must
@@ -18,16 +18,9 @@ import { openSettings } from './fixtures/settingsNav'
 // Mill is the MCP SERVER and this spec is the external author.
 //
 // Each Playwright worker already gets its own MILL_MCP_ADDR listener
-// (e2e/fixtures/server.ts's workerServer fixture) -- MCP_BASE_PORT is
-// exported from there specifically so this spec can compute the same
-// worker's own MCP port without spawning a second listener.
-
-async function connectMCPClient(workerIndex: number): Promise<Client> {
-  const client = new Client({ name: 'canvas-live-sync-e2e', version: '0.0.0' })
-  const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${MCP_BASE_PORT + workerIndex}`))
-  await client.connect(transport)
-  return client
-}
+// (e2e/fixtures/server.ts's workerServer fixture) -- this spec connects
+// to that same worker's real bound mcpPort (workerServer.mcpPort)
+// rather than spawning a second listener.
 
 interface WorkflowIndexEntry {
   id: string
@@ -134,7 +127,7 @@ async function cleanupWorkflow(page: Page, label: string): Promise<void> {
   await restoreMCPWriteDefaults(page)
 }
 
-test('clean canvas: an external MCP update_workflow redraws the open editor live, no reload', async ({ page }, testInfo) => {
+test('clean canvas: an external MCP update_workflow redraws the open editor live, no reload', async ({ page, workerServer }) => {
   await enableUnattendedMCPWrites(page)
 
   await page.getByRole('link', { name: 'Workflows' }).click()
@@ -148,7 +141,7 @@ test('clean canvas: an external MCP update_workflow redraws the open editor live
   await expect(activePanel(page).locator('.react-flow__node')).toHaveCount(1)
 
   try {
-    const client = await connectMCPClient(testInfo.parallelIndex)
+    const client = await connectMCPClient(workerServer.mcpPort)
     try {
       const workflowId = await findWorkflowIdByLabel(client, 'E2E live sync clean')
       await updateWorkflowViaMCP(client, workflowId, twoNodeDefinition('E2E live sync clean', 'clean-path marker'))
@@ -167,7 +160,7 @@ test('clean canvas: an external MCP update_workflow redraws the open editor live
   }
 })
 
-test('dirty canvas: external MCP edit shows a banner, keeps the local edit, and Reload applies the fresh definition', async ({ page }, testInfo) => {
+test('dirty canvas: external MCP edit shows a banner, keeps the local edit, and Reload applies the fresh definition', async ({ page, workerServer }) => {
   await enableUnattendedMCPWrites(page)
 
   await page.getByRole('link', { name: 'Workflows' }).click()
@@ -190,7 +183,7 @@ test('dirty canvas: external MCP edit shows a banner, keeps the local edit, and 
   await activePanel(page).getByLabel('Description').fill('local unsaved edit')
 
   try {
-    const client = await connectMCPClient(testInfo.parallelIndex)
+    const client = await connectMCPClient(workerServer.mcpPort)
     try {
       const workflowId = await findWorkflowIdByLabel(client, 'E2E live sync dirty')
       await updateWorkflowViaMCP(client, workflowId, twoNodeDefinition('E2E live sync dirty', 'dirty-path marker'))

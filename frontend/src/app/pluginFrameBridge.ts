@@ -66,6 +66,8 @@ export const FRAME_METHODS = [
   'storage.delete',
   'query',
   'kinds',
+  'links',
+  'linkKinds',
   'open',
   'fetch',
   'content.createNote',
@@ -76,6 +78,7 @@ export const FRAME_METHODS = [
   'content.setCardFields',
   'files.list',
   'convert.htmlToMarkdown',
+  'convert.markdownToHtml',
   'requestGuardedAction',
   'runCommand',
   'capture.done',
@@ -111,6 +114,8 @@ export async function callFrameMethod(api: MillPluginAPI, method: string, args: 
     case 'storage.delete': { await api.storage.delete(String(first)); return true }
     case 'query': return api.query(first as Parameters<MillPluginAPI['query']>[0])
     case 'kinds': return api.kinds()
+    case 'links': return api.links(first as Parameters<MillPluginAPI['links']>[0])
+    case 'linkKinds': return api.linkKinds()
     case 'open': { api.open(String(first)); return true }
     case 'fetch': return api.fetch(String(first), second as Parameters<MillPluginAPI['fetch']>[1])
     case 'content.createNote': return api.content.createNote(first as Parameters<MillPluginAPI['content']['createNote']>[0])
@@ -121,6 +126,7 @@ export async function callFrameMethod(api: MillPluginAPI, method: string, args: 
     case 'content.setCardFields': return api.content.setCardFields(String(first), second as Record<string, string>)
     case 'files.list': return api.files.list(String(first))
     case 'convert.htmlToMarkdown': return api.convert.htmlToMarkdown(String(first))
+    case 'convert.markdownToHtml': return api.convert.markdownToHtml(String(first))
     case 'requestGuardedAction': return api.requestGuardedAction(String(first), second as Record<string, string>, String(third))
     // The registry's own door, with the registry's own honest
     // enablement: an unknown id or a command whose enabled() says no

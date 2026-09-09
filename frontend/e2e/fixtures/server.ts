@@ -4,7 +4,6 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { SERVER_BASE_PORT, MCP_BASE_PORT, BRIDGE_PORT_OFFSET } from './serverPorts'
 import { applyCpuThrottle } from './throttle'
 
 // Every per-spec dedicated port pair lives in ./serverPorts.ts (split
@@ -61,8 +60,55 @@ async function waitForHealth(url: string, proc: ChildProcessWithoutNullStreams, 
   throw new Error(`timed out waiting for ${url} to become healthy: ${String(lastErr)}`)
 }
 
+const readyLinePattern = /MILL_READY addr=127\.0\.0\.1:(\d+) mcp=127\.0\.0\.1:(\d+)/
+
+interface ReadyAddrs {
+  port: number
+  mcpPort: number
+}
+
+// Reads stdout until main.go's own MILL_READY line appears (goal 0358
+// S6): structured text is parsed, never matched against "listening" or
+// similar prose (.claude/rules/architecture.md) -- this is the one
+// place that owns the pattern. Only ever awaited when the caller asked
+// for an OS-assigned port (SpawnServerOptions.port omitted); a caller
+// naming its own fixed port never triggers the server to print this
+// line at all (wiring.announceServerReady's own gate), so this
+// function is never raced against a process that won't produce it.
+async function waitForReadyLine(proc: ChildProcessWithoutNullStreams, timeoutMs: number): Promise<ReadyAddrs> {
+  return new Promise((resolve, reject) => {
+    let buffer = ''
+    const onExit = (code: number | null) => {
+      clearTimeout(timer)
+      proc.stdout.off('data', onData)
+      reject(new Error(`mill-server exited early (code ${code}) before printing MILL_READY`))
+    }
+    const onData = (chunk: Buffer) => {
+      buffer += chunk.toString()
+      const match = readyLinePattern.exec(buffer)
+      if (match) {
+        clearTimeout(timer)
+        proc.stdout.off('data', onData)
+        proc.off('exit', onExit)
+        resolve({ port: Number(match[1]), mcpPort: Number(match[2]) })
+      }
+    }
+    const timer = setTimeout(() => {
+      proc.stdout.off('data', onData)
+      proc.off('exit', onExit)
+      reject(new Error(`timed out after ${timeoutMs}ms waiting for a MILL_READY line; got so far: ${JSON.stringify(buffer)}`))
+    }, timeoutMs)
+    proc.stdout.on('data', onData)
+    proc.once('exit', onExit)
+  })
+}
+
 export interface SpawnedServer {
   baseURL: string
+  /** The server's real bound port -- OS-assigned unless the caller named one. */
+  port: number
+  /** The MCP listener's real bound port -- OS-assigned unless the caller named one. */
+  mcpPort: number
   settingsPath: string
   executionDbPath: string
   backupDir: string
@@ -71,9 +117,14 @@ export interface SpawnedServer {
 }
 
 export interface SpawnServerOptions {
-  port: number
-  mcpPort: number
-  /** The browser bridge's bind port; derived from `port` when omitted. */
+  // Omit both for an OS-assigned port pair (the default, goal 0358 S6:
+  // servers bind OS-assigned ports, never a literal port in a spec) --
+  // spawnMillServer then reads the real ports back off main.go's
+  // MILL_READY line. A spec with its own historically-dedicated fixed
+  // pair (declared in ./serverPorts.ts) still names both explicitly.
+  port?: number
+  mcpPort?: number
+  /** The browser bridge's bind port; OS-assigned when omitted. */
   bridgePort?: number
   settingsPath: string
   executionDbPath: string
@@ -94,14 +145,15 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
   const env = {
     ...process.env,
     ...opts.extraEnv,
-    WAILS_SERVER_PORT: String(opts.port),
-    MILL_MCP_ADDR: `127.0.0.1:${opts.mcpPort}`,
+    WAILS_SERVER_PORT: String(opts.port ?? 0),
+    MILL_MCP_ADDR: `127.0.0.1:${opts.mcpPort ?? 0}`,
     // The browser bridge's own loopback listener (goal 0350): every
-    // server binds one, so it must be per-worker isolated like the
-    // MCP listener above or two concurrent workers fight for the
-    // default port. bridgePort lets a spec that talks to the bridge
-    // name the port it will connect to.
-    MILL_BRIDGE_ADDR: `127.0.0.1:${opts.bridgePort ?? opts.port + BRIDGE_PORT_OFFSET}`,
+    // server binds one, so it must be per-worker isolated like the MCP
+    // listener above or two concurrent workers fight for the default
+    // port. OS-assigned unless a spec that talks to the bridge
+    // directly (browser-bridge.spec.ts, browser-replay.spec.ts) names
+    // the port it will connect to.
+    MILL_BRIDGE_ADDR: `127.0.0.1:${opts.bridgePort ?? 0}`,
     MILL_SETTINGS_PATH: opts.settingsPath,
     MILL_EXECUTION_DB_PATH: opts.executionDbPath,
     MILL_BACKUP_DIR: opts.backupDir,
@@ -177,7 +229,31 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
     if (stderrTail.length > 50) stderrTail.shift()
   })
 
-  const baseURL = `http://localhost:${opts.port}`
+  // opts.port undefined means an OS-assigned pair was requested (the
+  // default): main.go only ever prints MILL_READY in that case
+  // (wiring.announceServerReady's own gate), so this read is skipped
+  // entirely for a caller naming its own fixed port -- that port is
+  // already known, and no such line would ever arrive.
+  let port = opts.port
+  let mcpPort = opts.mcpPort
+  if (port === undefined) {
+    try {
+      const ready = await waitForReadyLine(proc, 60_000)
+      port = ready.port
+      mcpPort = ready.mcpPort
+    } catch (err) {
+      proc.kill('SIGKILL')
+      throw new Error(`${String(err)}\nmill-server stderr:\n${stderrTail.join('')}`, { cause: err })
+    }
+  }
+  if (mcpPort === undefined) {
+    // Both-or-neither invariant: a caller naming its own port must name
+    // its own mcpPort too, never mix an explicit port with an
+    // OS-assigned MCP listener.
+    throw new Error('spawnMillServer: mcpPort must be set whenever port is (both explicit, or neither)')
+  }
+
+  const baseURL = `http://localhost:${port}`
   try {
     await waitForHealth(`${baseURL}/health`, proc, 60_000)
   } catch (err) {
@@ -235,7 +311,7 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
     })
   }
 
-  return { baseURL, settingsPath: opts.settingsPath, executionDbPath: opts.executionDbPath, backupDir: opts.backupDir, stop }
+  return { baseURL, port, mcpPort, settingsPath: opts.settingsPath, executionDbPath: opts.executionDbPath, backupDir: opts.backupDir, stop }
 }
 
 // spawnUpdatesServer is updates.spec.ts's own dedicated-server helper
@@ -279,8 +355,6 @@ export const test = base.extend<Record<string, never>, WorkerFixtures>({
     const idx = workerInfo.parallelIndex
     const dir = mkWorkerTempDir(idx)
     const server = await spawnMillServer({
-      port: SERVER_BASE_PORT + idx,
-      mcpPort: MCP_BASE_PORT + idx,
       settingsPath: path.join(dir, 'settings.json'),
       executionDbPath: path.join(dir, 'execution.db'),
       backupDir: path.join(dir, 'backups'),

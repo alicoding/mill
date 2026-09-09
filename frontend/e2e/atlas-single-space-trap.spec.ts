@@ -112,7 +112,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     // Deleting the space it's viewed from: "The engagement" holds 4
     // children (Client records/Discovery workstream/Scratchpad/Board
     // gallery), so the container-delete gate (goal 0149 gap 3) confirms
-    // first, naming the promoted count -- same guarded door as every
+    // first, naming the re-parented count -- same guarded door as every
     // other container delete, reached from a NEW trigger point.
     await emptyPaneClick()
     await expect(menu).toBeVisible()
@@ -121,7 +121,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await page.getByRole('button', { name: 'Delete', exact: true }).click()
 
     // Lands on "All spaces" -- not a dead end -- showing what remains:
-    // "The engagement"'s 4 direct children, promoted to root cards.
+    // "The engagement"'s 4 direct children, re-parented to root cards.
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
     await expect(page.getByTestId('atlas-breadcrumb')).not.toContainText('The engagement')
     await expect(groupCard(page, 'Client records')).toBeVisible()
@@ -131,7 +131,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     // (goal 0266's frame-role law).
     await expect(groupCard(page, 'Board gallery')).toBeVisible()
 
-    // Drain the two truly childless promoted leaves -- ordinary,
+    // Drain the two truly childless re-parented leaves -- ordinary,
     // already-covered-elsewhere instant leaf deletes.
     for (const title of ['Discovery workstream', 'Scratchpad']) {
       await noteCard(page, title).click({ button: 'right' })
@@ -141,17 +141,17 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     }
 
     // "Board gallery" nests board objects, never cards -- a region
-    // frame under goal 0266's law. Deleting it promotes its 9 seeded
+    // frame under goal 0266's law. Deleting it re-parents its 9 seeded
     // objects (goal 0233's EffectiveParentID seam, joined by the json/
     // yaml twins of goal 0269 and the table of goal 0392 S1) out to
     // THIS root level; they must land visibly placed, clear of "Client
     // records", never stacked on top of it the way their stale
-    // pre-promotion X/Y used to.
+    // pre-re-parent X/Y used to.
     const clientRecords = groupCard(page, 'Client records')
     await expect(clientRecords).toBeVisible()
 
     // A frame under the 0266 law: delete via its header menu, and the
-    // container-delete gate now counts the 9 filed objects it promotes.
+    // container-delete gate now counts the 9 filed objects it re-parents.
     await groupCard(page, 'Board gallery').getByTestId('atlas-group-header').click({ button: 'right' })
     await expect(menu).toBeVisible()
     await menu.getByText('Delete', { exact: true }).click()
@@ -161,7 +161,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     // the DOM, and no binding lists a container's contents. Tracked
     // under goal 0358 S7.
     await expect(page.getByText('9 items inside move up a level. You can undo right after.')).toBeVisible() // count: seed-owned -- Board gallery's seeded objects.
-    // The confirm dialog's own Delete button (deletePromoteConfirm),
+    // The confirm dialog's own Delete button (deleteReparentConfirm),
     // scoped to the dialog so the frame menu's identical label can't
     // double-match.
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete', exact: true }).click()
@@ -170,7 +170,7 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     // "Client records" is now the only remaining ROOT CARD, so the
     // SAME egocentric auto-entry the later part of this test exercises
     // on purpose (singleRootCard, cards-only) fires here as a side
-    // effect and drills straight into it -- promoted board objects
+    // effect and drills straight into it -- re-parented board objects
     // don't count as a "root card" for that check, so they're never
     // enough on their own to hold the view at "All spaces". Back out
     // once to actually SEE them where they landed.
@@ -178,47 +178,47 @@ test('with exactly one space, navigating up reaches "All spaces" and the space i
     await page.keyboard.press('Meta+ArrowUp')
     await expect(page.getByTestId('atlas-breadcrumb')).toContainText('All spaces')
 
-    const promotedObjects = page.locator('[data-testid="atlas-board-object"]')
-    await expect(promotedObjects).toHaveCount(9)
+    const reparentedObjects = page.locator('[data-testid="atlas-board-object"]')
+    await expect(reparentedObjects).toHaveCount(9)
     const clientRecordsBox = await clientRecords.boundingBox()
     if (!clientRecordsBox) throw new Error('Client records has no bounding box')
-    const promotedBoxes = []
+    const reparentedBoxes = []
     for (let i = 0; i < 9; i++) {
-      const box = await promotedObjects.nth(i).boundingBox()
-      if (!box) throw new Error('promoted board object has no bounding box')
-      expect(rectsOverlap(box, clientRecordsBox), 'a promoted board object must not overlap the sibling card').toBe(false)
-      promotedBoxes.push(box)
+      const box = await reparentedObjects.nth(i).boundingBox()
+      if (!box) throw new Error('re-parented board object has no bounding box')
+      expect(rectsOverlap(box, clientRecordsBox), 'a re-parented board object must not overlap the sibling card').toBe(false)
+      reparentedBoxes.push(box)
     }
     // Clear of EACH OTHER too -- a fresh position that just stacks all
-    // three promoted objects on top of one another would satisfy the
+    // three re-parented objects on top of one another would satisfy the
     // check above while still being useless.
-    for (let i = 0; i < promotedBoxes.length; i++) {
-      for (let j = i + 1; j < promotedBoxes.length; j++) {
-        expect(rectsOverlap(promotedBoxes[i], promotedBoxes[j]), 'two promoted board objects must not overlap each other').toBe(false)
+    for (let i = 0; i < reparentedBoxes.length; i++) {
+      for (let j = i + 1; j < reparentedBoxes.length; j++) {
+        expect(rectsOverlap(reparentedBoxes[i], reparentedBoxes[j]), 'two re-parented board objects must not overlap each other').toBe(false)
       }
     }
 
-    // Drain the newly-promoted objects too -- the root context needs
+    // Drain the newly-re-parented objects too -- the root context needs
     // to be back to just the two remaining cards for the assertions
     // below (unaffected by this goal, same instant-delete door).
-    // Zoomed all the way out first: a wide promoted object (the seeded
+    // Zoomed all the way out first: a wide re-parented object (the seeded
     // sheet) can land under the MiniMap's fixed bottom-right panel,
     // where a right-click never becomes actionable -- the exact hazard
     // this file's own header documents; shrinking the content to the
     // center clears every object of the fixed chrome at once.
     await zoomAllTheWayOut(page)
-    for (let remaining = await promotedObjects.count(); remaining > 0; remaining--) {
-      await promotedObjects.first().click({ button: 'right' })
+    for (let remaining = await reparentedObjects.count(); remaining > 0; remaining--) {
+      await reparentedObjects.first().click({ button: 'right' })
       await expect(menu).toBeVisible()
       await menu.getByText('Delete', { exact: true }).click()
-      await expect(promotedObjects).toHaveCount(remaining - 1)
+      await expect(reparentedObjects).toHaveCount(remaining - 1)
     }
 
     // "Client records" is now the SOLE remaining root. Entered
     // explicitly rather than via egocentric-root auto-entry (atlas.spec.ts's
     // own sibling-deleted-back-to-one test pins THAT convenience
     // separately) -- the deliberate up-nav a few lines above this,
-    // needed to actually SEE the promoted objects at "All spaces",
+    // needed to actually SEE the re-parented objects at "All spaces",
     // suppressed it for this landing. It is itself now a root-level
     // space, so the SAME rename/delete door applies recursively.
     await clientRecords.getByTestId('atlas-group-header').click()

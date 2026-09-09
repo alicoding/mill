@@ -914,6 +914,10 @@
                 "$ref": "#/$defs/RunEvidenceWait"
               },
               "type": "array"
+            },
+            "completedAt": {
+              "type": "string",
+              "format": "date-time"
             }
           },
           "additionalProperties": false,
@@ -3499,6 +3503,24 @@
       "Complexity": "basic"
     },
     {
+      "ID": "apply-atlas-file-object",
+      "Kind": "apply",
+      "Label": "Land downloads on the board",
+      "Description": "Turns every download a browser-replay step brought back into a file-backed board object, mirror-checksummed so a file already landed before is matched, never duplicated.",
+      "ConfigFields": null,
+      "Output": "the same steps/extracted/downloads document, each download's own landing outcome added",
+      "Consumes": [
+        "json"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "apply",
+      "Complexity": "basic"
+    },
+    {
       "ID": "apply-atlas-from-reply",
       "Kind": "apply",
       "Label": "Create Atlas cards from reply",
@@ -4060,7 +4082,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "The notification's first line.",
+          "Description": "The notification's first line. Use {{attribute}} to include a value.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -4074,7 +4096,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "Which Attributes field replaces the fixed title, when set.",
+          "Description": "Which Attributes field replaces the fixed title, when set. Prefer {{attribute}} in the text.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -4088,7 +4110,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "What the notification says.",
+          "Description": "What the notification says. Use {{attribute}} to include a value.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -4102,7 +4124,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "Which Attributes field replaces the fixed message, when set.",
+          "Description": "Which Attributes field replaces the fixed message, when set. Prefer {{attribute}} in the text.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -6270,6 +6292,24 @@
       "Complexity": "basic"
     },
     {
+      "ID": "apply-atlas-file-object",
+      "Kind": "apply",
+      "Label": "Land downloads on the board",
+      "Description": "Turns every download a browser-replay step brought back into a file-backed board object, mirror-checksummed so a file already landed before is matched, never duplicated.",
+      "ConfigFields": null,
+      "Output": "the same steps/extracted/downloads document, each download's own landing outcome added",
+      "Consumes": [
+        "json"
+      ],
+      "Produces": {
+        "passthrough": true
+      },
+      "Effect": "local",
+      "Declared": false,
+      "PaletteGroup": "apply",
+      "Complexity": "basic"
+    },
+    {
       "ID": "apply-atlas-from-reply",
       "Kind": "apply",
       "Label": "Create Atlas cards from reply",
@@ -6831,7 +6871,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "The notification's first line.",
+          "Description": "The notification's first line. Use {{attribute}} to include a value.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -6845,7 +6885,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "Which Attributes field replaces the fixed title, when set.",
+          "Description": "Which Attributes field replaces the fixed title, when set. Prefer {{attribute}} in the text.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -6859,7 +6899,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "What the notification says.",
+          "Description": "What the notification says. Use {{attribute}} to include a value.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,
@@ -6873,7 +6913,7 @@
           "Type": "text",
           "Required": false,
           "Default": "",
-          "Description": "Which Attributes field replaces the fixed message, when set.",
+          "Description": "Which Attributes field replaces the fixed message, when set. Prefer {{attribute}} in the text.",
           "Options": null,
           "Suggestions": null,
           "Secret": false,

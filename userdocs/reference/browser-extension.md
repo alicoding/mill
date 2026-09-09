@@ -101,6 +101,15 @@ The step leaves a result you can read in the run's receipt: every step
 with its outcome, the text you extracted, and any file the browser
 saved while the flow ran.
 
+Add a **Land downloads on the board** step after it to turn what the
+browser downloaded into an Atlas object — a PDF, image, CSV/Excel
+sheet, JSON export or diagram file each land as their matching object
+type; anything else stays on disk with a note saying Mill can't show
+that file type yet. A file already on the board is matched by its
+content rather than landed a second time, and the note says when it
+first landed. A download over 10 MB stays on disk too, with a note
+saying where.
+
 Driving a live site is an external effect, so a run parks for your
 approval before the browser is touched, the same as an outgoing HTTP
 call.

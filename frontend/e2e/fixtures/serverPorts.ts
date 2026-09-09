@@ -9,43 +9,19 @@
 // real behavior (spawnMillServer, the worker fixture, health-check
 // polling) and re-exports this file's surface so no spec's own import
 // statement had to change.
-
-// Port ranges deliberately clear of both Wails' own server-mode default
-// (8080) and Mill's own default MCP bind address (127.0.0.1:8090) --
-// confirmed live, not assumed: a real LaunchAgent-run mill-server on
-// this machine holds localhost:8090 and <tailscale-host>:8080
-// permanently, and must never be touched by this suite. Each worker's
-// index (Playwright's own `parallelIndex`, stable 0..workers-1 for
-// concurrently-running workers, unlike the ever-incrementing
-// `workerIndex`) gets one port from each range.
-// Exported so server.ts (the worker fixture) can import it back --
-// every OTHER export below is also spec-facing, unlike this one.
-export const SERVER_BASE_PORT = 9400
-// Exported so a spec that needs to talk MCP
-// directly -- e.g. canvas-live-sync.spec.ts, driving a real
-// update_workflow call against the open editor -- can compute this
-// worker's own MCP port (`MCP_BASE_PORT + testInfo.parallelIndex`,
-// same arithmetic the workerServer fixture below already uses to spawn
-// it) without spawning a second listener of its own.
-export const MCP_BASE_PORT = 9500
-// A dedicated, disjoint range for the one persistence spec
-// (persistence.spec.ts) that deliberately restarts its own server
-// against the same settings file mid-test -- never shared with the
-// standard per-worker server above, so the two can never collide even
-// though both may be alive on the same worker at once.
-export const PERSISTENCE_SERVER_BASE_PORT = 9600
-export const PERSISTENCE_MCP_BASE_PORT = 9650
-// The scale spec's own disjoint range (goal 0073) -- same
-// own-server-own-ports reasoning as persistence, since its dense
-// fixture env var must never leak into the standard workers' seeds.
-export const SCALE_SERVER_BASE_PORT = 9680
-export const SCALE_MCP_BASE_PORT = 9730
-// The card-page-at-scale spec's own disjoint range (goal 0073 slice
-// B) -- same own-server-own-ports reasoning as SCALE_*, since its
-// mirror-dense folder-pick override must never leak into the standard
-// workers' seeds either.
-export const MIRROR_SERVER_BASE_PORT = 9690
-export const MIRROR_MCP_BASE_PORT = 9740
+//
+// The standard per-worker pool (server.ts's workerServer fixture),
+// persistence.spec.ts's own pair, and atlas-scale.spec.ts/atlas-page-
+// scale.spec.ts's own dedicated pairs all bind OS-assigned ports
+// instead (goal 0358 S6: servers bind OS-assigned ports, never a
+// literal port in a spec) -- spawnMillServer reads the real ports back
+// off main.go's MILL_READY line, so none of them need a declared range
+// here any more. The LaunchAgent-collision concern the old fixed ranges
+// guarded against (a real always-on mill-server instance permanently
+// holding localhost:8090/<tailscale-host>:8080 on this machine) is moot
+// for an OS-assigned port: the OS never hands out a port already bound
+// by another process. Every OTHER pair below is still a spec's own
+// historically-dedicated fixed range.
 // updates.spec.ts's own disjoint pairs (goal 0082, beta pair added
 // goal 0100) -- one server per channel, since MILL_TEST_UPDATE_CHANNEL
 // is fixed for a process's whole lifetime and every channel's UI needs

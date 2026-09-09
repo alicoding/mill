@@ -12,6 +12,8 @@
 package mcpserving
 
 import (
+	"context"
+	"net"
 	"net/http"
 	"time"
 
@@ -44,23 +46,30 @@ func New(name, version, instructions string, middleware ...mcp.Middleware) *mcp.
 	return server
 }
 
-// Serve starts server listening on addr via the SDK's own streamable-
-// HTTP transport, in a background goroutine (ListenAndServe blocks, so
-// this can't run synchronously in a startup path). Binding wider than
-// loopback is entirely the caller's own explicit choice -- this
-// function has no opinion on addr and doesn't default to 127.0.0.1
-// itself. Returns the *http.Server so the caller can Shutdown it later,
-// and a buffered error channel (capacity 1) that receives a bind
-// failure, since that happens asynchronously after this function has
-// already returned.
-func Serve(addr string, server *mcp.Server) (*http.Server, <-chan error) {
+// Serve binds addr itself (net.Listen, rather than delegating the bind
+// to http.Server.ListenAndServe) so the caller can read back the real
+// bound address via the returned net.Addr -- required when addr's port
+// is 0 (goal 0358 S6's OS-assigned e2e ports), since ListenAndServe
+// never exposes what an ephemeral bind resolved to. The bind itself is
+// synchronous (a failure returns immediately, addr's syntax errors
+// included); serving then runs in a background goroutine (Serve
+// blocks), whose own later failure still reports async via the
+// returned error channel (capacity 1). Binding wider than loopback is
+// entirely the caller's own explicit choice -- this function has no
+// opinion on addr and doesn't default to 127.0.0.1 itself.
+func Serve(addr string, server *mcp.Server) (*http.Server, net.Addr, <-chan error, error) {
+	var lc net.ListenConfig
+	ln, err := lc.Listen(context.Background(), "tcp", addr)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, nil)
-	httpServer := &http.Server{Addr: addr, Handler: handler, ReadHeaderTimeout: readHeaderTimeout}
+	httpServer := &http.Server{Handler: handler, ReadHeaderTimeout: readHeaderTimeout}
 	errCh := make(chan error, 1)
 	go func() {
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := httpServer.Serve(ln); err != nil && err != http.ErrServerClosed {
 			errCh <- err
 		}
 	}()
-	return httpServer, errCh
+	return httpServer, ln.Addr(), errCh, nil
 }

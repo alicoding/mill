@@ -34,6 +34,39 @@ probe 2 absent "git filter-branch --all"
 probe 0 absent "git push origin main"
 probe 0 absent "kill 12345"
 
+# git stash: denied in any form; a plain status mentioning "stash" in a
+# path/message is not.
+probe 2 absent "git stash"
+probe 2 absent "git stash pop"
+probe 0 absent "git log --oneline -- stash-notes.md"
+
+# git checkout <ref> -- <path>: denied only in the `--` pathspec form;
+# plain branch checkouts and -b stay allowed.
+probe 2 absent "git checkout main -- frontend/src/App.tsx"
+probe 2 absent "git checkout -- file.go"
+probe 0 absent "git checkout main"
+probe 0 absent "git checkout -b goal/0403-s2-sweep-guard"
+
+# go clean -cache (alone or combined with -testcache): denied; a bare
+# -testcache clean is unaffected.
+probe 2 absent "go clean -cache"
+probe 2 absent "go clean -testcache -cache"
+probe 0 absent "go clean -testcache"
+
+# git add -A / --all: denied; naming specific files stays allowed.
+probe 2 absent "git add -A"
+probe 2 absent "git add --all"
+probe 0 absent "git add scripts/hook-command-guard.sh"
+
+# git commit --amend: denied; a plain commit stays allowed.
+probe 2 absent "git commit --amend -m x"
+probe 0 absent "git commit -m x"
+
+# git rebase: denied in any subcommand form; merging stays allowed.
+probe 2 absent "git rebase main"
+probe 2 absent "git rebase --continue"
+probe 0 absent "git merge origin/main"
+
 # Gate commands are foreground-only; the same command in the foreground passes.
 probe 2 true  "git commit -m x"
 probe 0 false "git commit -m x"

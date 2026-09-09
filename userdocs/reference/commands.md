@@ -35,6 +35,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.card.addLinkedCard` | Add linked card… | — | atlas | Acts on the board's current selection |
 | `atlas.card.copyContext` | Copy card as context | — | atlas | Acts on the board's current selection |
 | `atlas.card.copyLink` | Copy card link | — | atlas | Acts on the board's current selection |
+| `atlas.card.demote` | Turn back into object | — | atlas | Acts on the board's current selection |
 | `atlas.card.dissolve` | Dissolve area | — | atlas | Acts on the board's current selection |
 | `atlas.card.exportAs` | Export card as… | — | atlas | Conditional — available only in a matching state |
 | `atlas.card.fitToContent` | Fit card to content | — | atlas | Acts on the board's current selection |
@@ -45,7 +46,6 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.card.zoomIn` | Zoom into card | — | atlas | Acts on the board's current selection |
 | `atlas.companion.toggle` | Toggle companion panel | — | atlas | Always available |
 | `atlas.contents.open` | Contents | — | atlas | Always available |
-| `atlas.coverage` | Open coverage | — | atlas | Always available |
 | `atlas.create.area` | Draw an area | — | atlas | Conditional — available only in a matching state |
 | `atlas.create.card` | Add a card | — | atlas | Conditional — available only in a matching state |
 | `atlas.create.image` | Add an image | — | atlas | Conditional — available only in a matching state |
@@ -68,7 +68,6 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.link.editLabel` | Edit link label… | — | atlas | Acts on the board's current selection |
 | `atlas.link.remove` | Remove link | — | atlas | Acts on the board's current selection |
 | `atlas.link.setKind` | Change link kind | — | atlas | Acts on the board's current selection |
-| `atlas.matrix` | Open traceability matrix | — | atlas | Always available |
 | `atlas.minimap.toggle` | Toggle minimap | — | atlas | Always available |
 | `atlas.note.open` | Open note | — | atlas | Acts on the board's current selection |
 | `atlas.note.promote` | Promote note to card… | — | atlas | Acts on the board's current selection |

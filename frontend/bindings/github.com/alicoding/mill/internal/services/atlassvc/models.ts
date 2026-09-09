@@ -133,7 +133,10 @@ export interface ClipbridgeReplyPreview {
  * note. For cards, KindID repeats Subkind and Fields carries the
  * card's own typed field values (docs/goals/0357): the schema those
  * values read against stays with the Kind itself (ListKinds/
- * api.kinds), never folded into the entry.
+ * api.kinds), never folded into the entry. MirrorPath rides cards
+ * only (docs/goals/0357 S2): "" for a card with none, never
+ * distinguished from "not a card" -- a reader that cares checks Kind
+ * first, the same rule Fields/KindID already carry.
  */
 export interface ContentEntry {
     "ID": string;
@@ -146,6 +149,7 @@ export interface ContentEntry {
     "Size": atlas$0.Dimensions | null;
     "Payload": { [_ in string]?: string } | null;
     "Fields": { [_ in string]?: string } | null;
+    "MirrorPath": string;
 }
 
 /**
@@ -202,6 +206,25 @@ export interface FileDropRoute {
      * head.
      */
     "ContentKind": string;
+}
+
+/**
+ * FileObjectResult is what landing (or matching) one downloaded file
+ * as a board object reports back to the apply step that asked.
+ */
+export interface FileObjectResult {
+    /**
+     * ObjectID is empty when Mill could not place the download at all
+     * (no Kind resolved for its extension).
+     */
+    "ObjectID": string;
+
+    /**
+     * Note is set whenever the run should hear something beyond "it
+     * landed": a duplicate match (names the run and time it first
+     * landed), or an unresolvable Kind.
+     */
+    "Note": string;
 }
 
 /**
@@ -453,7 +476,7 @@ export interface TableProjectionExportResult {
  * CardIDs, DeleteNote only NoteIDs, DeleteBoardObject only ObjectIDs,
  * so the frontend's undo toast can pass this straight back to
  * UndoDelete without re-deriving what it touched. LinksRemoved and
- * ChildrenPromoted are the delete's blast radius, counted against the
+ * ChildrenReparented are the delete's blast radius, counted against the
  * state immediately BEFORE this call's own tombstone lands: links that
  * were visible and now touch a tombstoned endpoint, and direct live
  * children (cards + notes) whose effective parent is about to shift
@@ -465,7 +488,7 @@ export interface TombstoneResult {
     "NoteIDs": string[] | null;
     "ObjectIDs": string[] | null;
     "LinksRemoved": number;
-    "ChildrenPromoted": number;
+    "ChildrenReparented": number;
 
     /**
      * EntityRefKind (goal 0392 S1) is the deleted board object's own

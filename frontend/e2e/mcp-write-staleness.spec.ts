@@ -15,7 +15,7 @@ import { RUN_TERMINAL_TIMEOUT } from './fixtures/runTerminal'
 // external settings-file edit can't do this against a LIVE server)
 // rather than sleeping 20 real minutes.
 
-test('a backdated pending MCP write renders age emphasis + expiry text in Review, the banner, and the approval prompt', async ({ page }, testInfo) => {
+test('a backdated pending MCP write renders age emphasis + expiry text in Review, the banner, and the approval prompt', async ({ page, workerServer }) => {
   const label = 'E2E MCP write staleness source'
   await enableMCPWritesWithApprovalRequired(page)
 
@@ -25,7 +25,7 @@ test('a backdated pending MCP write renders age emphasis + expiry text in Review
   await page.locator('[role="tabpanel"]:not([hidden])').last().getByTestId('save-workflow').click()
   await expect(workflowRow(page, label)).toBeVisible()
 
-  const client = await connectMCPClient(testInfo.parallelIndex)
+  const client = await connectMCPClient(workerServer.mcpPort)
   try {
     const sourceId = await findWorkflowIdByLabel(client, label)
     const exported = await exportWorkflowViaMCP(client, sourceId)

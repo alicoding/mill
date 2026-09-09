@@ -9,7 +9,7 @@ import type { PluginCommandDecl } from './commands'
 import type { PluginSettingsAPI } from './settings'
 import type { PluginNoticeInput } from './notify'
 import type { PluginStorageAPI } from './storage'
-import type { ContentQuery, ContentEntry, KindInfo, PluginEventMap, PluginFetchInit, PluginFetchResult, PluginContentAPI, PluginFilesAPI, PluginConvertAPI } from './content'
+import type { ContentQuery, ContentEntry, KindInfo, LinkInfo, LinkKindInfo, LinkQuery, PluginEventMap, PluginFetchInit, PluginFetchResult, PluginFetchJSONResult, PluginContentAPI, PluginFilesAPI, PluginConvertAPI } from './content'
 import type { PluginViewDecl, PluginViewHandle } from './views'
 import type { PluginCaptureDecl, PluginCaptureHandle } from './captures'
 import type { PluginUIAPI } from './ui'
@@ -33,6 +33,12 @@ export interface MillPluginAPI {
   /** Lists the board's card kinds: the schema each card's own `fields`
    * values read against. */
   kinds: () => Promise<KindInfo[]>
+  /** Lists the board's typed relations between cards — always the
+   * current state, never a cache. */
+  links: (q?: LinkQuery) => Promise<LinkInfo[]>
+  /** Lists the board's relation kinds: the labels a link's own `kind`
+   * id reads against. */
+  linkKinds: () => Promise<LinkKindInfo[]>
   /** Opens one card the way a projection's own card click does: the
    * board view, with that card's page on top of it. */
   open: (cardId: string) => void
@@ -44,12 +50,22 @@ export interface MillPluginAPI {
   /** Performs a guarded HTTP request; see PluginFetchInit for the full
    * contract. */
   fetch: (url: string, init?: PluginFetchInit) => Promise<PluginFetchResult>
+  /** Sugar over fetch for a JSON API: parses the body and never
+   * throws, not even for a denied request, a non-2xx status or a body
+   * that isn't JSON — see PluginFetchJSONResult. */
+  fetchJSON: <T = unknown>(url: string, init?: PluginFetchInit) => Promise<PluginFetchJSONResult<T>>
   content: PluginContentAPI
   convert: PluginConvertAPI
   files: PluginFilesAPI
   registerView: (decl: PluginViewDecl) => PluginViewHandle
   registerCapture: (decl: PluginCaptureDecl) => PluginCaptureHandle
   ui: PluginUIAPI
+  /** Formats an ISO timestamp the way Mill's own interface does:
+   * 'relative' (the default) reads "2m ago"/"yesterday", falling back
+   * to a short date beyond about a week; 'short' is a locale date;
+   * 'long' is a locale date and time. An unparseable iso answers
+   * '—'. */
+  formatDate: (iso: string, style?: 'relative' | 'short' | 'long') => string
   extensions: PluginExtensionsAPI
 }
 

@@ -421,7 +421,7 @@ func (a *AtlasService) SetViewMode(id string, mode atlas.ViewMode) (atlas.Card, 
 }
 
 // DeleteCard lives in atlasservice_tombstone.go (goal 0093's soft-
-// delete guard) -- containment promotion is now VIRTUAL (a live
+// delete guard) -- containment re-parenting is now VIRTUAL (a live
 // child's effective parent is resolved at read time, past any
 // tombstoned ancestor) rather than a data rewrite at delete time; the
 // real re-parent only happens at purge.

@@ -36,7 +36,7 @@ async function zoomOutLight(page: import('@playwright/test').Page): Promise<void
 
 // Atlas containment (goal 0081 slice A2): area drawing (draw-empty,
 // marker-box), select-then-group, drag filing into/out of a frame,
-// dissolve/delete's children-always-promote rule, and the
+// dissolve/delete's children-always-reparent rule, and the
 // context-aware frame menus -- driven end to end against a fresh
 // seeded space (internal/domain/atlas/builtin.go), own dedicated
 // server (fixtures/server.ts's ATLAS_CONTAINMENT_* ports) since this
@@ -281,7 +281,7 @@ test('atlas containment: area drawing, marker-box grouping, drag filing, dissolv
     await expect(groupArea.getByTestId('atlas-group-header')).toContainText('3 items')
 
     // --- Dissolve: the frame's own header menu -> confirm names the
-    // promotion -> the frame is gone, its 3 children are back at the
+    // re-parent -> the frame is gone, its 3 children are back at the
     // top level. ---
     await groupArea.getByTestId('atlas-group-header').click({ button: 'right' })
     await expect(menu).toBeVisible()

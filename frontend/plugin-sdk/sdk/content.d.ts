@@ -7,7 +7,8 @@
  * `fields` — a card's own typed field values (kind 'card' only);
  * the schema they read against stays with the kind, from api.kinds.
  * `kindId` — a card's own kind id (kind 'card' only), repeating
- * subkind. */
+ * subkind. `mirrorPath` — the local file this card's content is
+ * synced from (kind 'card' only), absent when it has none. */
 export interface ContentEntry {
     id: string;
     kind: string;
@@ -24,6 +25,7 @@ export interface ContentEntry {
     };
     fields?: Record<string, string>;
     kindId?: string;
+    mirrorPath?: string;
     payload: Record<string, string>;
 }
 export interface ContentQuery {
@@ -97,6 +99,29 @@ export interface KindInfo {
     icon?: string;
     fields: KindFieldInfo[];
 }
+/** One typed relation between two cards, as api.links lists it —
+ * read-only and directional: source is the card the relation was
+ * drawn from, target the other end, kind the relation's own type
+ * (its id, matching an entry from api.linkKinds). */
+export interface LinkInfo {
+    id: string;
+    kind: string;
+    source: string;
+    target: string;
+}
+/** Narrows api.links to one relation kind and/or one end; a field left
+ * out matches every value. */
+export interface LinkQuery {
+    kind?: string;
+    source?: string;
+    target?: string;
+}
+/** One kind of relation, as api.linkKinds lists it: the label a
+ * link's own `kind` id reads against. */
+export interface LinkKindInfo {
+    id: string;
+    label: string;
+}
 /** The request api.fetch sends. A plugin never opens a connection
  * itself — api.fetch asks Mill, whose rules allow, park for approval,
  * or deny the request; on approval Mill performs it and hands back the
@@ -126,6 +151,18 @@ export interface PluginFetchResult {
     status: number;
     headers: Record<string, string>;
     body: string;
+}
+/** api.fetchJSON's answer: never throws, not for a denied request, a
+ * non-2xx status, or a body that isn't JSON. Check ok before reading
+ * data; it carries the same non-throwing contract PluginFetchResult
+ * itself does. errorText names what went wrong when ok is false: the
+ * rule that denied the request, the status, or that the body wasn't
+ * valid JSON. */
+export interface PluginFetchJSONResult<T = unknown> {
+    ok: boolean;
+    status: number;
+    data?: T;
+    errorText?: string;
 }
 /** The outcome of a guarded write through api.content: a denied write
  * resolves with approved: false and the rule's label; an approved one
@@ -211,8 +248,11 @@ export interface PluginFilesAPI {
 }
 /** Pure transforms Mill already implements, offered to a plugin as-is.
  * htmlToMarkdown is the exact conversion every paste and every
- * workflow convert step uses. No capability required — a transform
- * reaches nothing outside the input you pass it. */
+ * workflow convert step uses; markdownToHtml is its reverse, the same
+ * sanitized renderer a mirrored file's markdown preview uses. No
+ * capability required — a transform reaches nothing outside the input
+ * you pass it. */
 export interface PluginConvertAPI {
     htmlToMarkdown: (html: string) => Promise<string>;
+    markdownToHtml: (markdown: string) => Promise<string>;
 }

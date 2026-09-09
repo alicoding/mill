@@ -30,22 +30,6 @@ export const ATLAS_NAV_COMMANDS: Command[] = [
   run: () => useUISignalStore.getState().requestAtlasRedo(),
 },
 {
-  id: 'atlas.matrix',
-  menu: { path: 'atlas', group: 0, order: 4 },
-  label: 'commands.atlas.matrix',
-  defaultBinding: null,
-  surface: ['atlas'],
-  run: () => useUISignalStore.getState().requestAtlasMatrixOpen(),
-},
-{
-  id: 'atlas.coverage',
-  menu: { path: 'atlas', group: 0, order: 5 },
-  label: 'commands.atlas.coverage',
-  defaultBinding: null,
-  surface: ['atlas'],
-  run: () => useUISignalStore.getState().requestAtlasCoverageOpen(),
-},
-{
   id: 'atlas.board.home',
   label: 'commands.atlas.boardHome',
   defaultBinding: null,

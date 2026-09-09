@@ -26,10 +26,10 @@ async function findKindIdByLabel(client: Client, label: string): Promise<string>
   return found.id
 }
 
-test('a parked atlas card write appears as a Review row; approving creates the card, denying a second proposal writes nothing', async ({ page }, testInfo) => {
+test('a parked atlas card write appears as a Review row; approving creates the card, denying a second proposal writes nothing', async ({ page, workerServer }) => {
   await enableMCPWritesWithApprovalRequired(page)
 
-  const client = await connectMCPClient(testInfo.parallelIndex)
+  const client = await connectMCPClient(workerServer.mcpPort)
   try {
     const topicKindId = await findKindIdByLabel(client, 'Topic')
     const title = 'E2E MCP atlas card'

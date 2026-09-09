@@ -85,7 +85,7 @@ func (e *ExecutionService) runEvidenceFor(runID string) (composition.RunEvidence
 		steps = append(steps, composition.RunEvidenceStep{
 			StepID: s.NodeID, StepTypeID: s.NodeTypeID, Status: s.Status,
 			GuardrailEffect: s.GuardrailEffect, GuardrailRule: s.GuardrailRule, GuardrailSource: s.GuardrailSource,
-			Waits: waits,
+			Waits: waits, CompletedAt: s.CompletedAt,
 		})
 	}
 

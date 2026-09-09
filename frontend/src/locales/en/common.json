@@ -205,8 +205,6 @@
       "jump": "Jump to a card or object",
       "undo": "Undo",
       "redo": "Redo",
-      "matrix": "Open traceability matrix",
-      "coverage": "Open coverage",
       "boardHome": "Back to the board",
       "arrange": "Auto-arrange",
       "contents": {
@@ -255,7 +253,8 @@
         "fitToContent": "Fit card to content",
         "copyContext": "Copy card as context",
         "copyLink": "Copy card link",
-        "dissolve": "Dissolve area"
+        "dissolve": "Dissolve area",
+        "demote": "Turn back into object"
       },
       "focusNext": "Focus next card",
       "focusPrevious": "Focus previous card",

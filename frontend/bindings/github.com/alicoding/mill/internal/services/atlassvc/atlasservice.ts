@@ -52,7 +52,7 @@ export function AddToPerspective(perspectiveID: string, cardID: string): $Cancel
  * AtlasSession returns the persisted state, DEGRADED to what still
  * exists: a fully-gone viewed card falls back to root; a tombstoned
  * one (goal 0093) resolves to its own effective parent -- the same
- * virtual-promotion walk every other read surface applies
+ * virtual-re-parent walk every other read surface applies
  * (atlas.EffectiveParentID) -- so a session parked inside a container
  * deleted just before restart lands one level up, not all the way to
  * root. A deleted (gone or tombstoned) open card is dropped. The
@@ -219,6 +219,19 @@ export function CreateCardLinkedFrom(fromCardID: string, linkKindID: string, kin
     return $Call.ByID(2183741437, fromCardID, linkKindID, kindID, title, parentID, position);
 }
 
+/**
+ * CreateFileObjectFromDownload lands base64Data as a file-backed board
+ * object, or -- when the same content already landed -- reports that
+ * existing object unchanged, never a duplicate. filename is the
+ * browser's own download name (the object's title and
+ * its file extension both read from it); sourceRunID is the writing
+ * run's own id, stamped onto a NEW object's Payload so a later
+ * duplicate hit can name which run first landed it.
+ */
+export function CreateFileObjectFromDownload(base64Data: string, filename: string, sourceRunID: string): $CancellablePromise<$models.FileObjectResult> {
+    return $Call.ByID(1260092503, base64Data, filename, sourceRunID);
+}
+
 export function CreateKind(label: string, description: string, icon: string, fields: typedfield$0.Field[] | null): $CancellablePromise<atlas$0.Kind> {
     return $Call.ByID(3663898672, label, description, icon, fields);
 }
@@ -336,6 +349,26 @@ export function DeleteNote(id: string): $CancellablePromise<$models.TombstoneRes
  */
 export function DeletePerspective(id: string): $CancellablePromise<void> {
     return $Call.ByID(2541135077, id);
+}
+
+/**
+ * DemoteCard is "Turn back into object" (goal 0410 Decision 3): the
+ * user-initiated inverse of PromoteBoardObject/PromoteNote for a card
+ * whose Kind is backed by a mirror file (image, drawio/mermaid
+ * diagram) or a projected List (table) -- it creates a BoardObject
+ * carrying the SAME mirror path/listID, position and size the card
+ * held, in the card's own parent, then removes the card and every link
+ * touching it (the confirm this rides behind names both losses); the
+ * diagram/image/table content itself survives because the object
+ * keeps the same mirrorPath/listID. ONE undo mark restores the EXACT
+ * demoted card AND its links (demoteCardAndLinks/repromoteObjectAndLinks
+ * below are a pure struct-swap the same way
+ * demoteCardToObject/repromoteObjectToCard are for a fresh promotion's
+ * own undo (atlasundo_promote.go) -- no new id is ever minted on either
+ * side, so undo/redo can alternate any number of times without drift).
+ */
+export function DemoteCard(cardID: string): $CancellablePromise<atlas$0.BoardObject> {
+    return $Call.ByID(2837363536, cardID);
 }
 
 /**
@@ -903,6 +936,22 @@ export function RevealSpaceFolder(spaceID: string): $CancellablePromise<string> 
  */
 export function RunCardAction(cardID: string, workflowID: string): $CancellablePromise<void> {
     return $Call.ByID(3407735559, cardID, workflowID);
+}
+
+/**
+ * SaveFileBytes is SaveImageBytes' extension-agnostic sibling (goal
+ * 0350 S3): a caller with arbitrary bytes and no reason to believe
+ * they're an image (a browser download can be anything a site serves)
+ * still needs the SAME mirror-write shape -- a fresh file under the
+ * captures directory, never a second writer. ext must include its
+ * leading "." and is never validated against an allow-list here: the
+ * caller already resolved which board-object Kind (and therefore which
+ * renderer) the file becomes, and that resolution is what actually
+ * gates what Mill can usefully do with the bytes, not the extension
+ * string itself.
+ */
+export function SaveFileBytes(base64Data: string, ext: string, title: string): $CancellablePromise<string> {
+    return $Call.ByID(4283463200, base64Data, ext, title);
 }
 
 /**

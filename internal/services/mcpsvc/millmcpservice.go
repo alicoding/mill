@@ -66,6 +66,10 @@ type MillMCPService struct {
 	store   settings.Store
 	server  *mcp.Server
 	http    *http.Server
+	// boundAddr is what Start actually bound -- differs from its addr
+	// argument when that requested port 0 (goal 0358 S6's OS-assigned
+	// e2e ports). "" before Start has ever succeeded.
+	boundAddr string
 	// Per-write approval state: park-and-poll (millmcpservice_approval.go,
 	// docs/adr/0032, superseding ADR-0017's second half's old bounded-
 	// blocking-wait shape). parkStore is the durable pending/resolved
@@ -277,29 +281,6 @@ func NewMillMCPService(version string, comp *compositionsvc.CompositionService, 
 	}, m.readAIProvider)
 
 	return m
-}
-
-// Start binds addr and begins serving in the background. Loopback-only
-// by convention of the caller (main.go), not enforced here -- see
-// mcpserving.Serve's own doc comment for why this function has no
-// opinion on addr.
-func (m *MillMCPService) Start(addr string) error {
-	httpServer, errCh := mcpserving.Serve(addr, m.server)
-	m.http = httpServer
-	select {
-	case err := <-errCh:
-		return fmt.Errorf("mcp server: %w", err)
-	case <-time.After(100 * time.Millisecond):
-		return nil
-	}
-}
-
-//wails:ignore
-func (m *MillMCPService) Shutdown(ctx context.Context) error {
-	if m.http == nil {
-		return nil
-	}
-	return m.http.Shutdown(ctx)
 }
 
 // ConnectInMemoryClient connects a brand-new MCP client session to THIS

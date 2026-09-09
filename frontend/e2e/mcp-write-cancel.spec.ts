@@ -39,12 +39,12 @@ async function cleanupWorkflow(page: Page, label: string) {
 // status cancelled -> nothing written -> the Review row and the sidebar
 // badge both drop, driven purely by the event cancel_write now fires
 // (never a manual page action).
-test('cancel_write withdraws a pending MCP write: parked -> cancelled -> nothing written -> banner/queue count drops', async ({ page }, testInfo) => {
+test('cancel_write withdraws a pending MCP write: parked -> cancelled -> nothing written -> banner/queue count drops', async ({ page, workerServer }) => {
   const label = 'E2E MCP write cancel source'
   await enableMCPWritesWithApprovalRequired(page)
   await createSourceWorkflow(page, label)
 
-  const client = await connectMCPClient(testInfo.parallelIndex)
+  const client = await connectMCPClient(workerServer.mcpPort)
   try {
     const sourceId = await findWorkflowIdByLabel(client, label)
     const exported = await exportWorkflowViaMCP(client, sourceId)
@@ -102,12 +102,12 @@ test('cancel_write withdraws a pending MCP write: parked -> cancelled -> nothing
 // all, so denying a parked write from Review left the sidebar badge
 // stuck on a phantom count against an already-empty queue. Denying (not
 // cancelling) is the exact regression case.
-test('badge count drops on deny without any other event (phantom-1 repro)', async ({ page }, testInfo) => {
+test('badge count drops on deny without any other event (phantom-1 repro)', async ({ page, workerServer }) => {
   const label = 'E2E MCP write deny badge source'
   await enableMCPWritesWithApprovalRequired(page)
   await createSourceWorkflow(page, label)
 
-  const client = await connectMCPClient(testInfo.parallelIndex)
+  const client = await connectMCPClient(workerServer.mcpPort)
   try {
     const sourceId = await findWorkflowIdByLabel(client, label)
     const exported = await exportWorkflowViaMCP(client, sourceId)
@@ -148,12 +148,12 @@ test('badge count drops on deny without any other event (phantom-1 repro)', asyn
 // existing workflow (update_workflow does; import_workflow doesn't --
 // it mints a new one), carries a jump-to-workflow hover preview, the
 // same WorkflowHoverPreview icon a run row already gets.
-test('a denied MCP write appears in Activity, expandable, with a jump-to-workflow preview', async ({ page }, testInfo) => {
+test('a denied MCP write appears in Activity, expandable, with a jump-to-workflow preview', async ({ page, workerServer }) => {
   const label = 'E2E MCP write activity source'
   await enableMCPWritesWithApprovalRequired(page)
   await createSourceWorkflow(page, label)
 
-  const client = await connectMCPClient(testInfo.parallelIndex)
+  const client = await connectMCPClient(workerServer.mcpPort)
   try {
     const sourceId = await findWorkflowIdByLabel(client, label)
     const exported = await exportWorkflowViaMCP(client, sourceId)

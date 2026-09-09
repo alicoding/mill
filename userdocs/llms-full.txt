@@ -2613,6 +2613,13 @@ Creates Atlas records from an accepted clipboard reply's items: an item with a "
   - **Landing space attribute (optional)** — Which Attributes field carries the target space's card id. New cards land there instead of the board root.
   - **Output attribute (optional)** — Which Attributes field receives a summary of what was created.
 
+### Land downloads on the board
+
+Turns every download a browser-replay step brought back into a file-backed board object, mirror-checksummed so a file already landed before is matched, never duplicated.
+
+- Takes: JSON — Produces: its input, unchanged
+- Effect: changes something on this machine
+
 ### Link Atlas cards
 
 Creates a typed relation between two existing Atlas cards. "From"/"To" are each a literal card id or attr:<name>.
@@ -2667,10 +2674,10 @@ Shows a notification when the workflow reaches this step. "Title attribute" and 
 - Takes: nothing — Produces: its input, unchanged
 - Effect: changes something on this machine
 - Settings:
-  - **Title** — The notification's first line.
-  - **Title attribute (optional)** — Which Attributes field replaces the fixed title, when set.
-  - **Message** — What the notification says.
-  - **Body attribute (optional)** — Which Attributes field replaces the fixed message, when set.
+  - **Title** — The notification's first line. Use {{attribute}} to include a value.
+  - **Title attribute (optional)** — Which Attributes field replaces the fixed title, when set. Prefer {{attribute}} in the text.
+  - **Message** — What the notification says. Use {{attribute}} to include a value.
+  - **Body attribute (optional)** — Which Attributes field replaces the fixed message, when set. Prefer {{attribute}} in the text.
   - **Send to** — Leave empty to reach every paired device.
 
 ### Save list row
@@ -2802,6 +2809,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.card.addLinkedCard` | Add linked card… | — | atlas | Acts on the board's current selection |
 | `atlas.card.copyContext` | Copy card as context | — | atlas | Acts on the board's current selection |
 | `atlas.card.copyLink` | Copy card link | — | atlas | Acts on the board's current selection |
+| `atlas.card.demote` | Turn back into object | — | atlas | Acts on the board's current selection |
 | `atlas.card.dissolve` | Dissolve area | — | atlas | Acts on the board's current selection |
 | `atlas.card.exportAs` | Export card as… | — | atlas | Conditional — available only in a matching state |
 | `atlas.card.fitToContent` | Fit card to content | — | atlas | Acts on the board's current selection |
@@ -2812,7 +2820,6 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.card.zoomIn` | Zoom into card | — | atlas | Acts on the board's current selection |
 | `atlas.companion.toggle` | Toggle companion panel | — | atlas | Always available |
 | `atlas.contents.open` | Contents | — | atlas | Always available |
-| `atlas.coverage` | Open coverage | — | atlas | Always available |
 | `atlas.create.area` | Draw an area | — | atlas | Conditional — available only in a matching state |
 | `atlas.create.card` | Add a card | — | atlas | Conditional — available only in a matching state |
 | `atlas.create.image` | Add an image | — | atlas | Conditional — available only in a matching state |
@@ -2835,7 +2842,6 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.link.editLabel` | Edit link label… | — | atlas | Acts on the board's current selection |
 | `atlas.link.remove` | Remove link | — | atlas | Acts on the board's current selection |
 | `atlas.link.setKind` | Change link kind | — | atlas | Acts on the board's current selection |
-| `atlas.matrix` | Open traceability matrix | — | atlas | Always available |
 | `atlas.minimap.toggle` | Toggle minimap | — | atlas | Always available |
 | `atlas.note.open` | Open note | — | atlas | Acts on the board's current selection |
 | `atlas.note.promote` | Promote note to card… | — | atlas | Acts on the board's current selection |
@@ -3182,8 +3188,6 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Jump to a card or object | ⌘K | `atlas.jump` |
 | Undo | — | `atlas.undo` |
 | Redo | — | `atlas.redo` |
-| Open traceability matrix | — | `atlas.matrix` |
-| Open coverage | — | `atlas.coverage` |
 | Auto-arrange | — | `atlas.arrange` |
 | Contents | — | `atlas.contents.open` |
 | Import atlas | — | `atlas.import` |
@@ -3521,6 +3525,15 @@ run.
 The step leaves a result you can read in the run's receipt: every step
 with its outcome, the text you extracted, and any file the browser
 saved while the flow ran.
+
+Add a **Land downloads on the board** step after it to turn what the
+browser downloaded into an Atlas object — a PDF, image, CSV/Excel
+sheet, JSON export or diagram file each land as their matching object
+type; anything else stays on disk with a note saying Mill can't show
+that file type yet. A file already on the board is matched by its
+content rather than landed a second time, and the note says when it
+first landed. A download over 10 MB stays on disk too, with a note
+saying where.
 
 Driving a live site is an external effect, so a run parks for your
 approval before the browser is touched, the same as an outgoing HTTP
@@ -4594,69 +4607,23 @@ platform](port-a-vscode-extension.md).
     `registerCapture` work the same either way — write one `main.js`
     for both. (checked: refuses the install)
 
-## Extension interop
+## SDK conveniences
 
-33. An extension that needs another installed extension's capability
-    declares it in `dependencies: [{ "id", "version" }]` (a semver
-    range) rather than reaching into it directly — never
-    `app.plugins[id]`-style reach. The loader activates a dependency
-    before its dependant; a dependant whose dependency never activates
-    shows *Waits for `<id>`* on its Extensions row instead of running.
-    Installing an extension whose `dependencies` name an id that is
-    not installed, a version outside the declared range, or a mutual
-    dependency cycle refuses the install, naming what is missing.
-    (checked: refuses the install)
-
-## Depending on another extension
-
-Declare the id and the version range you need:
-
-```json
-{
-  "id": "my-consumer",
-  "dependencies": [{ "id": "my-provider", "version": ">=1.0.0" }]
-}
-```
-
-Reach it through `api.extensions.get`, never through a live handle you
-found some other way:
-
-```js
-export async function activate(api) {
-  const provider = await api.extensions.get('my-provider')
-  if (provider) {
-    const result = await provider.someMethod('argument')
-  }
-}
-```
-
-`api.extensions.get(id)` resolves to `undefined` for any id not in
-your own manifest's `dependencies`, and again for a declared
-dependency that has not activated yet.
-
-The other half of the door is `exports`: name the methods on your own
-`activate()`'s returned object a dependant may call.
-
-```json
-{
-  "id": "my-provider",
-  "exports": ["someMethod"]
-}
-```
-
-```js
-export function activate(api) {
-  return {
-    someMethod(argument) { return `did something with ${argument}` },
-  }
-}
-```
-
-Only the methods you list in `exports` are callable, and only by an
-extension that declares you as a dependency; every other property on
-the returned object is plain data, readable by any declared dependant
-without an allowlist entry. Calling a method you did not list throws
-*Method `<name>` is not exported by `<id>`.*
+The SDK carries a few small helpers so a plugin never re-invents them:
+`api.ui.el(tag, attrs, children)` builds one DOM element the safe way —
+never `innerHTML`, so nothing you pass can inject markup — for the
+rest of your face's own layout (rule 10 still governs presenting a
+*result*, through `api.ui.renderOutput`). `api.fetchJSON(url, init?)`
+is `api.fetch` plus a JSON parse, answering `{ ok, status, data,
+errorText }` and never throwing, not even for a denied request or a
+non-2xx response. `api.storage.pushList(key, item, { dedupeBy?, max?
+})` and `api.storage.getList(key)` are sugar over `get`/`set` for a
+request-history or cache-list. `api.convert.markdownToHtml(markdown)`
+is `htmlToMarkdown`'s reverse direction, the same sanitized renderer.
+`api.formatDate(iso, style)` formats a timestamp the way Mill's own
+interface does (`'relative'`, `'short'` or `'long'`) instead of a
+plugin's own `Date` math. Every one of these is optional — hand-rolling
+the same shape yourself still works, it's just more code.
 
 ## Checking your own plugin
 
