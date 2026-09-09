@@ -470,3 +470,14 @@ export const SECRET_REFERENCES_MCP_BASE_PORT = 12060
 // own per-worker spread.
 export const BROWSER_EXTENSION_MV3_SERVER_BASE_PORT = 12300
 export const BROWSER_EXTENSION_MV3_MCP_BASE_PORT = 12320
+
+// atlas-seeded-board-objects.spec.ts's own dedicated pair for its
+// plugin-example enumeration test (goal 0411 S2): MILL_PLUGINS_DIR
+// pointed at examples/plugins is a process-wide env every OTHER test
+// in that file's own shared server pool must never inherit (the same
+// reasoning RUNTIME_PLUGINS_SERVER_BASE_PORT above documents) -- but
+// this one test needs a real, unmodified gallery-reconcile boot WITH
+// declaring plugins present, so it gets its own server rather than
+// widening the shared pool's plugin set for every cohabiting spec.
+export const PLUGIN_EXAMPLE_GALLERY_SERVER_BASE_PORT = 12340
+export const PLUGIN_EXAMPLE_GALLERY_MCP_BASE_PORT = 12360

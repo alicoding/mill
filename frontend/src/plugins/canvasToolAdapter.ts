@@ -353,6 +353,7 @@ export function buildThirdPartyNoun(pluginId: string, manifest: Manifest, decl: 
 			run: (object) => { item.run(pluginObjectCtx(pluginId, object)) },
 			enabled: (object) => (item.enabled ? item.enabled(pluginObjectCtx(pluginId, object)) : true),
 		})),
+		example: contributed?.example ?? null,
 		icon: NAMED_GLYPHS[decl.icon] ?? emojiIcon(decl.icon),
 		label: decl.label,
 		nounName: decl.label,
