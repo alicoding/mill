@@ -2,8 +2,10 @@ package procexec
 
 import (
 	"bytes"
+	"context"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -32,6 +34,43 @@ func waitForGroupGone(t *testing.T, pgid int) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	t.Fatalf("process group %d still alive after waiting", pgid)
+}
+
+// groupSize counts live processes sharing pgid via `ps -g` (BSD and
+// GNU ps both support it) -- the same OS process table groupAlive
+// already reads, just counted instead of merely checked alive.
+func groupSize(pgid int) int {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "ps", "-o", "pid=", "-g", strconv.Itoa(pgid)).Output() //nolint:gosec // pgid is this test's own spawned process group, not external input
+	if err != nil {
+		return 0
+	}
+	return len(strings.Fields(strings.TrimSpace(string(out))))
+}
+
+// waitForGroupSize polls until the group has reached n members or the
+// deadline passes -- a real readiness signal for "the shell has
+// actually forked its background child" (goal 0358 S10), read from the
+// OS's own process table rather than a child-side echo. A readiness
+// echo INSERTED into the child's own shell script was tried first and
+// measured reliable locally but flaked in CI (elapsed 2.0012455s, the
+// full grace period, meaning SIGTERM stopped killing the group
+// promptly) -- inserting a command between the backgrounded job and
+// the script's own trailing command changed how CI's shell handled the
+// remaining foreground process, a shell-parsing dependency this poll
+// has none of: the child script is byte-for-byte what it was before
+// goal 0358 S10 touched this test.
+func waitForGroupSize(t *testing.T, pgid int, n int) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if groupSize(pgid) >= n {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("process group %d never reached %d members (last count %d)", pgid, n, groupSize(pgid))
 }
 
 // readySignal is a Spec.Output sink that closes ready once marker has
@@ -127,20 +166,20 @@ func TestStart_EchoCapture(t *testing.T) {
 }
 
 func TestCancel_KillsWholeProcessGroup(t *testing.T) {
-	// echo fires only after `&` has returned, and `&` returns only once
-	// the shell has actually forked the background sleep -- so ready
-	// signals a real second process now sits in the group, the fact
-	// killGroup below must reach (not just the shell leader).
-	ready := newReadySignal("ready\n")
+	var out bytes.Buffer
 	h, err := Start(Spec{
-		Argv:   []string{"/bin/sh", "-c", "sleep 30 & echo ready; sleep 30"},
-		Output: ready,
+		Argv:   []string{"/bin/sh", "-c", "sleep 30 & sleep 30"},
+		Output: &out,
 	})
 	if err != nil {
 		t.Fatalf("Start() error: %v", err)
 	}
 
-	ready.waitReady(t, 2*time.Second)
+	// waitForGroupSize (2 members: the leader plus the backgrounded
+	// sleep) replaces a guessed sleep for "the shell has actually
+	// forked its background child" -- see its own doc comment for why
+	// this polls the OS instead of a child-side readiness echo.
+	waitForGroupSize(t, h.PGID(), 2)
 	if !groupAlive(h.PGID()) {
 		t.Fatalf("process group %d not alive before Cancel", h.PGID())
 	}
