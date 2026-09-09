@@ -9,7 +9,9 @@
 import { describe, expect, it } from 'vitest'
 import { ACTIVATION_ONLY_METHODS, SIMPLE_DOORS } from '../app/pluginActivationBridge'
 import { FRAME_METHODS } from '../app/pluginFrameBridge'
+import { CANVAS_TOOL_DOORS } from '../plugins/canvasToolHostDoors'
 import { ACTIVATION_CALL_METHODS } from './activation'
+import { CANVAS_TOOL_CALLS } from './canvasTools'
 
 // The protocol-surface parity this file replaces the byte-parity test
 // with (goal 0396's Found: "the reviewer had to pin drift with a
@@ -31,5 +33,9 @@ describe('plugin-frame protocol surface', () => {
     const expected = new Set<string>([...SIMPLE_DOORS, ...ACTIVATION_ONLY_METHODS])
     const actual = new Set<string>(ACTIVATION_CALL_METHODS)
     expect(actual).toEqual(expected)
+  })
+
+  it("the canvas-tool half names the same doors on both sides -- the tool contract cannot drift from what the host routes", () => {
+    expect(new Set<string>(CANVAS_TOOL_CALLS)).toEqual(new Set<string>(CANVAS_TOOL_DOORS))
   })
 })
