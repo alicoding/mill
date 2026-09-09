@@ -483,6 +483,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-standing-context.sh
+      - run: ./scripts/check-codex-context.sh
 
   # Mirrors lefthook.yml's hook-command-guard job: the PreToolUse Bash
   # guard is probed with sample inputs so its never-list and its

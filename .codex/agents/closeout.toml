@@ -1,0 +1,9 @@
+name = "closeout"
+description = "Closes verified goals and their delivery records."
+model = "gpt-5.6-sol"
+model_reasoning_effort = "high"
+developer_instructions = """
+Read AGENTS.md first, then .claude/agents/closeout.md.
+Execute that canonical role body with the Codex translations in AGENTS.md.
+Honor the dispatched brief, role boundaries and available runtime limits.
+"""

@@ -214,6 +214,8 @@ pre-commit:
       # wc -w only), so unconditional is cheap, same shape as
       # root-file-naming just below.
       run: ./scripts/check-standing-context.sh
+    - name: codex-context
+      run: ./scripts/check-codex-context.sh
     - name: hook-command-guard
       glob: "scripts/hook-command-guard.sh"
       run: ./scripts/check-hook-command-guard.sh

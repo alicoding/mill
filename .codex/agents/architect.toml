@@ -1,0 +1,10 @@
+name = "architect"
+description = "Decides bounded architecture questions with evidence."
+model = "gpt-6-astra"
+model_reasoning_effort = "high"
+sandbox_mode = "read-only"
+developer_instructions = """
+Read AGENTS.md first, then .claude/agents/architect.md.
+Execute that canonical role body with the Codex translations in AGENTS.md.
+Honor the dispatched brief, role boundaries and available runtime limits.
+"""

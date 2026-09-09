@@ -1,0 +1,9 @@
+name = "test-investigator"
+description = "Investigates test failures and reports their cause."
+model = "gpt-5.6-sol"
+model_reasoning_effort = "high"
+developer_instructions = """
+Read AGENTS.md first, then .claude/agents/test-investigator.md.
+Execute that canonical role body with the Codex translations in AGENTS.md.
+Honor the dispatched brief, role boundaries and available runtime limits.
+"""

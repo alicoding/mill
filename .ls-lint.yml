@@ -117,6 +117,8 @@ ignore:
   - internal
   - scripts
   - .claude
+  - .agents
+  - .codex
   - .github
   - .task
   - .playwright-mcp

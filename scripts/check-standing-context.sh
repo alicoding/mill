@@ -23,6 +23,19 @@ if [[ -f "$claude_md" ]]; then
   fi
 fi
 
+if [[ ! -f AGENTS.md ]]; then
+  echo "error: AGENTS.md context router is missing" >&2
+  violations=$((violations + 1))
+else
+  agents_lines=$(wc -l <AGENTS.md | tr -d '[:space:]')
+  agents_words=$(wc -w <AGENTS.md | tr -d '[:space:]')
+  echo "standing-context: AGENTS.md overhead is $agents_lines lines / $agents_words words (limits 120 / 1500)"
+  if ((agents_lines > 120 || agents_words > 1500)); then
+    echo "error: AGENTS.md exceeds its separate routing overhead budget" >&2
+    violations=$((violations + 1))
+  fi
+fi
+
 total_words=0
 if [[ -d "$rules_dir" ]]; then
   while IFS= read -r -d '' file; do
