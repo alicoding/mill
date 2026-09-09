@@ -353,15 +353,20 @@ func TestListPlugins_ValidatesContributedSettings(t *testing.T) {
 	}
 }
 
-// A non-built-in plugin that contributes a canvas object keeps
-// same-DOM activation until the framed canvas API exists
-// (docs/goals/0375 S1b); PluginInfo names that honestly as the
-// "canvas-host" grant, never silently. A plugin with no canvas object
-// carries no grant, and a built-in never does either.
+// A non-built-in plugin whose canvas object draws into Mill's own
+// document (docs/goals/0375 S1b) carries the "canvas-host" grant,
+// named honestly rather than taken silently. Since the framed canvas
+// API exists (docs/goals/0380) a kind declared as a TOOL draws through
+// the bridge instead and needs no grant -- but one same-DOM kind is
+// still enough to need it, because the whole extension shares one
+// activation. A plugin with no canvas object carries no grant, and a
+// built-in never does either.
 func TestListPlugins_CanvasObjectGrantsCanvasHost(t *testing.T) {
 	root := t.TempDir()
 	writePlugin(t, root, "draws", `{"id":"draws","name":"Draws","version":"1.0.0","contributes":{"canvasObjects":[{"kind":"draws"}]}}`, nil)
 	writePlugin(t, root, "no-canvas", `{"id":"no-canvas","name":"No canvas","version":"1.0.0"}`, nil)
+	writePlugin(t, root, "tools-only", `{"id":"tools-only","name":"Tools only","version":"1.0.0","contributes":{"canvasObjects":[{"kind":"pencil","tool":true}]}}`, nil)
+	writePlugin(t, root, "mixed", `{"id":"mixed","name":"Mixed","version":"1.0.0","contributes":{"canvasObjects":[{"kind":"pencil","tool":true},{"kind":"legacy"}]}}`, nil)
 
 	svc := New(root, nil, "1.0.0")
 	infos, err := svc.ListPlugins()
@@ -377,5 +382,11 @@ func TestListPlugins_CanvasObjectGrantsCanvasHost(t *testing.T) {
 	}
 	if got := byID["no-canvas"]; len(got.Grants) != 0 {
 		t.Fatalf("no-canvas grants = %v, want none", got.Grants)
+	}
+	if got := byID["tools-only"]; len(got.Grants) != 0 {
+		t.Fatalf("tools-only grants = %v, want none: a framed tool draws through the bridge", got.Grants)
+	}
+	if got := byID["mixed"]; len(got.Grants) != 1 || got.Grants[0] != "canvas-host" {
+		t.Fatalf("mixed grants = %v, want [canvas-host]: one same-DOM kind is enough", got.Grants)
 	}
 }
