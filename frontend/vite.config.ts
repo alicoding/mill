@@ -116,6 +116,11 @@ export default defineConfig({
       // the build's own promise chain, so exitCode is set directly
       // rather than relied on to come from the throw.
       onLog(level, log) {
+        // PLUGIN_TIMINGS is a load report ("N% of the build inside plugin
+        // hooks"), not a code warning: on a slow shared runner it fires
+        // whenever the machine is busy, so it is the one warning code
+        // that must never fail a build.
+        if (level === "warn" && log.code === "PLUGIN_TIMINGS") return;
         if (level === "warn") {
           const message = `[vite build] warning treated as error: ${log.code ?? ""} ${log.message}`;
           console.error(message);
