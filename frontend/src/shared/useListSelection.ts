@@ -85,13 +85,17 @@ export function useListSelection(ids: string[]): UseListSelectionResult {
   const clear = useCallback(() => setState(clearSelected), [])
   const pruneTo = useCallback((validIds: string[]) => setState((prev) => pruneSelection(prev, validIds)), [])
 
+  // opensRow is a pure function of `mods` alone (activateRow never
+  // branches on `prev`), computed here directly rather than read back
+  // out of the setState updater below -- that updater is not
+  // guaranteed to run synchronously (React 19 does not eagerly
+  // compute a functional update outside its own bailout check), so a
+  // caller reading a closed-over variable right after calling setState
+  // saw it still at its initial value: every plain click reported
+  // opensRow: false and silently stopped opening the row.
   const activate = useCallback((id: string, mods: ActivationMods): boolean => {
-    let opensRow = false
-    setState((prev) => {
-      const result = activateRow(prev, idsRef.current, id, mods)
-      opensRow = result.opensRow
-      return result.state
-    })
+    const opensRow = !mods.shiftKey && !mods.toggleModifier
+    setState((prev) => activateRow(prev, idsRef.current, id, mods).state)
     return opensRow
   }, [])
 

@@ -61,6 +61,31 @@ test('deleting a freshly placed table: the toast names the list as unused, and u
   await expect(listRow(page, title)).toHaveCount(0)
 })
 
+// A plain click on the row body must still OPEN the row once a list
+// carries a selection model (goal 0404 S1): only Shift/toggle-modifier
+// clicks touch the selection, a bare click's `opensRow` signal is
+// unconditional. Regression coverage for a selection-model row that
+// stopped opening under selection entirely (list-grid-interactions.spec.ts's
+// own seedAndOpen depends on the same contract).
+test('Configure Lists: a plain click on the row body opens it, even with the selection model wired', async ({ page }) => {
+  const stamp = Date.now()
+  const label = `E2E plain open ${stamp}`
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await openConfigureKind(page, 'Lists')
+  await createList(page, label)
+  const row = listRow(page, label)
+  await expect(row).toBeVisible()
+
+  await row.click()
+  await expect(page.getByTestId('list-rows-editor')).toBeVisible()
+  await page.getByRole('button', { name: 'Close' }).click()
+  await expect(page.getByTestId('list-rows-editor')).toHaveCount(0)
+
+  await clickRowAction(page, row, 'Delete')
+  await expect(row).toHaveCount(0)
+})
+
 // The shared selection model (goal 0404 S1), proved on Configure Lists'
 // own Unused filter: a hover-revealed checkbox toggles, Shift-click
 // ranges, ⌘A selects everything the filter currently shows, and
