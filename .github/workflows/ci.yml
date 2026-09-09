@@ -170,7 +170,7 @@ jobs:
       - run: ./scripts/check-workflow-yaml.sh
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: false
       - run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
       - run: actionlint
@@ -565,7 +565,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
       - run: go install github.com/loeffel-io/ls-lint/v2/cmd/ls_lint@v2.3.1
       # Same wrapper as lefthook's root-file-naming job, so local and
@@ -584,7 +584,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
       - run: go mod tidy -diff
 
@@ -607,7 +607,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
       - run: ./scripts/check-affected-selftest.sh
 
@@ -714,7 +714,7 @@ jobs:
           path: frontend/dist
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
@@ -789,7 +789,7 @@ jobs:
           path: frontend/dist
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
       # Scoped to the root package + internal/, not `./...`: build/ios,
       # build/android etc. are gomobile-toolchain scaffold with no main()
@@ -838,7 +838,7 @@ jobs:
           path: frontend/dist
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
       # Only the dependency-free build/darwin/Taskfile.yml:create:app:bundle
       # task is used below (packaging only, no frontend/bindings deps) --
@@ -968,7 +968,7 @@ jobs:
           path: frontend/dist
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
       # The root package (`.`) is included alongside ./internal/... --
       # previously excluded, leaving the root-level service tests running
@@ -1009,7 +1009,7 @@ jobs:
           path: frontend/dist
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
       - run: ./scripts/list-affected-go-packages.sh
         env:
@@ -1043,7 +1043,7 @@ jobs:
           name: go-coverprofile
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -1120,7 +1120,7 @@ jobs:
           path: frontend/dist
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -1200,7 +1200,7 @@ jobs:
           path: frontend/dist
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -1285,14 +1285,14 @@ jobs:
       # failure caught on the first actual CI run, not assumed.
       - uses: golang/govulncheck-action@032d45514ae346b1db93c04b0c90b841c370344f # v1.1.0
         with:
-          go-version-input: '1.26'
+          go-version-file: go.mod
           go-package: ./internal/...
           repo-checkout: false # already checked out above; the action's
           # own default checkout would wipe the frontend-dist artifact
           # just downloaded, which the root package needs (//go:embed).
       - uses: golang/govulncheck-action@032d45514ae346b1db93c04b0c90b841c370344f # v1.1.0
         with:
-          go-version-input: '1.26'
+          go-version-file: go.mod
           go-package: .
           repo-checkout: false
 
@@ -1424,7 +1424,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26'
+          go-version-file: go.mod
           cache: true
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
