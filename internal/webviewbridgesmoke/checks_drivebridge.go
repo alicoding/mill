@@ -74,5 +74,15 @@ func checkRunCommandOpensSettings(c mcpCaller) (string, error) {
 	if err := pollJSEval(c, `return !!document.querySelector('[data-testid="settings-view"]');`, 10*time.Second); err != nil {
 		return "", fmt.Errorf("settings.open ran but the settings view never rendered: %w", err)
 	}
-	return "runCommand(settings.open) opened the settings view", nil
+	result, err = runCommand(c, "view.atlas", nil)
+	if err != nil {
+		return "", fmt.Errorf("runCommand(view.atlas): %w", err)
+	}
+	if !result.Ok {
+		return "", fmt.Errorf("runCommand(view.atlas) reported ok=false: %s", result.Error)
+	}
+	if err := pollJSEval(c, `return !!document.querySelector('[data-testid="atlas-board"]');`, 10*time.Second); err != nil {
+		return "", fmt.Errorf("view.atlas ran but the Atlas board never rendered: %w", err)
+	}
+	return "runCommand(settings.open) opened the settings view; view.atlas restored the Atlas board", nil
 }

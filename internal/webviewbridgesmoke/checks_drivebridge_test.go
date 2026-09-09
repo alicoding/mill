@@ -67,6 +67,66 @@ func TestRunCommand_BridgeGapPropagates(t *testing.T) {
 	}
 }
 
+func TestCheckRunCommandOpensSettings_RestoresAtlas(t *testing.T) {
+	f := newFakeCaller()
+	f.onJSON("js_eval", driveRunCommandResult{Ok: true})
+	f.onJSON("js_eval", true)
+	f.onJSON("js_eval", driveRunCommandResult{Ok: true})
+	f.onJSON("js_eval", true)
+
+	detail, err := checkRunCommandOpensSettings(f)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(detail, "restored the Atlas board") {
+		t.Errorf("detail = %q", detail)
+	}
+	if len(f.calls) != 4 {
+		t.Fatalf("expected four js_eval calls, got %+v", f.calls)
+	}
+	wantJS := []string{`"settings.open"`, `settings-view`, `"view.atlas"`, `atlas-board`}
+	for i, want := range wantJS {
+		if f.calls[i].tool != "js_eval" {
+			t.Errorf("call %d tool = %q, want js_eval", i, f.calls[i].tool)
+		}
+		js, _ := f.calls[i].args["js"].(string)
+		if !strings.Contains(js, want) {
+			t.Errorf("call %d js = %q, want it to contain %q", i, js, want)
+		}
+	}
+}
+
+func TestCheckRunCommandOpensSettings_RestorationFailure(t *testing.T) {
+	t.Run("command refuses", func(t *testing.T) {
+		f := newFakeCaller()
+		f.onJSON("js_eval", driveRunCommandResult{Ok: true})
+		f.onJSON("js_eval", true)
+		f.onJSON("js_eval", driveRunCommandResult{Ok: false, Error: "Atlas unavailable"})
+
+		if _, err := checkRunCommandOpensSettings(f); err == nil || !strings.Contains(err.Error(), "runCommand(view.atlas) reported ok=false: Atlas unavailable") {
+			t.Fatalf("expected command-specific restoration refusal, got %v", err)
+		}
+		if len(f.calls) != 3 {
+			t.Fatalf("expected failure before the Atlas readiness poll, got %+v", f.calls)
+		}
+	})
+
+	t.Run("transport error", func(t *testing.T) {
+		transportErr := errors.New("bridge disconnected")
+		f := newFakeCaller()
+		f.onJSON("js_eval", driveRunCommandResult{Ok: true})
+		f.onJSON("js_eval", true)
+		f.onError("js_eval", transportErr)
+
+		if _, err := checkRunCommandOpensSettings(f); !errors.Is(err, transportErr) {
+			t.Fatalf("expected restoration transport error to propagate, got %v", err)
+		}
+		if len(f.calls) != 3 {
+			t.Fatalf("expected failure before the Atlas readiness poll, got %+v", f.calls)
+		}
+	})
+}
+
 func TestQuitApp_CallsDevBridgeQuit(t *testing.T) {
 	f := newFakeCaller()
 	f.on("call_bound_method", func(args map[string]any) (string, error) {
