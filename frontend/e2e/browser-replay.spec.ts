@@ -15,6 +15,7 @@ import { openSettings } from './fixtures/settingsNav'
 import { activePanel, workflowRow } from './fixtures/canvas'
 import { clickCanvasNode } from './fixtures/canvasNode'
 import { nonSeededBoardObjects } from './fixtures/atlasBoard'
+import { SEEDED, runSeededWorkflow, approveTheParkedRun } from './fixtures/browserReplay'
 
 // The browser-replay step end to end (goal 0350 S2): import a recording
 // into the seeded example, bind a parameter to it, run it in a paired
@@ -25,9 +26,11 @@ import { nonSeededBoardObjects } from './fixtures/atlasBoard'
 // both global app state (testing.md's shared-vs-dedicated rule).
 //
 // The browser half is the stand-in speaking the real wire protocol
-// (fixtures/fakeExtension.ts) -- see that file for why.
+// (fixtures/fakeExtension.ts) -- see that file for why. runSeededWorkflow/
+// approveTheParkedRun live in fixtures/browserReplay.ts (testing.md:
+// browser-extension-mv3.spec.ts needs the same two steps against a real
+// extension).
 
-const SEEDED = 'Example: Replay a browser flow'
 const TYPED = 'hello from Mill'
 
 // Pairing, an import, an edit and two guarded runs in one test: the
@@ -69,6 +72,11 @@ test('a recorded flow becomes a step: import it, bind a parameter, replay it, re
       settingsPath: path.join(dir, 'settings.json'),
       executionDbPath: path.join(dir, 'execution.db'),
       backupDir: path.join(dir, 'backups'),
+      // Step 7 below stops the extension and reruns the workflow to see
+      // the "no browser" failure -- production waits a full
+      // browserbridge.ConnectWaitSeconds (45s) for a reconnect first;
+      // this spec shortens that wait so the assertion doesn't pay it.
+      extraEnv: { MILL_BRIDGE_CONNECT_WAIT_MS: '2000' },
     })
     const page = await browser.newPage()
     await applyCpuThrottle(page)
@@ -130,7 +138,7 @@ test('a recorded flow becomes a step: import it, bind a parameter, replay it, re
 
     // 5. Run it against this server's own bridge address. Driving a live
     //    site is an external effect, so it parks for approval.
-    await runSeededWorkflow(page, testPageURL)
+    await runSeededWorkflow(page, testPageURL, TYPED)
     await approveTheParkedRun(page)
 
     // 6. The browser really replayed it, against the bound address, and
@@ -150,10 +158,10 @@ test('a recorded flow becomes a step: import it, bind a parameter, replay it, re
     //    can act on.
     extension.stop()
     extension = undefined
-    await runSeededWorkflow(page, testPageURL)
+    await runSeededWorkflow(page, testPageURL, TYPED)
     await approveTheParkedRun(page)
     await expect(page.getByTestId('run-detail'))
-      .toContainText('No browser is connected. Pair the Mill extension first.', { timeout: 60_000 })
+      .toContainText('No browser is connected. Open the Mill extension in your browser and run again.', { timeout: 60_000 })
   } finally {
     extension?.stop()
     await browser.close()
@@ -214,7 +222,7 @@ test('a browser-replay download lands as a board object, checksum-matched on a s
 
     // 1. Run the seed's own recording -- unedited, so its own download
     //    step runs -- and approve the park.
-    await runSeededWorkflow(page, testPageURL)
+    await runSeededWorkflow(page, testPageURL, TYPED)
     await approveTheParkedRun(page)
     const fileObjectStep = await expandFileObjectStepOutput(page)
     await expect(fileObjectStep).toContainText('mill-bridge-test.pdf', { timeout: 60_000 })
@@ -232,7 +240,7 @@ test('a browser-replay download lands as a board object, checksum-matched on a s
     // 3. Running it again brings back the exact same file -- matched by
     //    content, not landed a second time -- and the run says when it
     //    first landed.
-    await runSeededWorkflow(page, testPageURL)
+    await runSeededWorkflow(page, testPageURL, TYPED)
     await approveTheParkedRun(page)
     await expect(await expandFileObjectStepOutput(page)).toContainText('Already on the board since run', { timeout: 60_000 })
 
@@ -245,41 +253,6 @@ test('a browser-replay download lands as a board object, checksum-matched on a s
     rmSync(dir, { recursive: true, force: true })
   }
 })
-
-// Starts the seeded workflow from the Workflows list, filling this run's
-// two declared Attributes, and lands on its own Runs tab.
-async function runSeededWorkflow(page: Page, pageURL: string): Promise<void> {
-  await page.getByRole('link', { name: 'Workflows' }).click()
-  const row = workflowRow(page, SEEDED)
-  await expect(row).toBeVisible()
-  await row.getByRole('button', { name: 'Run' }).click()
-
-  // A workflow with declared Attributes asks for this run's values
-  // before it starts.
-  const dialog = page.getByRole('dialog')
-  await expect(dialog).toBeVisible()
-  await dialog.getByLabel('Page address').fill(pageURL)
-  await dialog.getByLabel('Text to type').fill(TYPED)
-  await dialog.getByRole('button', { name: 'Run', exact: true }).click()
-
-  // Saving closed the editor tab, so the workflow is opened again from
-  // its row to reach its own Runs tab.
-  await row.click()
-  await page.getByRole('tab', { name: 'Runs' }).click()
-}
-
-// Opens the newest parked run and approves its browser step.
-async function approveTheParkedRun(page: Page): Promise<void> {
-  await expect(page.getByTestId('run-awaiting-approval').first()).toBeVisible({ timeout: 30_000 })
-  await page.getByTestId('runs-table').locator('tbody tr').first().click()
-  const banner = page.getByTestId('approval-banner')
-  await expect(banner).toBeVisible()
-  await expect(banner).toContainText('Replay in the browser')
-  await banner.getByTestId('approve-step').click()
-  // The run resumes asynchronously; nothing downstream is true until the
-  // approval banner is gone.
-  await expect(page.getByTestId('approval-banner')).toHaveCount(0, { timeout: 60_000 })
-}
 
 // Leaves the auto-entered "The engagement" for the true top level ("All
 // spaces"), where a root-level (ParentID=="") object actually lives.

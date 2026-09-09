@@ -46,14 +46,18 @@ const CodePairingLockedOut = "pairing-locked-out"
 //
 // source is the caller's connection key (the bridge passes the
 // request's remote IP) so a scripted guessing loop locks out exactly
-// like a hand-typed one.
+// like a hand-typed one. origin is the pairing request's own Origin
+// header (goal 0418) -- recorded on the minted credential so the
+// bridge's WebSocket door can bind to it later; "" (no header, or a
+// caller that never passes one) leaves the credential to learn its
+// origin on its first connect instead (RecordBrowserOrigin).
 //
 // Exported for the bridge's HTTP handler, never for the frontend: a
 // bound RPC returning a raw token would hand every page in the webview
 // a credential it has no business holding.
 //
 //wails:ignore
-func (s *RemoteAuthService) PairBrowser(code, label, source string) (BrowserPairing, error) {
+func (s *RemoteAuthService) PairBrowser(code, label, source, origin string) (BrowserPairing, error) {
 	now := time.Now()
 
 	s.mu.Lock()
@@ -73,11 +77,70 @@ func (s *RemoteAuthService) PairBrowser(code, label, source string) (BrowserPair
 		s.mu.Unlock()
 		return BrowserPairing{}, err
 	}
+	if origin != "" {
+		s.devices[len(s.devices)-1].Origin = origin
+		if err := s.saveDevices(); err != nil {
+			s.logger.Error("remote access: recording browser origin", "error", err)
+		}
+	}
 	minted := s.devices[len(s.devices)-1]
 	s.mu.Unlock()
 
 	s.logger.Info("browser bridge: browser paired", "device", minted.ID, "label", minted.Label)
 	return BrowserPairing{Token: token, DeviceID: minted.ID, Label: minted.Label}, nil
+}
+
+// BrowserOrigin returns a paired browser credential's own recorded
+// Origin (goal 0418) and whether one has been recorded yet -- false
+// for a credential paired before this field existed that has not yet
+// connected once (RecordBrowserOrigin learns it there), or for an
+// unknown id.
+//
+// Exported for the bridge's HTTP handler, never for the frontend.
+//
+//wails:ignore
+func (s *RemoteAuthService) BrowserOrigin(deviceID string) (string, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, d := range s.devices {
+		if d.ID == deviceID && d.Kind == KindBrowser {
+			return d.Origin, d.Origin != ""
+		}
+	}
+	return "", false
+}
+
+// RecordBrowserOrigin persists the Origin a legacy credential's first
+// WebSocket connection presented (goal 0418): a device paired before
+// this field existed has none recorded, so the bridge's WS door
+// accepts that first connection unconditionally and learns its origin
+// here, enforcing it on every connection after. A no-op once a
+// credential already has one, and for an id that no longer resolves to
+// a browser -- both are races the caller cannot prevent and neither is
+// worth failing the connection that already succeeded over.
+//
+// Exported for the bridge's HTTP handler, never for the frontend.
+//
+//wails:ignore
+func (s *RemoteAuthService) RecordBrowserOrigin(deviceID, origin string) {
+	s.mu.Lock()
+	matchedIndex := -1
+	for i, d := range s.devices {
+		if d.ID == deviceID && d.Kind == KindBrowser {
+			matchedIndex = i
+			break
+		}
+	}
+	if matchedIndex == -1 || s.devices[matchedIndex].Origin != "" {
+		s.mu.Unlock()
+		return
+	}
+	s.devices[matchedIndex].Origin = origin
+	if err := s.saveDevices(); err != nil {
+		s.logger.Error("remote access: recording browser origin", "error", err)
+	}
+	s.mu.Unlock()
+	s.logger.Info("browser bridge: learned browser origin on first connect", "device", deviceID)
 }
 
 // ValidateBrowserToken reports whether token names a live paired

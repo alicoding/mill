@@ -18,7 +18,7 @@ var AllowedAttributes = map[Kind][]string{
 		"error_text",
 	},
 	KindBridgeCommand: {
-		"error_text", "status_code",
+		"error_text", "status_code", "waited_for_browser_ms",
 	},
 }
 

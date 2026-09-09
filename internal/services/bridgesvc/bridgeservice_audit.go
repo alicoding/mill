@@ -56,7 +56,11 @@ func (s *BridgeService) CloseAudit() error {
 // request/call context (an HTTP handler's r.Context(), or Replay's own
 // ctx) -- never context.Background() invented here, so a cancelled
 // request's audit write is cancelled the same way its response is.
-func (s *BridgeService) recordCommand(ctx context.Context, action string, target audit.Target, actorSource, outcome, failureKind string, statusCode int, errText string) {
+// extra is an optional, already-flattened key/value tail (e.g. a
+// replay's own waited_for_browser_ms) -- an odd trailing key is
+// dropped rather than panicking, since a caller-side arg-count slip
+// must never take down the audit write.
+func (s *BridgeService) recordCommand(ctx context.Context, action string, target audit.Target, actorSource, outcome, failureKind string, statusCode int, errText string, extra ...string) {
 	if s.auditStore == nil {
 		return
 	}
@@ -66,6 +70,9 @@ func (s *BridgeService) recordCommand(ctx context.Context, action string, target
 			errText = errText[:bridgeErrorTextCap]
 		}
 		attrs["error_text"] = errText
+	}
+	for i := 0; i+1 < len(extra); i += 2 {
+		attrs[extra[i]] = extra[i+1]
 	}
 	entry := audit.Entry{
 		Kind: audit.KindBridgeCommand, Action: action, Target: target,

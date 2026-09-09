@@ -1,7 +1,6 @@
 package bridgesvc_test
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -20,6 +19,8 @@ import (
 	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/alicoding/mill/internal/services/bridgesvc"
 	"github.com/alicoding/mill/internal/services/remoteauthsvc"
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 )
 
 // stubAuth stands in for remoteauthsvc so these tests pin the bridge's
@@ -61,14 +62,14 @@ func (a *stubAuth) RevokeDevice(id string) error {
 	return nil
 }
 
-func (a *stubAuth) PairBrowser(code, label, source string) (remoteauthsvc.BrowserPairing, error) {
+func (a *stubAuth) PairBrowser(code, label, source, origin string) (remoteauthsvc.BrowserPairing, error) {
 	if a.pairErr != nil {
 		return remoteauthsvc.BrowserPairing{}, a.pairErr
 	}
 	return remoteauthsvc.BrowserPairing{Token: a.token, DeviceID: "browser-1", Label: label}, nil
 }
 
-func (a *stubAuth) RequestPairing(label, source string) (remoteauthsvc.PairingRequestInfo, error) {
+func (a *stubAuth) RequestPairing(label, source, origin string) (remoteauthsvc.PairingRequestInfo, error) {
 	a.pairRequestCalls = append(a.pairRequestCalls, label+"|"+source)
 	if a.pairRequestErr != nil {
 		return remoteauthsvc.PairingRequestInfo{}, a.pairRequestErr
@@ -80,6 +81,16 @@ func (a *stubAuth) PairingStatus(requestID string) remoteauthsvc.PairingRequestS
 	a.pairStatusCalls = append(a.pairStatusCalls, requestID)
 	return a.pairStatus
 }
+
+// BrowserOrigin/RecordBrowserOrigin are no-ops here: every test in this
+// package that opens a socket dials with Go's own http client, which
+// sends no Origin header, so coder/websocket's own check never fires
+// regardless of what these return. The real binding (accept/mismatch/
+// legacy-learn) is pinned directly against remoteauthsvc.RemoteAuthService
+// in bridgeservice_origin_test.go, the one place it can be observed.
+func (a *stubAuth) BrowserOrigin(deviceID string) (string, bool) { return "", false }
+
+func (a *stubAuth) RecordBrowserOrigin(deviceID, origin string) {}
 
 func (a *stubAuth) ValidateBrowserToken(token string) (remoteauthsvc.DeviceInfo, bool) {
 	if a.revoked.Load() || token == "" || token != a.token {
@@ -103,45 +114,41 @@ func newService(t *testing.T, auth *stubAuth) (*bridgesvc.BridgeService, *httpte
 	return svc, srv
 }
 
-// openStream connects as a paired browser and returns a reader over the
-// SSE frames, plus a stop func. Fails the test if the handshake is
-// refused.
-func openStream(t *testing.T, srv *httptest.Server) (*bufio.Reader, func()) {
+// openSocket connects as a paired browser over the WebSocket channel
+// and returns the connection, plus a stop func. Fails the test if the
+// handshake is refused. Every test in this package pairs against
+// stubAuth{token: "good"}, so the subprotocol token is fixed here too.
+func openSocket(t *testing.T, srv *httptest.Server) (*websocket.Conn, func()) {
 	t.Helper()
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL+bridgesvc.EventsPath, nil)
+	conn, resp, err := websocket.Dial(t.Context(), srv.URL+bridgesvc.WSPath, &websocket.DialOptions{
+		Subprotocols: []string{"mill-token.good"},
+	})
+	// coder/websocket sets resp.Body nil on a successful upgrade (the
+	// connection owns framing from then on) and to a NopCloser wrapping
+	// what it already read on a refused one -- nil-safe either way.
+	if resp != nil && resp.Body != nil {
+		defer func() { _ = resp.Body.Close() }()
+	}
 	if err != nil {
-		t.Fatalf("NewRequestWithContext() = %v, want nil error", err)
+		t.Fatalf("dialing the socket = %v, want nil error", err)
 	}
-	req.Header.Set("Authorization", "Bearer good")
-	resp, err := http.DefaultClient.Do(req) //nolint:bodyclose // closed by the returned stop func
-	if err != nil {
-		t.Fatalf("stream request = %v, want nil error", err)
+	if resp.StatusCode != http.StatusSwitchingProtocols {
+		t.Fatalf("socket status = %d, want %d", resp.StatusCode, http.StatusSwitchingProtocols)
 	}
-	if resp.StatusCode != http.StatusOK {
-		_ = resp.Body.Close()
-		t.Fatalf("stream status = %d, want %d", resp.StatusCode, http.StatusOK)
-	}
-	return bufio.NewReader(resp.Body), func() { _ = resp.Body.Close() }
+	return conn, func() { _ = conn.Close(websocket.StatusNormalClosure, "") }
 }
 
-// readCommand reads the next SSE data frame as a command envelope.
-func readCommand(t *testing.T, r *bufio.Reader) browserbridge.Command {
+// readCommand reads the next message off the socket as a command
+// envelope.
+func readCommand(t *testing.T, conn *websocket.Conn) browserbridge.Command {
 	t.Helper()
-	for {
-		line, err := r.ReadString('\n')
-		if err != nil {
-			t.Fatalf("reading the stream = %v, want a data frame", err)
-		}
-		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, "data: ") {
-			continue
-		}
-		var command browserbridge.Command
-		if err := json.Unmarshal([]byte(strings.TrimPrefix(line, "data: ")), &command); err != nil {
-			t.Fatalf("decoding %q = %v, want a command", line, err)
-		}
-		return command
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	var command browserbridge.Command
+	if err := wsjson.Read(ctx, conn, &command); err != nil {
+		t.Fatalf("reading the socket = %v, want a command", err)
 	}
+	return command
 }
 
 func postResult(t *testing.T, srv *httptest.Server, token string, result browserbridge.Result) int {
@@ -164,29 +171,31 @@ func postResult(t *testing.T, srv *httptest.Server, token string, result browser
 	return resp.StatusCode
 }
 
-// TestEvents_RequiresPairedToken pins the rule that separates this
-// listener from every other loopback surface in Mill: a loopback
-// connection is NOT sufficient here, because any local process could
-// otherwise drive the user's tabs.
-func TestEvents_RequiresPairedToken(t *testing.T) {
+// TestWS_RequiresPairedToken pins the rule that separates this listener
+// from every other loopback surface in Mill: a loopback connection is
+// NOT sufficient here, because any local process could otherwise drive
+// the user's tabs. A plain (non-upgrade) request is enough to prove
+// this: the token is checked and refused BEFORE websocket.Accept ever
+// runs, so no real handshake is needed to see the 401.
+func TestWS_RequiresPairedToken(t *testing.T) {
 	_, srv := newService(t, &stubAuth{token: "good"})
 
-	for _, tc := range []struct{ name, header string }{
-		{"no header", ""},
-		{"wrong token", "Bearer wrong"},
-		{"not a bearer", "good"},
+	for _, tc := range []struct{ name, subprotocol string }{
+		{"no subprotocol", ""},
+		{"wrong token", "mill-token.wrong"},
+		{"not the mill-token shape", "good"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL+bridgesvc.EventsPath, nil)
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL+bridgesvc.WSPath, nil)
 			if err != nil {
 				t.Fatalf("NewRequestWithContext() = %v, want nil error", err)
 			}
-			if tc.header != "" {
-				req.Header.Set("Authorization", tc.header)
+			if tc.subprotocol != "" {
+				req.Header.Set("Sec-WebSocket-Protocol", tc.subprotocol)
 			}
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
-				t.Fatalf("stream request = %v, want nil error", err)
+				t.Fatalf("request = %v, want nil error", err)
 			}
 			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusUnauthorized {
@@ -196,9 +205,14 @@ func TestEvents_RequiresPairedToken(t *testing.T) {
 	}
 }
 
-// TestReplay_NoBrowserConnected pins the immediate, named failure --
-// never a wait that ends in a timeout the reader can't act on.
+// TestReplay_NoBrowserConnected pins the named failure a reader can act
+// on once beginRun's own wait for a browser to (re)connect (pinned by
+// TestBeginRun_WaitsThenSucceeds/TestBeginRun_WaitsThenFails in
+// bridgeservice_ws_test.go) has run out. The wait itself is shortened
+// via ConnectWaitEnvVar -- an external test has no access to the
+// unexported field a same-package test would set directly.
 func TestReplay_NoBrowserConnected(t *testing.T) {
+	t.Setenv(bridgesvc.ConnectWaitEnvVar, "50")
 	svc, _ := newService(t, &stubAuth{token: "good"})
 
 	_, err := svc.Replay(context.Background(), browserbridge.TestFlow("http://127.0.0.1:1/page"), bridgesvc.ReplayOptions{})
@@ -209,8 +223,8 @@ func TestReplay_NoBrowserConnected(t *testing.T) {
 	if !errors.As(err, &declared) || declared.Code != browserbridge.CodeNoBrowser {
 		t.Fatalf("Replay() error = %v, want code %q", err, browserbridge.CodeNoBrowser)
 	}
-	if declared.Message != "No browser is connected. Pair the Mill extension first." {
-		t.Fatalf("Replay() message = %q, want the pair-first sentence", declared.Message)
+	if declared.Message != "No browser is connected. Open the Mill extension in your browser and run again." {
+		t.Fatalf("Replay() message = %q, want the open-extension sentence", declared.Message)
 	}
 }
 
@@ -220,7 +234,7 @@ func TestReplay_NoBrowserConnected(t *testing.T) {
 func TestReplay_DeliversAndCorrelates(t *testing.T) {
 	auth := &stubAuth{token: "good"}
 	svc, srv := newService(t, auth)
-	stream, stop := openStream(t, srv)
+	conn, stop := openSocket(t, srv)
 	defer stop()
 	waitForBrowsers(t, svc)
 
@@ -234,7 +248,7 @@ func TestReplay_DeliversAndCorrelates(t *testing.T) {
 		results <- outcome{out, err}
 	}()
 
-	command := readCommand(t, stream)
+	command := readCommand(t, conn)
 	if command.Kind != browserbridge.KindReplay {
 		t.Fatalf("command kind = %q, want %q", command.Kind, browserbridge.KindReplay)
 	}
@@ -279,7 +293,7 @@ func TestReplay_DeliversAndCorrelates(t *testing.T) {
 // generic one.
 func TestReplay_FailedRunCarriesTheBrowsersSentence(t *testing.T) {
 	svc, srv := newService(t, &stubAuth{token: "good"})
-	stream, stop := openStream(t, srv)
+	conn, stop := openSocket(t, srv)
 	defer stop()
 	waitForBrowsers(t, svc)
 
@@ -289,7 +303,7 @@ func TestReplay_FailedRunCarriesTheBrowsersSentence(t *testing.T) {
 		errs <- err
 	}()
 
-	command := readCommand(t, stream)
+	command := readCommand(t, conn)
 	sentence := "Couldn't find the element for step 2 (#mill-bridge-button)."
 	postResult(t, srv, "good", browserbridge.Result{ID: command.ID, Status: browserbridge.StatusFailed, Error: sentence})
 
@@ -318,32 +332,32 @@ func TestResult_RequiresPairedToken(t *testing.T) {
 	}
 }
 
-// TestPingEnvelope_CarriesNoRunID pins the ping's wire shape: a
-// keepalive must never look like a command a browser could try to run,
-// so it carries a kind and nothing else. The interval and the stream's
-// own behaviour are pinned in-package by
-// TestEvents_KeepalivePingsAndClosesOnRevoke.
-func TestPingEnvelope_CarriesNoRunID(t *testing.T) {
+// TestKeepaliveEnvelope_CarriesNoRunID pins the keepalive's wire shape:
+// it must never look like a command a browser could try to run, so it
+// carries a kind and nothing else. The interval and the socket's own
+// behaviour are pinned in-package by
+// TestWS_KeepaliveMessagesAndClosesOnRevoke (bridgeservice_ws_test.go).
+func TestKeepaliveEnvelope_CarriesNoRunID(t *testing.T) {
 	if browserbridge.KeepaliveSeconds <= 0 {
 		t.Fatalf("KeepaliveSeconds = %d, want a positive interval", browserbridge.KeepaliveSeconds)
 	}
-	encoded, err := json.Marshal(browserbridge.Command{Kind: browserbridge.KindPing})
+	encoded, err := json.Marshal(browserbridge.Command{Kind: browserbridge.KindKeepalive})
 	if err != nil {
-		t.Fatalf("marshalling a ping = %v, want nil error", err)
+		t.Fatalf("marshalling a keepalive = %v, want nil error", err)
 	}
-	if got := string(encoded); got != `{"kind":"ping"}` {
-		t.Fatalf("ping envelope = %s, want a bare kind with no run id", got)
+	if got := string(encoded); got != `{"kind":"keepalive"}` {
+		t.Fatalf("keepalive envelope = %s, want a bare kind with no run id", got)
 	}
 }
 
 // TestResult_RevokedBrowserIsRefusedImmediately pins the half of
 // revocation that takes effect with no wait: a revoked browser's very
-// next result POST is refused. The stream's own drop is pinned by
-// TestEvents_RevokedStreamClosesOnKeepalive.
+// next result POST is refused. The socket's own drop is pinned by
+// TestWS_KeepaliveMessagesAndClosesOnRevoke (bridgeservice_ws_test.go).
 func TestResult_RevokedBrowserIsRefusedImmediately(t *testing.T) {
 	auth := &stubAuth{token: "good"}
 	svc, srv := newService(t, auth)
-	_, stop := openStream(t, srv)
+	_, stop := openSocket(t, srv)
 	defer stop()
 	waitForBrowsers(t, svc)
 
@@ -449,7 +463,7 @@ func TestBridgeStatus_ReportsAddressAndConnections(t *testing.T) {
 		t.Fatalf("status address = %q, want an http address", before.Address)
 	}
 
-	_, stop := openStream(t, srv)
+	_, stop := openSocket(t, srv)
 	defer stop()
 	waitForBrowsers(t, svc)
 	if after := svc.BridgeStatus(); !after.Connected || after.Browsers != 1 {

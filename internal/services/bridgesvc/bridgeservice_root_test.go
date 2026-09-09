@@ -62,17 +62,17 @@ func TestRoot_LoopbackOnly(t *testing.T) {
 func TestRoot_DoesNotAlterOtherRoutes(t *testing.T) {
 	_, srv := newService(t, &stubAuth{token: "good"})
 
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL+bridgesvc.EventsPath, nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL+bridgesvc.WSPath, nil)
 	if err != nil {
 		t.Fatalf("NewRequestWithContext() = %v, want nil error", err)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Fatalf("events request = %v, want nil error", err)
+		t.Fatalf("ws request = %v, want nil error", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("unpaired events status = %d, want %d (root must not widen this route's posture)", resp.StatusCode, http.StatusUnauthorized)
+		t.Fatalf("unpaired ws status = %d, want %d (root must not widen this route's posture)", resp.StatusCode, http.StatusUnauthorized)
 	}
 
 	// A genuinely unknown path is still a real 404, not the root page:

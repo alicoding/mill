@@ -67,6 +67,10 @@ type pairingRequest struct {
 	expiresAt time.Time
 	token     string
 	deviceID  string
+	// origin is the popup's own Origin header on the request that
+	// minted this pairing request (goal 0418), carried onto the
+	// credential AcceptPairingRequest mints.
+	origin string
 }
 
 // PairingRequestInfo is what a browser's popup receives from
@@ -144,7 +148,7 @@ func generateRequestID() (string, error) {
 // meant to arrive from a browser's popup over loopback HTTP.
 //
 //wails:ignore
-func (s *RemoteAuthService) RequestPairing(label, source string) (PairingRequestInfo, error) {
+func (s *RemoteAuthService) RequestPairing(label, source, origin string) (PairingRequestInfo, error) {
 	now := time.Now()
 
 	s.mu.Lock()
@@ -172,6 +176,7 @@ func (s *RemoteAuthService) RequestPairing(label, source string) (PairingRequest
 		label:     label,
 		status:    pairingRequestStatusPending,
 		expiresAt: expiresAt,
+		origin:    origin,
 	}
 	notif := s.notif
 	s.mu.Unlock()
@@ -267,6 +272,12 @@ func (s *RemoteAuthService) AcceptPairingRequest(requestID string) (BrowserPairi
 	if err != nil {
 		s.mu.Unlock()
 		return BrowserPairing{}, err
+	}
+	if req.origin != "" {
+		s.devices[len(s.devices)-1].Origin = req.origin
+		if err := s.saveDevices(); err != nil {
+			s.logger.Error("remote access: recording browser origin", "error", err)
+		}
 	}
 	minted := s.devices[len(s.devices)-1]
 	req.status = pairingRequestStatusAccepted

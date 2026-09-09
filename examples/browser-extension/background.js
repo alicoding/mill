@@ -1,16 +1,24 @@
-// The extension's half of the bridge. It holds ONE stream open to Mill
-// and runs whatever arrives on it. Mill never opens a connection to the
-// browser: this worker decides the channel exists, and closing it or
-// revoking the pairing ends it.
+// The extension's half of the bridge. It holds ONE WebSocket open to
+// Mill and runs whatever arrives on it. Mill never opens a connection
+// to the browser: this worker -- or the popup, waking it -- decides
+// the channel exists, and closing it or revoking the pairing ends it.
 //
-// Chrome tears an extension service worker down when it goes idle, so
-// the open stream is what keeps this alive -- Mill's keepalive is a
-// chunk every 25 seconds, and each chunk resets that timer. If the
-// worker is torn down anyway, connect() runs again on the next startup
-// event and the stream is re-established.
+// Chrome tears an extension service worker down after ~30s idle.
+// WebSocket message activity is one of the events that resets that
+// timer (Chrome 116+), so the open socket is what keeps this worker
+// alive between commands -- Mill's own keepalive message every 25
+// seconds is what supplies that activity while no command is running.
+// If the worker is torn down anyway (Chrome can still do this under
+// memory pressure), nothing here runs again until something wakes it:
+// a chrome.alarms tick (the platform's own 30s floor), the browser
+// starting up, the extension installing, a stored-settings change, or
+// the popup's own reconnect message. ensureConnected() is idempotent,
+// so every one of those triggers can call it with no risk of ever
+// opening a second socket.
 
 const STORAGE_KEY = 'millBridge'
 const RECONNECT_MS = 5000
+const RECONNECT_ALARM = 'mill-reconnect'
 
 async function settings() {
   const stored = await chrome.storage.local.get(STORAGE_KEY)
@@ -21,56 +29,56 @@ function authHeaders(token) {
   return { Authorization: `Bearer ${token}` }
 }
 
-// Reads the SSE body as it arrives and hands each `data:` frame to
-// onEvent. Server-sent events over fetch rather than EventSource:
-// EventSource does not exist in an extension service worker, and it
-// could not carry the Authorization header the bridge requires anyway.
-async function readStream(response, onEvent) {
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  for (;;) {
-    const { value, done } = await reader.read()
-    if (done) return
-    buffer += decoder.decode(value, { stream: true })
-    let split
-    while ((split = buffer.indexOf('\n\n')) !== -1) {
-      const frame = buffer.slice(0, split)
-      buffer = buffer.slice(split + 2)
-      for (const line of frame.split('\n')) {
-        if (!line.startsWith('data: ')) continue
-        try {
-          onEvent(JSON.parse(line.slice(6)))
-        } catch {
-          // A frame this build cannot parse is skipped, never fatal --
-          // dropping the whole stream would take the working commands
-          // down with the one bad frame.
-        }
-      }
-    }
-  }
+// wsURL turns the stored http(s) address into the ws(s) one the
+// platform's WebSocket constructor requires -- it accepts nothing else.
+function wsURL(address) {
+  return `${address.replace(/^http/, 'ws')}/__mill/bridge/ws`
 }
 
-let connecting = false
+let socket = null
 
-async function connect() {
-  if (connecting) return
-  connecting = true
+// ensureConnected is the ONE place a socket opens. It is a no-op while
+// one is already OPEN or CONNECTING, so every trigger below can call it
+// freely without coordinating with the others.
+async function ensureConnected() {
+  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return
+  const { address, token } = await settings()
+  if (!address || !token) return
+
+  let next
   try {
-    const { address, token } = await settings()
-    if (!address || !token) return
-    const response = await fetch(`${address}/__mill/bridge/events`, { headers: authHeaders(token) })
-    if (!response.ok || !response.body) throw new Error(`stream refused: ${response.status}`)
-    await setStatus('connected')
-    await readStream(response, (event) => {
-      if (event.kind === 'replay') void runFlow(event)
-    })
+    // The bearer token rides as the Sec-WebSocket-Protocol value
+    // (`mill-token.<token>`): a WebSocket constructor cannot set an
+    // Authorization header at all.
+    next = new WebSocket(wsURL(address), [`mill-token.${token}`])
   } catch {
     await setStatus('disconnected')
-  } finally {
-    connecting = false
-    setTimeout(() => void connect(), RECONNECT_MS)
+    setTimeout(() => void ensureConnected(), RECONNECT_MS)
+    return
   }
+  socket = next
+
+  next.addEventListener('open', () => { void setStatus('connected') })
+  next.addEventListener('message', (event) => {
+    let command
+    try {
+      command = JSON.parse(event.data)
+    } catch {
+      // A message this build cannot parse is skipped, never fatal.
+      return
+    }
+    if (command.kind === 'replay') void runFlow(command)
+  })
+  next.addEventListener('close', () => {
+    if (socket === next) socket = null
+    void setStatus('disconnected')
+    setTimeout(() => void ensureConnected(), RECONNECT_MS)
+  })
+  // A WebSocket always fires 'close' right after 'error', so the
+  // reconnect and status update both live in the 'close' handler above
+  // -- this listener exists only so an error is never left unhandled in
+  // the worker's own console.
+  next.addEventListener('error', () => {})
 }
 
 async function setStatus(status) {
@@ -258,9 +266,22 @@ function firstNavigate(steps) {
   return step ? step.url : ''
 }
 
-chrome.runtime.onStartup.addListener(() => void connect())
-chrome.runtime.onInstalled.addListener(() => void connect())
-chrome.storage.onChanged.addListener((changes) => {
-  if (changes[STORAGE_KEY]) void connect()
+// chrome.alarms' own floor is 30s (120+), matching the worker's own
+// idle ceiling -- this is the ONE trigger that can wake a fully
+// terminated worker with no user or browser action at all.
+chrome.alarms.create(RECONNECT_ALARM, { periodInMinutes: 0.5 })
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === RECONNECT_ALARM) void ensureConnected()
 })
-void connect()
+chrome.runtime.onStartup.addListener(() => void ensureConnected())
+chrome.runtime.onInstalled.addListener(() => void ensureConnected())
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes[STORAGE_KEY]) void ensureConnected()
+})
+// The popup's own wake call (goal 0418): opening the popup is a real
+// user action Chrome always delivers, even to a fully terminated
+// worker, so it never has to wait out an alarm cycle.
+chrome.runtime.onMessage.addListener((message) => {
+  if (message && message.type === 'reconnect') void ensureConnected()
+})
+void ensureConnected()

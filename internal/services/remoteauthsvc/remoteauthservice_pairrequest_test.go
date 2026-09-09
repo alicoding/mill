@@ -43,7 +43,7 @@ func newPairRequestTestService(t *testing.T) (*RemoteAuthService, *fakePairReque
 func TestRequestPairing_MintsSixDigitCodeAndPublishes(t *testing.T) {
 	s, ch := newPairRequestTestService(t)
 
-	info, err := s.RequestPairing("Chrome", "127.0.0.1")
+	info, err := s.RequestPairing("Chrome", "127.0.0.1", "")
 	if err != nil {
 		t.Fatalf("RequestPairing() = %v, want nil error", err)
 	}
@@ -86,11 +86,11 @@ func TestRequestPairing_MintsSixDigitCodeAndPublishes(t *testing.T) {
 func TestRequestPairing_ReplacesOutstandingRequest(t *testing.T) {
 	s, _ := newPairRequestTestService(t)
 
-	first, err := s.RequestPairing("Chrome", "127.0.0.1")
+	first, err := s.RequestPairing("Chrome", "127.0.0.1", "")
 	if err != nil {
 		t.Fatalf("RequestPairing() = %v, want nil error", err)
 	}
-	if _, err := s.RequestPairing("Firefox", "127.0.0.1"); err != nil {
+	if _, err := s.RequestPairing("Firefox", "127.0.0.1", ""); err != nil {
 		t.Fatalf("RequestPairing() second = %v, want nil error", err)
 	}
 
@@ -105,7 +105,7 @@ func TestRequestPairing_ReplacesOutstandingRequest(t *testing.T) {
 func TestPairingStatus_AcceptedMatchesPairBrowserShape(t *testing.T) {
 	s, _ := newPairRequestTestService(t)
 
-	info, err := s.RequestPairing("Chrome", "127.0.0.1")
+	info, err := s.RequestPairing("Chrome", "127.0.0.1", "")
 	if err != nil {
 		t.Fatalf("RequestPairing() = %v, want nil error", err)
 	}
@@ -131,7 +131,7 @@ func TestPairingStatus_AcceptedMatchesPairBrowserShape(t *testing.T) {
 func TestDenyPairingRequest_NeverIssuesAToken(t *testing.T) {
 	s, _ := newPairRequestTestService(t)
 
-	info, err := s.RequestPairing("Chrome", "127.0.0.1")
+	info, err := s.RequestPairing("Chrome", "127.0.0.1", "")
 	if err != nil {
 		t.Fatalf("RequestPairing() = %v, want nil error", err)
 	}
@@ -155,7 +155,7 @@ func TestDenyPairingRequest_NeverIssuesAToken(t *testing.T) {
 func TestPairingStatus_StaleOrUnknownID_NeverReturnsToken(t *testing.T) {
 	s, _ := newPairRequestTestService(t)
 
-	if _, err := s.RequestPairing("Chrome", "127.0.0.1"); err != nil {
+	if _, err := s.RequestPairing("Chrome", "127.0.0.1", ""); err != nil {
 		t.Fatalf("RequestPairing() = %v, want nil error", err)
 	}
 	status := s.PairingStatus("not-a-real-request-id")
@@ -170,7 +170,7 @@ func TestPairingStatus_StaleOrUnknownID_NeverReturnsToken(t *testing.T) {
 func TestAcceptPairingRequest_AfterExpiry_Rejected(t *testing.T) {
 	s, _ := newPairRequestTestService(t)
 
-	info, err := s.RequestPairing("Chrome", "127.0.0.1")
+	info, err := s.RequestPairing("Chrome", "127.0.0.1", "")
 	if err != nil {
 		t.Fatalf("RequestPairing() = %v, want nil error", err)
 	}
@@ -192,7 +192,7 @@ func TestAcceptPairingRequest_AfterExpiry_Rejected(t *testing.T) {
 func TestAcceptPairingRequest_Twice_SecondRejected(t *testing.T) {
 	s, _ := newPairRequestTestService(t)
 
-	info, err := s.RequestPairing("Chrome", "127.0.0.1")
+	info, err := s.RequestPairing("Chrome", "127.0.0.1", "")
 	if err != nil {
 		t.Fatalf("RequestPairing() = %v, want nil error", err)
 	}
@@ -216,12 +216,12 @@ func TestRequestPairing_SharesPairBrowserRateLimitBucket(t *testing.T) {
 	const source = "127.0.0.1"
 
 	for i := 0; i < maxFailuresBeforeLockout; i++ {
-		if _, err := s.PairBrowser("WRONGCODE", "Chrome", source); err == nil {
+		if _, err := s.PairBrowser("WRONGCODE", "Chrome", source, ""); err == nil {
 			t.Fatalf("PairBrowser(wrong code) attempt %d = nil error, want a refusal", i)
 		}
 	}
 
-	_, err := s.RequestPairing("Chrome", source)
+	_, err := s.RequestPairing("Chrome", source, "")
 	declared, ok := usererror.Of(err)
 	if !ok || declared.Code != CodePairingLockedOut {
 		t.Fatalf("RequestPairing(locked-out source) = %v, want code %q", err, CodePairingLockedOut)
@@ -239,7 +239,7 @@ func TestPendingPairingRequest_ReflectsOnlyALivePendingOne(t *testing.T) {
 		t.Fatalf("PendingPairingRequest() = %+v, want nothing pending yet", pending)
 	}
 
-	info, err := s.RequestPairing("Chrome", "127.0.0.1")
+	info, err := s.RequestPairing("Chrome", "127.0.0.1", "")
 	if err != nil {
 		t.Fatalf("RequestPairing() = %v, want nil error", err)
 	}

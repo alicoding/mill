@@ -3,7 +3,7 @@
   "name": "Mill",
   "version": "1.0.0",
   "description": "Lets Mill replay a recorded flow in this browser, in your own signed-in session.",
-  "permissions": ["tabs", "scripting", "downloads", "storage"],
+  "permissions": ["tabs", "scripting", "downloads", "storage", "alarms"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js", "type": "module" },
   "action": { "default_popup": "popup.html", "default_title": "Mill" }

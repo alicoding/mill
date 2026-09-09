@@ -61,6 +61,13 @@ type device struct {
 	BaseURL    string    `json:"baseUrl,omitempty"`
 	CreatedAt  time.Time `json:"createdAt"`
 	LastSeenAt time.Time `json:"lastSeenAt"`
+	// Origin is a paired browser's own Origin header (goal 0418) --
+	// "chrome-extension://<id>" or the equivalent Edge/other scheme --
+	// recorded at pairing (the request that minted this credential) or,
+	// for one paired before this field existed, learned from its first
+	// WebSocket connection and enforced from then on. Empty for every
+	// non-browser device.
+	Origin string `json:"origin,omitempty"`
 }
 
 // pairingCode is the single in-memory, on-demand enrollment code.

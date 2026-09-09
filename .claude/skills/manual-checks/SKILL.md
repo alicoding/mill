@@ -460,12 +460,16 @@ This registry stays the ONLY list of checks that need this Mac specifically.
   N days" matching the certificate's real `notAfter` date.
 - **The real browser extension, loaded unpacked and paired** (goal
   0350 S1, `examples/browser-extension/`) — an MV3 extension needs a
-  real Chrome profile, a service worker whose idle teardown no harness
-  can observe, and a genuine `<all_urls>` grant; the suite proves
-  Mill's half against a wire-protocol stand-in
-  (`e2e/fixtures/fakeExtension.ts`) and the runner's own logic under a
-  DOM (`src/shared/replayRunner.test.ts`). Verify on an installed
-  build: load `examples/browser-extension` unpacked at
+  real Chrome profile and a genuine `<all_urls>` grant; the suite
+  proves Mill's half against a wire-protocol stand-in
+  (`e2e/fixtures/fakeExtension.ts`), the runner's own logic under a DOM
+  (`src/shared/replayRunner.test.ts`), and (goal 0418)
+  `browser-extension-mv3.spec.ts`'s real unpacked extension: pairing
+  through its own popup and Mill's real Settings accept, a
+  `chrome://serviceworker-internals` Stop reproducing the platform's
+  own idle teardown, and the parked replay succeeding once the worker
+  wakes and reconnects within `beginRun`'s own wait window. Verify on
+  an installed build: load `examples/browser-extension` unpacked at
   `chrome://extensions`, open **Settings › Connections › Browsers**,
   press **Pair a browser**, enter the code and the shown address in
   the extension popup (it reads "Connected to Mill"), then press
@@ -474,8 +478,8 @@ This registry stays the ONLY list of checks that need this Mac specifically.
   **Recorder** panel against a real signed-in site, export it as JSON,
   and replay it — the selector fallback chains resolve on a page whose
   markup nobody controls. Finally revoke the browser in Settings and
-  confirm the popup drops to "Mill isn't running" within about half a
-  minute (the stream is dropped on its next keepalive).
+  confirm the popup, once reopened, reads "Not paired" (the socket
+  closes on its next keepalive tick, `KeepaliveSeconds`).
 - **The Secrets page's native pickers** (goal 0306 S4,
   `windowing.PickFolder`/`PickCSVFile`,
   `SecretService.ChooseScanFolder`/`ChooseExportFile`) — server mode

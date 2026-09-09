@@ -154,7 +154,7 @@ func TestExecBrowserReplay_FailureSentences(t *testing.T) {
 			name:     "no browser connected",
 			fromFn:   browserbridge.ErrNoBrowser(),
 			wantCode: browserbridge.CodeNoBrowser,
-			wantMsg:  "No browser is connected. Pair the Mill extension first.",
+			wantMsg:  "No browser is connected. Open the Mill extension in your browser and run again.",
 		},
 		{
 			name:     "a step's element was never found",
