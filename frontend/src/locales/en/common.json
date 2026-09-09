@@ -423,7 +423,9 @@
     },
     "settings": {
       "open": "Open Settings",
-      "openGroup": "Settings › {{title}}"
+      "openGroup": "Settings › {{title}}",
+      "search": "Search settings",
+      "show": "Setting: {{label}}"
     },
     "panel": {
       "openMill": "Open Mill",

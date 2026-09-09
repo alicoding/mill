@@ -1,4 +1,4 @@
-import { fuzzyScore } from '../shared/fuzzyFilter'
+import { fuzzyScore } from './fuzzyFilter'
 
 // Query-matching for the ⌘K command palette
 // (docs/goals/0015-summon-quick-invoke.md; goal 0272 supersedes its
@@ -17,12 +17,15 @@ import { fuzzyScore } from '../shared/fuzzyFilter'
 //    shadows an exact fragment.
 //
 // This tiering (prefix/contains partition + keyword aliases) is the
-// palette's own and stays co-located with its only caller
-// (app/CommandPalette.tsx) -- .claude/rules/frontend.md's own
-// placement rule. The underlying `fuzzysort` call + scoring floor it
-// falls back to is shared/fuzzyFilter.ts (goal 0366 Class B), reused
-// by every other picker/search surface so none re-implements it.
-// Exported + unit-tested per .claude/rules/testing.md.
+// palette's own -- moved here from app/paletteFilter.ts (goal 0412 S2)
+// once Settings' own inline search became a second caller outside
+// app/ (views/SettingsGroupNav.tsx): frontend.md's placement rule
+// promotes a file to shared/ once 2+ bounded-context folders consume
+// it, rather than leaving it "co-located with its only caller" once
+// that's no longer true. The underlying `fuzzysort` call + scoring
+// floor it falls back to is shared/fuzzyFilter.ts (goal 0366 Class B),
+// reused by every other picker/search surface so none re-implements
+// it. Exported + unit-tested per .claude/rules/testing.md.
 
 export interface PaletteSearchable {
   // Precomputed, already-lowercased haystack (e.g. `${label} ${id}`)

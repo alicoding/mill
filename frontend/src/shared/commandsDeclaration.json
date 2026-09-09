@@ -1900,6 +1900,176 @@
     "needs": null
   },
   {
+    "id": "settings.search",
+    "label": "Search settings",
+    "binding": "⌘F",
+    "surface": [
+      "settings"
+    ],
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.appearance.colorMode",
+    "label": "Setting: Color theme",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.appearance.darkTheme",
+    "label": "Setting: Dark theme",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.appearance.density",
+    "label": "Setting: Density",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.appearance.lightTheme",
+    "label": "Setting: Light theme",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.appearance.theme",
+    "label": "Setting: Theme",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.connections.mcpAddress",
+    "label": "Setting: Address",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.connections.mcpAllowImport",
+    "label": "Setting: Allow MCP clients to change content",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.connections.mcpAskBeforeImport",
+    "label": "Setting: Ask me before each MCP import",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.general.canvasNavigation",
+    "label": "Setting: Canvas navigation",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.general.launchAtLogin",
+    "label": "Setting: Launch Mill at login",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.general.saveMode",
+    "label": "Setting: Save changes",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.notifications.alertPermission",
+    "label": "Setting: Alerts that stay on screen",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.notifications.awayAfter",
+    "label": "Setting: Away after (seconds)",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.security.extensionAllowedSources",
+    "label": "Setting: Allowed sources",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.security.extensionBlockedCapabilities",
+    "label": "Setting: Blocked capabilities",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.security.extensionLists",
+    "label": "Setting: Allow and block lists",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.security.extensionManagedBy",
+    "label": "Setting: Managed by",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.security.extensionPolicyFile",
+    "label": "Setting: Policy file",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.security.extensionRequiredTier",
+    "label": "Setting: Required trust tier",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "settings.show.shortcuts.globalHotkey",
+    "label": "Setting: Global hotkey",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
+    "needs": null
+  },
+  {
     "id": "tab.close",
     "label": "Close tab",
     "binding": "⌘W",

@@ -60,6 +60,11 @@ export default function SettingsGeneralPane() {
         // cannot reflect the state it controls would show a confident
         // "off" for something Mill has not actually read. The line
         // below it says which case this is.
+        // `ready` (goal 0412 S2 Amendment 1): the same `=== null`
+        // check driving `disabled` also names when jump-and-highlight
+        // may focus this checkbox -- it is not focusable at all while
+        // disabled, so an earlier attempt would silently fail.
+        ready={launchAtLoginStatus !== null}
         control={(labelId) => (
           <Checkbox
             aria-labelledby={labelId}

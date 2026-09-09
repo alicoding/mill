@@ -71,12 +71,13 @@ function unresolvedSkeletonLabels(): string[] {
 }
 
 describe('every module-scope registry holds a locale key, never a sentence', () => {
-  // Three command families name a runtime value in their label
-  // ("Settings > Appearance", "Configure > Lists", "Remove <plugin>"),
-  // so their arrays call copy() themselves at construction and carry
-  // the RESOLVED string -- there is no static key that could hold
-  // them. Everything else holds a key.
-  const INTERPOLATED_AT_CONSTRUCTION = /^(settings\.open\.|configure\.open\.|plugin\.remove\.)/
+  // Four command families name a runtime value in their label
+  // ("Settings > Appearance", "Configure > Lists", "Remove <plugin>",
+  // "Setting: Launch Mill at login"), so their arrays call copy()
+  // themselves at construction and carry the RESOLVED string -- there
+  // is no static key that could hold them. Everything else holds a
+  // key.
+  const INTERPOLATED_AT_CONSTRUCTION = /^(settings\.open\.|settings\.show\.|configure\.open\.|plugin\.remove\.)/
   it('resolves every command label', () => {
     const unresolved = COMMANDS
       .filter((c) => !INTERPOLATED_AT_CONSTRUCTION.test(c.id))
@@ -85,11 +86,14 @@ describe('every module-scope registry holds a locale key, never a sentence', () 
     expect(unresolved).toEqual([])
   })
 
-  it('still renders real English for the two interpolated families', () => {
+  it('still renders real English for the interpolated families', () => {
     const appearance = COMMANDS.find((c) => c.id === 'settings.open.appearance')!
     expect(commandLabel(appearance)).toBe('Settings › Appearance')
     const lists = COMMANDS.find((c) => c.id === 'configure.open.lists')!
     expect(commandLabel(lists)).toBe('Configure › Lists')
+    const launchAtLogin = COMMANDS.find((c) => c.id === 'settings.show.general.launchAtLogin')!
+    expect(commandLabel(launchAtLogin)).toBe('Setting: Launch Mill at login')
+    expect(launchAtLogin.paletteDescription).toBe('General')
   })
 
   it('resolves every menu title and submenu label in the skeleton', () => {

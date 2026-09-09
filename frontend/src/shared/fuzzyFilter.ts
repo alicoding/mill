@@ -2,9 +2,10 @@ import fuzzysort from 'fuzzysort'
 
 // The one `fuzzysort` call every picker/search surface ranks through
 // (goal 0366 Class B) -- extracted from the command palette's own
-// filter (app/paletteFilter.ts, goal 0272), which stays the caller for
-// its own tiered (prefix/contains/fuzzy) ranking. A surface with no
-// tiering of its own uses fuzzyMatches below.
+// filter (./paletteFilter.ts, goal 0272, promoted from app/ to shared/
+// in goal 0412 S2), which stays the caller for its own tiered
+// (prefix/contains/fuzzy) ranking. A surface with no tiering of its
+// own uses fuzzyMatches below.
 
 // The scoring floor below which a fuzzysort subsequence hit is noise,
 // not a match -- admits word-initial abbreviations ("ows") while

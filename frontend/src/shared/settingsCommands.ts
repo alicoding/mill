@@ -2,13 +2,24 @@ import type { Command } from './commands'
 import { copy } from './copy'
 import { useAppStore } from './store'
 import { AuditService, BackupService, SettingsService, UpdateState } from './bindings'
-import { SETTINGS_GROUPS, resolveGroupTitle } from './settingsGroups'
+import { SETTINGS_GROUPS, resolveGroupTitle, resolveViewsKey, type SettingsGroupID } from './settingsGroups'
+import { SETTINGS } from './settingsRegistry'
+import { jumpToSetting } from './settingsHighlight'
 import { useUpdateNoticeStore } from './updateNoticeStore'
 import { useUISignalStore } from './uiSignalStore'
 import { useBuildInfoStore } from './buildInfoStore'
 import { useQuickPanelPositionStore } from './quickPanelPositionStore'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import { downloadBlob } from './downloadBlob'
+
+// A setting's own group id resolved to its shipped title, falling back
+// to the id the same way resolveGroupTitle does -- settingsRegistry.test.ts
+// already pins every entry's group as real, so the fallback is
+// defensive only.
+function groupTitleForID(id: SettingsGroupID): string {
+  const group = SETTINGS_GROUPS.find((g) => g.id === id)
+  return group ? resolveGroupTitle(group) : id
+}
 
 // Settings-adjacent commands (panel.applyClipboard, backup.*, and one
 // palette-only deep-link command per registered Settings section) --
@@ -177,6 +188,37 @@ export const SETTINGS_COMMANDS: Command[] = [
     label: copy('commands.settings.openGroup', { title: resolveGroupTitle(group) }),
     defaultBinding: null,
     run: () => useAppStore.getState().setView({ kind: 'settings', section: group.id }),
+  })),
+  // ⌘F while Settings is the active view (goal 0412 S2): focuses the
+  // page's own search field. Surface-scoped rather than enabled()'d --
+  // the two-pass dispatch (shared/commandDispatch.ts) tries every
+  // surface-scoped command before any global one, so this wins over
+  // output.find/listGrid.search's own ⌘F while Settings is active, and
+  // never fires anywhere else (the same shape atlas.jump's ⌘K uses).
+  {
+    id: 'settings.search',
+    label: 'commands.settings.search',
+    defaultBinding: { mods: ['cmd'], key: 'F' },
+    surface: ['settings'],
+    run: () => useUISignalStore.getState().requestSettingsSearchFocus(),
+  },
+  // One palette-only deep-link command per registered SETTING (goal
+  // 0412 S2): reaches a single setting from anywhere, navigating to
+  // Settings first if needed (shared/settingsHighlight.ts's
+  // jumpToSetting -- the same destination the in-app search field's
+  // own result selection calls, so a setting behaves identically
+  // whether found in Settings' own field or the command palette, the
+  // Android "universal search" precedent the goal file names). Built
+  // from the registry at module load, like the per-GROUP commands
+  // above; label/description resolve the same raw-JSON way
+  // resolveGroupTitle does (no React tree at module scope).
+  ...SETTINGS.map((setting): Command => ({
+    id: `settings.show.${setting.id}`,
+    label: copy('commands.settings.show', { label: resolveViewsKey(setting.labelKey) ?? setting.id }),
+    paletteDescription: groupTitleForID(setting.group),
+    defaultBinding: null,
+    keywords: setting.keywords,
+    run: () => jumpToSetting(setting.id),
   })),
   // The one update state machine's own commands (goal 0220 S1) -- the
   // pill and the Settings primary button both call these, never their
