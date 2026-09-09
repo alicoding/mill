@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveHotkeyLabel } from './HotkeyHint'
+import { resolveHotkeyLabel } from './hotkeyHintLogic'
 import type { KeyCombo } from './keybinding'
 
 // docs/goals/0015-summon-quick-invoke.md's inline-hotkey-hint

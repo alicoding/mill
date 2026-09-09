@@ -146,7 +146,7 @@ export function useAtlasCreation({ parentID, allCards, kinds, notes, objects, re
   useEffect(() => {
     allCardsRef.current = allCards
     kindsRef.current = kinds
-  }, [allCards])
+  }, [allCards, kinds])
 
   // Escape's own "did this press actually clear something" check
   // (cancelAll below) reads this ref rather than closing over the

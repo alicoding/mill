@@ -33,7 +33,7 @@ function frameColors(): { fg: string; bg: string } {
   }
 }
 
-export function documentFor(body: string, fg: string, bg: string): string {
+function documentFor(body: string, fg: string, bg: string): string {
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${CSP}"><style>
 html,body{margin:0;padding:8px 12px;color:${fg};background:${bg};font:13px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;word-break:break-word}
 img,table{max-width:100%}table{border-collapse:collapse}td,th{border:1px solid currentColor;padding:2px 6px}

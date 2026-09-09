@@ -51,7 +51,6 @@ export function ConfigureClientCerts() {
   const refetch = () => { void refreshClientCerts() }
   useEffect(() => {
     refetch()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only fetch, same reasoning every sibling Configure page's identical effect documents
   }, [])
 
   const startCreate = (host = '') => {

@@ -117,3 +117,10 @@ export function joseConfigFrom(draft: RequestDraft): JOSEConfig | null {
     PrivateKeyRef: draft.joseDecryptResponse ? draft.josePrivateKeyRef : '',
   }
 }
+
+// RequestAdvancedSection.tsx's own disclosure (goal 0315): open
+// whenever anything inside holds a value, so an edited record shows
+// its own settings without a hunt.
+export function requestAdvancedIsSet(draft: RequestDraft): boolean {
+  return draft.joseEnabled || draft.body.trim() !== ''
+}

@@ -13,7 +13,7 @@ import styles from './ListGrid.module.css'
 // filters by an inclusive range.
 const RANGE_TYPES = new Set(['number', 'integer', 'date', 'datetime'])
 
-export function isRangeColumn(column: GridColumn): boolean {
+function isRangeColumn(column: GridColumn): boolean {
   return RANGE_TYPES.has(column.Type ?? '')
 }
 

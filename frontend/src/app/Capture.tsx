@@ -7,10 +7,11 @@ import type { Card, Note } from '../../bindings/github.com/alicoding/mill/intern
 import { MilkdownEditor } from '../shared/MilkdownEditor'
 import { getPluginCapture, setPluginCaptureSink, type PluginCapture } from '../plugins/pluginCaptures'
 import { currentPluginTheme, onPluginThemeChange } from '../plugins/pluginTheme'
-import { SEEDED_SCRATCHPAD_CARD_ID, cascadeNotePosition } from './quickPanelCapture'
+import { cascadeNotePosition } from './quickPanelCapture'
 import { PluginFrame } from './PluginFrame'
 import styles from './Capture.module.css'
 import { background } from '../shared/background'
+import { destinationKey, destinationOptions, targetFromHash, type Target } from './captureLogic'
 
 // The capture window's content (goal 0309): one capture face -- Mill's
 // own note, or a plugin's registered face -- with the destination
@@ -20,33 +21,6 @@ import { background } from '../shared/background'
 // the mill-capture event (the live window's). ⌘↩ saves the note, Esc
 // closes (the window's own HideOnEscape), Cancel closes without
 // writing.
-
-interface Target { pluginID: string; captureID: string }
-
-function targetFromHash(): Target | null {
-  const query = window.location.hash.split('?')[1]
-  if (!query) return null
-  const params = new URLSearchParams(query)
-  const captureID = params.get('id') ?? ''
-  if (!captureID) return null
-  return { pluginID: params.get('plugin') ?? '', captureID }
-}
-
-export function destinationKey(target: Target): string {
-  return target.pluginID ? `${target.pluginID}/${target.captureID}` : target.captureID
-}
-
-// destinationOptions: the seeded Scratchpad first (the away-capture
-// door's own inbox, goal 0090), then every top-level card by title,
-// then the board's top level.
-export function destinationOptions(cards: Card[]): { id: string; label: string }[] {
-  const scratchpad = cards.find((c) => c.ID === SEEDED_SCRATCHPAD_CARD_ID)
-  const roots = cards.filter((c) => !c.ParentID && c.ID !== SEEDED_SCRATCHPAD_CARD_ID).sort((a, b) => a.Title.localeCompare(b.Title))
-  return [
-    ...(scratchpad ? [{ id: scratchpad.ID, label: scratchpad.Title }] : []),
-    ...roots.map((c) => ({ id: c.ID, label: c.Title })),
-  ]
-}
 
 export function Capture() {
   const { t } = useTranslation('app')

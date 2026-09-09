@@ -9,7 +9,8 @@ import type { Decision, OutputField } from '../../bindings/github.com/alicoding/
 import { Category } from '../../bindings/github.com/alicoding/mill/internal/domain/decision/models'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import type { FieldTombstone } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
-import { EntityRefField, decisionCategoryLabelFor } from './EntityRefField'
+import { EntityRefField } from './EntityRefField'
+import { decisionCategoryLabelFor } from './entityRefFieldLogic'
 import { DecisionVersionsSection } from './DecisionVersionsSection'
 import { refreshDecisions, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { ViewModeToggle } from '../shared/ViewModeToggle'
@@ -98,6 +99,7 @@ export function ConfigureDecisions() {
   useEffect(() => {
     refetch()
     refreshSeedLifecycle()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshSeedLifecycle is recreated every render (useSeedLifecycle.ts); this effect deliberately runs once on mount only
   }, [])
 
   // A payload whose id matches a decision already here updates it in

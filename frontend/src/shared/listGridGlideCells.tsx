@@ -1,9 +1,8 @@
-import { useEffect, useRef } from 'react'
-import { copy as copyText } from './copy'
 import { GridCellKind, type CustomCell, type CustomRenderer, type EditableGridCell, type GridCell } from '@glideapps/glide-data-grid'
 import { type OptionColor, optionColor } from './projectionColors'
 import type { GridColumn, GridRow } from './listGridTypes'
 import type { GridPalette } from './listGridGlideTheme'
+import { OptionsEditor } from './ListGridGlideOptionsEditor'
 
 // Field -> the adopted grid's cell kinds (ADR-0049): text and number
 // are the library's own, boolean is its checkbox cell, and an
@@ -53,37 +52,6 @@ export function valueFromEdited(cell: EditableGridCell): string {
     case GridCellKind.Custom: return isOptionsCell(cell as CustomCell) ? (cell as OptionsCell).data.value : ''
     default: return ''
   }
-}
-
-// The select overlay for an options cell: a plain form control, the
-// same Enter-commits / Escape-cancels the text overlay has. The grid
-// owns commit timing; this only reports the choice.
-function OptionsEditor({ value, onChange, onFinishedEditing }: {
-  value: OptionsCell
-  onChange: (next: OptionsCell) => void
-  onFinishedEditing: (next?: OptionsCell) => void
-}) {
-  const ref = useRef<HTMLSelectElement>(null)
-  useEffect(() => { ref.current?.focus() }, [])
-  const pick = (choice: string) => {
-    const next: OptionsCell = { ...value, data: { ...value.data, value: choice, color: optionColor([...value.data.options], [...value.data.colors] as string[], choice) }, copyData: choice }
-    onChange(next)
-    onFinishedEditing(next)
-  }
-  return (
-    <select
-      ref={ref}
-      value={value.data.value}
-      data-testid="atlas-projection-cell-select"
-      aria-label={copyText('listGrid.chooseValueAriaLabel')}
-      style={{ font: 'inherit', minWidth: 120, padding: '4px 6px' }}
-      onChange={(e) => pick(e.target.value)}
-      onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); onFinishedEditing() } }}
-    >
-      <option value="">{'—'}</option>
-      {value.data.options.map((o) => <option key={o} value={o}>{o}</option>)}
-    </select>
-  )
 }
 
 // optionsRenderer draws the pill and supplies the editor. Pill

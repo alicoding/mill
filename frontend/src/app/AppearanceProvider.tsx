@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useSyncExternalStore, type PropsWithChildren } from 'react'
+import { useEffect, type PropsWithChildren } from 'react'
 import { ThemeProvider } from '@primer/react/next'
 import { BaseStyles } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
@@ -11,15 +11,11 @@ import {
   applyAppearance,
   getAppearance,
   setAppearance,
-  normalizeMode,
-  resolveSchemes,
   setRemoteDensityHandler,
-  subscribeAppearance,
-  type ResolvedMode,
 } from '../shared/appearance'
-import { getThemePreview, previewedSchemes, subscribeThemePreview } from '../shared/appearancePreview'
-import { isKnownScheme, pluginThemes, subscribePluginThemes, type PluginThemeEntry } from '../shared/appearanceThemes'
+import { isKnownScheme } from '../shared/appearanceThemes'
 import { installPluginThemes } from '../plugins/pluginTheme'
+import { useResolvedAppearance } from './useResolvedAppearance'
 
 // AppearanceProvider is the one theming shell every Mill window mounts
 // -- the main window and each auxiliary one (goal 0320). It replaced
@@ -38,60 +34,6 @@ import { installPluginThemes } from '../plugins/pluginTheme'
 // Primer's theme rules match directly, which is what lets
 // mill-tokens.css win the cascade (that file's header has the full
 // reasoning), and it adds no node to the tree.
-
-interface Resolved {
-  mode: 'light' | 'dark' | 'auto'
-  lightTheme: string
-  darkTheme: string
-  resolvedMode: ResolvedMode
-  scheme: string
-}
-
-// prefers-contrast: more is the OS asking for a higher-contrast
-// palette; under Match system it selects the chosen scheme's own
-// high-contrast pair. prefers-color-scheme resolves Match system into
-// the light or dark half.
-function useMediaFlag(query: string): boolean {
-  const subscribe = useCallback((cb: () => void) => {
-    const m = window.matchMedia(query)
-    m.addEventListener('change', cb)
-    return () => m.removeEventListener('change', cb)
-  }, [query])
-  return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches, () => false)
-}
-
-export function useResolvedAppearance(): Resolved {
-  const appearance = useSyncExternalStore(subscribeAppearance, getAppearance, getAppearance)
-  const moreContrast = useMediaFlag('(prefers-contrast: more)')
-  const systemDark = useMediaFlag('(prefers-color-scheme: dark)')
-  // A plugin theme arriving or leaving changes what resolveSchemes
-  // accepts, so the resolved pair has to be recomputed on it too.
-  const themes = useSyncExternalStore(subscribePluginThemes, pluginThemes, noThemes)
-  // The preview overrides the resolved pair without touching the
-  // store, so nothing is persisted and no other window follows.
-  const preview = useSyncExternalStore(subscribeThemePreview, getThemePreview, nullPreview)
-  return useMemo(() => {
-    const contributed = themes.map((t) => t.schemeId)
-    const { lightTheme, darkTheme } = previewedSchemes(resolveSchemes(appearance, moreContrast, contributed), preview)
-    const resolvedMode = appearance.mode === 'auto' ? (systemDark ? 'dark' : 'light') : normalizeMode(appearance.mode)
-    return {
-      mode: appearance.mode,
-      lightTheme,
-      darkTheme,
-      resolvedMode,
-      scheme: resolvedMode === 'dark' ? darkTheme : lightTheme,
-    }
-  }, [appearance, moreContrast, systemDark, preview, themes])
-}
-
-const NO_THEMES: PluginThemeEntry[] = []
-function noThemes(): PluginThemeEntry[] {
-  return NO_THEMES
-}
-
-function nullPreview(): null {
-  return null
-}
 
 export function AppearanceProvider({ children }: PropsWithChildren) {
   const v = useResolvedAppearance()

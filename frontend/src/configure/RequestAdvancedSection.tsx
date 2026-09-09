@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Checkbox, FormControl, Stack, Text, Textarea } from '@primer/react'
 import type { RequestDraft } from './requestDraft'
+import { requestAdvancedIsSet } from './requestDraft'
 import { SecretPicker } from '../shared/SecretPicker'
 import { secretTitleFor } from './secretTitleFor'
 import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
@@ -9,13 +10,8 @@ import styles from '../shared/ListCard.module.css'
 
 // The form's one disclosure (goal 0315): what a rare integration needs
 // and every other one never sees -- JWE body encryption and the
-// schema-less fallback body. Closed by default, open whenever
-// anything inside holds a value, so an edited record shows its own
-// settings without a hunt.
-export function requestAdvancedIsSet(draft: RequestDraft): boolean {
-  return draft.joseEnabled || draft.body.trim() !== ''
-}
-
+// schema-less fallback body. Closed by default (requestDraft.ts's own
+// requestAdvancedIsSet decides the initial open state).
 export function RequestAdvancedSection({ draft, setDraft }: {
   draft: RequestDraft
   setDraft: (d: RequestDraft) => void

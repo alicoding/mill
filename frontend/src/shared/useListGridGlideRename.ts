@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DataEditorRef, Rectangle } from '@glideapps/glide-data-grid'
 import type { GridColumn } from './listGridTypes'
-import type { Anchor } from './ListGridGlideMenus'
+import type { Anchor } from './listGridGlideAnchor'
 import { resolvePendingRename } from './listGridGlideRename'
 
 // The column-rename overlay's own open/close, split out of

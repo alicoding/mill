@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionList } from '@primer/react'
 import { dispatchThemePreview, getThemePreview, subscribeThemePreview } from '../shared/appearancePreview'
-import { pluginThemes, subscribePluginThemes, type PluginThemeEntry } from '../shared/appearanceThemes'
 import type { ResolvedMode } from '../shared/appearance'
+import type { ThemeOption } from './useThemeOptions'
 import styles from './ThemePicker.module.css'
 
 // One family's theme list (goal 0342). Every theme Mill can paint in
@@ -19,12 +19,6 @@ import styles from './ThemePicker.module.css'
 // page behind everything, the text on it, and the accent that carries
 // every link and selected state.
 const SWATCH_TOKENS = ['--bgColor-default', '--fgColor-default', '--fgColor-accent'] as const
-
-export interface ThemeOption {
-  scheme: string
-  label: string
-  pluginName?: string
-}
 
 // readSwatches paints each scheme onto one hidden probe and reads the
 // tokens back off it. Reading the real cascade is the only honest
@@ -130,17 +124,6 @@ export function ThemePicker({ family, options, value, labelId, testId, onCommit 
   )
 }
 
-// useThemeOptions joins one family's built-in schemes with every theme
-// a running plugin contributes, in that order: what Mill ships first,
-// what the user installed after it.
-export function useThemeOptions(family: ResolvedMode, builtIn: readonly string[], labelOf: (scheme: string) => string): ThemeOption[] {
-  const contributed = useSyncExternalStore(subscribePluginThemes, pluginThemes, emptyThemes)
-  return useMemo(() => [
-    ...builtIn.map((scheme) => ({ scheme, label: labelOf(scheme) })),
-    ...contributed.filter((c: PluginThemeEntry) => c.family === family).map((c: PluginThemeEntry) => ({ scheme: c.schemeId, label: c.label, pluginName: c.pluginName })),
-  ], [family, builtIn, contributed, labelOf])
-}
-
 function nullPreview(): null {
   return null
 }
@@ -150,9 +133,4 @@ function nullPreview(): null {
 // otherwise never be told which theme they are on.
 function labelFor(options: ThemeOption[], scheme: string): string {
   return options.find((o) => o.scheme === scheme)?.label ?? ''
-}
-
-const EMPTY: PluginThemeEntry[] = []
-function emptyThemes(): PluginThemeEntry[] {
-  return EMPTY
 }
