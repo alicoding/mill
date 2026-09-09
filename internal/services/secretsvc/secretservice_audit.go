@@ -79,12 +79,16 @@ func (s *SecretService) recordAccess(entryID, label string, actx secretaudit.Acc
 // record's FailureKind: secretvault.ErrNotFound (a reference naming no
 // entry the vault can produce) becomes FailureKindUnrecognizedEntry --
 // the same condition the guardrail gate itself labels
-// (configuresvc.unknownVaultLabel) -- everything else is
-// FailureKindOther. err is assumed non-nil (only called on the
-// OutcomeError path).
+// (configuresvc.unknownVaultLabel); secretvault.ErrInTrash (goal 0406)
+// becomes FailureKindInTrash, a distinct state (recoverable, not
+// gone) -- everything else is FailureKindOther. err is assumed
+// non-nil (only called on the OutcomeError path).
 func failureKindForVaultErr(err error) secretaudit.FailureKind {
 	if errors.Is(err, secretvault.ErrNotFound) {
 		return secretaudit.FailureKindUnrecognizedEntry
+	}
+	if errors.Is(err, secretvault.ErrInTrash) {
+		return secretaudit.FailureKindInTrash
 	}
 	return secretaudit.FailureKindOther
 }

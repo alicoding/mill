@@ -35,6 +35,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/alicoding/mill/internal/domain/secret"
 	"github.com/tobischo/gokeepasslib/v3"
@@ -122,6 +123,29 @@ type Vault interface {
 	// Delete permanently removes an entry (and its history). No undo --
 	// the same irreversible-delete contract as every other Mill entity.
 	Delete(id string) error
+	// TrashEntry moves id into the vault's Recycle Bin group (goal
+	// 0406), created on first use -- history intact, LocationChanged
+	// stamped as the deleted-at time, its previous group recorded for
+	// RestoreEntry's own way back. A no-op (not an error) for an id
+	// already in the bin.
+	TrashEntry(id string) error
+	// RestoreEntry moves a trashed entry back to the group it was
+	// trashed from (root, if that group no longer exists or was never
+	// recorded).
+	RestoreEntry(id string) error
+	// DestroyEntry permanently removes a TRASHED entry -- ErrNotFound
+	// for an id that isn't currently in the Recycle Bin (an untrashed
+	// entry's permanent removal is still Delete).
+	DestroyEntry(id string) error
+	// ListTrash returns every Recycle Bin entry's TrashSummary, most
+	// recently trashed first.
+	ListTrash() ([]secret.TrashSummary, error)
+	// SweepTrash permanently removes every Recycle Bin entry whose
+	// deleted-at time is older than retention relative to now,
+	// returning what it destroyed. now is always caller-supplied,
+	// never read from time.Now() here, so the sweep is deterministically
+	// testable.
+	SweepTrash(now time.Time, retention time.Duration) ([]secret.TrashSummary, error)
 }
 
 // rootGroupName is the one flat group every entry lives directly under

@@ -101,16 +101,37 @@ const (
 	// the same reasoning that already separates
 	// ContextConfigureToolsPreview from ContextMCPServerSpawn.
 	ContextRequestTest Context = "request-test"
+	// ContextUITrash is SecretService.TrashSecret -- a human's own
+	// "Delete" click, which moves the entry into Trash rather than
+	// removing it (goal 0406).
+	ContextUITrash Context = "ui-trash"
+	// ContextUIRestore is SecretService.RestoreSecret -- a human's own
+	// "Restore" click, moving a trashed entry back to its original
+	// group.
+	ContextUIRestore Context = "ui-restore"
+	// ContextUIDestroy is SecretService.DestroySecret -- a human's own
+	// "Delete forever" click, permanently removing a trashed entry.
+	ContextUIDestroy Context = "ui-destroy"
+	// ContextTrashSweep is the retention sweep (goal 0406): an
+	// automatic permanent removal once a trashed entry has aged past
+	// TrashRetention, never a human click.
+	ContextTrashSweep Context = "trash-sweep"
 )
 
-// Outcome is one read's recorded result -- deliberately just two values
-// (unlike mcpaudit.Outcome's richer parked-write lifecycle): a secret
-// resolution is a synchronous read, never a park-and-poll write.
+// Outcome is one read's recorded result, widened by goal 0406 to also
+// cover a Trash lifecycle event -- still never a park-and-poll write,
+// each of these five is a single synchronous action.
 type Outcome string
 
 const (
 	OutcomeRead  Outcome = "read"
 	OutcomeError Outcome = "error"
+	// OutcomeDeleted/OutcomeRestored/OutcomeDestroyed are goal 0406's
+	// Trash lifecycle: moved to Trash, moved back, permanently removed
+	// (by a click or by the retention sweep, told apart by Context).
+	OutcomeDeleted   Outcome = "deleted"
+	OutcomeRestored  Outcome = "restored"
+	OutcomeDestroyed Outcome = "destroyed"
 )
 
 // FailureKind classifies WHY an OutcomeError read failed, for the one
@@ -135,6 +156,11 @@ const (
 	// (the vault has no such id at all) and from a source that can't be
 	// read (dotenv-source-unreadable keeps its own code).
 	FailureKindUnresolvedReference FailureKind = "unresolved-reference"
+	// FailureKindInTrash is secretvault.ErrInTrash: the reference names
+	// a vault entry currently in Trash -- distinct from unrecognized
+	// (the vault has no such id at all) and from unresolved-reference
+	// (a source-backed key that's gone from its source).
+	FailureKindInTrash FailureKind = "in-trash"
 	// FailureKindOther is any OutcomeError the UI has no dedicated
 	// label for; it falls back to the capped ErrorText.
 	FailureKindOther FailureKind = "other"

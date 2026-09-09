@@ -2,6 +2,7 @@ package secretvault
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -52,6 +53,10 @@ func (v *fileVault) List() ([]secret.Summary, error) {
 	return out, nil
 }
 
+// Get returns one entry in full, Password included. ErrInTrash (never
+// ErrNotFound) for an id currently in the Recycle Bin -- distinct
+// states a caller must tell apart (goal 0406): "gone" versus
+// "recoverable."
 func (v *fileVault) Get(id string) (secret.Entry, error) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
@@ -60,15 +65,30 @@ func (v *fileVault) Get(id string) (secret.Entry, error) {
 	}
 	idx, err := findEntryIndex(v.db.Content.Root.Groups[0].Entries, id)
 	if err != nil {
+		if errors.Is(err, ErrNotFound) && v.inTrashLocked(id) {
+			return secret.Entry{}, ErrInTrash
+		}
 		return secret.Entry{}, err
 	}
 	return entryToDomain(v.db.Content.Root.Groups[0].Entries[idx]), nil
 }
 
+// inTrashLocked reports whether id is currently in the Recycle Bin.
+// Caller must hold v.mu.
+func (v *fileVault) inTrashLocked(id string) bool {
+	binIdx := v.findRecycleBinIndexLocked()
+	if binIdx == -1 {
+		return false
+	}
+	_, err := findEntryIndex(v.db.Content.Root.Groups[binIdx].Entries, id)
+	return err == nil
+}
+
 // History returns id's past versions, most-recently-superseded first.
 // gokeepasslib stores them oldest-appended-first in Histories[0].Entries
 // (the single-<History>-container shape real KeePass/KeePassXC files
-// use); this reverses that for display.
+// use); this reverses that for display. ErrInTrash for a trashed id,
+// the same distinction Get makes.
 func (v *fileVault) History(id string) ([]secret.Entry, error) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
@@ -77,6 +97,9 @@ func (v *fileVault) History(id string) ([]secret.Entry, error) {
 	}
 	idx, err := findEntryIndex(v.db.Content.Root.Groups[0].Entries, id)
 	if err != nil {
+		if errors.Is(err, ErrNotFound) && v.inTrashLocked(id) {
+			return nil, ErrInTrash
+		}
 		return nil, err
 	}
 	entry := v.db.Content.Root.Groups[0].Entries[idx]

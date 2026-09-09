@@ -178,6 +178,59 @@ func nodeUnresolvedSecret(n Node) (Issue, bool) {
 	return Issue{}, false
 }
 
+// secretTrashedFn reports whether a request's own secret reference
+// currently names a vault entry sitting in Trash (goal 0406) --
+// distinct from validateUnresolvedSecrets' "a source-backed key that's
+// gone from its source": this is a vault-backed reference that still
+// names a real entry, just not a currently usable one. Injected from
+// the composition root, the same seam shape as secretUnresolvedFn.
+var secretTrashedFn func(requestID string) (trashed bool, label string)
+
+// SetSecretTrashedCheck wires the Configure-side in-Trash check. Same
+// injected-seam shape as SetSecretUnresolvedCheck.
+func SetSecretTrashedCheck(fn func(requestID string) (trashed bool, label string)) {
+	secretTrashedFn = fn
+}
+
+// validateTrashedSecrets flags the FIRST set "request" reference whose
+// secret is currently in Trash -- same "report only the first" reasoning
+// validateUnresolvedSecrets gives.
+func validateTrashedSecrets(nodes []Node) []Issue {
+	if secretTrashedFn == nil {
+		return nil
+	}
+	for _, n := range nodes {
+		if n.Kind == KindTrigger {
+			continue
+		}
+		if issue, found := nodeTrashedSecret(n); found {
+			return []Issue{issue}
+		}
+	}
+	return nil
+}
+
+// nodeTrashedSecret checks one node's request references.
+func nodeTrashedSecret(n Node) (Issue, bool) {
+	nt, ok := nodeType(n.NodeTypeID)
+	if !ok {
+		return Issue{}, false
+	}
+	for _, field := range nt.ConfigFields {
+		if field.RefKind != "request" {
+			continue
+		}
+		id := strings.TrimSpace(n.Config[field.Key])
+		if id == "" {
+			continue // validateRequiredRefs owns the unset case
+		}
+		if trashed, label := secretTrashedFn(id); trashed {
+			return willFailIssue(n.ID, fmt.Sprintf("step %s: %s is in Trash. Restore it to use it here", stepName(n), label)), true
+		}
+	}
+	return Issue{}, false
+}
+
 // environmentVarGapFn answers which {{var}} names a request carries
 // that the given Environment cannot resolve (goal 0306 S5). Injected
 // from the composition root, exactly like credentialGapFn above: the

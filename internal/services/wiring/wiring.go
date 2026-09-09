@@ -97,11 +97,13 @@ func RunShutdown(logger *slog.Logger, executionService *executionsvc.ExecutionSe
 // and List-projection (goal 0105) seams to Configure's and
 // Composition's exported readers, adapting types at the boundary.
 // WireValidationSeams connects graph validation's Configure-side
-// checks: the credential-presence gap (goal 0127 slice 3) and the
-// unresolved-source-secret gap (goal 0408 S1).
+// checks: the credential-presence gap (goal 0127 slice 3), the
+// unresolved-source-secret gap (goal 0408 S1), and the in-Trash gap
+// (goal 0406).
 func WireValidationSeams(cfg *configuresvc.ConfigureService) {
 	composition.SetCredentialGapCheck(cfg.RequestCredentialGap)
 	composition.SetSecretUnresolvedCheck(cfg.RequestSecretUnresolved)
+	composition.SetSecretTrashedCheck(cfg.RequestSecretTrashed)
 }
 
 func WireAtlasProjections(atlas *atlassvc.AtlasService, cfg *configuresvc.ConfigureService, comp *compositionsvc.CompositionService) {
