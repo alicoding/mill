@@ -123,8 +123,8 @@ func loadMaturity(repoRoot string) (stable, total int, ok bool) {
 // column does not carry a "-> FIXED" resolution marker -- the table's
 // own documented convention (testing.md: "Entries leave by fix ... or
 // by their review date"). Plain line/column splitting, matching the
-// convention this repo's own dashboard awk scripts already use for
-// other committed tables (goal-frontmatter.awk, backlog-queue.awk) --
+// convention this repo's own dashboard awk adapter already uses for
+// another committed table (backlog-queue.awk) --
 // not a markdown parser, since the table is a fixed pipe-delimited
 // shape this repo authors and owns.
 func CountActiveQuarantine(md string) (active int, ok bool) {

@@ -3,14 +3,15 @@
 # no invention): docs/goals/*.md + archive/*.md frontmatter, the
 # BACKLOG.md queue, a defect_class census over the same goal files, the
 # DISPATCH.md live-builder ledger (goal 0210 S3), and a repo snapshot
-# (main sha, open PRs). Plain awk/sed parsing -- no new dependency
-# (goal 0210 S1). A number this script can't derive from the repo is
-# simply absent from its output; render.sh never invents one.
+# (main sha, open PRs). Goal metadata uses the repository's existing
+# YAML library through one batch Go invocation; fixed-shape Markdown
+# tables remain awk adapters. A number this script can't derive from
+# the repo is simply absent from its output; render.sh never invents one.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/../.." && pwd)"
 lib_dir="$repo_root/scripts/dashboard/lib"
-goals_dir="$repo_root/docs/goals"
+goals_dir="${MILL_DASHBOARD_GOALS_DIR:-$repo_root/docs/goals}"
 out="${1:-$repo_root/scripts/dashboard/dashboard-data.json}"
 
 if [[ ! -d "$goals_dir" ]]; then
@@ -19,32 +20,13 @@ if [[ ! -d "$goals_dir" ]]; then
 fi
 
 tmp_dir="$(mktemp -d)"
-trap 'rm -rf "$tmp_dir"' EXIT
+out_tmp="$(mktemp "${out}.tmp.XXXXXX")"
+trap 'rm -rf "$tmp_dir"; rm -f "$out_tmp"' EXIT
 
-# --- goal file list: every docs/goals/*.md + archive/*.md, minus
-# BACKLOG.md itself (the queue file, not a goal) ---
-goal_files_list="$tmp_dir/goal-files.txt"
-find "$goals_dir" -name "*.md" ! -name "BACKLOG.md" | sort >"$goal_files_list"
-
-# --- goals: one JSON object per file (awk/goal-frontmatter.awk) ---
+# --- goals: one batch parse of every sorted Markdown path, excluding
+# BACKLOG.md (the queue file, not a goal) ---
 goals_file="$tmp_dir/goals.json"
-{
-  echo -n "["
-  first=1
-  while IFS= read -r f; do
-    rel="${f#"$repo_root"/docs/goals/}"
-    base="$(basename "$f")"
-    fallback_id="${base%%-*}"
-    archived=0
-    [[ "$rel" == archive/* ]] && archived=1
-    obj="$(awk -v path="$rel" -v archived="$archived" -v fallback_id="$fallback_id" \
-      -f "$lib_dir/goal-frontmatter.awk" "$f")"
-    if [[ $first -eq 0 ]]; then echo -n ","; fi
-    first=0
-    echo -n "$obj"
-  done <"$goal_files_list"
-  echo -n "]"
-} >"$goals_file"
+(cd "$repo_root" && go run ./internal/tools/dashboardgoals "$goals_dir") >"$goals_file"
 
 # --- queue: BACKLOG.md's own checkbox order (awk/backlog-queue.awk) ---
 queue_file="$tmp_dir/queue.json"
@@ -54,26 +36,13 @@ queue_file="$tmp_dir/queue.json"
   echo -n "]"
 } >"$queue_file"
 
-# --- census: defect_class counts across the same goal file list ---
+# --- census: defect_class counts from the parsed goal records ---
 census_file="$tmp_dir/census.json"
-{
-  echo -n "{"
-  xargs grep -h '^defect_class:' <"$goal_files_list" 2>/dev/null |
-    sed -E 's/^defect_class: *//' |
-    sort |
-    uniq -c |
-    sort -rn |
-    awk 'BEGIN { first = 1 } {
-      count = $1
-      $1 = ""
-      sub(/^ /, "")
-      gsub(/"/, "\\\"")
-      if (!first) printf ","
-      first = 0
-      printf "\"%s\":%s", $0, count
-    }'
-  echo -n "}"
-} >"$census_file"
+jq '[.[] | .defect_class | select(. != null)]
+    | sort
+    | group_by(.)
+    | map({key: .[0], value: length})
+    | from_entries' "$goals_file" >"$census_file"
 
 # --- dispatch: docs/goals/DISPATCH.md's live-builder table + its
 # "Queued next" line (goal 0210 S3). The file may be absent -- older
@@ -165,7 +134,7 @@ fi
 # history (a fresh clone, CI) degrades to an empty series rather than
 # failing the whole derive.
 turns_file="$tmp_dir/turns-per-goal.json"
-if "$repo_root/scripts/dashboard/turns-per-goal.sh" "" "$turns_file" >/dev/null 2>&1; then
+if "$repo_root/scripts/dashboard/turns-per-goal.sh" "" "$turns_file" "$goals_file" >/dev/null 2>&1; then
   turns_json="$(cat "$turns_file")"
 else
   turns_json='{"sessions":[],"perGoal":[]}'
@@ -173,8 +142,8 @@ fi
 
 generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-# --- assemble: every piece above is already valid JSON text, so the
-# final document is plain concatenation -- no JSON library needed ---
+# --- assemble beside the destination, then rename only after every
+# section succeeded so a failed refresh cannot replace the last good file ---
 {
   printf '{\n'
   printf '  "generated_at": "%s",\n' "$generated_at"
@@ -188,6 +157,7 @@ generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf '  "repo": {"main_sha": "%s", "open_prs": %s, "gh_unavailable": %s}\n' \
     "$main_sha" "$prs_json" "$gh_unavailable"
   printf '}\n'
-} >"$out"
+} >"$out_tmp"
+mv "$out_tmp" "$out"
 
 echo "$out"

@@ -9,11 +9,11 @@ set -euo pipefail
 
 dashboard_dir="$(cd "$(dirname "$0")" && pwd)"
 repo_root="$(cd "$dashboard_dir/../.." && pwd)"
-lib_dir="$dashboard_dir/lib"
 goals_dir="$repo_root/docs/goals"
 
 transcripts_dir="${1:-$HOME/.claude/projects/-Users-ali-code-mill}"
 out="${2:-$dashboard_dir/turns-per-goal.json}"
+parsed_goals="${3:-}"
 
 if [[ ! -d "$goals_dir" ]]; then
   echo "error: $goals_dir not found -- run from a checkout with docs/ present (a symlink is fine)" >&2
@@ -27,30 +27,13 @@ fi
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
-# --- goal file objects (same awk/goal-frontmatter.awk derive.sh uses --
-# id/status/prs come from frontmatter, never re-parsed by hand here).
-# Filenames outside the NNNN-slug shape (BACKLOG.md, DISPATCH.md, the
-# dated session notes) fall out on their own: their fallback_id doesn't
-# match \b0[0-9]{3}\b, so the python pass below never treats them as a
-# mentionable goal.
-goals_file="$tmp_dir/goals.json"
-{
-  echo -n "["
-  first=1
-  while IFS= read -r f; do
-    rel="${f#"$repo_root"/docs/goals/}"
-    base="$(basename "$f")"
-    fallback_id="${base%%-*}"
-    archived=0
-    [[ "$rel" == archive/* ]] && archived=1
-    obj="$(awk -v path="$rel" -v archived="$archived" -v fallback_id="$fallback_id" \
-      -f "$lib_dir/goal-frontmatter.awk" "$f")"
-    if [[ $first -eq 0 ]]; then echo -n ","; fi
-    first=0
-    echo -n "$obj"
-  done < <(find "$goals_dir" -name "*.md" ! -name "BACKLOG.md" | sort)
-  echo -n "]"
-} >"$goals_file"
+# derive.sh passes its already-parsed goal array here. A standalone run
+# obtains the same array through one batch invocation of the canonical parser.
+goals_file="$parsed_goals"
+if [[ -z "$goals_file" ]]; then
+  goals_file="$tmp_dir/goals.json"
+  (cd "$repo_root" && go run ./internal/tools/dashboardgoals "$goals_dir") >"$goals_file"
+fi
 
 python3 - "$goals_file" "$transcripts_dir" "$out" <<'PY'
 import glob
