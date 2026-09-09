@@ -686,6 +686,18 @@ export interface PluginInfo {
      * status pane shows the error first.
      */
     "Warnings": string[] | null;
+
+    /**
+     * DataOnly is authoritative only after manifest validation: this
+     * extension contributes themes and has no executable surface.
+     */
+    "DataOnly": boolean;
+
+    /**
+     * ThemeImport carries the preserved adapter evidence for an imported
+     * standalone theme file, and is nil for every other extension.
+     */
+    "ThemeImport": ThemeImportMetadata | null;
 }
 
 /**
@@ -718,6 +730,12 @@ export interface PluginListDirResult {
  */
 export interface PluginSource {
     "kind": string;
+
+    /**
+     * Name is the basename of a local snapshot source such as a theme
+     * file. It is never a machine path.
+     */
+    "name"?: string;
     "path": string;
     "repo": string;
     "ref": string;
@@ -875,6 +893,45 @@ export interface ThemeContribution {
     "label": string;
     "family": string;
     "file": string;
+}
+
+/**
+ * ThemeImportMetadata is preserved beside the original bytes and generated
+ * stylesheet, and is also exposed on PluginInfo for the Verification tab.
+ */
+export interface ThemeImportMetadata {
+    "sourceName": string;
+    "sourceSHA256": string;
+    "mapperVersion": number;
+    "sourceTheme"?: string;
+    "family": string;
+    "mapped": number;
+    "total": number;
+    "mappedKeys": string[] | null;
+    "unmappedKeys": string[] | null;
+    "invalidKeys": string[] | null;
+}
+
+/**
+ * ThemeImportPreview is the host-owned compatibility report shown before
+ * importing a foreign color-theme file. CSS stays on the backend: the UI
+ * receives the evidence, never another copy of the mapping algorithm.
+ */
+export interface ThemeImportPreview {
+    "SourceName": string;
+    "SourceSHA256": string;
+    "SuggestedName": string;
+    "Family": string;
+    "Mapped": number;
+    "Total": number;
+    "MappedKeys": string[] | null;
+    "UnmappedKeys": string[] | null;
+    "InvalidKeys": string[] | null;
+}
+
+export interface ThemeImportResult {
+    "PluginID": string;
+    "NeedsAllow": boolean;
 }
 
 /**

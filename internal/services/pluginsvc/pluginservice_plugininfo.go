@@ -55,4 +55,10 @@ type PluginInfo struct {
 	// plugin with a load-blocking Error may still carry these; the
 	// status pane shows the error first.
 	Warnings []string
+	// DataOnly is authoritative only after manifest validation: this
+	// extension contributes themes and has no executable surface.
+	DataOnly bool
+	// ThemeImport carries the preserved adapter evidence for an imported
+	// standalone theme file, and is nil for every other extension.
+	ThemeImport *ThemeImportMetadata
 }

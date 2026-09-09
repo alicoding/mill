@@ -149,3 +149,29 @@ family, with your plugin's name beneath its label.
 
 Turning your plugin off or removing it takes its themes with it, and
 the appearance falls back to Mill's own.
+
+## Importing a standalone JSON theme
+
+If you have an unchanged JSON or JSONC color-theme file, open
+**Extensions**, choose **Import theme**, then choose the original file.
+Mill shows its proposed name and appearance before it writes anything.
+Files without a recognized `type` need an explicit Light or Dark choice.
+
+The compatibility report names the source interface colors Mill can use,
+the unsupported colors it leaves unmapped, and supported keys whose values
+are not valid hex colors. Importing creates a local data-only extension: it
+does not run source code or load another file named by the theme. You still
+review and Allow the extension in Extensions before the theme appears in
+Appearance.
+
+The import is a snapshot. Mill preserves the original file bytes and records
+their SHA-256 hash with the mapper version. It maps only interface colors to
+the variables listed above. Syntax highlighting, token colors, semantic token
+colors, selectors, URLs, and executable extension code are not imported. Any
+Mill token the source does not cover keeps the selected light or dark family's
+built-in value.
+
+To update the snapshot, remove the imported extension and import the new file.
+Turning it off or removing it makes Appearance fall back to a built-in theme;
+turning it on again makes the imported theme available without changing the
+preserved source file.

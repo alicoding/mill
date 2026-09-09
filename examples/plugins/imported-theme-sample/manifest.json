@@ -1,0 +1,18 @@
+{
+  "id": "imported-theme-sample",
+  "name": "Imported theme sample",
+  "version": "1.0.0",
+  "description": "A data-only example generated from an unchanged color-theme file by theme mapper version 1.",
+  "icon": "icon.png",
+  "capabilities": [],
+  "contributes": {
+    "themes": [
+      {
+        "id": "theme",
+        "label": "Catppuccin Latte",
+        "family": "light",
+        "file": "theme.css"
+      }
+    ]
+  }
+}

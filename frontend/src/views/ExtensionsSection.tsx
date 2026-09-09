@@ -219,6 +219,7 @@ export default function ExtensionsSection() {
             })}
             <ExtensionsInstalledPlugins
               plugins={plugins}
+              allowedIds={allowedNow}
               selectedId={selection?.kind === 'plugin' ? selection.id : null}
               onSelect={(id) => setSelection({ kind: 'plugin', id })}
             />

@@ -27,6 +27,7 @@ require (
 	github.com/netresearch/go-cron v0.16.0
 	github.com/rapid7/go-get-proxied v1.4.1
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
+	github.com/tailscale/hujson v0.0.0-20260727124030-b80ff77dac4f
 	github.com/tobischo/gokeepasslib/v3 v3.7.0
 	github.com/wailsapp/wails/v3 v3.0.0-beta.18
 	github.com/xuri/excelize/v2 v2.11.0

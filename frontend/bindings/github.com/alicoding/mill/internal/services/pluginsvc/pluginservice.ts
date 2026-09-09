@@ -164,6 +164,15 @@ export function FetchForPlugin(pluginID: string, req: $models.PluginFetchRequest
 }
 
 /**
+ * ImportTheme re-runs the authoritative parser and mapping before staging a
+ * data-only extension through the same policy and static checks as any other
+ * local install.
+ */
+export function ImportTheme(encoded: string, basename: string, displayName: string, family: string): $CancellablePromise<$models.ThemeImportResult> {
+    return $Call.ByID(3015988770, encoded, basename, displayName, family);
+}
+
+/**
  * InstallFromLink installs from whatever the user pasted: a
  * repository, an archive address, or a folder on this Mac.
  */
@@ -264,6 +273,14 @@ export function PreviewInstall(marketplace: string, id: string): $CancellablePro
  */
 export function PreviewInstalled(id: string): $CancellablePromise<$models.InstallPreview> {
     return $Call.ByID(3921789238, id);
+}
+
+/**
+ * PreviewThemeImport parses JSON with comments and trailing commas, then
+ * reports exactly which interface colors the v1 mapping can use.
+ */
+export function PreviewThemeImport(encoded: string, basename: string): $CancellablePromise<$models.ThemeImportPreview> {
+    return $Call.ByID(3302734416, encoded, basename);
 }
 
 /**

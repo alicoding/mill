@@ -119,6 +119,26 @@ describe('dispatchCommandForEvent surface precedence (goal 0071)', () => {
   })
 })
 
+describe('extensions.importTheme', () => {
+  afterEach(() => {
+    useUISignalStore.getState().consumeExtensionThemeImport()
+  })
+
+  it('opens Extensions and raises its dialog request from another surface', async () => {
+    useAppStore.getState().setView({ kind: 'atlas' })
+    await runCommand('extensions.importTheme')
+    expect(useAppStore.getState().view).toEqual({ kind: 'extensions' })
+    expect(useUISignalStore.getState().extensionThemeImportRequest).toBe(true)
+  })
+
+  it('keeps the selected Extensions tab when it raises the dialog request there', async () => {
+    useAppStore.getState().setView({ kind: 'extensions', tab: 'browse' })
+    await runCommand('extensions.importTheme')
+    expect(useAppStore.getState().view).toEqual({ kind: 'extensions', tab: 'browse' })
+    expect(findCommand('extensions.importTheme')?.defaultBinding).toBeNull()
+  })
+})
+
 // Goal 0071's Settings rebind conflict rule: a same-combo pair is only
 // a real conflict when their surface sets intersect.
 describe('surfacesIntersect', () => {

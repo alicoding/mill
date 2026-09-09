@@ -232,3 +232,6 @@
 .detailChrome {
     flex-shrink: 0;
 }
+.themeImportHash {
+  overflow-wrap: anywhere;
+}
