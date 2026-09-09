@@ -76,6 +76,11 @@ async function remember(entry) {
 sendEl.addEventListener('click', async () => {
 	const target = urlEl.value.trim()
 	if (!target) { statusEl.textContent = 'Enter an address first.'; return }
+	// Tells the host's "Send again" title action (goal 0349 S2b) there
+	// is now something to re-send -- fired on every attempt, not only a
+	// successful one, since even a parked-for-approval request is a
+	// real "again" candidate.
+	mill.postMessage({ type: 'sent' })
 	statusEl.textContent = 'Asking… (this request needs your approval in Review)'
 	responseEl.textContent = ''
 	try {
@@ -101,5 +106,11 @@ async function refreshSettings() {
 }
 
 mill.on('settings:changed', () => { void refreshSettings() })
+// The host's "Send again" title action (goal 0349 S2b): re-clicks Send
+// with whatever this page's own fields currently hold, exactly the
+// gesture a person clicking Send themselves would make.
+mill.onMessage((message) => {
+	if (message && message.type === 'send-again') sendEl.click()
+})
 void refreshSettings()
 void renderHistory()

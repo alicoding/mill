@@ -224,6 +224,7 @@
   "workTabShell": {
     "openWorkAriaLabel": "Open work",
     "unsavedChangesAriaLabel": "Unsaved changes",
+    "titleActionsAriaLabel": "Actions",
     "allOpenTabsAriaLabel": "All open tabs",
     "closeOtherTabs": "Close other tabs",
     "closeAllTabs": "Close all tabs",

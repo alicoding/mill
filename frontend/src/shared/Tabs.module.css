@@ -52,7 +52,11 @@
     border-bottom: 2px solid transparent;
     color: var(--fgColor-muted);
     font-size: 14px;
-    padding: var(--base-size-8) var(--base-size-24) var(--base-size-8) var(--base-size-12);
+    /* Trailing padding matches the leading edge now: the close control
+       (and a plugin's title actions, goal 0349 S2b) sit in .tabTrailing,
+       a normal-flow sibling after this button, not overlaid on top of
+       its own padding. */
+    padding: var(--base-size-8) var(--base-size-12);
     cursor: pointer;
     white-space: nowrap;
     /* This TabList now also renders inside the app's titlebar band
@@ -111,17 +115,28 @@
        against --bgColor-default (Configure/RequestSummary/WorkflowEditor). */
     background: var(--bgColor-default);
 }
+/* The trailing group (goal 0349 S2b): a plugin view's title actions,
+   then Close -- a normal-flow flex row after the tab button, rather
+   than Close's old absolute overlay, so a plugin contributing actions
+   simply widens the row the same way a long label already does. */
+.tabTrailing {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding-right: var(--base-size-4, 4px);
+    /* A CSS custom property, so it doesn't inherit from .tab (a
+       sibling, not an ancestor) -- re-declared here the same reason
+       .tabClose redeclares it below, covering the title actions too. */
+    --wails-draggable: no-drag;
+}
 .tabClose {
-    position: absolute;
-    right: 4px;
-    top: 50%;
-    transform: translateY(-50%);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 18px;
     height: 18px;
     border-radius: var(--borderRadius-small);
+    flex: 0 0 auto;
     /* Same titlebar-band drag opt-out as .tab above. */
     --wails-draggable: no-drag;
     color: var(--fgColor-muted);
