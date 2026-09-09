@@ -107,6 +107,7 @@ linters:
             - "!**/main.go"
             - "!**/auxwindows.go"
             - "!**/events.go"
+            - "!**/traypaneldisplay.go"
             - "!**/singleinstance_dev.go"
             - "!**/singleinstance_production.go"
           deny:

@@ -304,7 +304,10 @@ func setupTray(app *application.App, settingsService *settingssvc.SettingsServic
 	// the one aux-window list every hide walks (docs/goals/0344).
 	trayPanel := newTrayPanelWindow(app)
 	settingsService.SetTrayPanelWindow(windowing.WrapAuxWindow(trayPanel))
-	trayIcon.AttachWindow(trayPanel).WindowOffset(6)
+	trayIcon.AttachWindow(trayPanel).WindowOffset(trayPanelOffset)
+	// The clicked display's own correction over Wails' placement
+	// (goal 0417): traypaneldisplay.go's wireTrayPanelDisplay.
+	wireTrayPanelDisplay(app, trayPanel)
 	settingsService.SetTrayCount(func(count int) {
 		if count > 0 {
 			trayIcon.SetLabel(strconv.Itoa(count))
