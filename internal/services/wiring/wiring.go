@@ -411,12 +411,15 @@ func WireClipboardHistory(clipboardHistoryService *clipboardhistorysvc.Clipboard
 // HTTP listener -- a bind failure is logged, not fatal, since this is
 // additive local tooling the rest of the app doesn't depend on to
 // function.
-func WireMillMCPService(mill *mcpsvc.MillMCPService, settingsService *settingssvc.SettingsService, exec *executionsvc.ExecutionService, atlas *atlassvc.AtlasService, audit *mcpauditsvc.MCPAuditService, guard *guardrailsvc.GuardrailService, addr string, logger *slog.Logger) {
+func WireMillMCPService(mill *mcpsvc.MillMCPService, settingsService *settingssvc.SettingsService, exec *executionsvc.ExecutionService, atlas *atlassvc.AtlasService, audit *mcpauditsvc.MCPAuditService, guard *guardrailsvc.GuardrailService, secrets *secretsvc.SecretService, addr string, logger *slog.Logger) {
 	settingsService.SetMCPService(mill)
 	mill.SetExecutionService(exec)
 	mill.SetAtlasService(atlas)
 	mill.SetAuditResolver(audit.ResolveParkedWrite)
 	mill.SetGuardrailService(guard)
+	// The secrets tools answer with references, never values; without
+	// this door every real call fails with "secret service not wired".
+	mill.SetSecretService(secrets)
 	if err := mill.Start(addr); err != nil {
 		logger.Error("mill MCP server", "error", err)
 		return
