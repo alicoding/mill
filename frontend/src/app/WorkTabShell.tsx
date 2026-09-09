@@ -18,6 +18,7 @@ import { PluginViewHost } from './PluginViewHost'
 import { getPluginView } from '../plugins/pluginViews'
 import { viewTitleMenuFacts } from '../plugins/pluginMenuFacts'
 import { viewTitleSeatItems } from '../plugins/pluginMenuSeats'
+import { usePluginContextKeyStore } from '../plugins/pluginContextKeys'
 import { OutputViewer } from '../shared/OutputViewer'
 import { readStashedOutput } from '../shared/outputTabStore'
 import { HotkeyHint } from '../shared/HotkeyHint'
@@ -83,7 +84,12 @@ function tabEntityVisual(tab: WorkTab): ReactNode {
 // calls for, so no hand-rolled item count/overflow logic lives here.
 function PluginTitleActions({ pluginId, viewId }: { pluginId: string; viewId: string }) {
   const { t } = useTranslation('app')
-  const items = viewTitleSeatItems(pluginId, viewTitleMenuFacts(viewId))
+  // Re-renders when THIS plugin's own context keys change (goal 0349
+  // S2c): a declared item's `when` can gate on one, and the seat's own
+  // membership (shows()) has to reflect a change the plugin just made,
+  // not only the next unrelated render.
+  usePluginContextKeyStore((s) => s.byPlugin[pluginId])
+  const items = viewTitleSeatItems(pluginId, viewTitleMenuFacts(pluginId, viewId))
   if (items.length === 0) return null
   return (
     <span data-testid={`work-tab-title-actions-${pluginId}-${viewId}`}>

@@ -16,13 +16,14 @@ import { settingDeclsFromManifest } from './pluginSettings'
 import { secretTitleOf } from '../shared/secretTitleCache'
 import { buildPluginStorage } from './pluginStorage'
 import { settingsPluginStorageDoors } from './pluginStorageHostDoors'
+import { setPluginContextKey } from './pluginContextKeys'
 import { buildFetchJSON } from './pluginFetchJSON'
 import { buildElement } from './pluginElementBuilder'
 import { formatPluginDate } from './pluginDateFormat'
 import { pushNotice } from '../shared/noticeStore'
 import { getExtensionExports } from './extensionExports'
 import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/extensionSettingsStore'
-import type { CanvasObjectDecl, CanvasToolDecl, ContentQuery, LifecycleEventPayload, LinkQuery, MillPluginAPI, PluginFetchInit, PluginOutputOptions, PluginElAttrs, PluginElChild } from './sdk'
+import type { CanvasObjectDecl, CanvasToolDecl, ContentQuery, LifecycleEventPayload, LinkQuery, MillPluginAPI, PluginContextValue, PluginFetchInit, PluginOutputOptions, PluginElAttrs, PluginElChild } from './sdk'
 import type { MenuPath } from '../shared/menuSkeleton'
 import type { Command } from '../shared/commands'
 
@@ -144,6 +145,9 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		millVersion,
 		pluginId,
 		settings,
+		// The context-key door (goal 0349 S2c): a plugin's own facts, read
+		// back by a declared item's `when` clause as `plugin.<key>`.
+		context: Object.freeze({ set: (key: string, value: PluginContextValue) => setPluginContextKey(pluginId, key, value) }),
 		notify,
 		storage: buildPluginStorage(pluginId, storageSnapshot, settingsPluginStorageDoors(pluginId)),
 		// The read doors (goal 0278): query is the bound content index
