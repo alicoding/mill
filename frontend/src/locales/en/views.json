@@ -682,6 +682,8 @@
     "noChangelog": "No changelog.",
     "canHeading": "This extension can",
     "can": {
+      "canvasHost": "Draw in Mill's window",
+      "canvasHostCaption": "Not sandboxed: its canvas tools run in Mill's own window.",
       "reachHosts": "Reach {{list}} over the network",
       "reachAnyHost": "Reach any host, one request at a time, after you approve it",
       "writeContent": "Write cards, notes and list rows",
@@ -821,7 +823,12 @@
       "read-file": "Read files",
       "erase-board-items": "Erase board items"
     },
-    "noticedHeading": "Mill noticed"
+    "noticedHeading": "Mill noticed",
+    "widened": {
+      "heading": "Now also asks to",
+      "allow": "Allow the new permissions",
+      "caption": "This update asks for more than you allowed before."
+    }
   },
   "pageMeta": {}
 }

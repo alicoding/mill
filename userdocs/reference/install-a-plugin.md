@@ -188,6 +188,14 @@ at that moment, and if they change later — an update you copied in,
 or an edit — the plugin stops until you look again and allow it once
 more. Its page says "Its files changed since you allowed it."
 
+If an update asks for more than you allowed before — a new capability,
+a new host, or drawing directly in Mill's window — the plugin waits
+for review again even though you already allowed an earlier version.
+Its page shows "Now also asks to" above the full list, naming only
+what is new, and its Allow button reads "Allow the new permissions."
+An update that asks for the same or less keeps running without asking
+again.
+
 An administrator can pin which plugins may run at all by writing an
 allow-list into Mill's settings file — the key
 `settings-plugin-allowlist`, a JSON array of plugin ids, placed the

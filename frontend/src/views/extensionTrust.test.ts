@@ -6,7 +6,7 @@ function preview(overrides: Partial<InstallPreview>): InstallPreview {
   return {
     ID: 'acme-notes', Name: 'Notes', Version: '1.0.0', Author: '', Description: '',
     Marketplace: '', Tier: 'unverified', Capabilities: null, NetworkHosts: null,
-    AnyHost: false, Kinds: null, UsesSecrets: false, AlreadyInstalled: false,
+    AnyHost: false, Kinds: null, UsesSecrets: false, AlreadyInstalled: false, CanvasHost: false,
     ...overrides,
   } as InstallPreview
 }
@@ -66,6 +66,14 @@ describe('permissionLines', () => {
 
   it('has nothing to say without a preview', () => {
     expect(permissionLines(null)).toEqual([])
+  })
+
+  // canvas-host is the one grant that means "not sandboxed" (docs/goals/0375
+  // S2), so it leads even ahead of network reach, and carries its own caption.
+  it('leads with canvas-host, ahead of reach, with its own caption', () => {
+    const lines = permissionLines(preview({ CanvasHost: true, AnyHost: true }))
+    expect(lines[0]).toMatchObject({ key: 'extensions.can.canvasHost', captionKey: 'extensions.can.canvasHostCaption' })
+    expect(lines[1].key).toBe('extensions.can.reachAnyHost')
   })
 })
 

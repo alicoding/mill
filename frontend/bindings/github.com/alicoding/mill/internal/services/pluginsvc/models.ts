@@ -185,6 +185,14 @@ export interface InstallPreview {
     "AlreadyInstalled": boolean;
 
     /**
+     * CanvasHost is true when this manifest earns the "canvas-host"
+     * grant (pluginGrants, docs/goals/0375 S1b/S2): it declares a
+     * canvas object and runs same-DOM in Mill's own window rather than
+     * the sandboxed activation frame. Always false for a built-in.
+     */
+    "CanvasHost": boolean;
+
+    /**
      * PolicyRefusal is the organisation policy's sentence when it
      * refuses this install (policy_match.go), "" when it does not or
      * no policy is set; the prompt shows it and disables Install.
@@ -543,6 +551,13 @@ export interface PluginInfo {
     "ContentHash": string;
 
     /**
+     * CodeHash excludes manifest.json (docs/goals/0375 S2): the trust
+     * lock's own comparison input, so a manifest-only edit never trips
+     * it -- only Widened does.
+     */
+    "CodeHash": string;
+
+    /**
      * SigningPolicy reports whether an administrator pinned signing
      * keys; Signed whether this folder's signature verified against one
      * (pluginservice_signing.go). Both false with no policy.
@@ -578,6 +593,15 @@ export interface PluginInfo {
      * built-in's do. Always empty for a built-in.
      */
     "Grants": string[] | null;
+
+    /**
+     * Widened is non-nil for a non-built-in plugin whose manifest
+     * declares MORE than its own consent covered (docs/goals/0375 S2,
+     * MV3's re-consent-on-widen rule): the NEW elements only, in the
+     * shape permissionLines() renders. Nil when narrowed/unchanged,
+     * never allowed, or built-in.
+     */
+    "Widened": InstallPreview | null;
 
     /**
      * Warnings are non-blocking manifest notices -- a deprecated key

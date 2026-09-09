@@ -77,9 +77,10 @@ export async function reloadPlugin(pluginId: string): Promise<void> {
 	const info = await currentInfo(pluginId)
 	const policy = await readPluginPolicy()
 	const state = pluginRunState(pluginId, !!info.Builtin, policy, {
-		contentHash: info.ContentHash ?? '',
+		contentHash: info.CodeHash ?? '',
 		signingPolicy: !!info.SigningPolicy,
 		signed: !!info.Signed,
+		widened: !!info.Widened,
 	})
 	if (state !== 'run') throw new Error(REFUSAL_KEY[state] ? copy(REFUSAL_KEY[state]) : state)
 	let millVersion = ''

@@ -10,9 +10,10 @@ import (
 
 type fakeTrust struct{ allowed, disabled map[string]bool }
 
-func (f fakeTrust) Enabled(id string) bool { return !f.disabled[id] }
-func (f fakeTrust) Allowed(id string) bool { return f.allowed[id] }
-func (f fakeTrust) Allowlist() []string    { return []string{"mill-a"} }
+func (f fakeTrust) Enabled(id string) bool                { return !f.disabled[id] }
+func (f fakeTrust) Allowed(id string) bool                { return f.allowed[id] }
+func (f fakeTrust) Allowlist() []string                   { return []string{"mill-a"} }
+func (f fakeTrust) GrantOf(id string) (PluginGrant, bool) { return PluginGrant{}, false }
 func (f fakeTrust) LockedHash(id string) string {
 	if id == "mill-a" {
 		return "sha256-stale"

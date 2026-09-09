@@ -14,11 +14,15 @@ func TestPluginLock_RecordsOnConsentAndCompares(t *testing.T) {
 	if len(set.GetPluginLock()) != 0 || !set.PluginLockMatches("mill-a", "sha256-x") {
 		t.Fatal("no hasher: expected no entry and a permissive match")
 	}
-	set.SetPluginHasher(func(id string) (string, string) {
+	set.SetPluginHasher(func(id string) PluginGrantSnapshot {
 		if id == "mill-b" {
-			return "2.0.0", "sha256-b"
+			return PluginGrantSnapshot{
+				Version: "2.0.0", Hash: "sha256-b",
+				Capabilities: []string{"open-url"}, Hosts: []string{"api.example.test"},
+				Kinds: []string{"views"}, UsesSecrets: true, CanvasHost: true,
+			}
 		}
-		return "", ""
+		return PluginGrantSnapshot{}
 	})
 	wrote, err := set.RecordAllowedPluginsIfUnset([]string{"mill-b"})
 	if err != nil || wrote {
@@ -35,5 +39,45 @@ func TestPluginLock_RecordsOnConsentAndCompares(t *testing.T) {
 	}
 	if !set.PluginLockMatches("mill-b", "") {
 		t.Fatal("an unreadable current hash must not revoke consent")
+	}
+}
+
+// The grant record round-trips the whole capability shape, not just
+// the hash -- the baseline widen detection compares a later manifest
+// against (docs/goals/0375 S2).
+func TestPluginLock_GrantRecordRoundTrips(t *testing.T) {
+	set := newExtensionsHarness(t)
+	if _, ok := set.PluginGrant("mill-a"); ok {
+		t.Fatal("nothing recorded yet")
+	}
+	set.SetPluginHasher(func(id string) PluginGrantSnapshot {
+		return PluginGrantSnapshot{
+			Version: "1.0.0", Hash: "sha256-a",
+			Capabilities: []string{"open-url", "fetch"}, Hosts: []string{"api.example.test"}, AnyHost: false,
+			Kinds: []string{"steps", "views"}, UsesSecrets: true, CanvasHost: true,
+		}
+	})
+	if err := set.SetPluginAllowed("mill-a", true); err != nil {
+		t.Fatal(err)
+	}
+	got, ok := set.PluginGrant("mill-a")
+	if !ok {
+		t.Fatal("expected a recorded grant")
+	}
+	want := PluginLockEntry{
+		Version: "1.0.0", Hash: "sha256-a",
+		Capabilities: []string{"open-url", "fetch"}, Hosts: []string{"api.example.test"},
+		Kinds: []string{"steps", "views"}, UsesSecrets: true, CanvasHost: true,
+	}
+	if got.Version != want.Version || got.Hash != want.Hash || got.UsesSecrets != want.UsesSecrets || got.CanvasHost != want.CanvasHost ||
+		len(got.Capabilities) != 2 || len(got.Hosts) != 1 || len(got.Kinds) != 2 {
+		t.Fatalf("grant = %+v, want %+v", got, want)
+	}
+	// Withdrawing consent forgets the whole grant, not just the hash.
+	if err := set.SetPluginAllowed("mill-a", false); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := set.PluginGrant("mill-a"); ok {
+		t.Fatal("expected the grant to be forgotten with consent")
 	}
 }
