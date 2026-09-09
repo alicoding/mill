@@ -493,6 +493,20 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-selftest-git-isolation-selftest.sh
 
+  # Goal 0403 S2c: probes scripts/with-install-lock.sh -- the
+  # machine-wide lock serializing `task install:app` and the
+  # drive-installed-app skill's quit/install/drive/relaunch pass, so
+  # two concurrent installed-app passes never clobber the same
+  # /Applications/Mill.app bundle or each other's launched process.
+  # Grep/process-only, so like hook-command-guard it needs no build
+  # setup even though the lock itself targets a macOS-only task.
+  install-lock-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-install-lock-selftest.sh
+
   # Fixture-tests check-review-report.sh itself (fixed PR bodies piped
   # on stdin), same shape as hook-command-guard's own probe job -- keeps
   # the gate below from silently drifting either permissive or strict.
@@ -1311,6 +1325,7 @@ jobs:
       - hook-command-guard
       - selftest-git-isolation
       - selftest-git-isolation-selftest
+      - install-lock-selftest
       - review-report-selftest
       - review-report
       - go-mod-tidy

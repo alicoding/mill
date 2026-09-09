@@ -112,7 +112,15 @@ tasks:
       Task-level conditional only reaching the first build shipped a
       bundle without the hook). Omit both for the everyday reinstall
       the everyday plain reinstall; that stays bridge-free.
+
+      Runs under scripts/with-install-lock.sh (goal 0403 S2c): two
+      concurrent installed-app passes clobber the same bundle mid-copy
+      and each other's launched process, so this whole quit/build/
+      install sequence holds one machine-wide lock, released even on
+      failure via `defer:`.
     cmds:
+      - scripts/with-install-lock.sh --acquire
+      - defer: scripts/with-install-lock.sh --release
       - '{{if ne .GOOS "darwin"}}echo "install:app is macOS-only"; exit 1{{end}}'
       - cd frontend && {{.PACKAGE_MANAGER}} run build
       - rm -rf {{.BIN_DIR}}/{{.APP_NAME}}.app
