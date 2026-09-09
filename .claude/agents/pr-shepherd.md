@@ -37,6 +37,11 @@ per resume. At most two resumes per brief; on a third resume's need,
 stop and write a DONE/NOT DONE list instead of continuing — the
 remainder becomes a new slice with its own brief and ceiling.
 
+## Checkpoint commits (mandatory)
+
+A builder never ends a turn — cap, budget, or report — with a dirty
+worktree on a goal branch; dirty state is committed as `wip:` first.
+
 Per PR, loop until MERGED, CLOSED, or an escalation:
 1. `gh pr view N --json state,autoMergeRequest` — re-arm auto-merge
    (`gh pr merge N --squash --auto`) if disarmed.

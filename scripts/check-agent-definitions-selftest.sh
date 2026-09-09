@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Probes check-agent-definitions.sh (goal 0414 S1/S2) against a
+# Probes check-agent-definitions.sh (goal 0414 S1/S2/S3) against a
 # throwaway git fixture tree, so an edit to the gate cannot silently
 # stop catching a dropped sentinel or start rejecting a well-formed
 # definition. The gate itself resolves paths off `git rev-parse
@@ -20,7 +20,7 @@ name: builder
 description: fixture
 tools: Read, Edit, Write, Bash, Grep, Glob, Agent
 model: sonnet
-maxTurns: 150
+maxTurns: 120
 ---
 
 You build one goal's brief end to end. Own the PR to merge -- arm
@@ -35,6 +35,14 @@ resumes per brief. Write the drafted PR body to a file and run
 scripts/check-review-report.sh against it, and do not call `gh pr
 create` until it prints `review-report: ok`. Poll loops are forbidden
 past this point: `timeout: 600000`.
+
+## Checkpoint commits (mandatory)
+
+The first commit on the goal branch happens the moment the build is
+clean -- a `wip:` commit message is fine. At turn ~80 you MUST commit
+whatever is clean and write a one-line "checkpoint at turn 80: <what
+is left>" into your scratch dir. A builder never ends a turn -- cap,
+budget, or report -- with a dirty worktree on a goal branch.
 EOF
 }
 
@@ -103,9 +111,14 @@ no_review_report_gate() {
 probe 1 "builder.md missing the pre-PR check-review-report.sh call fails" builder.md no_review_report_gate
 
 wrong_maxturns_builder() {
-  good_builder | sed 's/maxTurns: 150/maxTurns: 60/'
+  good_builder | sed 's/maxTurns: 120/maxTurns: 60/'
 }
 probe 1 "builder.md with the wrong maxTurns for its size class fails" builder.md wrong_maxturns_builder
+
+no_checkpoint_commit_rule() {
+  good_builder | grep -v 'never ends a turn'
+}
+probe 1 "builder.md missing the checkpoint-commit rule fails" builder.md no_checkpoint_commit_rule
 
 no_grammar_reviewer() {
   good_reviewer | grep -v '^## Review$'

@@ -3,7 +3,7 @@ name: builder
 description: Executes one dispatched brief against Mill's repo -- the standard operational block (worktree, gates, review, PR, merge ownership) lives in this file so a dispatch prompt only has to name the brief and the goal, never repeat the procedure. Use for every user-facing or backend change with a complete written brief.
 tools: Read, Edit, Write, Bash, Grep, Glob, Agent
 model: sonnet
-maxTurns: 150
+maxTurns: 120
 ---
 
 You build one goal's brief end to end: own worktree through a merged PR.
@@ -75,6 +75,25 @@ The dispatch's token ceiling is CUMULATIVE across resumes, not reset
 per resume. At most two resumes per brief; on a third resume's need,
 stop and write a DONE/NOT DONE list instead of continuing — the
 remainder becomes a new slice with its own brief and ceiling.
+
+## Checkpoint commits (mandatory)
+
+A prompt-level "commit as soon as it's clean" rule does not survive
+120 turns of context — four builders hit their turn cap with ZERO
+commits on 1–3 hours of work even carrying that instruction verbatim,
+each costing a land-only resume. The rule lives here instead:
+
+(a) The first commit on the goal branch happens the moment `go build
+    ./...` and `tsc --noEmit` (whichever apply) are clean — a `wip:`
+    commit message is fine, the queue squashes it.
+(b) A commit follows every green gate and every finished sub-task (a
+    file family, a test file).
+(c) At turn ~80 you MUST commit whatever is clean and write a
+    one-line "checkpoint at turn 80: <what is left>" into your scratch
+    dir.
+(d) A builder never ends a turn — cap, budget, or report — with a
+    dirty worktree on a goal branch; dirty state is committed as
+    `wip:` first.
 
 ## Execution discipline
 
