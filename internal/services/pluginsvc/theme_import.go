@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -364,14 +365,44 @@ func writeThemeImportStage(dir string, manifest Manifest, metadata ThemeImportMe
 	return nil
 }
 
-func readThemeImportMetadata(dir string) *ThemeImportMetadata {
+func readThemeImportMetadata(dir string, manifest Manifest, rec InstallRecord) *ThemeImportMetadata {
 	raw, err := os.ReadFile(filepath.Join(dir, themeImportFile)) // #nosec G304,G703 -- the scanned plugin's own folder
 	if err != nil {
 		return nil
 	}
 	var metadata ThemeImportMetadata
-	if json.Unmarshal(raw, &metadata) != nil || metadata.MapperVersion == 0 {
+	if json.Unmarshal(raw, &metadata) != nil || metadata.MapperVersion != themeMapperVersion || metadata.SourceName != rec.Source.Name {
+		return nil
+	}
+	source, err := os.ReadFile(filepath.Join(dir, "source.json")) // #nosec G304,G703 -- the scanned plugin's own folder
+	if err != nil {
+		return nil
+	}
+	preview, css, err := parseThemeImport(source, metadata.SourceName)
+	if err != nil || !themeImportMetadataMatches(metadata, preview) {
+		return nil
+	}
+	generated, err := os.ReadFile(filepath.Join(dir, "theme.css")) // #nosec G304,G703 -- the scanned plugin's own folder
+	if err != nil || string(generated) != css || !themeImportManifestMatches(manifest, metadata) {
 		return nil
 	}
 	return &metadata
+}
+
+func themeImportMetadataMatches(metadata ThemeImportMetadata, preview ThemeImportPreview) bool {
+	return metadata.SourceSHA256 == preview.SourceSHA256 && metadata.SourceTheme == preview.sourceTheme &&
+		metadata.Mapped == preview.Mapped && metadata.Total == preview.Total &&
+		slices.Equal(metadata.MappedKeys, preview.MappedKeys) &&
+		slices.Equal(metadata.UnmappedKeys, preview.UnmappedKeys) &&
+		slices.Equal(metadata.InvalidKeys, preview.InvalidKeys)
+}
+
+func themeImportManifestMatches(manifest Manifest, metadata ThemeImportMetadata) bool {
+	if len(manifest.Contributes.Themes) != 1 || len(metadata.SourceSHA256) != sha256.Size*2 {
+		return false
+	}
+	theme := manifest.Contributes.Themes[0]
+	wantID := "imported-theme-" + metadata.Family + "-" + metadata.SourceSHA256[:24]
+	return (metadata.Family == "light" || metadata.Family == "dark") && manifest.ID == wantID &&
+		theme.ID == "theme" && theme.Label == manifest.Name && theme.Family == metadata.Family && theme.File == "theme.css"
 }

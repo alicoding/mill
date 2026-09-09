@@ -357,6 +357,11 @@ func (p *PluginService) stagedChecks(root string, rec InstallRecord) ([]string, 
 	if parseProblem != "" {
 		return nil, fmt.Errorf("%s", parseProblem)
 	}
+	if _, mainErr := os.Stat(filepath.Join(root, "main.js")); mainErr != nil && isDataOnlyManifest(m) {
+		if problem := dataOnlyFolderProblem(os.DirFS(root)); problem != "" {
+			return nil, usererror.New(InstallRefusedCode, installRefusalSentence(problem))
+		}
+	}
 	hash, _ := ContentHash(root)
 	if err := policyInstallRefusalAt(m, rec.Tier, rec.Marketplace, installSourceLocator(rec.Source), root, hash); err != nil {
 		return nil, err

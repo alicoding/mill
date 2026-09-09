@@ -238,6 +238,77 @@ func TestDataOnlyManifest_IsNarrow(t *testing.T) {
 	}
 }
 
+func TestScanOne_DataOnlyRejectsShippedJavaScript(t *testing.T) {
+	root := t.TempDir()
+	id := "scripted-theme"
+	dir := filepath.Join(root, id)
+	if err := os.MkdirAll(filepath.Join(dir, "vendor"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	manifest := `{"id":"scripted-theme","name":"Scripted theme","version":"1.0.0","contributes":{"themes":[{"id":"theme","label":"Theme","family":"light","file":"theme.css"}]}}`
+	for name, body := range map[string]string{
+		"manifest.json":    manifest,
+		"theme.css":        "--fgColor-default: #111;",
+		"vendor/unused.js": "export const unused = true",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	info := New(root, nil, "1.0.0").scanOne(id)
+	if info.DataOnly || !strings.Contains(info.Error, "cannot contain JavaScript") {
+		t.Fatalf("scripted data-only theme = %+v", info)
+	}
+	if problems := ConformDir(dir, "1.0.0"); !strings.Contains(strings.Join(problems, "\n"), "cannot contain JavaScript") {
+		t.Fatalf("conformance = %v", problems)
+	}
+	if _, err := New(t.TempDir(), nil, "1.0.0").stagedChecks(dir, InstallRecord{Source: PluginSource{Kind: "theme-file"}, Tier: TierDev}); err == nil {
+		t.Fatal("staged install admitted JavaScript in a data-only theme")
+	} else if got, ok := usererror.Of(err); !ok || got.Code != InstallRefusedCode {
+		t.Fatalf("staged error = %#v, want %s", err, InstallRefusedCode)
+	}
+}
+
+func TestScanOne_ThemeImportEvidenceRequiresMatchingHostReceipt(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(PolicyPathEnv, filepath.Join(t.TempDir(), "absent.json"))
+	p := New(root, nil, "1.0.0")
+	raw := []byte(`{"name":"Receipt theme","colors":{"foreground":"#123456"}}`)
+	result, err := p.ImportTheme(encodedTheme(raw), "receipt.json", "Receipt theme", "dark")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(root, result.PluginID)
+	if info := p.scanOne(result.PluginID); info.ThemeImport == nil {
+		t.Fatalf("host import evidence missing: %+v", info)
+	}
+	rec, ok := ReadInstallRecord(dir)
+	if !ok {
+		t.Fatal("host import receipt missing")
+	}
+	rec.Source = PluginSource{Kind: "github", Repo: "acme/theme"}
+	if err := WriteInstallRecord(dir, rec); err != nil {
+		t.Fatal(err)
+	}
+	if info := p.scanOne(result.PluginID); info.ThemeImport != nil {
+		t.Fatalf("non-theme receipt exposed imported evidence: %+v", info.ThemeImport)
+	}
+	rec.Source = PluginSource{Kind: "theme-file", Name: "receipt.json"}
+	if err := os.WriteFile(filepath.Join(dir, "theme.css"), []byte("--fgColor-default: #abcdef;\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	rec.ContentHash, err = ContentHash(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteInstallRecord(dir, rec); err != nil {
+		t.Fatal(err)
+	}
+	if info := p.scanOne(result.PluginID); info.ThemeImport != nil {
+		t.Fatalf("mismatched generated package exposed evidence: %+v", info.ThemeImport)
+	}
+}
+
 func TestScanOne_ThemeWithMainRemainsExecutable(t *testing.T) {
 	root := t.TempDir()
 	id := "native-theme"

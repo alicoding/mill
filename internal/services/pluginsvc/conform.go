@@ -36,6 +36,11 @@ func ConformDir(dir, appVersion string) []string {
 	if p := manifestProblem(m, folder, mainErr == nil, appVersion); p != "" {
 		problems = append(problems, p)
 	}
+	if mainErr != nil && isDataOnlyManifest(m) {
+		if p := dataOnlyFolderProblem(os.DirFS(dir)); p != "" {
+			problems = append(problems, p)
+		}
+	}
 	problems = append(problems, conformStepPack(dir, m)...)
 	problems = append(problems, conformSecretSourcePack(dir, m)...)
 	problems = append(problems, conformFiles(dir)...)

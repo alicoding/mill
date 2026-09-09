@@ -289,12 +289,12 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 	info.Warnings = manifestWarnings(m)
 	_, mainErr := os.Stat(filepath.Join(dir, "main.js")) // #nosec G703 -- folder passed pluginIDPattern (no separators, no dots)
 	info.Error = manifestProblem(m, folder, mainErr == nil, p.appVersion)
-	info.DataOnly = info.Error == "" && mainErr != nil && isDataOnlyManifest(m)
-	if info.Error == "" {
-		info.Error = stepsFileProblem(dir, m)
+	dataOnly := info.Error == "" && mainErr != nil && isDataOnlyManifest(m)
+	if dataOnly {
+		info.Error = dataOnlyFolderProblem(os.DirFS(dir))
 	}
 	if info.Error == "" {
-		info.ThemeImport = readThemeImportMetadata(dir)
+		info.Error = stepsFileProblem(dir, m)
 	}
 	if info.Error == "" {
 		info.Error = secretsFileProblem(dir, m)
@@ -313,6 +313,7 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 			info.CodeHash = h
 		}
 	}
+	info.DataOnly = info.Error == "" && dataOnly
 	if keys := p.signingKeySet(); len(keys) > 0 {
 		info.SigningPolicy = true
 		info.Signed = SignatureVerified(dir, info.ContentHash, keys)
@@ -320,6 +321,9 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 	info.Tier = InstalledTier(dir, false)
 	if rec, ok := ReadInstallRecord(dir); ok {
 		info.Marketplace = rec.Marketplace
+		if info.Error == "" && rec.Source.Kind == "theme-file" && rec.ContentHash == info.ContentHash {
+			info.ThemeImport = readThemeImportMetadata(dir, m, rec)
+		}
 	}
 	p.applyPolicy(&info)
 	return info
@@ -369,6 +373,29 @@ func isDataOnlyManifest(m Manifest) bool {
 	kinds := contributionKinds(m.Contributes)
 	return len(m.Capabilities) == 0 && len(m.Dependencies) == 0 && len(m.Exports) == 0 &&
 		len(kinds) == 1 && kinds[0] == "themes" && len(m.Contributes.Themes) > 0
+}
+
+// dataOnlyFolderProblem closes the classification over shipped files too: a
+// package that asks Mill to skip activation cannot carry dormant JavaScript.
+func dataOnlyFolderProblem(root fs.FS) string {
+	problem := ""
+	_ = fs.WalkDir(root, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			problem = "the data-only theme folder is unreadable"
+			return fs.SkipAll
+		}
+		if d.IsDir() {
+			return nil
+		}
+		switch strings.ToLower(filepath.Ext(d.Name())) {
+		case ".js", ".mjs", ".cjs", ".jsx":
+			problem = fmt.Sprintf("data-only theme extensions cannot contain JavaScript (%s)", filepath.ToSlash(path))
+			return fs.SkipAll
+		default:
+			return nil
+		}
+	})
+	return problem
 }
 
 // checkMinMillVersion refuses a plugin that declares it needs a newer
