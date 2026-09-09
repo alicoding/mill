@@ -10,7 +10,13 @@
   "contributes": {
     "canvasObjects": [
       {
-        "kind": "index"
+        "kind": "index",
+        "example": {
+          "title": "Board index example",
+          "payload": {},
+          "revision": 1,
+          "fixtures": []
+        }
       }
     ],
     "views": [

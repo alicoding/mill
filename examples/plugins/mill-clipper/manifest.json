@@ -14,7 +14,13 @@
     "canvasObjects": [
       {
         "kind": "clip",
-        "pastesURLs": true
+        "pastesURLs": true,
+        "example": {
+          "title": "Web clipper example",
+          "payload": { "url": "https://example.com/board-gallery", "clipped": "Board gallery" },
+          "revision": 1,
+          "fixtures": []
+        }
       }
     ],
     "network": [
