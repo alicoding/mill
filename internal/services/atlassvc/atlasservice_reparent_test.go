@@ -131,6 +131,7 @@ func TestDeleteCard_ReparentedObjectClearsAnAlreadyReparentedSibling(t *testing.
 	reparented := findObject(a, obj.ID)
 	if reparented == nil {
 		t.Fatal("re-parented board object missing from Objects()")
+		return // unreachable -- t.Fatal stops this goroutine; staticcheck's SA5011 doesn't always resolve that without an explicit return
 	}
 	if reparented.Position.Y < sibling.Position.Y+reparentLeafHeight {
 		t.Errorf("reparented.Position.Y = %v, want >= %v (clear of Sibling's own already-re-parented footprint)", reparented.Position.Y, sibling.Position.Y+reparentLeafHeight)
@@ -154,6 +155,7 @@ func TestRepositionReparentedObjectsLocked_ClearsMultipleReparentedSiblings(t *t
 	p1, p2 := findObject(a, o1.ID), findObject(a, o2.ID)
 	if p1 == nil || p2 == nil {
 		t.Fatal("a re-parented object is missing from Objects()")
+		return // unreachable -- t.Fatal stops this goroutine; staticcheck's SA5011 doesn't always resolve that without an explicit return
 	}
 	if p1.Position == p2.Position {
 		t.Errorf("both re-parented objects landed at the same position %+v", p1.Position)
@@ -185,6 +187,7 @@ func TestRepositionReparentedObjectsLocked_TableShapedKindGetsItsRealFootprint(t
 	pWide, pNext := findObject(a, wide.ID), findObject(a, next.ID)
 	if pWide == nil || pNext == nil {
 		t.Fatal("a re-parented object is missing from Objects()")
+		return // unreachable -- t.Fatal stops this goroutine; staticcheck's SA5011 doesn't always resolve that without an explicit return
 	}
 	if pNext.Position.X < pWide.Position.X+reparentTableFootprintW+reparentGap {
 		t.Errorf("pNext.Position.X = %v, want >= %v (clear of the unsized sheet's own real table-shaped width)",
@@ -211,6 +214,7 @@ func TestReparentObjectFootprint_MatchesFrontendFallbackExtent(t *testing.T) {
 	m := regexp.MustCompile(`OBJECT_FALLBACK_EXTENT\s*=\s*(\d+)`).FindSubmatch(src)
 	if m == nil {
 		t.Fatalf("no `OBJECT_FALLBACK_EXTENT = <n>` declaration in %s -- if it was renamed, rename it here too", rel)
+		return // unreachable -- t.Fatalf stops this goroutine; staticcheck's SA5011 doesn't always resolve that without an explicit return
 	}
 	extent, err := strconv.Atoi(string(m[1]))
 	if err != nil {
