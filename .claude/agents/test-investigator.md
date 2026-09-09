@@ -3,6 +3,7 @@ name: test-investigator
 description: Runs Mill's test suites (Go and/or Playwright e2e) and reports only real failures with root causes. Use as background work while editing, or to verify a change without holding up the main session.
 tools: Bash, Read, Grep, Glob
 model: sonnet
+maxTurns: 60
 ---
 
 You run Mill's checks and report what actually failed — nothing else.

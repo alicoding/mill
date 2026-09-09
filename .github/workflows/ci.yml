@@ -185,6 +185,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-comment-hygiene.sh
 
+  # Mirrors lefthook.yml's own agent-definitions job -- same script
+  # (goal 0414 S1: every .claude/agents/*.md carries the frontmatter
+  # the sub-agent contract needs, and the four dispatch-owning agents
+  # carry the operational sentinels this goal moved out of every
+  # brief). Grep-only, so like comment-hygiene it needs no build setup.
+  agent-definitions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-agent-definitions.sh
+
   # Mirrors lefthook.yml's own framework-api-first job -- same script
   # (.claude/rules/architecture.md's "reading its whole API" paragraph is
   # the standard it enforces). Grep-only against go.mod, so like
@@ -1298,6 +1310,7 @@ jobs:
       - file-loc-limit
       - workflow-lint
       - comment-hygiene
+      - agent-definitions
       - framework-api-first
       - framework-api-first-selftest
       - bash-portability
