@@ -571,3 +571,10 @@ This registry stays the ONLY list of checks that need this Mac specifically.
   relaunch, and confirm the hotkey still works with no new
   Accessibility prompt and no new row added under Accessibility for
   Mill.
+- **Secrets surface states need the vault unlocked once by a person**
+  (goal 0408 S2b) -- the local vault is protected by Touch ID or a
+  password; an automated driver cannot satisfy the LocalAuthentication
+  sheet and must never reset the vault. Verify on an installed build:
+  unlock the vault once, then walk the Secrets list at rest, a row's
+  hover actions, a row's detail dialog, "Open source" navigation, and
+  an unresolved source-backed row -- screenshot each.
