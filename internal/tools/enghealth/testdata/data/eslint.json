@@ -1,0 +1,4 @@
+[
+  { "filePath": "src/a.tsx", "messages": [ { "ruleId": "sonarjs/cognitive-complexity" }, { "ruleId": "no-unused-vars" } ] },
+  { "filePath": "src/b.tsx", "messages": [ { "ruleId": "sonarjs/no-duplicated-branches" } ] }
+]

@@ -1,0 +1,10 @@
+{
+  "suites": [
+    {
+      "specs": [
+        { "tests": [ { "results": [ { "status": "passed", "retry": 0 } ] } ] },
+        { "tests": [ { "results": [ { "status": "failed", "retry": 0 }, { "status": "passed", "retry": 1 } ] } ] }
+      ]
+    }
+  ]
+}

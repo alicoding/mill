@@ -134,6 +134,20 @@ PY
   fi
 fi
 
+# --- engineering health: the weekly report's own JSON (goal 0413 S1),
+# read from the repo root when a run of engineering-health.yml has left
+# one there (a real run, or the orchestrator's own `go run
+# ./internal/tools/enghealth` dry run) -- absent on a fresh clone or a
+# checkout that predates this goal, same best-effort "not generated yet"
+# shape the maturity ledger above already takes. No new dashboard view:
+# the Health/Efficiency views read this field directly.
+enghealth_file="$repo_root/engineering-health.json"
+if [[ -f "$enghealth_file" ]]; then
+  enghealth_json="$(cat "$enghealth_file")"
+else
+  enghealth_json='{"generated":false}'
+fi
+
 # --- repo: current main sha + open PRs (gh optional, never fatal) ---
 main_sha="$(git -C "$repo_root" rev-parse origin/main 2>/dev/null || git -C "$repo_root" rev-parse HEAD)"  # git-isolation:allow -- reads the real checkout's own sha, not a fixture
 prs_json="[]"
@@ -169,6 +183,7 @@ generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf '  "census": %s,\n' "$(cat "$census_file")"
   printf '  "dispatch": %s,\n' "$dispatch_json"
   printf '  "maturity": %s,\n' "$maturity_json"
+  printf '  "engineering_health": %s,\n' "$enghealth_json"
   printf '  "efficiency": {"turnsPerGoal": %s},\n' "$turns_json"
   printf '  "repo": {"main_sha": "%s", "open_prs": %s, "gh_unavailable": %s}\n' \
     "$main_sha" "$prs_json" "$gh_unavailable"

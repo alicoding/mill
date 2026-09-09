@@ -1,0 +1,3 @@
+mode: set
+github.com/alicoding/mill/example/file.go:1.1,3.2 2 1
+github.com/alicoding/mill/example/file.go:5.1,7.2 3 0

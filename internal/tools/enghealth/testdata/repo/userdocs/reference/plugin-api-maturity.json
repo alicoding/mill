@@ -1,0 +1,9 @@
+{
+  "headline": "test fixture",
+  "rows": [
+    { "family": "canvasObjects", "level": "stable" },
+    { "family": "steps", "level": "experimental" },
+    { "family": "captures", "level": "stable" },
+    { "family": "settings", "level": "experimental" }
+  ]
+}

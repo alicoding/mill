@@ -1,0 +1,14 @@
+lead_time_p50_hours_max: 24
+merge_group_p50_minutes_max: 45
+queue_wait_p50_minutes_max: 10
+merge_group_failure_rate_pct_max: 10
+retry_passed_rate_pct_max: 1
+dependabot_pr_age_days_max: 7
+open_goal_prs_max: 6
+files_near_loc_cap_max: 10
+go_coverage_floor_pct: 75
+vitest_coverage_floor_pct: 12
+go_minors_behind_max: 1
+node_minors_behind_max: 1
+wails_betas_behind_max: 1
+playwright_minors_behind_max: 1

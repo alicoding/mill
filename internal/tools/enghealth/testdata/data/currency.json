@@ -1,0 +1,6 @@
+{
+  "go": { "pinned": "1.26.8", "latest": "1.27.1" },
+  "node": { "pinned": "22.10.0", "latest": "22.11.0" },
+  "wails": { "pinned": "v3.0.0-beta.15", "latest": "v3.0.0-beta.15" },
+  "playwright": { "pinned": "1.48.0", "latest": "1.50.2" }
+}

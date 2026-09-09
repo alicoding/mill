@@ -4,20 +4,13 @@
 # file-loc-limit job -- lefthook.yml's own header says it mirrors CI, so
 # this lives as one script both call, not two copies that can drift.
 set -euo pipefail
+cd "$(dirname "$0")/.."
 
-limit=500
-
-# Generated bindings (Wails codegen, not hand-written), the gomobile-
-# toolchain scaffold under build/ios and build/android (vendored, not
-# Mill's own code -- same carve-out ci.yml's build-go job already applies),
-# the plugin SDK's committed declarations (emitted by tsc from
-# frontend/src/plugins/sdk.ts via `npm run sdk:build`, which IS under the
-# limit -- the emitter owns this file's shape, and check-sdk-freshness.sh
-# is what keeps it honest), and frontend/dist/node_modules are all out of
-# scope: this convention is about keeping *Mill's own hand-written
-# source* reviewable as a single unit, not about code nobody here
-# maintains the shape of.
-exclude_regex='^(frontend/bindings/|frontend/plugin-sdk/|build/ios/|build/android/|frontend/dist/|frontend/node_modules/)'
+# Limit and exclude set live in scripts/loc-policy.json -- the single
+# source goal 0413's enghealth "files near the LOC cap" metric reads
+# too, so the two never drift against each other by hand-edit.
+limit=$(jq -r '.limit' scripts/loc-policy.json)
+exclude_regex=$(jq -r '.exclude_regex' scripts/loc-policy.json)
 
 violations=0
 while IFS= read -r -d '' file; do

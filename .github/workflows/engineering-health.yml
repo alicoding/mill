@@ -1,0 +1,287 @@
+# Weekly engineering-health report (goal 0413 S1): gathers PR/CI/test/
+# lint/coverage/currency data via `gh api`, golangci-lint, eslint and the
+# real toolchain registries, computes every metric in
+# internal/tools/enghealth (Go, tested -- NOT a bash reimplementation of
+# the math), and keeps ONE perpetually-updated "Engineering health" issue
+# current. Reporting only: a budget breach marks status "warning" in the
+# table, it never fails this job (S2 makes a breach open its own tracking
+# issue).
+name: Engineering health
+
+on:
+  schedule:
+    - cron: '0 7 * * 1' # Monday 07:00 UTC
+  workflow_dispatch:
+    inputs:
+      window_days:
+        description: How many days of history to gather (the report itself always computes trailing 7d/28d columns from within this range)
+        required: false
+        default: '28'
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+  pull-requests: read
+
+concurrency:
+  group: engineering-health
+  cancel-in-progress: false
+
+jobs:
+  engineering-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CGO_ENABLED: '0'
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      WINDOW_DAYS: ${{ github.event.inputs.window_days || '28' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the re-merge-round and QUARANTINE-28d-ago metrics read git history
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+
+      - name: Gather window bounds
+        id: window
+        run: |
+          set -euo pipefail
+          since_long=$(date -u -d "-${WINDOW_DAYS} days" +%Y-%m-%dT%H:%M:%SZ)
+          since_short=$(date -u -d "-7 days" +%Y-%m-%dT%H:%M:%SZ)
+          echo "since_long=$since_long" >> "$GITHUB_OUTPUT"
+          echo "since_short=$since_short" >> "$GITHUB_OUTPUT"
+          mkdir -p enghealth-data
+
+      # --- delivery: merged PRs against main -----------------------------
+      - name: Gather merged PRs
+        run: |
+          set -euo pipefail
+          gh pr list --repo "$REPO" --state merged --base main \
+            --search "merged:>=${{ steps.window.outputs.since_long }}" \
+            --json number,createdAt,mergedAt --limit 200 \
+            > enghealth-data/prs.json
+
+      # --- delivery + CI: workflow runs and their jobs -------------------
+      - name: Gather workflow runs
+        run: |
+          set -euo pipefail
+          gh api --paginate \
+            "repos/$REPO/actions/runs?created=>=${{ steps.window.outputs.since_long }}&per_page=100" \
+            --jq '.workflow_runs[]' \
+          | jq -s '[.[] | {
+              id, name, event,
+              headBranch: .head_branch,
+              conclusion,
+              createdAt: .created_at,
+              runStartedAt: .run_started_at,
+              updatedAt: .updated_at
+            }]' > enghealth-data/runs.json
+
+      - name: Gather run jobs
+        run: |
+          set -euo pipefail
+          : > /tmp/jobs.ndjson
+          for id in $(jq -r '.[].id' enghealth-data/runs.json); do
+            # $run_id below is a jq --arg substitution, not a shell one.
+            # shellcheck disable=SC2016
+            gh api "repos/$REPO/actions/runs/$id/jobs" --jq \
+              --arg run_id "$id" \
+              '.jobs[] | {runId: ($run_id | tonumber), name, createdAt: .created_at, startedAt: .started_at, completedAt: .completed_at, conclusion, labels}' \
+              >> /tmp/jobs.ndjson || true
+          done
+          jq -s '.' /tmp/jobs.ndjson > enghealth-data/jobs.json
+
+      # --- test: Playwright JSON reports off recent main runs ------------
+      # No `ci-gate`-required job currently uploads a JSON-reporter
+      # artifact on a green run (only the HTML report, and only on
+      # failure -- confirmed against ci.yml's own e2e job at authoring
+      # time). This step degrades to writing nothing for a window with no
+      # matching artifact, which is the tool's own honest "no data" path,
+      # not a silent zero -- wiring the artifact upload into ci.yml is a
+      # separate change (ci.yml is out of this workflow's own touch-set).
+      - name: Gather Playwright JSON reports (7d)
+        run: |
+          set -euo pipefail
+          run_ids=$(gh run list --repo "$REPO" --workflow CI --branch main --event push \
+            --status success --created ">=${{ steps.window.outputs.since_short }}" \
+            --json databaseId --limit 50 --jq '.[].databaseId')
+          mkdir -p /tmp/pw-7
+          for id in $run_ids; do
+            gh run download "$id" --repo "$REPO" -n playwright-json-report -D "/tmp/pw-7/$id" 2>/dev/null || true
+          done
+          reports=$(find /tmp/pw-7 -name '*.json' 2>/dev/null || true)
+          if [ -n "$reports" ]; then
+            # shellcheck disable=SC2086
+            jq -s '{suites: [.[] | .suites[]?]}' $reports > enghealth-data/playwright-7.json
+          fi
+      - name: Gather Playwright JSON reports (28d)
+        run: |
+          set -euo pipefail
+          run_ids=$(gh run list --repo "$REPO" --workflow CI --branch main --event push \
+            --status success --created ">=${{ steps.window.outputs.since_long }}" \
+            --json databaseId --limit 50 --jq '.[].databaseId')
+          mkdir -p /tmp/pw-28
+          for id in $run_ids; do
+            gh run download "$id" --repo "$REPO" -n playwright-json-report -D "/tmp/pw-28/$id" 2>/dev/null || true
+          done
+          reports=$(find /tmp/pw-28 -name '*.json' 2>/dev/null || true)
+          if [ -n "$reports" ]; then
+            # shellcheck disable=SC2086
+            jq -s '{suites: [.[] | .suites[]?]}' $reports > enghealth-data/playwright-28.json
+          fi
+
+      # --- test: QUARANTINE.md 28 days ago --------------------------------
+      - name: Gather QUARANTINE.md snapshot from 28 days ago
+        run: |
+          set -euo pipefail
+          old_sha=$(git rev-list -1 --before="${{ steps.window.outputs.since_long }}" main || true)
+          if [ -n "$old_sha" ] && git cat-file -e "$old_sha:frontend/e2e/QUARANTINE.md" 2>/dev/null; then
+            git show "$old_sha:frontend/e2e/QUARANTINE.md" > enghealth-data/quarantine-28d-ago.md
+          fi
+
+      # --- code: lint offender counts -------------------------------------
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.12
+          # Only the vote step below runs golangci-lint for real; this
+          # action call installs the binary onto PATH without failing the
+          # job on its own default full lint pass (reporting job, no gate).
+          args: --build-tags=server ./internal/... --issues-exit-code=0
+      - name: Golangci-lint JSON (issue counts only, not a gate)
+        run: |
+          set -euo pipefail
+          golangci-lint run ./internal/... --build-tags=server --out-format json > enghealth-data/golangci.json || true
+      - name: Eslint JSON (issue counts only, not a gate)
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          npx eslint . -f json > ../enghealth-data/eslint.json || true
+
+      # --- code: coverage --------------------------------------------------
+      - name: Go coverage profile
+        run: go test ./internal/... -coverprofile=enghealth-data/cover.out || true
+      - name: Vitest coverage summary
+        working-directory: frontend
+        run: npx vitest run --coverage --coverage.reporter=json-summary || true
+      - run: cp frontend/coverage/coverage-summary.json enghealth-data/coverage-summary.json || true
+
+      # --- dependencies + machinery: open PRs -----------------------------
+      - name: Gather open Dependabot PRs
+        run: |
+          set -euo pipefail
+          gh pr list --repo "$REPO" --state open --json number,createdAt,author --limit 100 \
+            --jq '[.[] | select(.author.login == "app/dependabot" or .author.login == "dependabot") | {number, createdAt}]' \
+            > enghealth-data/dependabot-prs.json
+      - name: Gather open goal PRs
+        run: |
+          set -euo pipefail
+          gh pr list --repo "$REPO" --state open --json number,createdAt,headRefName --limit 100 \
+            --jq '[.[] | select(.headRefName | startswith("goal/")) | {number, createdAt}]' \
+            > enghealth-data/goal-prs.json
+
+      # --- machinery: shepherd re-merge rounds ----------------------------
+      # A goal PR merges squashed (ADR-0034), so the "Merge remote-tracking
+      # branch 'origin/main'" commits a re-armed pr-shepherd creates never
+      # land on main's own history -- only GitHub's own retained per-PR
+      # commit list still carries them, hence one API call per merged PR
+      # rather than a single `git log` walk.
+      - name: Count shepherd re-merge rounds
+        run: |
+          set -euo pipefail
+          count_remerges() {
+            local since="$1" total=0
+            for n in $(gh pr list --repo "$REPO" --state merged --base main --search "merged:>=$since" --json number --jq '.[].number'); do
+              # $needle below is a jq --arg substitution, not a shell one.
+              # shellcheck disable=SC2016
+              hits=$(gh api "repos/$REPO/pulls/$n/commits" --jq \
+                --arg needle "Merge remote-tracking branch 'origin/main'" \
+                '[.[] | select(.commit.message | contains($needle))] | length')
+              total=$((total + hits))
+            done
+            echo "$total"
+          }
+          c7=$(count_remerges "${{ steps.window.outputs.since_short }}")
+          c28=$(count_remerges "${{ steps.window.outputs.since_long }}")
+          jq -n --argjson c7 "$c7" --argjson c28 "$c28" '{count7: $c7, count28: $c28}' \
+            > enghealth-data/remerge-rounds.json
+
+      # --- currency: toolchain pinned vs latest ---------------------------
+      - name: Gather toolchain currency
+        run: |
+          set -euo pipefail
+          pinned_go=$(awk '/^toolchain/ {print $2}' go.mod | sed 's/^go//')
+          latest_go=$(curl -fsSL 'https://go.dev/dl/?mode=json' | jq -r '[.[] | select(.stable==true)][0].version' | sed 's/^go//')
+          pinned_node=$(awk -F"'" '/node-version:/ {print $2; exit}' .github/workflows/ci.yml)
+          latest_node=$(curl -fsSL 'https://nodejs.org/dist/index.json' | jq -r '[.[] | select(.lts != false)][0].version' | sed 's/^v//')
+          pinned_wails=$(awk '/wailsapp\/wails\/v3 / {print $2}' go.mod)
+          latest_wails=$(go list -m -versions github.com/wailsapp/wails/v3 | awk '{print $NF}')
+          pinned_pw=$(node -p "require('./frontend/package.json').devDependencies['@playwright/test'] || require('./frontend/package.json').dependencies['@playwright/test']" | tr -d '^~')
+          latest_pw=$(npm view @playwright/test version)
+          jq -n \
+            --arg gop "$pinned_go" --arg gol "$latest_go" \
+            --arg nop "$pinned_node" --arg nol "$latest_node" \
+            --arg wap "$pinned_wails" --arg wal "$latest_wails" \
+            --arg pwp "$pinned_pw" --arg pwl "$latest_pw" \
+            '{go: {pinned: $gop, latest: $gol}, node: {pinned: $nop, latest: $nol}, wails: {pinned: $wap, latest: $wal}, playwright: {pinned: $pwp, latest: $pwl}}' \
+            > enghealth-data/currency.json
+
+      # --- compute + render -------------------------------------------------
+      - name: Compute the report
+        run: |
+          go run ./internal/tools/enghealth \
+            --window 7,28 \
+            --budgets .github/engineering-budgets.yml \
+            --out engineering-health.json \
+            --md engineering-health.md
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: engineering-health-report
+          path: |
+            engineering-health.json
+            engineering-health.md
+          retention-days: 90
+
+      # --- the one perpetually-updated issue --------------------------------
+      - name: Build the issue body (front matter + the rendered table)
+        run: |
+          {
+            echo "---"
+            echo "title: Engineering health"
+            echo "labels: engineering-health"
+            echo "---"
+            cat engineering-health.md
+          } > issue-body.md
+
+      - uses: JasonEtco/create-an-issue@1b14a70e4d8dc185e5cc76d3bec9eab20257b2c5 # v2.9.2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          filename: issue-body.md
+          update_existing: true
+          search_existing: all
+
+      - name: Append the JSON as a collapsed comment
+        run: |
+          set -euo pipefail
+          issue_number=$(gh issue list --repo "$REPO" --label engineering-health --state all --json number --jq '.[0].number')
+          {
+            echo "<details><summary>engineering-health.json</summary>"
+            echo
+            echo '```json'
+            cat engineering-health.json
+            echo '```'
+            echo "</details>"
+          } > json-comment.md
+          gh issue comment "$issue_number" --repo "$REPO" --body-file json-comment.md
