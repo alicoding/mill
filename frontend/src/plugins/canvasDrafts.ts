@@ -22,7 +22,13 @@ export interface CanvasDraftRecord {
   kind: string
   at: { x: number; y: number }
   size?: { w: number; h: number }
+  // data is what a commit persists as the object's payload; preview is
+  // the drawing state the host paints from and NEVER writes -- a stroke
+  // in progress, a rubber-band rectangle. Keeping them apart is what
+  // lets a preview carry whatever it needs without leaking a key into
+  // the placed object, and the preview declaration reads across both.
   data: Record<string, string>
+  preview: Record<string, string>
 }
 
 // place is how a draft becomes a real board object. The gesture that
@@ -61,6 +67,7 @@ export function createDraft(pluginId: string, toolId: string, message: ObjectCre
     at: message.at,
     size: message.size,
     data: message.data,
+    preview: message.preview,
   }
   placements.set(draft.id, place)
   useCanvasDrafts.getState().set(draft)
@@ -84,6 +91,7 @@ export function patchDraft(pluginId: string, message: ObjectPatchMessage): void 
     at: message.at ?? draft.at,
     size: message.size ?? draft.size,
     data: message.data ? { ...draft.data, ...message.data } : draft.data,
+    preview: message.preview ? { ...draft.preview, ...message.preview } : draft.preview,
   })
 }
 

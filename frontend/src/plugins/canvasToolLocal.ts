@@ -22,7 +22,7 @@ function localCtx(door: CanvasToolDoorContext, decl: CanvasToolDecl, event: Tool
   })
   const ctx: CanvasToolCtx = {
     styleValues: event.styleValues,
-    createDraft: (input) => call('object.create', { toolId: decl.kind, kind: decl.objectKind || decl.kind, at: input.at, size: input.size, data: input.data || {} })
+    createDraft: (input) => call('object.create', { toolId: decl.kind, kind: decl.objectKind || decl.kind, at: input.at, size: input.size, data: input.data || {}, preview: input.preview || {} })
       .then((r) => draft((r as { id: string }).id)),
   }
   if (canErase) {

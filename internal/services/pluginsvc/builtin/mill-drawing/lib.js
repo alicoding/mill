@@ -1,8 +1,12 @@
-// Shared helpers for the Drawing plugin's four tools: SVG element
-// building and the freehand-outline -> path conversion (the same
-// outline math the app used when these tools were compiled in, so a
-// stroke drawn before the port and one drawn after are
-// indistinguishable).
+// Shared helpers for the Drawing plugin's four tools: the
+// freehand-outline -> path conversion (the same outline math these
+// tools have always used, so a stroke drawn before and one drawn after
+// are indistinguishable) and the base64 encoding that bakes a finished
+// stroke into a file.
+//
+// Nothing here touches a document: the tools run inside Mill's
+// extension sandbox, where the board is not reachable at all, and the
+// faces are their own pages.
 import { getStroke } from './perfect-freehand.js'
 
 export const MIN_DRAG_PX = 6
@@ -43,55 +47,11 @@ export function strokeOutline(points, size) {
 }
 
 // The in-progress drag's live trail: the same outline math as the
-// committed artifact, left in the caller's own coordinate space (the
-// preview overlay spans the whole wrapper 1:1).
+// committed artifact, in board coordinates -- Mill paints it from the
+// draft and places the finished stroke at the same coordinates.
 export function livePreviewPathData(points, size) {
 	if (points.length < 2) return ''
 	return outlinePathData(strokeOutline(points, size))
-}
-
-const SVG_NS = 'http://www.w3.org/2000/svg'
-
-export function svgEl(tag, attrs) {
-	const el = document.createElementNS(SVG_NS, tag)
-	for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v))
-	return el
-}
-
-// A wrapper-spanning preview <svg>: absolute, pointer-events disabled
-// so it never steals the very drag it's rendering.
-export function previewSvg(testid) {
-	const svg = svgEl('svg', { 'data-testid': testid })
-	svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none'
-	return svg
-}
-
-// Update-in-place preview plumbing: renderPreview fires per pointer
-// move (and per fade frame), so the overlay's element identity must
-// stay STABLE across calls -- both for cost and because a preview
-// that remounts mid-drag is a pinned regression class. ensurePreview
-// keeps one <svg> alive under el; ensureChild keeps one child of the
-// wanted tag alive under it, swapping only when the tag changes.
-export function ensurePreview(el, testid) {
-	let svg = el.firstElementChild
-	if (!svg || svg.getAttribute('data-testid') !== testid) {
-		svg = previewSvg(testid)
-		el.replaceChildren(svg)
-	}
-	return svg
-}
-
-export function ensureChild(svg, tag) {
-	let node = svg.firstElementChild
-	if (!node || node.tagName.toLowerCase() !== tag) {
-		node = svgEl(tag, {})
-		svg.replaceChildren(node)
-	}
-	return node
-}
-
-export function setAttrs(node, attrs) {
-	for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v))
 }
 
 // UTF-8-safe string -> base64 (TextEncoder + chunked btoa) for baking

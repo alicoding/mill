@@ -35,7 +35,10 @@ export function PreviewOverlay({ toolId, decl, testid }: { toolId: string; decl:
   const viewport = useViewport()
   const drafts = useCanvasDrafts((s) => s.drafts)
   const draft: CanvasDraftRecord | null = liveDraftFor(drafts, toolId)
-  const shapes = draft ? previewShapes(decl, draft.data) : []
+  // The declaration reads across both halves of the draft: a tool whose
+  // preview IS its payload (a rectangle's own geometry) names payload
+  // keys; one with drawing-only state names preview keys.
+  const shapes = draft ? previewShapes(decl, { ...draft.data, ...draft.preview }) : []
   if (shapes.length === 0) return null
   return (
     <svg data-testid={testid} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>

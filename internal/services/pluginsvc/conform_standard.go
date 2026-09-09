@@ -81,7 +81,7 @@ func conformCommandNamespace(m Manifest) []string {
 }
 
 // ConformStandardWarnings returns the standard's advisory findings for
-// a folder (rules 3, 9, 21, 22, 25 and 26): a warning is the author's
+// a folder (rules 3, 9, 21, 22, 25, 26 and 34): a warning is the author's
 // call, not a failure, so only the command-line checker surfaces it --
 // except the install checks' warnings, which the install prompt shows.
 func ConformStandardWarnings(dir string) []string {
@@ -99,6 +99,7 @@ func ConformStandardWarnings(dir string) []string {
 	warnings = append(warnings, conformConsoleErrorWithoutNotify(scripts)...)
 	warnings = append(warnings, conformSurfacesWithoutEntry(m)...)
 	warnings = append(warnings, conformSetEditingNeedsInteractive(scripts)...)
+	warnings = append(warnings, conformMenusWithoutWhen(m)...)
 	_, installWarnings := InstallChecks(dir, m)
 	warnings = append(warnings, installWarnings...)
 	sort.Strings(warnings)

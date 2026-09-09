@@ -42,14 +42,18 @@ setFramedExportCallHandler((id, method, args) => {
   return sendExtensionCall(entry.ctx, method, args)
 })
 
-// isFramedActivation is the one branch this slice adds (docs/goals/
-// 0375 S1b's binding scope): a built-in keeps same-DOM behind its own
-// named transition (the tools API, S1c); a non-built-in that declares
-// a canvas object keeps same-DOM behind the "canvas-host" grant, until
-// the framed canvas API exists (goal 0380). Every other non-built-in
-// plugin activates framed.
+// isFramedActivation decides which activation an extension gets. A
+// canvas contribution used to force same-DOM outright; since the
+// framed canvas API exists (docs/goals/0380) a kind declared as a TOOL
+// draws through the bridge instead, so an extension whose canvas kinds
+// are all tools runs sandboxed whether or not it is bundled -- that is
+// what makes the bundled drawing tools the API's own proof. An
+// extension with any same-DOM canvas kind still activates in Mill's
+// document, behind the "canvas-host" grant for a non-built-in.
 export function isFramedActivation(builtin: boolean, manifest: Manifest): boolean {
-  return !builtin && (manifest.contributes?.canvasObjects ?? []).length === 0
+  const canvas = manifest.contributes?.canvasObjects ?? []
+  if (canvas.length > 0) return canvas.every((kind) => kind.tool)
+  return !builtin
 }
 
 // activateFramed builds the SAME host-side api object same-DOM

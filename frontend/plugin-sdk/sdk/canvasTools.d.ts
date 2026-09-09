@@ -70,17 +70,27 @@ export interface CanvasToolPointerEvent {
         meta: boolean;
     };
     zoom: number;
+    /** The tool's current style-picker values, keyed by each declared
+     * field's own `key`, falling back to that field's default. */
+    styleValues: Record<string, string | number>;
     /** The board object under the pointer, when there is one. */
     target?: string;
 }
 /** The draft a tool is drawing. Every write is live and undoes as
- * nothing — only `commit` reaches the board, as one undo step. */
+ * nothing — only `commit` reaches the board, as one undo step.
+ *
+ * `data` is what a commit saves as the object's payload; `preview` is
+ * drawing state Mill paints from and never saves. A preview
+ * declaration reads across both, so a shape whose preview IS its own
+ * geometry names payload keys and a stroke in progress names preview
+ * ones. */
 export interface CanvasDraft {
     id: string;
     /** Merges data, position and size into the draft. Mill redraws the
      * preview from it. */
     patch: (patch: {
         data?: Record<string, string>;
+        preview?: Record<string, string>;
         at?: {
             x: number;
             y: number;
@@ -107,6 +117,7 @@ export interface CanvasToolCtx {
      * declared preview from it until it is committed or discarded. */
     createDraft: (input: {
         data?: Record<string, string>;
+        preview?: Record<string, string>;
         at: {
             x: number;
             y: number;

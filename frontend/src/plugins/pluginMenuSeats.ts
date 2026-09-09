@@ -1,5 +1,6 @@
 import type { ManifestContributes } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { resolveMenus } from './pluginMenus'
+import { evaluateWhen, type WhenFacts } from './whenClause'
 import { pluginLoadStates } from './loader'
 
 // The seat-wiring half pluginMenus.ts's own header comment defers to a
@@ -35,6 +36,14 @@ export interface PluginMenuSeatItem {
   commandId: string
 }
 
+// shows evaluates a declared item's `when` against the seat's own
+// facts (docs/goals/0380 Decision 4). An item that declares none shows
+// -- the same answer "true" gives -- and standard rule 34 is what asks
+// an author to write that intent down rather than leave it implied.
+function shows(when: string | undefined, facts: WhenFacts): boolean {
+  return when === undefined || when.trim() === '' ? true : evaluateWhen(when, facts)
+}
+
 // canvasContextMenuSeatItems answers goal 0349 S2b's design contract
 // item 1: a right-clicked object's kind decides which loaded plugins'
 // editor/context items apply. A plugin that declares at least one
@@ -43,14 +52,16 @@ export interface PluginMenuSeatItem {
 // kind to scope an item to, so its editor/context items apply to
 // every object's menu instead (the "without a kind filter" half of
 // the contract).
-export function canvasContextMenuSeatItems(objectKind: string, plugins: LoadedPluginContributes[] = loadedPluginContributes()): PluginMenuSeatItem[] {
+export function canvasContextMenuSeatItems(objectKind: string, facts: WhenFacts = {}, plugins: LoadedPluginContributes[] = loadedPluginContributes()): PluginMenuSeatItem[] {
   const out: PluginMenuSeatItem[] = []
   for (const { pluginId, contributes } of plugins) {
     const ownedKinds = contributes.canvasObjects ?? []
     if (ownedKinds.length > 0 && !ownedKinds.some((decl) => decl.kind === objectKind)) continue
     const { seated } = resolveMenus(contributes.menus)
     for (const item of seated) {
-      if (item.seat === 'canvasContextMenu') out.push({ pluginId, commandId: `plugin.${pluginId}.${item.command}` })
+      if (item.seat !== 'canvasContextMenu') continue
+      if (!shows(item.when, facts)) continue
+      out.push({ pluginId, commandId: `plugin.${pluginId}.${item.command}` })
     }
   }
   return out
@@ -61,9 +72,9 @@ export function canvasContextMenuSeatItems(objectKind: string, plugins: LoadedPl
 // scoping (VS Code's own `when` clause would narrow it; Mill evaluates
 // none -- goal 0380 Decision 4), so a plugin with several views shows
 // the same items on all of them.
-export function viewTitleSeatItems(pluginId: string, plugins: LoadedPluginContributes[] = loadedPluginContributes()): PluginMenuSeatItem[] {
+export function viewTitleSeatItems(pluginId: string, facts: WhenFacts = {}, plugins: LoadedPluginContributes[] = loadedPluginContributes()): PluginMenuSeatItem[] {
   const plugin = plugins.find((p) => p.pluginId === pluginId)
   if (!plugin) return []
   const { seated } = resolveMenus(plugin.contributes.menus)
-  return seated.filter((item) => item.seat === 'viewTitle').map((item) => ({ pluginId, commandId: `plugin.${pluginId}.${item.command}` }))
+  return seated.filter((item) => item.seat === 'viewTitle' && shows(item.when, facts)).map((item) => ({ pluginId, commandId: `plugin.${pluginId}.${item.command}` }))
 }

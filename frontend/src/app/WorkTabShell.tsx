@@ -16,6 +16,7 @@ import editorStyles from '../composition/CompositionView.module.css'
 import { tabLabel } from './workTabLabel'
 import { PluginViewHost } from './PluginViewHost'
 import { getPluginView } from '../plugins/pluginViews'
+import { viewTitleMenuFacts } from '../plugins/pluginMenuFacts'
 import { viewTitleSeatItems } from '../plugins/pluginMenuSeats'
 import { OutputViewer } from '../shared/OutputViewer'
 import { readStashedOutput } from '../shared/outputTabStore'
@@ -82,7 +83,7 @@ function tabEntityVisual(tab: WorkTab): ReactNode {
 // calls for, so no hand-rolled item count/overflow logic lives here.
 function PluginTitleActions({ pluginId, viewId }: { pluginId: string; viewId: string }) {
   const { t } = useTranslation('app')
-  const items = viewTitleSeatItems(pluginId)
+  const items = viewTitleSeatItems(pluginId, viewTitleMenuFacts(viewId))
   if (items.length === 0) return null
   return (
     <span data-testid={`work-tab-title-actions-${pluginId}-${viewId}`}>

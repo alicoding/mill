@@ -70,6 +70,17 @@ point: CanvasToolPoint;
 
 ***
 
+### styleValues
+
+```ts
+styleValues: Record<string, string | number>;
+```
+
+The tool's current style-picker values, keyed by each declared
+field's own `key`, falling back to that field's default.
+
+***
+
 ### target?
 
 ```ts

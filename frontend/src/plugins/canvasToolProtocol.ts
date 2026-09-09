@@ -224,8 +224,8 @@ export function parseRegisterTool(value: unknown): CanvasToolDescriptor {
 
 // ---- the object doors ------------------------------------------------
 
-export interface ObjectCreateMessage { toolId: string; kind: string; at: { x: number; y: number }; size?: { w: number; h: number }; data: Record<string, string> }
-export interface ObjectPatchMessage { id: string; at?: { x: number; y: number }; size?: { w: number; h: number }; data?: Record<string, string> }
+export interface ObjectCreateMessage { toolId: string; kind: string; at: { x: number; y: number }; size?: { w: number; h: number }; data: Record<string, string>; preview: Record<string, string> }
+export interface ObjectPatchMessage { id: string; at?: { x: number; y: number }; size?: { w: number; h: number }; data?: Record<string, string>; preview?: Record<string, string> }
 export interface ObjectCommitMessage { id: string; select: boolean }
 export interface ObjectMeasureMessage { markup: string; maxWidth: number }
 
@@ -237,6 +237,7 @@ export function parseObjectCreate(value: unknown): ObjectCreateMessage {
     at: point(raw.at, 'at'),
     size: optSize(raw.size, 'size'),
     data: parseData(raw.data, 'data'),
+    preview: parseData(raw.preview, 'preview'),
   }
 }
 
@@ -247,6 +248,7 @@ export function parseObjectPatch(value: unknown): ObjectPatchMessage {
     at: optPoint(raw.at, 'at'),
     size: optSize(raw.size, 'size'),
     data: raw.data === undefined || raw.data === null ? undefined : parseData(raw.data, 'data'),
+    preview: raw.preview === undefined || raw.preview === null ? undefined : parseData(raw.preview, 'preview'),
   }
 }
 

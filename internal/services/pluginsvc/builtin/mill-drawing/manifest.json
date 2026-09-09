@@ -9,17 +9,17 @@
   "capabilities": ["erase-board-items"],
   "contributes": {
     "canvasObjects": [
-      { "kind": "pencil" },
-      { "kind": "shape" },
-      { "kind": "eraser" },
-      { "kind": "laser" }
+      { "kind": "pencil", "tool": true, "entry": "face-ink.html" },
+      { "kind": "shape", "tool": true, "entry": "face-shape.html" },
+      { "kind": "eraser", "tool": true },
+      { "kind": "laser", "tool": true }
     ],
     "commands": [
       { "id": "mill-drawing.showTips", "label": "Drawing tips" }
     ],
     "menus": {
       "editor/context": [
-        { "command": "mill-drawing.showTips" }
+        { "command": "mill-drawing.showTips", "when": "true" }
       ]
     }
   }

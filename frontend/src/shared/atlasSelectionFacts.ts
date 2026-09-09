@@ -39,6 +39,11 @@ export interface AtlasObjectFacts {
   // A plugin's own items for this object's kind, already filtered by
   // their enabled predicate (goal 0280).
   pluginItems: { id: string; label: string }[]
+  // What a DECLARED menu item's `when` clause is evaluated against
+  // (docs/goals/0380 Decision 4). Names and meanings live in one place
+  // -- plugins/pluginMenuFacts.ts -- since they are author-facing
+  // vocabulary, not an internal shape.
+  menuFacts: Record<string, string | number | boolean | readonly string[]>
 }
 
 export interface AtlasLinkFacts {

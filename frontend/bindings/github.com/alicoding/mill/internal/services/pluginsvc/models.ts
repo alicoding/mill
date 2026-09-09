@@ -55,6 +55,17 @@ export interface CanvasObjectContribution {
     "entry": string;
 
     /**
+     * Tool declares this kind as a framed drawing tool (docs/goals/
+     * 0380): the extension declares what the tool is and what its drag
+     * writes, Mill owns every pointer event and paints the live
+     * preview, so nothing about it needs Mill's own document. A
+     * manifest whose canvas kinds are ALL tools activates sandboxed
+     * and earns no "canvas-host" grant; one with any same-DOM kind
+     * still does.
+     */
+    "tool": boolean;
+
+    /**
      * Example declares this kind's own working example (goal 0411):
      * what a fresh install's Board gallery seeds and what an
      * empty-payload insert materializes before the first renderFace.
@@ -466,10 +477,10 @@ export interface MarketplaceSource {
 
 /**
  * MenuItemContribution is one entry in a contributes.menus array: the
- * command to seat, VS Code's optional `when` clause (accepted for
- * shape compatibility -- Mill has no context-key expression language,
- * so it is never evaluated; a ported command stays reachable through
- * its own Command.enabled instead) and an optional group band.
+ * command to seat, VS Code's `when` clause -- evaluated since
+ * docs/goals/0380 against facts the host computes about the
+ * right-clicked object and the selection -- and an optional group
+ * band.
  */
 export interface MenuItemContribution {
     "command": string;

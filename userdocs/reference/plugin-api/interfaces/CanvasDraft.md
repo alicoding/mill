@@ -9,6 +9,12 @@
 The draft a tool is drawing. Every write is live and undoes as
 nothing — only `commit` reaches the board, as one undo step.
 
+`data` is what a commit saves as the object's payload; `preview` is
+drawing state Mill paints from and never saves. A preview
+declaration reads across both, so a shape whose preview IS its own
+geometry names payload keys and a stroke in progress names preview
+ones.
+
 ## Properties
 
 ### commit
@@ -85,6 +91,10 @@ preview from it.
 `number`
 
 ###### data?
+
+`Record`\<`string`, `string`\>
+
+###### preview?
 
 `Record`\<`string`, `string`\>
 

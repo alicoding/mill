@@ -51,7 +51,10 @@ func conformEntryPages(dir string, m Manifest) []string {
 func conformSurfacesWithoutEntry(m Manifest) []string {
 	var warnings []string
 	for _, o := range m.Contributes.CanvasObjects {
-		if o.Entry == "" {
+		// A framed tool that places nothing (an eraser, a laser pointer)
+		// has no face to draw at all, so it needs no entry page and is
+		// not rendering in Mill's document either way.
+		if o.Entry == "" && !o.Tool {
 			warnings = append(warnings, fmt.Sprintf("standard rule 21: canvas object %q declares no entry page, so it renders in Mill's own document", o.Kind))
 		}
 	}

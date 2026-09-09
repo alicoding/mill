@@ -54,6 +54,10 @@ declared preview from it until it is committed or discarded.
 
 `Record`\<`string`, `string`\>
 
+###### preview?
+
+`Record`\<`string`, `string`\>
+
 ###### size?
 
 \{

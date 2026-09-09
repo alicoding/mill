@@ -48,8 +48,8 @@ function draftHandle(call: FrameCall, id: string): CanvasDraft {
 
 function toolCtx(call: FrameCall, decl: CanvasToolDecl, event: CanvasToolPointerEvent, canErase: boolean): CanvasToolCtx {
     const ctx: CanvasToolCtx = {
-        styleValues: (event as CanvasToolPointerEvent & { styleValues?: Record<string, string | number> }).styleValues ?? {},
-        createDraft: (input) => call('object.create', { toolId: decl.kind, kind: decl.objectKind || decl.kind, at: input.at, size: input.size, data: input.data || {} })
+        styleValues: event.styleValues || {},
+        createDraft: (input) => call('object.create', { toolId: decl.kind, kind: decl.objectKind || decl.kind, at: input.at, size: input.size, data: input.data || {}, preview: input.preview || {} })
             .then((r) => draftHandle(call, (r as { id: string }).id)),
     }
     if (canErase) {

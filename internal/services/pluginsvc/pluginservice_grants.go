@@ -8,10 +8,25 @@ package pluginsvc
 // manifest asked for. Split from pluginservice.go at the hand-written-
 // file line limit (.claude/rules/architecture.md).
 func pluginGrants(builtin bool, m Manifest) []string {
-	if builtin || len(m.Contributes.CanvasObjects) == 0 {
+	if builtin || !NeedsCanvasHost(m) {
 		return nil
 	}
 	return []string{"canvas-host"}
+}
+
+// NeedsCanvasHost answers whether a manifest's canvas contributions
+// still need Mill's own document (docs/goals/0380): a kind declared as
+// a framed tool draws through the bridge and needs none, so a manifest
+// whose canvas kinds are all tools -- or which declares no canvas kind
+// at all -- runs fully sandboxed. One same-DOM kind is enough to need
+// the grant, since the whole extension shares one activation.
+func NeedsCanvasHost(m Manifest) bool {
+	for _, o := range m.Contributes.CanvasObjects {
+		if !o.Tool {
+			return true
+		}
+	}
+	return false
 }
 
 // PluginGrant is the capability-shaped set a plugin's consent covers

@@ -16,14 +16,15 @@ export function useAtlasObjectMenu({ setMenu }: { setMenu: (state: ContextMenuSt
   const openObjectMenu = (objectID: string, pos: { x: number; y: number }) => {
     const selection = { cards: [], notes: [], objects: [objectID], links: [] }
     const ctx = atlasSelectionContext(selection, { pos })
-    const objectKind = atlasFacts().object(objectID)?.kind
+    const objectFacts = atlasFacts().object(objectID)
+    const objectKind = objectFacts?.kind
     const pluginItems: ContextMenuItem[] = (atlasFacts().object(objectID)?.pluginItems ?? []).map((item) => ({
       id: `plugin-${item.id}`,
       commandId: 'atlas.object.pluginAction',
       ctx: atlasSelectionContext(selection, { pos, pluginItem: item.id }),
     }))
     const seatItems: ContextMenuItem[] = objectKind
-      ? canvasContextMenuSeatItems(objectKind).map((item, i) => ({ id: `plugin-menu-${i}`, commandId: item.commandId }))
+      ? canvasContextMenuSeatItems(objectKind, objectFacts?.menuFacts ?? {}).map((item, i) => ({ id: `plugin-menu-${i}`, commandId: item.commandId }))
       : []
     setMenu({
       x: pos.x,
