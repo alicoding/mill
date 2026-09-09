@@ -365,8 +365,8 @@ func TestListPlugins_CanvasObjectGrantsCanvasHost(t *testing.T) {
 	root := t.TempDir()
 	writePlugin(t, root, "draws", `{"id":"draws","name":"Draws","version":"1.0.0","contributes":{"canvasObjects":[{"kind":"draws"}]}}`, nil)
 	writePlugin(t, root, "no-canvas", `{"id":"no-canvas","name":"No canvas","version":"1.0.0"}`, nil)
-	writePlugin(t, root, "tools-only", `{"id":"tools-only","name":"Tools only","version":"1.0.0","contributes":{"canvasObjects":[{"kind":"pencil","tool":true}]}}`, nil)
-	writePlugin(t, root, "mixed", `{"id":"mixed","name":"Mixed","version":"1.0.0","contributes":{"canvasObjects":[{"kind":"pencil","tool":true},{"kind":"legacy"}]}}`, nil)
+	writePlugin(t, root, "tools-only", `{"id":"tools-only","name":"Tools only","version":"1.0.0","contributes":{"canvasObjects":[{"kind":"pencil","tool":true,"entry":"face.html"}]}}`, nil)
+	writePlugin(t, root, "mixed", `{"id":"mixed","name":"Mixed","version":"1.0.0","contributes":{"canvasObjects":[{"kind":"pencil","tool":true,"entry":"face.html"},{"kind":"legacy"}]}}`, nil)
 
 	svc := New(root, nil, "1.0.0")
 	infos, err := svc.ListPlugins()
@@ -384,9 +384,9 @@ func TestListPlugins_CanvasObjectGrantsCanvasHost(t *testing.T) {
 		t.Fatalf("no-canvas grants = %v, want none", got.Grants)
 	}
 	if got := byID["tools-only"]; len(got.Grants) != 0 {
-		t.Fatalf("tools-only grants = %v, want none: a framed tool draws through the bridge", got.Grants)
+		t.Fatalf("tools-only grants = %v, want none: every kind draws from its own entry page", got.Grants)
 	}
 	if got := byID["mixed"]; len(got.Grants) != 1 || got.Grants[0] != "canvas-host" {
-		t.Fatalf("mixed grants = %v, want [canvas-host]: one same-DOM kind is enough", got.Grants)
+		t.Fatalf("mixed grants = %v, want [canvas-host]: one self-drawn face is enough", got.Grants)
 	}
 }

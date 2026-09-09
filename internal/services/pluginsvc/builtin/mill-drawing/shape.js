@@ -3,10 +3,25 @@
 // stay live Payload data (never a baked file), the exact payload shape
 // these objects had before (shapeType/fill/stroke/strokeWidth/title,
 // plus dx/dy for an arrow), so older shapes render identically.
-import { meetsDragThreshold } from './lib.js'
+import { meetsDragThreshold, svgEl } from './lib.js'
 
 const COLORS = ['#1f6feb', '#da3633', '#238636', '#9a6700', '#8250df', '#24292f']
 const WIDTHS = [1, 2, 4]
+const DEFAULT_W = 160
+const DEFAULT_H = 100
+
+// An arrow's bounding box derives purely from dx/dy, floored per axis
+// so a flat arrow still has room for its own arrowhead; the <svg>
+// renders overflow:visible so a marker bleeding a few px past the
+// nominal box is never clipped.
+function arrowGeometry(dx, dy, strokeWidth) {
+	const floor = Math.max(strokeWidth * 4, 8)
+	const w = Math.max(Math.abs(dx), floor)
+	const h = Math.max(Math.abs(dy), floor)
+	const x1 = dx < 0 ? w : 0
+	const y1 = dy < 0 ? h : 0
+	return { w, h, x1, y1, x2: x1 + dx, y2: y1 + dy }
+}
 
 function shapeTitle(type) {
 	if (type === 'rectangle') return 'Rectangle'
@@ -64,15 +79,9 @@ export function registerShape(api) {
 		const dy = current.y - start.y
 		const base = { shapeType: style.type, fill: style.fill, stroke: style.stroke, strokeWidth: String(style.width), title: shapeTitle(style.type) }
 		if (style.type === 'arrow') {
-			// An arrow's geometry is entirely dx/dy from its start point;
-			// its box is just big enough to hold the line and its own
-			// arrowhead.
-			const floor = Math.max(style.width * 4, 8)
-			await shape.patch({
-				at: start,
-				size: { w: Math.max(Math.abs(dx), floor), h: Math.max(Math.abs(dy), floor) },
-				data: { ...base, dx: String(dx), dy: String(dy) },
-			})
+			// An arrow's geometry is entirely dx/dy from its start point --
+			// it carries no size at all.
+			await shape.patch({ at: start, data: { ...base, dx: String(dx), dy: String(dy) } })
 			await shape.commit({ select: true })
 			return
 		}
@@ -143,6 +152,43 @@ export function registerShape(api) {
 				return
 			}
 			if (event.phase === 'up') await end(style, event.point)
+		},
+		renderFace(el, ctx) {
+			const payload = ctx.object.Payload
+			const type = payload.shapeType
+			const stroke = payload.stroke || '#1f6feb'
+			const strokeWidth = Number(payload.strokeWidth) || 2
+			const fill = payload.fill || 'none'
+			el.style.cssText = 'width:100%;height:100%'
+			if (type === 'arrow') {
+				const g = arrowGeometry(Number(payload.dx) || 0, Number(payload.dy) || 0, strokeWidth)
+				const svg = svgEl('svg', { 'data-testid': 'atlas-shape-content', 'width': g.w, 'height': g.h, viewBox: `0 0 ${g.w} ${g.h}` })
+				svg.style.cssText = 'overflow:visible;display:block'
+				const markerId = `arrowhead-${ctx.object.ID}`
+				const defs = svgEl('defs', {})
+				const marker = svgEl('marker', { id: markerId, markerWidth: 8, markerHeight: 8, refX: 6, refY: 4, orient: 'auto' })
+				marker.append(svgEl('path', { d: 'M0,0 L8,4 L0,8 Z', fill: stroke }))
+				defs.append(marker)
+				const line = svgEl('line', { x1: g.x1, y1: g.y1, x2: g.x2, y2: g.y2, 'stroke': stroke, 'stroke-width': strokeWidth, 'stroke-linecap': 'round', 'marker-end': `url(#${markerId})` })
+				svg.append(defs, line)
+				el.replaceChildren(svg)
+				return
+			}
+			// Rectangle/ellipse fill their container (100%/100% +
+			// preserveAspectRatio none, geometry addressed through the
+			// viewBox alone) so the paint never exceeds the node's box
+			// and tracks the pointer live during a resize.
+			const w = ctx.object.Size ? ctx.object.Size.W : DEFAULT_W
+			const h = ctx.object.Size ? ctx.object.Size.H : DEFAULT_H
+			const inset = strokeWidth / 2
+			const svg = svgEl('svg', { 'data-testid': 'atlas-shape-content', 'width': '100%', 'height': '100%', viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: 'none' })
+			svg.style.cssText = 'display:block'
+			if (type === 'ellipse') {
+				svg.append(svgEl('ellipse', { cx: w / 2, cy: h / 2, rx: Math.max(0, w / 2 - inset), ry: Math.max(0, h / 2 - inset), 'fill': fill, 'stroke': stroke, 'stroke-width': strokeWidth }))
+			} else {
+				svg.append(svgEl('rect', { x: inset, y: inset, 'width': Math.max(0, w - strokeWidth), 'height': Math.max(0, h - strokeWidth), 'fill': fill, 'stroke': stroke, 'stroke-width': strokeWidth }))
+			}
+			el.replaceChildren(svg)
 		},
 	})
 }

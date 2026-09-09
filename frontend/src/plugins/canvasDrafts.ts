@@ -31,11 +31,15 @@ export interface CanvasDraftRecord {
   preview: Record<string, string>
 }
 
-// place is how a draft becomes a real board object. The gesture that
-// opened the draft supplies it, because parent-frame resolution and
-// post-placement selection are the BOARD's own concerns and this
-// module deliberately knows nothing about either.
-export type CanvasDraftPlacement = (draft: CanvasDraftRecord, select: boolean) => Promise<string | null>
+// How a draft becomes a real board object. The gesture that opened the
+// draft supplies both halves, because parent-frame resolution and
+// selection are the BOARD's own concerns and this module deliberately
+// knows nothing about either. They are two halves rather than one call
+// because selecting has to happen after the undo mark closes.
+export interface CanvasDraftPlacement {
+  place: (draft: CanvasDraftRecord) => Promise<string | null>
+  select: (id: string) => void
+}
 
 interface CanvasDraftState {
   drafts: Record<string, CanvasDraftRecord>
@@ -112,12 +116,17 @@ export async function commitDraft(pluginId: string, id: string, select: boolean)
   useCanvasDrafts.getState().drop(id)
   if (!place) return null
   const mark = AtlasService.BeginUndoMark()
+  let placed: string | null
   try {
-    return await place(draft, select)
+    placed = await place.place(draft)
   } finally {
     await mark
     await AtlasService.EndUndoMark()
   }
+  // After the mark, never inside it: closing one refreshes the board,
+  // and a selection made before that refresh does not survive it.
+  if (placed && select) place.select(placed)
+  return placed
 }
 
 // dropDraftsFor clears whatever a plugin left behind when its frame

@@ -1,4 +1,4 @@
-import type { CanvasEditRoute, CanvasStyleFieldDecl } from './canvasObjects';
+import type { CanvasEditRoute, CanvasObjectFaceCtx, CanvasStyleFieldDecl } from './canvasObjects';
 /** The shapes Mill can draw for a tool's live preview, from the
  * in-progress object's own data. Geometry is board coordinates, so a
  * preview stays pinned to the board while it is being drawn. */
@@ -164,6 +164,11 @@ export interface CanvasToolDecl {
      * `contributes.menus`'s `editor/context` entries seat a command on
      * this tool's objects, and each entry's own `when` clause decides
      * when it shows. */
+    /** renderFace draws a placed object's board face, for an extension
+     * that runs in Mill's own document. Leave it out and name an entry
+     * page beside the kind in the manifest instead — the sandboxed form,
+     * and the only one available to an extension that runs framed. */
+    renderFace?: (el: HTMLElement, ctx: CanvasObjectFaceCtx) => void;
     onPointer: (event: CanvasToolPointerEvent, ctx: CanvasToolCtx) => void | Promise<void>;
 }
 /** The size some markup takes at a maximum width, measured by Mill off

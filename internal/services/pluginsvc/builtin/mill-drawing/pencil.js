@@ -25,19 +25,7 @@ function bakeStrokeSvg(points, color, size) {
 	const height = Math.max(1, Math.max(...ys) - originY)
 	const normalized = outline.map(([x, y]) => [x - originX, y - originY])
 	const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><path d="${outlinePathData(normalized)}" fill="${color}"/></svg>`
-	return { svg, originX, originY, width, height }
-}
-
-// A stroke lands at the size it was drawn, capped so one long sweep
-// never places a picture bigger than the screen and floored so a dot is
-// still big enough to grab. Aspect ratio is kept: the cap scales both
-// axes together.
-const MAX_PLACED = 480
-const MIN_PLACED = 40
-
-function placedSize(width, height) {
-	const scale = Math.min(1, MAX_PLACED / width, MAX_PLACED / height)
-	return { w: Math.max(MIN_PLACED, width * scale), h: Math.max(MIN_PLACED, height * scale) }
+	return { svg, originX, originY }
 }
 
 export function registerPencil(api) {
@@ -68,7 +56,7 @@ export function registerPencil(api) {
 		// The stroke's own bounding-box origin is where the object lands,
 		// so the placed picture sits exactly where it was drawn.
 		const mirrorPath = await api.files.saveImageBytes(textToBase64(baked.svg), '.svg', 'Sketch')
-		await stroke.patch({ at: { x: baked.originX, y: baked.originY }, size: placedSize(baked.width, baked.height), data: { mirrorPath, title: 'Sketch' } })
+		await stroke.patch({ at: { x: baked.originX, y: baked.originY }, data: { mirrorPath, title: 'Sketch' } })
 		await stroke.commit()
 	}
 
@@ -112,6 +100,34 @@ export function registerPencil(api) {
 				return
 			}
 			if (event.phase === 'up') await end(color, size)
+		},
+		renderFace(el, ctx) {
+			el.style.cssText = 'width:100%;height:100%'
+			if (ctx.mirror && ctx.mirror.dataUrl) {
+				const img = document.createElement('img')
+				img.src = ctx.mirror.dataUrl
+				img.alt = ''
+				img.draggable = false
+				// The mirror-image sizing contract: natural size clamped
+				// to a usable range until the user resizes; a persisted
+				// Size wins and the image fills the node's box.
+				img.style.cssText = ctx.object.Size
+					? 'display:block;width:100%;height:100%;object-fit:contain;border-radius:6px'
+					: 'display:block;max-width:480px;max-height:480px;min-width:40px;min-height:40px;width:auto;height:auto;border-radius:6px'
+				el.replaceChildren(img)
+				return
+			}
+			// An ink stroke's bytes are never available any sooner than
+			// this same mirror read, so an empty frame is the honest
+			// "not there yet" state; only a FAILED read says anything.
+			if (ctx.mirror && ctx.mirror.failed) {
+				const err = document.createElement('span')
+				err.textContent = "Couldn't load this file."
+				err.style.cssText = 'font-size:11px;color:var(--fgColor-danger)'
+				el.replaceChildren(err)
+				return
+			}
+			el.replaceChildren()
 		},
 	})
 }

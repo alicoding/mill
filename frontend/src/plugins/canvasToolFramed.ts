@@ -12,7 +12,7 @@ import { buildThirdPartyNoun, styleFieldDefault } from './canvasToolAdapter'
 import { createElement } from 'react'
 import { PreviewOverlay } from './canvasToolPreview'
 import type { CanvasToolDescriptor, ToolPointerPayload } from './canvasToolProtocol'
-import type { CanvasDraftRecord } from './canvasDrafts'
+import type { CanvasDraftPlacement } from './canvasDrafts'
 
 // The host half of a framed canvas tool (docs/goals/0380 Decisions 1
 // and 2): Mill owns the pointer, converts it to board space, coalesces
@@ -44,6 +44,12 @@ export interface FramedToolRuntime {
   // bridge, which owns the frame handle.
   post: (event: string, payload: unknown) => void
   session: FramedToolSession | null
+  // The gesture that just ended, kept until the next one opens: a
+  // tool's answer to pointer-up arrives a round trip LATER, by which
+  // point the engine has already closed the session -- an eraser
+  // committing its pass is exactly that, and reading a null session
+  // there would silently erase nothing.
+  lastSession: FramedToolSession | null
 }
 
 const runtimes = new Map<string, FramedToolRuntime>()
@@ -131,6 +137,7 @@ function boardPoint(ctx: AtlasGestureCtx, pt: AtlasGesturePoint): CanvasToolPoin
 function endSession(runtime: FramedToolRuntime): void {
   const session = runtime.session
   if (session?.frame !== null && session?.frame !== undefined) cancelAnimationFrame(session.frame)
+  runtime.lastSession = session
   runtime.session = null
 }
 
@@ -138,15 +145,21 @@ function endSession(runtime: FramedToolRuntime): void {
 // AtlasService calls a same-DOM tool's own ctx.createObject makes,
 // with parent-frame resolution and selection done here rather than
 // inside the frame, which knows nothing about either.
-function placementFor(descriptor: CanvasToolDescriptor, ctx: AtlasGestureCtx): (draft: CanvasDraftRecord, select: boolean) => Promise<string | null> {
-  return async (draft, select) => {
-    if (descriptor.ephemeral) return null
-    const parent = frameContainingPoint(ctx.cardBoxes, draft.at) ?? ctx.parentID
-    const created = await AtlasService.CreateBoardObject(draft.kind, draft.data, { X: draft.at.x, Y: draft.at.y }, parent)
-    if (draft.size) await AtlasService.SetBoardObjectSize(created.ID, { W: draft.size.w, H: draft.size.h })
-    await refreshAtlas()
-    if (select) ctx.onShapeCreated(created.ID)
-    return created.ID
+function placementFor(descriptor: CanvasToolDescriptor, ctx: AtlasGestureCtx): CanvasDraftPlacement {
+  return {
+    place: async (draft) => {
+      if (descriptor.ephemeral) return null
+      const parent = frameContainingPoint(ctx.cardBoxes, draft.at) ?? ctx.parentID
+      const created = await AtlasService.CreateBoardObject(draft.kind, draft.data, { X: draft.at.x, Y: draft.at.y }, parent)
+      if (draft.size) await AtlasService.SetBoardObjectSize(created.ID, { W: draft.size.w, H: draft.size.h })
+      await refreshAtlas()
+      return created.ID
+    },
+    // Selecting is deliberately AFTER the undo mark closes: closing one
+    // refreshes the board, and a selection made inside the mark is
+    // dropped by that refresh -- the placed shape would come back
+    // unselected, with no resize handles to grab.
+    select: (id) => ctx.onShapeCreated(id),
   }
 }
 
@@ -158,7 +171,16 @@ export function activeSession(pluginId: string, toolId: string): { ctx: AtlasGes
   return runtime?.session ? { ctx: runtime.session.ctx, descriptor: runtime.descriptor } : null
 }
 
-export function draftPlacementFor(pluginId: string, toolId: string): ((draft: CanvasDraftRecord, select: boolean) => Promise<string | null>) | null {
+// endedSession -- the gesture whose pointer-up a tool is still
+// answering. Falls back to the live one, so a door called mid-drag and
+// one called a round trip after it read the same gesture.
+export function endedSession(pluginId: string, toolId: string): { ctx: AtlasGestureCtx; descriptor: CanvasToolDescriptor } | null {
+  const runtime = framedToolRuntime(pluginId, toolId)
+  const session = runtime?.session ?? runtime?.lastSession
+  return runtime && session ? { ctx: session.ctx, descriptor: runtime.descriptor } : null
+}
+
+export function draftPlacementFor(pluginId: string, toolId: string): CanvasDraftPlacement | null {
   const session = activeSession(pluginId, toolId)
   return session ? placementFor(session.descriptor, session.ctx) : null
 }
@@ -195,7 +217,7 @@ export function commitErase(ctx: AtlasGestureCtx): void {
 // plugin code wrapped in a ctx. renderFace is absent on purpose -- a
 // framed tool's face is an entry page or it has none, which is the
 // whole point of this goal.
-function declFromDescriptor(d: CanvasToolDescriptor): CanvasObjectDecl {
+function declFromDescriptor(d: CanvasToolDescriptor, renderFace?: CanvasObjectDecl['renderFace']): CanvasObjectDecl {
   return {
     kind: d.kind,
     objectKind: d.objectKind,
@@ -211,6 +233,7 @@ function declFromDescriptor(d: CanvasToolDescriptor): CanvasObjectDecl {
     lockable: d.lockable,
     dragBand: d.dragBand,
     styleFields: d.styleFields,
+    renderFace,
     gesture: { onEnd: () => {} },
   }
 }
@@ -227,6 +250,7 @@ function framedGesture(runtime: FramedToolRuntime, sticky: boolean): AtlasToolGe
     onPoint: (pt, ctx) => {
       const point = boardPoint(ctx, pt)
       if (!runtime.session) {
+        runtime.lastSession = null
         runtime.session = { ctx, pending: [], frame: null, zoom: boardZoom(ctx), modifiers: ctx.modifiers }
         sendPointer(runtime, 'down', point, [], runtime.session.zoom, ctx.modifiers, targetObjectAt(ctx, point))
         return
@@ -263,9 +287,9 @@ function framedGesture(runtime: FramedToolRuntime, sticky: boolean): AtlasToolGe
 // buildFramedTool is registerCanvasTool's host side: one descriptor in,
 // one registry noun out, with the declared preview taking the overlay
 // slot a same-DOM tool's renderPreview would have taken.
-export function buildFramedTool(pluginId: string, manifest: Manifest, descriptor: CanvasToolDescriptor, post: (event: string, payload: unknown) => void): ThirdPartyNounShape {
-  const runtime: FramedToolRuntime = { pluginId, descriptor, post, session: null }
-  const noun = buildThirdPartyNoun(pluginId, manifest, declFromDescriptor(descriptor))
+export function buildFramedTool(pluginId: string, manifest: Manifest, descriptor: CanvasToolDescriptor, post: (event: string, payload: unknown) => void, renderFace?: CanvasObjectDecl['renderFace']): ThirdPartyNounShape {
+  const runtime: FramedToolRuntime = { pluginId, descriptor, post, session: null, lastSession: null }
+  const noun = buildThirdPartyNoun(pluginId, manifest, declFromDescriptor(descriptor, renderFace))
   runtimes.set(runtimeKey(pluginId, descriptor.kind), runtime)
   const gesture = framedGesture(runtime, noun.sticky)
   if (!descriptor.preview) return { ...noun, gesture }

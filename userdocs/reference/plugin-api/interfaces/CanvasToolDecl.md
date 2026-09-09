@@ -126,11 +126,6 @@ optional objectKind?: string;
 onPointer: (event, ctx) => void | Promise<void>;
 ```
 
-Context-menu items are declared in the manifest, not here:
-`contributes.menus`'s `editor/context` entries seat a command on
-this tool's objects, and each entry's own `when` clause decides
-when it shows.
-
 #### Parameters
 
 ##### event
@@ -152,6 +147,33 @@ when it shows.
 ```ts
 optional preview?: CanvasPreviewDecl;
 ```
+
+***
+
+### renderFace?
+
+```ts
+optional renderFace?: (el, ctx) => void;
+```
+
+renderFace draws a placed object's board face, for an extension
+that runs in Mill's own document. Leave it out and name an entry
+page beside the kind in the manifest instead — the sandboxed form,
+and the only one available to an extension that runs framed.
+
+#### Parameters
+
+##### el
+
+`HTMLElement`
+
+##### ctx
+
+[`CanvasObjectFaceCtx`](CanvasObjectFaceCtx.md)
+
+#### Returns
+
+`void`
 
 ***
 

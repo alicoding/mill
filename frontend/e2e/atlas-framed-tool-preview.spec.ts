@@ -12,7 +12,10 @@ import { clickAtlasTrayTool } from './fixtures/atlasTray'
 // and freeze -- and that the draft leaves nothing behind once the
 // stroke is placed.
 //
-// Shared pool: the one object created here is deleted here.
+// Shared pool: the one object created here is deleted here. The stroke
+// is drawn in the board's top-left corner, clear of the armed tool's
+// own style picker -- a drag ending under the picker cannot finish,
+// since the popover takes the pointer at the release.
 
 test('the sandboxed pencil’s preview is repainted from its own draft as the pointer moves, and leaves nothing behind', async ({ page }) => {
   await page.goto('/')
@@ -25,8 +28,8 @@ test('the sandboxed pencil’s preview is repainted from its own draft as the po
   const drawn = new Set<string>()
   await dragBetween(
     page,
-    await boardPoint(board, 0.55, 0.62),
-    await boardPoint(board, 0.78, 0.82),
+    await boardPoint(board, 0.05, 0.1),
+    await boardPoint(board, 0.15, 0.2),
     undefined,
     async () => {
       // Sampled with the button still down: a preview that was painted

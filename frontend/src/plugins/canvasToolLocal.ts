@@ -48,5 +48,5 @@ export function registerLocalCanvasTool(pluginId: string, manifest: Manifest, de
         .catch((err: unknown) => console.error(`plugin ${pluginId}: tool "${decl.kind}" failed`, err))
     },
   }
-  seatCanvasTool(pluginId, buildFramedTool(pluginId, manifest, descriptor, door.post), descriptor.styleFields)
+  seatCanvasTool(pluginId, buildFramedTool(pluginId, manifest, descriptor, door.post, decl.renderFace), descriptor.styleFields)
 }

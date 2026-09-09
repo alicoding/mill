@@ -4,9 +4,10 @@
 // are indistinguishable) and the base64 encoding that bakes a finished
 // stroke into a file.
 //
-// Nothing here touches a document: the tools run inside Mill's
-// extension sandbox, where the board is not reachable at all, and the
-// faces are their own pages.
+// The tools themselves never touch a document -- Mill owns the pointer
+// and paints every preview from the data they write; svgEl is for the
+// placed object's own face, which an extension sharing Mill's window
+// still draws itself.
 import { getStroke } from './perfect-freehand.js'
 
 export const MIN_DRAG_PX = 6
@@ -52,6 +53,14 @@ export function strokeOutline(points, size) {
 export function livePreviewPathData(points, size) {
 	if (points.length < 2) return ''
 	return outlinePathData(strokeOutline(points, size))
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg'
+
+export function svgEl(tag, attrs) {
+	const el = document.createElementNS(SVG_NS, tag)
+	for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v))
+	return el
 }
 
 // UTF-8-safe string -> base64 (TextEncoder + chunked btoa) for baking

@@ -1,7 +1,8 @@
 import { AtlasService } from '../shared/bindings'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
+import type { CanvasObjectFaceCtx } from './sdk'
 import { seatCanvasTool } from './canvasToolAdapter'
-import { activeSession, buildFramedTool, commitErase, draftPlacementFor, eraseAt, forgetFramedTools } from './canvasToolFramed'
+import { activeSession, buildFramedTool, commitErase, draftPlacementFor, endedSession, eraseAt, forgetFramedTools } from './canvasToolFramed'
 import { commitDraft, createDraft, discardDraft, dropDraftsFor, patchDraft } from './canvasDrafts'
 import { measureMarkup } from './canvasMeasure'
 import { CanvasProtocolError, parseErasePoint, parseObjectCommit, parseObjectCreate, parseObjectId, parseObjectMeasure, parseObjectPatch, parseRegisterTool, parseToolId } from './canvasToolProtocol'
@@ -27,6 +28,11 @@ export const CANVAS_TOOL_DOORS = [
   'files.saveImageBytes',
   'board.eraseAt', 'board.eraseCommit',
 ] as const
+
+// A face function can only exist for an extension sharing this
+// document; a framed one never supplies one, and register.tool carries
+// no such field over the wire.
+export type RenderFace = (el: HTMLElement, ctx: CanvasObjectFaceCtx) => void
 
 export interface CanvasToolDoorContext {
   pluginId: string
@@ -71,21 +77,21 @@ function doErase(ctx: CanvasToolDoorContext, args: unknown[]): boolean {
 function doEraseCommit(ctx: CanvasToolDoorContext, args: unknown[]): boolean {
   requireErase(ctx)
   const toolId = parseToolId(args[0], 'board.eraseCommit')
-  const session = activeSession(ctx.pluginId, toolId)
-  // The erase pass commits AFTER pointer-up, one bridge round trip
-  // later, by which point the engine has already ended the session --
-  // so an absent session here is normal, and the accumulated hits are
-  // read off the ctx the gesture captured.
+  // The erase pass commits AFTER pointer-up, one round trip later, by
+  // which point the engine has already closed the session -- so the
+  // accumulated hits are read off the gesture that just ended, never
+  // off a live one that no longer exists.
+  const session = endedSession(ctx.pluginId, toolId)
   if (session) commitErase(session.ctx)
   return true
 }
 
-export async function callCanvasToolDoor(ctx: CanvasToolDoorContext, method: string, args: unknown[]): Promise<unknown> {
+export async function callCanvasToolDoor(ctx: CanvasToolDoorContext, method: string, args: unknown[], renderFace?: RenderFace): Promise<unknown> {
   const [first] = args
   switch (method) {
     case 'register.tool': {
       const descriptor = parseRegisterTool(first)
-      seatCanvasTool(ctx.pluginId, buildFramedTool(ctx.pluginId, ctx.manifest, descriptor, ctx.post), descriptor.styleFields)
+      seatCanvasTool(ctx.pluginId, buildFramedTool(ctx.pluginId, ctx.manifest, descriptor, ctx.post, renderFace), descriptor.styleFields)
       return true
     }
     case 'object.create': return doCreate(ctx, args)
