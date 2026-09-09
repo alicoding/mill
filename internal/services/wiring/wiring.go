@@ -87,17 +87,21 @@ func RunShutdown(logger *slog.Logger, executionService *executionsvc.ExecutionSe
 		logger.Error("audit export service shutdown", "error", err)
 	}
 	// No watcher goroutine outlives the process (goal 0194's live
-	// round-trip slice).
+	// round-trip slice; goal 0408 S1 extends the same discipline to
+	// secret sources).
 	atlasService.CloseAllMirrorWatches()
+	secretService.CloseAllSourceWatches()
 }
 
 // WireAtlasProjections connects AtlasService's recognition (goal 0126)
 // and List-projection (goal 0105) seams to Configure's and
 // Composition's exported readers, adapting types at the boundary.
 // WireValidationSeams connects graph validation's Configure-side
-// checks (goal 0127 slice 3: the credential-presence gap).
+// checks: the credential-presence gap (goal 0127 slice 3) and the
+// unresolved-source-secret gap (goal 0408 S1).
 func WireValidationSeams(cfg *configuresvc.ConfigureService) {
 	composition.SetCredentialGapCheck(cfg.RequestCredentialGap)
+	composition.SetSecretUnresolvedCheck(cfg.RequestSecretUnresolved)
 }
 
 func WireAtlasProjections(atlas *atlassvc.AtlasService, cfg *configuresvc.ConfigureService, comp *compositionsvc.CompositionService) {
@@ -158,12 +162,27 @@ func WirePasteConversion(atlas *atlassvc.AtlasService, cfg *configuresvc.Configu
 
 // WireConfigureSeams bundles the seams that need both Atlas and
 // Configure: the board's paste-understanding List writes, the plugin
-// content-write door, and the List row doors' undo journal -- one line
-// at the composition root.
-func WireConfigureSeams(atlas *atlassvc.AtlasService, cfg *configuresvc.ConfigureService, plugins *pluginsvc.PluginService) {
+// content-write door, and the List/Workflow doors' undo journals --
+// one line at the composition root.
+func WireConfigureSeams(atlas *atlassvc.AtlasService, cfg *configuresvc.ConfigureService, comp *compositionsvc.CompositionService, plugins *pluginsvc.PluginService) {
 	WirePasteConversion(atlas, cfg)
 	WirePluginContentWrites(plugins, atlas, cfg)
 	WireListUndoJournal(atlas, cfg)
+	WirePluginIntegrations(plugins)
+	WireWorkflowUndoJournal(atlas, comp)
+}
+
+// WirePluginIntegrations connects a plugin's live-view/guarded-write
+// door (goal 0374) to composition.ExecuteOperation -- the SAME
+// execution tail integration-http nodes already share via
+// composition.SetHTTPRequestLookup (wired in configureservice.go),
+// never a second HTTP path. run stays empty: a plugin call has no
+// workflow run to correlate against, the same posture
+// composition.RefExists's own lookup already takes.
+func WirePluginIntegrations(plugins *pluginsvc.PluginService) {
+	plugins.WireIntegrations(func(requestID, path, method string, values map[string]string) (string, error) {
+		return composition.ExecuteOperation(requestID, path, method, values, composition.SecretAccessRun{})
+	})
 }
 
 // WireListUndoJournal points Configure's List row doors at the app's
@@ -173,6 +192,15 @@ func WireConfigureSeams(atlas *atlassvc.AtlasService, cfg *configuresvc.Configur
 // edit rather than reaching past it to the table's own create.
 func WireListUndoJournal(atlas *atlassvc.AtlasService, cfg *configuresvc.ConfigureService) {
 	cfg.WireUndoJournal(atlas.RecordExternalUndo)
+}
+
+// WireWorkflowUndoJournal points CompositionService.DeleteWorkflow at
+// the SAME journal (goal 0404 S1): a workflow delete becomes undoable
+// exactly like a Configure entity's, so a bulk delete of several
+// workflows (the frontend's one BeginUndoMark/EndUndoMark wrap) undoes
+// with one ⌘Z too.
+func WireWorkflowUndoJournal(atlas *atlassvc.AtlasService, comp *compositionsvc.CompositionService) {
+	comp.WireUndoJournal(atlas.RecordExternalUndo)
 }
 
 // WirePluginContentWrites connects pluginsvc's guarded content-write

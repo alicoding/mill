@@ -310,6 +310,7 @@ export function ConfigureEnvironments() {
           listId="configure.environment"
           items={items}
           searchPlaceholder={t('configureEnvironments.searchPlaceholder')}
+          selection={{ entity: 'environment' }}
           emptyState={{
             icon: GlobeIcon,
             heading: t('configureEnvironments.emptyHeading'),

@@ -52,6 +52,7 @@ func (c *ConfigureService) CreateSecretSource(label string, kind secretsource.Ki
 		return secretsource.Source{}, err
 	}
 	dataevent.Emit("secretsource", s.ID)
+	c.notifySecretSourcesChanged()
 	return s, nil
 }
 
@@ -71,13 +72,26 @@ func (c *ConfigureService) UpdateSecretSource(id, label string, kind secretsourc
 		return secretsource.Source{}, err
 	}
 	dataevent.Emit("secretsource", updated.ID)
+	c.notifySecretSourcesChanged()
 	return updated, nil
 }
 
 func (c *ConfigureService) DeleteSecretSource(id string) error {
 	announce := func(id string) { dataevent.Emit("secretsource", id) }
-	return deleteEntity(c, "secretsource", &c.secretSources, c.persistSecretSources, secretSourceDescriptor, nil,
+	err := deleteEntity(c, "secretsource", &c.secretSources, c.persistSecretSources, secretSourceDescriptor, nil,
 		func(s secretsource.Source) string { return s.Label }, announce, id)
+	if err == nil {
+		c.notifySecretSourcesChanged()
+	}
+	return err
+}
+
+// notifySecretSourcesChanged tells secretsvc's watch set to recompute
+// itself -- a no-op until SetSecretSourcesChanged wires it.
+func (c *ConfigureService) notifySecretSourcesChanged() {
+	if c.secretSourcesChanged != nil {
+		c.secretSourcesChanged()
+	}
 }
 
 func (c *ConfigureService) persistSecretSources() error {

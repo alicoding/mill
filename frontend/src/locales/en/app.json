@@ -206,7 +206,11 @@
   },
   "pluginView": {
     "missing": "This view's plugin is not loaded.",
-    "entryFailed": "This view's page could not be loaded."
+    "entryFailed": "This view's page could not be loaded.",
+    "guardedWrite": {
+      "confirm": "Mill will post this to the tool.",
+      "cancel": "Cancel"
+    }
   },
   "workTabLabel": {
     "pluginView": "Plugin view",

@@ -20,7 +20,7 @@ import { formatPluginDate } from './pluginDateFormat'
 import { pushNotice } from '../shared/noticeStore'
 import { getExtensionExports } from './extensionExports'
 import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/extensionSettingsStore'
-import type { CanvasObjectDecl, ContentQuery, LifecycleEventPayload, MillPluginAPI, PluginFetchInit, PluginOutputOptions, PluginElAttrs, PluginElChild } from './sdk'
+import type { CanvasObjectDecl, ContentQuery, LifecycleEventPayload, LinkQuery, MillPluginAPI, PluginFetchInit, PluginOutputOptions, PluginElAttrs, PluginElChild } from './sdk'
 import type { MenuPath } from '../shared/menuSkeleton'
 import type { Command } from '../shared/commands'
 
@@ -82,6 +82,18 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		const d = await PluginService.RequestGuardedAction(pluginId, kind, attributes, description)
 		return { approved: d.Approved, effect: d.Effect, ruleLabel: d.RuleLabel, performed: d.Performed }
 	}
+	// evaluateGuardedAction/callIntegration (goal 0374): a pure read
+	// (what would this do? / read through the Integration the user
+	// picked), never itself a confirmation surface — the inline "ask"
+	// banner for external.comment/external.transition is PluginFrame's
+	// own guardedWrite control, never this generic api object, since it
+	// needs to render outside the sandboxed frame.
+	const evaluateGuardedAction = async (kind: string, attributes: Record<string, string>) => {
+		const e = await PluginService.EvaluateGuardedActionForPlugin(pluginId, kind, attributes)
+		return { effect: e.Effect, ruleLabel: e.RuleLabel }
+	}
+	const callIntegration = (integrationId: string, path: string, method: string, values: Record<string, string>) =>
+		PluginService.CallIntegrationForPlugin(pluginId, integrationId, path, method, values)
 	// The settings door (goal 0258 slice 1): declarations come from the
 	// validated manifest, values from the same central store the
 	// Settings row writes -- one resolver for built-ins and plugins.
@@ -146,6 +158,17 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			icon: k.Icon || undefined,
 			fields: (k.Fields ?? []).map((f) => ({ key: f.Key, label: f.Label, type: String(f.Type), options: f.Options ?? undefined })),
 		})),
+		// The links door (goal 0357 S2): an adapter over the same Links()
+		// edge list the board's own Matrix/Coverage panes read, filtered
+		// here rather than by a new query engine -- q narrows an
+		// already-fetched list exactly as query's own kind/parentId do.
+		links: async (q: LinkQuery = {}) => ((await AtlasService.Links()) ?? [])
+			.filter((l) => (!q.kind || l.LinkKindID === q.kind) && (!q.source || l.FromCardID === q.source) && (!q.target || l.ToCardID === q.target))
+			.map((l) => ({ id: l.ID, kind: l.LinkKindID, source: l.FromCardID, target: l.ToCardID })),
+		// The link-kinds door (goal 0357 S2): the same LinkKinds() index
+		// the board's own panes read, restated like kinds above -- a read
+		// needs no capability, exactly as query/kinds do.
+		linkKinds: async () => ((await AtlasService.LinkKinds()) ?? []).map((lk) => ({ id: lk.ID, label: lk.Label })),
 		// The open door (goal 0357): the store write a projection's own
 		// chip click performs (goal 0064's openCardFromProjection) --
 		// board view, then the card's page. The store is imported lazily
@@ -310,6 +333,8 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			})
 		},
 		requestGuardedAction,
+		evaluateGuardedAction,
+		callIntegration,
 		// The output door (goal 0326): Mill's own output viewer, drawn
 		// into the plugin's element. Loaded on first use so activation
 		// never pulls the app's module graph forward, and so a plugin

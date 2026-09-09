@@ -63,6 +63,11 @@ type CompositionService struct {
 	user      []composition.Workflow
 	syncer    Syncer
 	onDeleted func(id string)
+	// recordUndo journals a workflow delete into the app's ONE
+	// actor-scoped undo journal (ADR-0044, goal 0404 S1) -- nil until
+	// WireUndoJournal runs (compositionservice_undo.go), which every
+	// test and headless build simply never calls.
+	recordUndo undoRecorder
 }
 
 func NewCompositionService(store settings.Store) *CompositionService {

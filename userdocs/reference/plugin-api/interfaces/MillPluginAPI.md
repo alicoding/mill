@@ -8,6 +8,41 @@
 
 ## Properties
 
+### callIntegration
+
+```ts
+callIntegration: (integrationId, path, method, values) => Promise<string>;
+```
+
+Reads through a Configure Integration the user picked in this
+plugin's own settings — never an arbitrary host. path/method name
+one operation the Integration's own OpenAPI spec declares; values
+fill that operation's declared fields.
+
+#### Parameters
+
+##### integrationId
+
+`string`
+
+##### path
+
+`string`
+
+##### method
+
+`string`
+
+##### values
+
+`Record`\<`string`, `string`\>
+
+#### Returns
+
+`Promise`\<`string`\>
+
+***
+
 ### content
 
 ```ts
@@ -21,6 +56,33 @@ content: PluginContentAPI;
 ```ts
 convert: PluginConvertAPI;
 ```
+
+***
+
+### evaluateGuardedAction
+
+```ts
+evaluateGuardedAction: (kind, attributes) => Promise<GuardedActionEvaluation>;
+```
+
+Read-only: what a kind/attributes pair would do right now, with
+no side effect. Lets a view drive its own local state before
+asking Mill to actually send — see PluginViewHost's own inline
+confirmation banner for the kinds this powers.
+
+#### Parameters
+
+##### kind
+
+`string`
+
+##### attributes
+
+`Record`\<`string`, `string`\>
+
+#### Returns
+
+`Promise`\<[`GuardedActionEvaluation`](GuardedActionEvaluation.md)\>
 
 ***
 
@@ -137,6 +199,42 @@ values read against.
 #### Returns
 
 `Promise`\<[`KindInfo`](KindInfo.md)[]\>
+
+***
+
+### linkKinds
+
+```ts
+linkKinds: () => Promise<LinkKindInfo[]>;
+```
+
+Lists the board's relation kinds: the labels a link's own `kind`
+id reads against.
+
+#### Returns
+
+`Promise`\<[`LinkKindInfo`](LinkKindInfo.md)[]\>
+
+***
+
+### links
+
+```ts
+links: (q?) => Promise<LinkInfo[]>;
+```
+
+Lists the board's typed relations between cards — always the
+current state, never a cache.
+
+#### Parameters
+
+##### q?
+
+[`LinkQuery`](LinkQuery.md)
+
+#### Returns
+
+`Promise`\<[`LinkInfo`](LinkInfo.md)[]\>
 
 ***
 

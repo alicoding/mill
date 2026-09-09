@@ -23,6 +23,12 @@ const (
 	// locked vault makes it wait in Review instead of failing.
 	ExampleScheduledSecretReadWorkflowID = "example-scheduled-secret-read-workflow"
 	ExampleScheduledSecretReadStepID     = "example-scheduled-secret-read-step"
+	// ExampleSourceSecretWorkflowID/StepID (goal 0408 S1) name the
+	// seeded proof for a source-backed secret reference: a Bearer call
+	// whose token comes from the seeded example secret source, live at
+	// every run.
+	ExampleSourceSecretWorkflowID = "example-source-secret-workflow"
+	ExampleSourceSecretStepID     = "example-source-secret-step"
 )
 
 // builtInSecretGuardWorkflows returns goal 0203 S2's own seeded proof:
@@ -62,6 +68,16 @@ func builtInSecretGuardWorkflows() []Workflow {
 		panic("built-in workflow references an unknown node type: " + err.Error())
 	}
 
+	const sourceSecretTriggerID = "example-source-secret-trigger"
+	sourceSecretNodes, err := ResolveNodeDefaults([]Node{
+		{ID: sourceSecretTriggerID, NodeTypeID: "trigger-manual", Position: Position{X: 0, Y: 0}},
+		{ID: ExampleSourceSecretStepID, NodeTypeID: "integration-http", Position: Position{X: 0, Y: 100},
+			Config: map[string]string{"requestId": httprequest.ExampleSourceSecretID}},
+	})
+	if err != nil {
+		panic("built-in workflow references an unknown node type: " + err.Error())
+	}
+
 	return []Workflow{
 		{
 			// Goal 0360 S2's seeded proof: the request's API key is a
@@ -93,6 +109,21 @@ func builtInSecretGuardWorkflows() []Workflow {
 			// dangling vault reference is unresolved on purpose,
 			// replacing the old approve/deny-focused text.
 			Seed: seedorigin.Stamp(5),
+		},
+		{
+			// Goal 0408 S1's seeded proof: the request's Bearer token is
+			// a source-backed reference (Configure > Secret sources),
+			// resolved live from the seeded example .env file rather
+			// than the vault.
+			ID:          ExampleSourceSecretWorkflowID,
+			Label:       "Example: a secret from a source",
+			Description: "Calls the Bearer-from-a-source example (Configure > Requests), whose token is read live from the seeded example secret source instead of the vault. Remove the key from the source's file to see a run refuse before it starts, naming the missing key.",
+			Nodes:       sourceSecretNodes,
+			Edges: []Edge{
+				{ID: "example-source-secret-e0", Source: sourceSecretTriggerID, Target: ExampleSourceSecretStepID},
+			},
+			BuiltIn: true,
+			Seed:    seedorigin.Stamp(1),
 		},
 	}
 }

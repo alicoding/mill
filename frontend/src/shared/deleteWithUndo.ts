@@ -28,6 +28,8 @@ export async function deleteWithUndo({ entity, id, label, remove, refetch }: {
   useUndoDeleteStore.getState().show({
     key: `${entity}/${id}`,
     message: i18next.t('undoDelete.deleted', { ns: 'common', label }),
+    journalKind: 'configure-entity',
+    journalId: `${entity}/${id}`,
     undo: async () => {
       await findCommand('atlas.undo')?.run()
       refetch()

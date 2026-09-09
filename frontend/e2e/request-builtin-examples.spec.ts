@@ -99,13 +99,20 @@ test('A seeded example can be cloned and the clone deleted, without disturbing t
 
   // Clone: Duplicate (docs/adr/0014: lives on the summary view, not the
   // list row) pre-fills a new, unsaved request -- save it, confirm it
-  // landed as its own real row, not built-in.
-  await row.getByText(label, { exact: true }).click()
+  // landed as its own real row, not built-in. Cancelling the edit tab
+  // above returns to the summary view tab it was opened from (goal
+  // 0407's MRU rule), so the summary is already showing here -- no
+  // need to re-open it from the list.
   await expect(page.getByTestId('request-summary')).toBeVisible()
   await page.getByRole('button', { name: 'Duplicate' }).click()
   await expect(page.getByLabel('Label')).toHaveValue(cloneLabel)
   await page.getByRole('button', { name: 'Save integration' }).click()
 
+  // Saving closes the duplicate tab and returns to the summary tab it
+  // was opened from (goal 0407's MRU rule again), not the list -- the
+  // Configure link is clicked explicitly to reach the list and see the
+  // new row.
+  await page.getByRole('link', { name: 'Configure' }).click()
   const cloneRow = page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(cloneLabel, { exact: true }) })
   await expect(cloneRow).toBeVisible()
   await expect(cloneRow.getByText('built-in', { exact: true })).toHaveCount(0)

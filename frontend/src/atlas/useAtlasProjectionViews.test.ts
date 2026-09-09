@@ -26,11 +26,11 @@ describe('atlas board-view state (goal 0355 S2)', () => {
 
   it('switching panes writes the view and switching back lands on the board', () => {
     useAppStore.getState().setView({ kind: 'atlas' })
-    useAppStore.getState().setAtlasBoardView('matrix')
-    expect(activeView()).toBe('matrix')
-    useAppStore.getState().setAtlasBoardView('coverage')
+    useAppStore.getState().setAtlasBoardView('plugin:mill-matrix.matrix')
+    expect(activeView()).toBe('plugin:mill-matrix.matrix')
+    useAppStore.getState().setAtlasBoardView('plugin:mill-coverage.coverage')
     // One field IS the mutual exclusion: two panes can never be active.
-    expect(activeView()).toBe('coverage')
+    expect(activeView()).toBe('plugin:mill-coverage.coverage')
     useAppStore.getState().setAtlasBoardView('board')
     expect(activeView()).toBe('board')
   })
@@ -44,7 +44,7 @@ describe('atlas board-view state (goal 0355 S2)', () => {
   })
 
   it('the write is a no-op while Atlas is not the current view', () => {
-    useAppStore.getState().setAtlasBoardView('matrix')
+    useAppStore.getState().setAtlasBoardView('plugin:mill-matrix.matrix')
     expect(useAppStore.getState().view.kind).toBe('home')
   })
 

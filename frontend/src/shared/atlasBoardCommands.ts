@@ -181,7 +181,7 @@ export const ATLAS_BOARD_COMMANDS: Command[] = [
     // Delete over the live selection (goal 0346 slice B): the Delete/
     // Backspace listener, the selection tray, every right-click menu
     // and the palette all run THIS with the selection as context. The
-    // deleting itself (the container-promotion confirm, the undo
+    // deleting itself (the container-reparent confirm, the undo
     // toast) is the board's own, so the run hands it down as a
     // request. hintOnly: a bare Delete can never be a dispatched combo
     // (comboFromEvent requires Cmd/Ctrl), so the binding is display and

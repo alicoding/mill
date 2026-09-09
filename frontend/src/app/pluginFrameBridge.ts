@@ -1,5 +1,6 @@
 import { runCommand } from '../shared/commands'
 import type { MillPluginAPI } from '../plugins/sdk'
+import type { GuardedActionResult } from '../plugins/sdk/guardedAction'
 import { callExportedMethod, toWireDescriptor } from '../plugins/extensionExports'
 
 // The host half of the plugin frame's channel (docs/goals/0349),
@@ -53,6 +54,15 @@ export interface FaceControls {
   setEditing: (editing: boolean) => void
 }
 
+// GuardedWriteControls is the inline "ask" confirmation door (goal
+// 0374): a write's "ask" outcome is resolved by a banner the HOST
+// renders outside the sandboxed frame, never by the frame itself — the
+// frame may request performGuardedAction, but only the host's own
+// click handler can ever set confirmed=true on the call underneath it.
+export interface GuardedWriteControls {
+  perform: (kind: string, attributes: Record<string, string>, description: string) => Promise<GuardedActionResult>
+}
+
 // FRAME_METHODS is the whole surface a framed page can reach. It is a
 // deliberate subset of the plugin api: anything that hands back a
 // function, an element or a live object cannot cross a postMessage
@@ -66,6 +76,8 @@ export const FRAME_METHODS = [
   'storage.delete',
   'query',
   'kinds',
+  'links',
+  'linkKinds',
   'open',
   'fetch',
   'content.createNote',
@@ -78,6 +90,9 @@ export const FRAME_METHODS = [
   'convert.htmlToMarkdown',
   'convert.markdownToHtml',
   'requestGuardedAction',
+  'evaluateGuardedAction',
+  'callIntegration',
+  'performGuardedAction',
   'runCommand',
   'capture.done',
   'capture.cancel',
@@ -100,9 +115,10 @@ const ALLOWED = new Set<string>(FRAME_METHODS)
 // object. notify answers true rather than its dismiss function, which
 // is a function and cannot cross the boundary; every other reply is
 // already plain data.
-export async function callFrameMethod(api: MillPluginAPI, method: string, args: unknown[], capture?: CaptureControls, face?: FaceControls): Promise<unknown> {
+export async function callFrameMethod(api: MillPluginAPI, method: string, args: unknown[], capture?: CaptureControls, face?: FaceControls, guardedWrite?: GuardedWriteControls): Promise<unknown> {
   if (!ALLOWED.has(method)) throw new Error(`${method} is not available in a frame`)
   if (method.startsWith('object.') && !face) throw new Error(`${method} is only available in a canvas object's face`)
+  if (method === 'performGuardedAction' && !guardedWrite) throw new Error(`${method} is not available in this frame`)
   const [first, second, third] = args
   switch (method as FrameMethod) {
     case 'settings.get': return api.settings.get(String(first))
@@ -112,6 +128,8 @@ export async function callFrameMethod(api: MillPluginAPI, method: string, args: 
     case 'storage.delete': { await api.storage.delete(String(first)); return true }
     case 'query': return api.query(first as Parameters<MillPluginAPI['query']>[0])
     case 'kinds': return api.kinds()
+    case 'links': return api.links(first as Parameters<MillPluginAPI['links']>[0])
+    case 'linkKinds': return api.linkKinds()
     case 'open': { api.open(String(first)); return true }
     case 'fetch': return api.fetch(String(first), second as Parameters<MillPluginAPI['fetch']>[1])
     case 'content.createNote': return api.content.createNote(first as Parameters<MillPluginAPI['content']['createNote']>[0])
@@ -124,6 +142,14 @@ export async function callFrameMethod(api: MillPluginAPI, method: string, args: 
     case 'convert.htmlToMarkdown': return api.convert.htmlToMarkdown(String(first))
     case 'convert.markdownToHtml': return api.convert.markdownToHtml(String(first))
     case 'requestGuardedAction': return api.requestGuardedAction(String(first), second as Record<string, string>, String(third))
+    case 'evaluateGuardedAction': return api.evaluateGuardedAction(String(first), second as Record<string, string>)
+    case 'callIntegration': return api.callIntegration(String(first), String(second), String(third), args[3] as Record<string, string>)
+    // Never api.<anything>: performGuardedAction's "ask" outcome is
+    // resolved by the host's OWN banner, so it is never reachable
+    // through the generic api object at all (goal 0374 amendment 1) —
+    // guardedWrite is the one and only door, and its perform never
+    // accepts a confirmed flag from this call's args.
+    case 'performGuardedAction': return guardedWrite!.perform(String(first), second as Record<string, string>, String(third))
     // The registry's own door, with the registry's own honest
     // enablement: an unknown id or a command whose enabled() says no
     // answers false, exactly as every other invoker sees it.
@@ -151,6 +177,7 @@ export interface FrameBridgeOptions {
   api: MillPluginAPI
   capture?: CaptureControls
   face?: FaceControls
+  guardedWrite?: GuardedWriteControls
   /** Called with what the page sent through its postMessage door. */
   onPageMessage?: (payload: unknown) => void
   /** Called with the value the page's setState persisted. */
@@ -174,7 +201,7 @@ export function handleFrameMessage(options: FrameBridgeOptions, event: Pick<Mess
   if (data.kind === 'state') { options.onState?.(data.payload); return }
   if (data.kind !== 'call' || typeof data.id !== 'number') return
   const id = data.id
-  void callFrameMethod(api, String(data.method), data.args ?? [], options.capture, options.face)
+  void callFrameMethod(api, String(data.method), data.args ?? [], options.capture, options.face, options.guardedWrite)
     .then((result) => reply(frame, { mill: 1, id, ok: true, result }))
     .catch((err: unknown) => reply(frame, { mill: 1, id, ok: false, error: err instanceof Error ? err.message : String(err) }))
 }

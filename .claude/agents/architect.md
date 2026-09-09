@@ -4,6 +4,7 @@ description: Deep design reasoning for choices with more than one defensible ans
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
 model: opus
 effort: high
+maxTurns: 40
 ---
 
 You reason about design decisions. You produce a recommendation someone else

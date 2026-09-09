@@ -27,7 +27,6 @@ import (
 	"github.com/alicoding/mill/internal/services/companionsvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
-	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/docssvc"
 	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
@@ -81,24 +80,6 @@ var examplePluginsFS embed.FS
 
 //go:embed build/appicon.png
 var trayIconPNG []byte
-
-func init() {
-	// Each RegisterEvent[T] gives the binding generator a typed JS/TS API.
-	application.RegisterEvent[string]("time")
-	application.RegisterEvent[triggersvc.HotkeyActivity]("hotkey-activity")
-	application.RegisterEvent[mcpsvc.MCPWriteRequest]("mcp-write-approval")
-	application.RegisterEvent[mcpsvc.MCPWriteActivity]("mcp-write-activity")
-	application.RegisterEvent[dataevent.Changed](dataevent.EventName)
-	application.RegisterEvent[dataevent.LifecycleEvent](dataevent.LifecycleEventName)
-	application.RegisterEvent[atlassvc.MirrorChanged](atlassvc.MirrorChangedEvent)
-	application.RegisterEvent[executionsvc.GuardrailPendingChanged]("guardrail-pending-changed")
-	application.RegisterEvent[companionsvc.CompanionDelta](companionsvc.DeltaEventName)
-	application.RegisterEvent[agentloopsvc.AgentLoopEvent](agentloopsvc.StateEventName)
-	application.RegisterEvent[agentloopsvc.AgentLoopDelta](agentloopsvc.DeltaEventName)
-	// docs/adr/0033: OpenMainWindow emits this so App.tsx can switch views
-	// once the main window is back in front -- broadcast to every window.
-	application.RegisterEvent[string]("mill-navigate")
-}
 
 // main initializes the application, creates the window, and wires every
 // bounded-context service together.
@@ -200,7 +181,7 @@ func main() {
 		logger.Error("migrate legacy MCP pending writes", "error", err)
 	}
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
-	pluginService := wiring.NewPluginService(settingsPath, guardrailService, millChannel, millUpdateVersion)
+	pluginService := wiring.NewPluginService(settingsPath, guardrailService, millChannel, millUpdateVersion, backupsvc.SQLiteDBPath(executionDatabaseURL), logger)
 	pluginService.SetExampleMarketplace(examplePluginsFS)
 	// docs/goals/0240 S1: the coding loop's Confirm-screen preview --
 	// read-only over guardrailService.Rules(). Its ExecutionService
@@ -245,7 +226,7 @@ func main() {
 	// Cross-service seam adapters (recognition, List projection) live in the wiring package -- composition-root code split out of this file at the 500-line limit.
 	wiring.WireAtlasProjections(atlasService, configureService, compositionService)
 	wiring.WireValidationSeams(configureService)
-	wiring.WireConfigureSeams(atlasService, configureService, pluginService) // paste conversion + plugin content writes (docs/goals/0289) + the List row doors' undo journal
+	wiring.WireConfigureSeams(atlasService, configureService, compositionService, pluginService) // paste conversion + plugin/workflow content writes + undo journals
 	wiring.WireNotify(notificationService)                                   // goal 0368: apply-notify publishes through the notification spine
 
 	backupService := backupsvc.Wire(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion, compositionService, configureService, atlasService)

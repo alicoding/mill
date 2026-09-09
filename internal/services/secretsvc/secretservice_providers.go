@@ -126,12 +126,92 @@ func (s *SecretService) resolveProvider(id string, actx secretaudit.AccessContex
 	}
 	v, present := values[key]
 	if !present {
-		err = fmt.Errorf("secret source %q has no key %q", src.Label, key)
-		s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeError, secretaudit.FailureKindOther, err.Error())
+		err = newErrUnresolvedReference(id, src.Label, key)
+		s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeError, secretaudit.FailureKindUnresolvedReference,
+			fmt.Sprintf("secret source %q has no key %q", src.Label, key))
 		return "", true, err
 	}
 	s.recordAccess(id, key+" — "+src.Label, actx, secretaudit.OutcomeRead, "", "")
 	return v, true, nil
+}
+
+// ErrUnresolvedReference is a source-backed reference whose source
+// still exists but no longer has the named key (goal 0408 S1) --
+// distinct from a source that cannot be read at all, which keeps its
+// own "can't be read" error. Ref/SourceLabel/Key are for a caller that
+// needs the specific reference (the pre-run verdict's own line, a
+// test); the marshalled sentence never repeats them, since a source's
+// Label is arbitrary user text a one-sentence usererror cannot safely
+// interpolate (usererror.ValidMessage bans a ": " chain anywhere in
+// the sentence, and nothing stops a label from containing one).
+type ErrUnresolvedReference struct {
+	// Cause carries the code+sentence that actually crosses the Wails
+	// boundary (usererror.MarshalForWails' own errors.As match). Named
+	// rather than embedded: usererror.Error's own Error() method would
+	// otherwise collide with the embedded field's identical implicit
+	// name and hide it from Go's method promotion.
+	Cause                 *usererror.Error
+	Ref, SourceLabel, Key string
+}
+
+// Error satisfies the error interface by delegating to Cause.
+func (e *ErrUnresolvedReference) Error() string { return e.Cause.Error() }
+
+// Unwrap exposes Cause to errors.Is/As -- usererror.Of's own
+// errors.As(err, &target) walk finds it here.
+func (e *ErrUnresolvedReference) Unwrap() error { return e.Cause }
+
+// newErrUnresolvedReference builds one, for a reference whose source
+// answered but named no such key.
+func newErrUnresolvedReference(ref, sourceLabel, key string) *ErrUnresolvedReference {
+	return &ErrUnresolvedReference{
+		Cause:       usererror.New("secret-reference-unresolved", "This reference's key isn't in its source anymore."),
+		Ref:         ref,
+		SourceLabel: sourceLabel,
+		Key:         key,
+	}
+}
+
+// SecretRefUnresolved reports whether ref names a key inside a
+// currently-configured dotenv/Bruno source whose file no longer has
+// it -- the pre-run verdict's own check (composition.
+// SetSecretUnresolvedCheck, wired through configuresvc). Unlike
+// ResolveSecretValue/resolveProvider, this never records an access: it
+// asks about the source's current STATE, not a real read, the same
+// audit-free posture SourceProblems and ListDotenvSourceKeys already
+// hold. A plugin- or CLI-backed source answers false here -- their own
+// resolution paths own their own gaps. Exported for wiring only, never
+// a frontend RPC: the picker's own "unresolved" caption is computed
+// client-side from data it already has (SecretPicker.tsx).
+//
+//wails:ignore
+func (s *SecretService) SecretRefUnresolved(ref string) (unresolved bool, key, sourceLabel string) {
+	provider, rest, ok := vaultref.Split(ref)
+	if !ok || provider == vaultref.ProviderVault {
+		return false, "", ""
+	}
+	sourceID, k, found := strings.Cut(rest, "/")
+	if !found || k == "" {
+		return false, "", ""
+	}
+	var src *secretsource.Source
+	for _, candidate := range s.sourcesSnapshot() {
+		if candidate.ID == sourceID && providerOf(candidate) == provider {
+			c := candidate
+			src = &c
+		}
+	}
+	if src == nil || src.Kind.IsPlugin() || isCLIKind(src.Kind) {
+		return false, "", ""
+	}
+	values, err := dotenvsource.Read(envPathOf(*src))
+	if err != nil {
+		return false, "", "" // unreadable is a different state (SourceProblems)
+	}
+	if _, present := values[k]; present {
+		return false, "", ""
+	}
+	return true, k, src.Label
 }
 
 // providerOf names the reference provider a source answers to.

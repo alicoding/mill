@@ -66,6 +66,11 @@ type InstallPreview struct {
 	// AlreadyInstalled reports an existing folder with this id, so the
 	// prompt can say "reinstall" rather than "install".
 	AlreadyInstalled bool
+	// CanvasHost is true when this manifest earns the "canvas-host"
+	// grant (pluginGrants, docs/goals/0375 S1b/S2): it declares a
+	// canvas object and runs same-DOM in Mill's own window rather than
+	// the sandboxed activation frame. Always false for a built-in.
+	CanvasHost bool
 	// PolicyRefusal is the organisation policy's sentence when it
 	// refuses this install (policy_match.go), "" when it does not or
 	// no policy is set; the prompt shows it and disables Install.
@@ -91,7 +96,7 @@ func (p *PluginService) PreviewInstall(marketplace, id string) (InstallPreview, 
 	}
 	m, readable := p.previewManifest(idx, entry)
 	if readable {
-		applyManifestToPreview(&pv, m)
+		applyManifestToPreview(&pv, m, false)
 	} else {
 		m = Manifest{ID: entry.ID, Version: entry.Version}
 	}
@@ -146,7 +151,11 @@ func (p *PluginService) previewManifest(idx MarketplaceIndex, entry MarketplaceE
 	return m, true
 }
 
-func applyManifestToPreview(pv *InstallPreview, m Manifest) {
+// applyManifestToPreview fills pv with what m declares. builtin picks
+// the "canvas-host" grant correctly (pluginGrants never grants a
+// built-in one): false for every install/update path, since a
+// built-in is never installed through this door.
+func applyManifestToPreview(pv *InstallPreview, m Manifest, builtin bool) {
 	pv.Capabilities = m.Capabilities
 	for _, n := range m.Contributes.Network {
 		if n.Host == AnyHost {
@@ -161,6 +170,7 @@ func applyManifestToPreview(pv *InstallPreview, m Manifest) {
 			pv.UsesSecrets = true
 		}
 	}
+	pv.CanvasHost = len(pluginGrants(builtin, m)) > 0
 	if pv.Name == "" {
 		pv.Name = m.Name
 	}
@@ -188,7 +198,7 @@ func (p *PluginService) PreviewInstalled(id string) (InstallPreview, error) {
 		Author: info.Manifest.Author, Description: info.Manifest.Description,
 		Tier: InstalledTier(info.Dir, info.Builtin), AlreadyInstalled: true,
 	}
-	applyManifestToPreview(&pv, info.Manifest)
+	applyManifestToPreview(&pv, info.Manifest, info.Builtin)
 	if rec, ok := ReadInstallRecord(info.Dir); ok {
 		pv.Marketplace = rec.Marketplace
 		pv.Warnings = rec.Warnings

@@ -4,23 +4,49 @@ import (
 	"encoding/json"
 )
 
-// The plugin lock (ADR-0051 §4, slice 5): the content hash recorded
-// at the moment the user allowed each plugin, keyed by id, in Mill's
-// own settings (never inside the plugins folder, which a plugin could
-// rewrite). A plugin whose current hash differs is "changed since you
-// allowed it" and does not run until allowed again.
+// The plugin lock (ADR-0051 §4, slice 5, widened by docs/goals/0375
+// S2): the content hash AND the capability-shaped grant recorded at
+// the moment the user allowed each plugin, keyed by id, in Mill's own
+// settings (never inside the plugins folder, which a plugin could
+// rewrite). The hash names "files changed since you allowed it"; the
+// grant fields are the baseline widen detection compares a later
+// manifest against, since no prior manifest is kept on disk -- the
+// grant record IS the baseline.
 const pluginLockKey = "settings-plugin-lock"
 
-// PluginLockEntry is one recorded trust moment.
+// PluginLockEntry is one recorded trust moment: the version and
+// content hash the consent covered, plus the capability-shaped set the
+// manifest declared at that moment.
 type PluginLockEntry struct {
-	Version string `json:"version"`
-	Hash    string `json:"hash"`
+	Version      string   `json:"version"`
+	Hash         string   `json:"hash"`
+	Capabilities []string `json:"capabilities,omitempty"`
+	Hosts        []string `json:"hosts,omitempty"`
+	AnyHost      bool     `json:"anyHost,omitempty"`
+	Kinds        []string `json:"kinds,omitempty"`
+	UsesSecrets  bool     `json:"usesSecrets,omitempty"`
+	CanvasHost   bool     `json:"canvasHost,omitempty"`
 }
 
-// PluginHasher answers a plugin's current version and content hash
-// ("" hash for a built-in or an unreadable folder); the plugin service,
+// PluginGrantSnapshot is what SetPluginHasher's function answers about
+// one plugin at the moment consent is recorded (docs/goals/0375 S2):
+// its version and content hash (ADR-0051 §4 slice 5), plus the shape
+// of what it currently declares.
+type PluginGrantSnapshot struct {
+	Version      string
+	Hash         string
+	Capabilities []string
+	Hosts        []string
+	AnyHost      bool
+	Kinds        []string
+	UsesSecrets  bool
+	CanvasHost   bool
+}
+
+// PluginHasher answers a plugin's current grant snapshot (a zero-value
+// Hash for a built-in or an unreadable folder); the plugin service,
 // wired by the composition root.
-type PluginHasher func(id string) (version, hash string)
+type PluginHasher func(id string) PluginGrantSnapshot
 
 // SetPluginHasher installs the hasher used when consent is recorded.
 //
@@ -50,7 +76,7 @@ func (s *SettingsService) writePluginLock(lock map[string]PluginLockEntry) error
 	return s.store.Set(pluginLockKey, string(data))
 }
 
-// recordPluginLock stores the plugin's current version and hash (or
+// recordPluginLock stores the plugin's current grant snapshot (or
 // clears the entry when the hasher knows nothing about it).
 func (s *SettingsService) recordPluginLock(ids ...string) error {
 	if s.pluginHasher == nil {
@@ -58,12 +84,15 @@ func (s *SettingsService) recordPluginLock(ids ...string) error {
 	}
 	lock := s.GetPluginLock()
 	for _, id := range ids {
-		version, hash := s.pluginHasher(id)
-		if hash == "" {
+		snap := s.pluginHasher(id)
+		if snap.Hash == "" {
 			delete(lock, id)
 			continue
 		}
-		lock[id] = PluginLockEntry{Version: version, Hash: hash}
+		// PluginGrantSnapshot and PluginLockEntry share the same field
+		// sequence (only the json tags differ) -- a straight conversion
+		// over a field-by-field copy.
+		lock[id] = PluginLockEntry(snap)
 	}
 	return s.writePluginLock(lock)
 }
@@ -75,6 +104,18 @@ func (s *SettingsService) forgetPluginLock(id string) error {
 	}
 	delete(lock, id)
 	return s.writePluginLock(lock)
+}
+
+// PluginGrant returns the recorded grant for id, and whether one is
+// recorded at all (docs/goals/0375 S2) -- false for a plugin never
+// allowed, so widen detection then has nothing to compare. The
+// frontend never calls this directly: PluginInfo.Widened already
+// carries the diff a scan needs.
+//
+//wails:ignore
+func (s *SettingsService) PluginGrant(id string) (PluginLockEntry, bool) {
+	entry, ok := s.GetPluginLock()[id]
+	return entry, ok
 }
 
 // PluginLockMatches reports whether id's recorded hash equals current

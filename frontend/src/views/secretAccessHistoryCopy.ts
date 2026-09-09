@@ -70,7 +70,7 @@ export function contextCopyKey(context: SecretAccessContext, hasWorkflow: boolea
 // hand-synced convention as SecretAccessContext above -- plus "" for a
 // row written before this field existed, which the Go side never
 // backfills.
-export type SecretAccessFailureKind = 'unrecognized-entry' | 'other' | ''
+export type SecretAccessFailureKind = 'unrecognized-entry' | 'unresolved-reference' | 'other' | ''
 
 // errorCopyKey maps an OutcomeError row's FailureKind to the locale key
 // naming that failure in the user's own vocabulary -- null means "no
@@ -81,6 +81,7 @@ export type SecretAccessFailureKind = 'unrecognized-entry' | 'other' | ''
 export function errorCopyKey(failureKind: SecretAccessFailureKind): string | null {
   switch (failureKind) {
     case 'unrecognized-entry': return 'accessHistory.unrecognizedEntry'
+    case 'unresolved-reference': return 'accessHistory.unresolvedReference'
     case 'other': return null
     case '': return null
   }

@@ -238,7 +238,7 @@ func (p *PluginService) PreviewUpdate(id string) (InstallPreview, error) {
 		ID: id, Name: info.Manifest.Name, Version: cand.Available, Author: info.Manifest.Author,
 		Description: info.Manifest.Description, Tier: cand.Tier, AlreadyInstalled: true,
 	}
-	applyManifestToPreview(&pv, info.Manifest)
+	applyManifestToPreview(&pv, info.Manifest, info.Builtin)
 	pv.Version = cand.Available
 	return pv, nil
 }

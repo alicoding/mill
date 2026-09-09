@@ -253,6 +253,16 @@ Why every such field is a pick, not a text box, is in
 4. Its keys appear in every picker under **Secret sources**. Pick one
    exactly as you would a vault entry; Mill reads the value at run
    time and never copies it into the vault.
+5. Edit the file in place any time — every open picker and the Sources
+   list pick up the change on their own.
+
+## If a picked key is gone
+
+The field says "Unresolved" and names the key and the source: someone
+removed it from the file, or renamed it. The pick still names the
+source, so putting the key back (with the same name) resolves it
+again. Starting a run that needs a key like this refuses before
+anything runs, naming the same key.
 
 ## If the picker is greyed out
 
@@ -580,6 +590,14 @@ Mill remembers what you allowed: the plugin's files are fingerprinted
 at that moment, and if they change later — an update you copied in,
 or an edit — the plugin stops until you look again and allow it once
 more. Its page says "Its files changed since you allowed it."
+
+If an update asks for more than you allowed before — a new capability,
+a new host, or drawing directly in Mill's window — the plugin waits
+for review again even though you already allowed an earlier version.
+Its page shows "Now also asks to" above the full list, naming only
+what is new, and its Allow button reads "Allow the new permissions."
+An update that asks for the same or less keeps running without asking
+again.
 
 An administrator can pin which plugins may run at all by writing an
 allow-list into Mill's settings file — the key
@@ -1464,6 +1482,52 @@ deliberately never exported.
 ---
 
 
+# Selecting and bulk actions
+
+Every list in Mill — Configure's entities, Workflows, Secrets — shares
+one way to work on several rows at once, the same shape any email
+inbox or file browser's own multi-select already uses.
+
+## Turning a row into a selection
+
+Hover a row and a checkbox appears at its start; click it to select
+that row without opening it. Shift-click a row to select every row
+between it and the last one you touched. ⌘/Ctrl-click a row toggles it
+in or out without opening it either. A plain click, with no modifier,
+still opens the row — selecting never gets in the way of browsing.
+
+On a phone or a narrow window, press and hold a row instead: holding it
+still for about half a second selects it, the same way a touch list
+elsewhere on your phone works.
+
+## The selection bar
+
+Selecting anything replaces the toolbar with a bar naming how many rows
+are selected, the actions available for them, and a way to cancel.
+Selecting more rows updates the count live; when only some of the rows
+on screen are selected, the bar offers to select every row currently
+matching your search and filters, not just the visible page.
+
+Press Escape, or the bar's close button, to clear the selection and
+bring the toolbar back.
+
+## Keyboard
+
+With a list in view, ⌘A (Ctrl+A on Windows/Linux) selects every row
+currently shown; Escape clears the selection; Delete removes it.
+
+## Deleting several at once
+
+Delete acts on every selected row, even when one of them turns out to
+be in use elsewhere and can't be removed — Mill deletes everything it
+can and names whichever rows it kept, rather than stopping at the
+first one it can't touch. Where the delete can be undone, one Undo (the
+toast's button, or ⌘Z) brings every deleted row back at once, not one
+at a time.
+
+---
+
+
 # Atlas
 
 Drop a folder of markdown files onto the board and every file becomes a
@@ -1934,6 +1998,13 @@ every secret picker beside the vault's own entries. Mill reads the
 value when something uses it and never stores it. An extension can add
 a source of its own the same way, and never sees another source's
 values.
+
+A `.env` or Bruno source is watched: edit the file and every open
+picker and the Sources list update on their own, no reload. If a
+picked key disappears from the file, the field says so — the pick
+still names it, so putting the key back resolves it again — and
+starting a run that needs it refuses before anything runs, naming the
+missing key.
 
 ## The lock policy
 
@@ -2763,6 +2834,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.card.addLinkedCard` | Add linked card… | — | atlas | Acts on the board's current selection |
 | `atlas.card.copyContext` | Copy card as context | — | atlas | Acts on the board's current selection |
 | `atlas.card.copyLink` | Copy card link | — | atlas | Acts on the board's current selection |
+| `atlas.card.demote` | Turn back into object | — | atlas | Acts on the board's current selection |
 | `atlas.card.dissolve` | Dissolve area | — | atlas | Acts on the board's current selection |
 | `atlas.card.exportAs` | Export card as… | — | atlas | Conditional — available only in a matching state |
 | `atlas.card.fitToContent` | Fit card to content | — | atlas | Acts on the board's current selection |
@@ -2773,7 +2845,6 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.card.zoomIn` | Zoom into card | — | atlas | Acts on the board's current selection |
 | `atlas.companion.toggle` | Toggle companion panel | — | atlas | Always available |
 | `atlas.contents.open` | Contents | — | atlas | Always available |
-| `atlas.coverage` | Open coverage | — | atlas | Always available |
 | `atlas.create.area` | Draw an area | — | atlas | Conditional — available only in a matching state |
 | `atlas.create.card` | Add a card | — | atlas | Conditional — available only in a matching state |
 | `atlas.create.image` | Add an image | — | atlas | Conditional — available only in a matching state |
@@ -2796,7 +2867,6 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `atlas.link.editLabel` | Edit link label… | — | atlas | Acts on the board's current selection |
 | `atlas.link.remove` | Remove link | — | atlas | Acts on the board's current selection |
 | `atlas.link.setKind` | Change link kind | — | atlas | Acts on the board's current selection |
-| `atlas.matrix` | Open traceability matrix | — | atlas | Always available |
 | `atlas.minimap.toggle` | Toggle minimap | — | atlas | Always available |
 | `atlas.note.open` | Open note | — | atlas | Acts on the board's current selection |
 | `atlas.note.promote` | Promote note to card… | — | atlas | Acts on the board's current selection |
@@ -2866,7 +2936,6 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `configure.list.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.list.export` | Export | — | Global | Acts on the selected entity |
 | `configure.list.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
-| `configure.lists.deleteUnused` | Delete {{count}} lists | — | Global | Acts on the selected entitySelection |
 | `configure.mcpserver.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.mcpserver.export` | Export | — | Global | Acts on the selected entity |
 | `configure.mcpserver.listTools` | List tools | — | Global | Acts on the selected entity |
@@ -2923,6 +2992,11 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `help.openDataFolder` | Open data folder | — | Global | Always available |
 | `help.reportIssue` | Report an issue… | — | Global | Always available |
 | `help.shortcuts` | Keyboard shortcuts help | — | Global | Always available |
+| `list.clearSelection` | Clear selection | `ESCAPE` | configure, composition, secrets | Conditional — available only in a matching state |
+| `list.deleteSelection` | Delete | `⌫` | configure, composition, secrets | Conditional — available only in a matching state |
+| `list.extendSelection` | Extend selection | `⇧SPACE` | configure, composition, secrets | Conditional — available only in a matching state |
+| `list.selectAll` | Select all | `⌘A` | configure, composition, secrets | Conditional — available only in a matching state |
+| `list.toggleSelection` | Toggle selection | `SPACE` | configure, composition, secrets | Conditional — available only in a matching state |
 | `listGrid.addColumn` | Add a column | — | Global | Acts on the selected table rows |
 | `listGrid.addRow` | Add a row | — | Global | Acts on the selected table rows |
 | `listGrid.copyRows` | Copy selected rows | — | Global | Acts on the selected table rows |
@@ -3139,8 +3213,6 @@ Settings → Keyboard shortcuts, and the menu updates to match.
 | Jump to a card or object | ⌘K | `atlas.jump` |
 | Undo | — | `atlas.undo` |
 | Redo | — | `atlas.redo` |
-| Open traceability matrix | — | `atlas.matrix` |
-| Open coverage | — | `atlas.coverage` |
 | Auto-arrange | — | `atlas.arrange` |
 | Contents | — | `atlas.contents.open` |
 | Import atlas | — | `atlas.import` |

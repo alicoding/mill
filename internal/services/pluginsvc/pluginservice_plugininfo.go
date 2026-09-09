@@ -14,8 +14,13 @@ type PluginInfo struct {
 	Builtin  bool
 	// ContentHash is the folder's current content hash
 	// (pluginservice_hash.go), "" for a built-in or an invalid plugin
-	// -- what the lock compares against.
+	// -- what signature verification (Signed) checks against. NOT what
+	// the lock compares against; that is CodeHash (docs/goals/0375 S2).
 	ContentHash string
+	// CodeHash excludes manifest.json (docs/goals/0375 S2): the trust
+	// lock's own comparison input, so a manifest-only edit never trips
+	// it -- only Widened does.
+	CodeHash string
 	// SigningPolicy reports whether an administrator pinned signing
 	// keys; Signed whether this folder's signature verified against one
 	// (pluginservice_signing.go). Both false with no policy.
@@ -38,6 +43,12 @@ type PluginInfo struct {
 	// not exist yet and its own tools still need board input the way a
 	// built-in's do. Always empty for a built-in.
 	Grants []string
+	// Widened is non-nil for a non-built-in plugin whose manifest
+	// declares MORE than its own consent covered (docs/goals/0375 S2,
+	// MV3's re-consent-on-widen rule): the NEW elements only, in the
+	// shape permissionLines() renders. Nil when narrowed/unchanged,
+	// never allowed, or built-in.
+	Widened *InstallPreview
 	// Warnings are non-blocking manifest notices -- a deprecated key
 	// still in use, a foreign menu id Mill has no seat for
 	// (docs/goals/0349 S2) -- stated once in the plugin's status. A

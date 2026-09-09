@@ -73,6 +73,7 @@ func PageIndex() []DocPage {
 		{"concepts/workflows-and-steps.md", "Workflows and steps", "triggers, the typed step contract, payload vs attributes, versions", KindExplanation},
 		{"concepts/guardrails.md", "Guardrails and effect classes", "what asks for approval and how rules scope it", KindExplanation},
 		{"concepts/configure.md", "Configure entities", "integrations, lists, MCP servers, AI providers, environments", KindExplanation},
+		{"concepts/selecting-and-bulk-actions.md", "Selecting and bulk actions", "the checkbox, Shift/⌘-click, long-press, the selection bar, and bulk delete with undo, shared by every list", KindExplanation},
 		{"concepts/atlas.md", "Atlas", "the knowledge board: kinds, links, areas, doc mirrors, card actions", KindExplanation},
 		{"concepts/runs-and-review.md", "Runs, review, and debugging", "durable runs, the review queue, breakpoints", KindExplanation},
 		{"concepts/coding-loop.md", "The coding loop", "copy a command, confirm the parsed steps, watch it run, copy the result back", KindExplanation},

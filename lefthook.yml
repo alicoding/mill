@@ -14,6 +14,14 @@ pre-commit:
     - name: comment-hygiene
       glob: "*.{go,ts,tsx}"
       run: ./scripts/check-comment-hygiene.sh
+    - name: agent-definitions
+      # Goal 0414 S1: every .claude/agents/*.md carries the frontmatter
+      # Claude Code's sub-agent contract needs, and the four
+      # dispatch-owning agents carry the operational sentinels this
+      # goal moved out of every brief. Grep-only, so like
+      # comment-hygiene it needs no build setup.
+      glob: ".claude/agents/*.md"
+      run: ./scripts/check-agent-definitions.sh
     - name: framework-api-first
       glob: "*.go"
       run: ./scripts/check-framework-api-first.sh
@@ -81,6 +89,9 @@ pre-commit:
     - name: drag-regions-selftest
       glob: "scripts/check-drag-regions*.sh"
       run: ./scripts/check-drag-regions-selftest.sh
+    - name: gocache-trim-selftest
+      glob: "scripts/dev/gocache-trim*.sh"
+      run: ./scripts/dev/gocache-trim-selftest.sh
     - name: vendor-names
       # Goal 0385: semgrep/vendor-names.yml's own header comment carries
       # the value-vs-concept rule and the case-sensitivity split.
@@ -121,23 +132,43 @@ pre-commit:
       # A hand-edited userdocs page without a docsgen regeneration
       # fails only in CI (TestUserDocs_MatchCommitted) -- run the same
       # freshness test here so the fix is one local `go generate
-      # ./internal/docsgen` away, not a failed PR round trip.
+      # ./internal/docsgen` away, not a failed PR round trip. A commit
+      # touching userdocs/reference/plugin-api/** triggers this AND
+      # sdk-freshness below together; sdk-freshness's typedoc run does
+      # a full wipe-then-regenerate of that tree (verified: even an
+      # unrelated page's mtime moves on every run), so the two gates
+      # race on the same files when lefthook's `parallel: true` runs
+      # them at once -- this test reads that tree mid-wipe and sees a
+      # different family's evidence between two calls a few ms apart
+      # (goal 0357 S2 hit it repeatably). A dedicated lock (never the
+      # default with-gate-lock.sh path go-test/vitest use, so this
+      # never waits behind an unrelated heavy suite) serializes the
+      # two against each other instead.
       glob: "{userdocs/**,internal/docsgen/**,README.md}"
-      run: go test ./internal/docsgen/
+      run: MILL_GATE_LOCK_DIR="${TMPDIR:-/tmp}/mill-docs-freshness-gate.lock" ./scripts/with-gate-lock.sh go test ./internal/docsgen/
     - name: sdk-freshness
       # The plugin SDK's committed type package and its generated API
       # reference both derive from frontend/src/plugins/sdk.ts and its
       # sdk/ contribution-kind files -- same commit-and-verify shape as
       # docsgen-freshness just above, one script CI's own sdk-freshness
-      # job also calls.
+      # job also calls. Same dedicated lock as docsgen-freshness above
+      # -- see that job's comment for the race it closes.
       glob: "{frontend/src/plugins/sdk.ts,frontend/src/plugins/sdk/**,frontend/plugin-sdk/**,frontend/typedoc.json,userdocs/reference/plugin-api/**}"
-      run: ./scripts/check-sdk-freshness.sh
+      run: MILL_GATE_LOCK_DIR="${TMPDIR:-/tmp}/mill-docs-freshness-gate.lock" ./scripts/with-gate-lock.sh ./scripts/check-sdk-freshness.sh
     - name: sdk-comments
       # The generated SDK types/reference must read as author-facing
       # documentation, never repository internals -- one script CI's
       # own sdk-comments job also calls.
       glob: "{frontend/src/plugins/sdk.ts,frontend/src/plugins/sdk/**,frontend/plugin-sdk/**,userdocs/reference/plugin-api/**}"
       run: ./scripts/check-sdk-comments.sh
+    - name: affected-selftest
+      # Goal 0401 hotfix: proves scripts/list-affected-go-packages.sh's
+      # per-event base resolution (pull_request/merge_group/push) and its
+      # bash-3.2 compatibility (CI's macos-latest runner's system
+      # /bin/bash predates mapfile/readarray) against real commits on
+      # this branch, so a future edit can't silently reintroduce either.
+      glob: "{scripts/list-affected-go-packages.sh,scripts/check-affected-selftest.sh,.github/workflows/ci.yml}"
+      run: ./scripts/check-affected-selftest.sh
     - name: plugin-typecheck
       root: "frontend/"
       glob: "{frontend/plugin-sdk/**,examples/plugins/**/*.js}"
@@ -189,6 +220,14 @@ pre-commit:
     - name: selftest-git-isolation-selftest
       glob: "scripts/check-selftest-git-isolation*.sh"
       run: ./scripts/check-selftest-git-isolation-selftest.sh
+    - name: install-lock-selftest
+      # Goal 0403 S2c: two concurrent installed-app passes clobber the
+      # same /Applications/Mill.app bundle mid-install and each other's
+      # launched process -- scripts/with-install-lock.sh serializes
+      # them; this probes serialization, stale-holder reclaim, the
+      # bounded-wait exit code and --acquire/--release reentrancy.
+      glob: "{scripts/with-install-lock.sh,scripts/check-install-lock-selftest.sh,Taskfile.yml}"
+      run: ./scripts/check-install-lock-selftest.sh
     - name: review-report-selftest
       # Fixture-tests the pre-PR review gate itself (goal 0383) --
       # mirrors hook-command-guard's own probe-on-touch shape; the live

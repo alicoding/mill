@@ -1,0 +1,18 @@
+{
+  "id": "mill-live-view",
+  "name": "Live view",
+  "version": "1.0.0",
+  "description": "A live window onto an external tracked-items tool's items on the board, with guarded reply and status change.",
+  "author": "Mill",
+  "minMillVersion": "0.14.1",
+  "icon": "icon.png",
+  "capabilities": ["call-integration", "open-url"],
+  "contributes": {
+    "views": [
+      { "id": "live-view", "title": "Live view", "entry": "view.html", "placement": "board-switcher" }
+    ],
+    "settings": [
+      { "key": "integrationId", "type": "string", "label": "Integration", "description": "The id of the Configure Integration that maps this view's search, comment and transition requests (Configure > Integrations).", "default": "" }
+    ]
+  }
+}

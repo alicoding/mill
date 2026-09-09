@@ -30,18 +30,10 @@ interface UISignalState {
   extensionUpdateRequest: string | null
   requestExtensionUpdate: (id: string) => void
   consumeExtensionUpdate: () => void
-  // atlas.matrix / atlas.coverage: same counter shape,
-  // switching the stored projection pane useAtlasProjectionViews
-  // derives from the persisted atlas View (goal 0355 S2).
-  atlasMatrixRequest: number
-  requestAtlasMatrixOpen: () => void
-  atlasCoverageRequest: number
-  requestAtlasCoverageOpen: () => void
   // atlas.board.home (goal 0357): back OUT of a projection pane to the
   // canvas. A plugin pane is a sandboxed frame a keydown can never
   // leave, so its page's own Escape handling reaches the pane contract
-  // ("Escape swaps back to the Board") through this signal. Same
-  // counter shape as the two pane-opening signals above.
+  // ("Escape swaps back to the Board") through this signal.
   atlasBoardRequest: number
   requestAtlasBoardOpen: () => void
   // api.open(cardId) (goal 0357): a plugin's door to open one card on
@@ -207,7 +199,7 @@ interface UISignalState {
   bumpAtlasUndoApplied: () => void
   // The Atlas toolbar/board actions promoted into the command registry
   // (shared/atlasBoardCommands.ts): same monotonic-counter shape as
-  // atlasMatrixRequest above -- each consuming component watches its
+  // atlasBoardRequest above -- each consuming component watches its
   // own field via a ref-compared effect and runs the action a click
   // already runs, so a command dispatched from the palette/keyboard
   // does exactly what the toolbar button does.
@@ -321,10 +313,6 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   extensionSourcesRequest: 0,
   requestAtlasJump: () => set((s) => ({ atlasJumpRequest: s.atlasJumpRequest + 1 })),
   requestExtensionSources: () => set((s) => ({ extensionSourcesRequest: s.extensionSourcesRequest + 1 })),
-  atlasMatrixRequest: 0,
-  requestAtlasMatrixOpen: () => set((s) => ({ atlasMatrixRequest: s.atlasMatrixRequest + 1 })),
-  atlasCoverageRequest: 0,
-  requestAtlasCoverageOpen: () => set((s) => ({ atlasCoverageRequest: s.atlasCoverageRequest + 1 })),
   atlasBoardRequest: 0,
   requestAtlasBoardOpen: () => set((s) => ({ atlasBoardRequest: s.atlasBoardRequest + 1 })),
   atlasOpenCardRequest: null,

@@ -275,7 +275,7 @@ test('Editing an existing workflow updates it in place, not as a duplicate', asy
   })
 })
 
-test('Opening New workflow twice opens two tabs; closing one returns to the list without touching the other', async ({ page }) => {
+test('Opening New workflow twice opens two tabs; closing the active one returns to the other, not the list', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Workflows' }).click()
 
@@ -293,16 +293,22 @@ test('Opening New workflow twice opens two tabs; closing one returns to the list
   await expect(page.getByRole('tab')).toHaveCount(3) // Workflows + two New workflow tabs
 
   // Closing the active, dirty tab (Tab B) prompts (docs/goals/0048-
-  // unsaved-close-guard.md); "Don't save" discards it and falls back
-  // to the Workflows list.
+  // unsaved-close-guard.md); "Don't save" discards it and returns to
+  // Tab A -- the most-recently-used remaining tab (docs/goals/0407-
+  // tab-close-activation.md), not the Workflows list -- with no extra
+  // click needed to reach it.
   await page.getByRole('button', { name: 'Close tab' }).last().click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Don\'t save' }).click()
   await expect(page.getByRole('tab')).toHaveCount(2)
-  await expect(page.getByTestId('composition-view')).toBeVisible()
-
-  // Tab A is still open, with its draft label intact.
-  await page.getByRole('tab').nth(1).click()
   await expect(activePanel(page).getByLabel('Label')).toHaveValue('Tab A')
+
+  // Closing the now-active, dirty Tab A -- the only work tab left --
+  // has no other tab to return to, so it falls back to the Workflows
+  // list.
+  await page.getByRole('button', { name: 'Close tab' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Don\'t save' }).click()
+  await expect(page.getByRole('tab')).toHaveCount(1)
+  await expect(page.getByTestId('composition-view')).toBeVisible()
 })
 
 test('Editing the same workflow twice reuses its tab instead of opening a duplicate', async ({ page }) => {

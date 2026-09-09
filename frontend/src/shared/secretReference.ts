@@ -21,3 +21,27 @@ export function toReference(entryID: string): string {
 export function toEntryID(reference: string): string {
   return reference.startsWith(VAULT_PREFIX) ? reference.slice(VAULT_PREFIX.length) : reference
 }
+
+// SourceRef is one provider-qualified id's two parts: which configured
+// source answers it, and which key inside that source (goal 0408 S1).
+export interface SourceRef {
+  sourceID: string
+  key: string
+}
+
+// parseSourceRef splits a provider-qualified id ("env:<source>/<KEY>")
+// into its source and key, null for a bare vault id or a malformed
+// one -- the same split vaultref.Split/strings.Cut make on the Go
+// side, so a picker can name which source a reference points at
+// without a round trip.
+export function parseSourceRef(entryID: string): SourceRef | null {
+  const colon = entryID.indexOf(':')
+  if (colon < 0) return null
+  const rest = entryID.slice(colon + 1)
+  const slash = rest.indexOf('/')
+  if (slash < 0) return null
+  const sourceID = rest.slice(0, slash)
+  const key = rest.slice(slash + 1)
+  if (sourceID === '' || key === '') return null
+  return { sourceID, key }
+}

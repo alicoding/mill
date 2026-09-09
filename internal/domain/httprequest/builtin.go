@@ -1,6 +1,10 @@
 package httprequest
 
-import "github.com/alicoding/mill/internal/domain/seedorigin"
+import (
+	"github.com/alicoding/mill/internal/domain/secretsource"
+	"github.com/alicoding/mill/internal/domain/seedorigin"
+	"github.com/alicoding/mill/internal/domain/vaultref"
+)
 
 // BuiltIn ships one seeded, working example HTTPRequest per real
 // implemented AuthType (docs/SPEC.md §4's Update) -- the same standing
@@ -57,6 +61,20 @@ const (
 	// registration.
 	ExampleConfluencePageReadID = "example-confluence-page-read"
 	ExampleJiraSearchID         = "example-jira-search"
+	// ExampleTrackedItemsID (goal 0374) is the mill-live-view plugin's
+	// own seeded Integration: unlike the single-operation examples
+	// above, it declares all four request shapes one tracked-items tool
+	// (a Jira-like issue tracker, generically) needs -- search, list an
+	// item's allowed transitions, post a comment, and perform a
+	// transition -- so ONE Integration entity is the live view's whole
+	// mapping, never a per-plugin config. Same bring-your-own-host
+	// placeholder shape as the two examples above.
+	ExampleTrackedItemsID = "example-tracked-items-tool"
+	// ExampleSourceSecretID (goal 0408 S1) names a Bearer example whose
+	// SecretRef points at the seeded example secret source instead of a
+	// vault entry -- demonstrating a source-backed reference end to end
+	// without needing the user's own file.
+	ExampleSourceSecretID = "example-source-secret-httpbin"
 )
 
 // One-URL model (composition.JoinRequestURL): every seed's BaseURL is
@@ -129,6 +147,34 @@ const jiraSearchSpec = `{"openapi":"3.0.3","info":{"title":"Jira search (PAT)","
 	`"summary":"Search Jira issues with a JQL query",` +
 	`"parameters":[{"name":"jql","in":"path","required":true,"schema":{"type":"string","description":"The JQL query string"}}],` +
 	`"responses":{"200":{"description":"OK"}}}}}}`
+
+// trackedItemsSpec declares the four operations goal 0374's live view
+// needs against ANY tracked-items tool (a Jira-like issue tracker,
+// named generically -- the tool's real identity lives in the user's
+// own BaseURL/PAT, never in Mill's copy): search, list one item's
+// allowed next transitions, post a comment, and perform a transition.
+// One Integration entity, four named operations -- the mapping goal
+// 0374 item 6 needed, composed from the existing multi-operation
+// OpenAPISpec shape rather than a new per-plugin config.
+const trackedItemsSpec = `{"openapi":"3.0.3","info":{"title":"Tracked items","version":"1.0.0"},"paths":{` +
+	`"/search":{"get":{` +
+	`"summary":"Search items",` +
+	`"parameters":[{"name":"q","in":"query","required":false,"schema":{"type":"string","description":"The search filter, in whatever query language the tool accepts"}}],` +
+	`"responses":{"200":{"description":"OK"}}}},` +
+	`"/items/{itemKey}/transitions":{` +
+	`"get":{"summary":"List the item's allowed next transitions",` +
+	`"parameters":[{"name":"itemKey","in":"path","required":true,"schema":{"type":"string"}}],` +
+	`"responses":{"200":{"description":"OK"}}},` +
+	`"post":{"summary":"Move the item to a new status",` +
+	`"parameters":[{"name":"itemKey","in":"path","required":true,"schema":{"type":"string"}}],` +
+	`"requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","properties":{"toStatus":{"type":"string"}}}}}},` +
+	`"responses":{"200":{"description":"OK"}}}},` +
+	`"/items/{itemKey}/comments":{"post":{` +
+	`"summary":"Post a comment on the item",` +
+	`"parameters":[{"name":"itemKey","in":"path","required":true,"schema":{"type":"string"}}],` +
+	`"requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","properties":{"body":{"type":"string"}}}}}},` +
+	`"responses":{"200":{"description":"OK"}}}}` +
+	`}}`
 
 // BuiltIn returns the seeded example requests -- pure config, no
 // secrets (HTTPRequest never carries one, by design). Whoever owns
@@ -244,6 +290,39 @@ func BuiltIn() []HTTPRequest {
 			OpenAPISpec: jiraSearchSpec,
 			BuiltIn:     true,
 			Seed:        seedorigin.Stamp(1),
+		},
+		{
+			ID: ExampleTrackedItemsID, Label: "Example: a tracked-items tool",
+			Description: "The mill-live-view plugin's own Integration: search, list an item's " +
+				"allowed transitions, post a comment, and change status, against any tracked-items " +
+				"tool that accepts a personal access token. Set your own base URL and PAT.",
+			BaseURL: "https://example.invalid", AuthType: AuthBearer, Method: "GET",
+			OpenAPISpec: trackedItemsSpec,
+			BuiltIn:     true,
+			Seed:        seedorigin.Stamp(1),
+		},
+		{
+			// SecretRef is set directly here, unlike every sibling above:
+			// it names a REFERENCE to the seeded example secret source
+			// (secretsource.ExampleDotenvSourceID), never a value -- the
+			// same "a field holds the reference, never the value"
+			// invariant every other secret-shaped field already keeps
+			// (vaultref.go), so there is nothing here for the vault-
+			// adoption pass to create.
+			ID: ExampleSourceSecretID, Label: "Example: API token from a .env source (httpbin.org)",
+			Description: "Sends Authorization: Bearer <token> against httpbin.org/bearer, with the " +
+				"token read live from the seeded example secret source instead of the vault. " +
+				"Open Secrets to see the reference, or remove the key from the source to see a " +
+				"run refuse before it starts.",
+			BaseURL: "https://httpbin.org/bearer", AuthType: AuthBearer, Method: "GET",
+			SecretRef:   vaultref.Ref(vaultref.ProviderEnv, secretsource.ExampleDotenvSourceID+"/EXAMPLE_API_TOKEN"),
+			OpenAPISpec: typedBearerSpec,
+			BuiltIn:     true,
+			// Revision 2 (goal 0408 S1 fix-forward): the label no longer
+			// shares a prefix with "Example: Bearer token (httpbin.org)",
+			// which a shared-pool e2e spec's own row filter matched by
+			// prefix.
+			Seed: seedorigin.Stamp(2),
 		},
 	}
 }

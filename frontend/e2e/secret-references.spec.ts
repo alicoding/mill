@@ -8,9 +8,11 @@
 // form's true "no sources" refusal needs one where it has been deleted.
 import { chromium, test as rawTest } from '@playwright/test'
 import { applyCpuThrottle } from './fixtures/throttle'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import http from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { test, expect, spawnMillServer, type SpawnedServer } from './fixtures/server'
 import { SECRET_REFERENCES_MCP_BASE_PORT, SECRET_REFERENCES_SERVER_BASE_PORT } from './fixtures/serverPorts'
 import { clickRowAction } from './inventoryRow'
@@ -18,6 +20,8 @@ import { createSecret, deleteSecret, ensureVault, openSecrets, secretTitles } fr
 import { callBindingViaRPC } from './fixtures/wailsRpc'
 
 const CONFIGURE = 'github.com/alicoding/mill/internal/services/configuresvc.ConfigureService.'
+const COMPOSITION = 'github.com/alicoding/mill/internal/services/compositionsvc.CompositionService.'
+const EXECUTION = 'github.com/alicoding/mill/internal/services/executionsvc.ExecutionService.'
 
 function requestRow(page: import('@playwright/test').Page, label: string) {
   return page.locator('[data-testid="inventory-row"][data-entity="request"]').filter({ has: page.getByText(label, { exact: true }) })
@@ -95,6 +99,103 @@ test('a picker offers only the entry kinds its field can use', async ({ page }) 
   } finally {
     await deleteSecret(page, keyRef)
     await deleteSecret(page, textRef)
+  }
+})
+
+function workflowRow(page: import('@playwright/test').Page, label: string) {
+  return page.locator('[data-testid="inventory-row"][data-entity="workflow"]').filter({ has: page.getByText(label, { exact: true }) })
+}
+
+interface Entity { ID: string; Label: string }
+
+// goal 0408 S1: a key picked directly from a configured source (not a
+// vault entry wrapping one) runs, names the source in access history,
+// updates LIVE when the file loses the key while the picker is still
+// open, and blocks the next run with the same reference before it
+// starts -- the platform half of source-backed secrets end to end.
+test('a source-backed reference runs, names the source in access history, then goes unresolved live and blocks the next run', async ({ page }) => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mill-e2e-source-secret-'))
+  const envPath = path.join(dir, '.env')
+  writeFileSync(envPath, 'API_TOKEN=tok-e2e-source-123\n')
+  const server = http.createServer((_req, res) => { res.setHeader('Content-Type', 'application/json'); res.end('{"ok":true}') })
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const port = (server.address() as AddressInfo).port
+
+  await page.goto('/')
+  await ensureVault(page)
+  const source = await callBindingViaRPC<Entity>(page, CONFIGURE + 'CreateSecretSource', ['ZzE2eSourceRefEnv', 'env', envPath])
+
+  try {
+    // Pick the source key directly in the auth field -- the picker's
+    // Sources group, not a vault entry.
+    await page.getByRole('link', { name: 'Configure' }).click()
+    await page.getByTestId('new-integration').click()
+    await page.getByTestId('new-integration-rest').click()
+    await page.getByLabel('Label').fill('ZzE2eSourceSecretIntegration')
+    await page.getByLabel('URL', { exact: true }).fill(`http://127.0.0.1:${port}/echo`)
+    await page.getByLabel('Auth type').selectOption('bearer')
+    await page.getByTestId('request-secret-picker').selectOption(`env:${source.ID}/API_TOKEN`)
+    await expect(page.getByTestId('request-secret-picker')).toHaveValue(`env:${source.ID}/API_TOKEN`)
+    await page.getByRole('button', { name: 'Save integration' }).click()
+    await expect(requestRow(page, 'ZzE2eSourceSecretIntegration')).toBeVisible()
+
+    const requests = await callBindingViaRPC<{ ID: string; Label: string; SecretRef: string }[]>(page, CONFIGURE + 'HTTPRequests', [])
+    const request = requests.find((r) => r.Label === 'ZzE2eSourceSecretIntegration')!
+    expect(request.SecretRef).toBe(`env:${source.ID}/API_TOKEN`)
+
+    const workflow = await callBindingViaRPC<Entity>(page, COMPOSITION + 'CreateWorkflow', ['ZzE2eSourceSecretWorkflow', '', [
+      { ID: 't', NodeTypeID: 'trigger-manual', Position: { X: 0, Y: 0 } },
+      { ID: 'h', NodeTypeID: 'integration-http', Position: { X: 0, Y: 100 }, Config: { requestId: request.ID } },
+    ], [{ ID: 'e', Source: 't', Target: 'h' }]])
+
+    // Runs clean while the key is there, and the access history names
+    // the source that answered it.
+    const run = await callBindingViaRPC<{ runID: string }>(page, EXECUTION + 'RunWorkflow', [workflow.ID, 'test', {}])
+    const status = async () => {
+      const detail = await callBindingViaRPC<{ status?: string; Status?: string }>(page, EXECUTION + 'GetRun', [run.runID])
+      return (detail.status ?? detail.Status ?? '').toUpperCase()
+    }
+    await expect.poll(status, { timeout: 15_000 }).toMatch(/PENDING|SUCCESS|SUCCEEDED|DONE/)
+    if ((await status()).includes('PENDING')) {
+      await callBindingViaRPC(page, EXECUTION + 'ResolveApproval', [run.runID, 'h', true, {}, true])
+    }
+    await expect.poll(status, { timeout: 15_000 }).toMatch(/SUCCESS|SUCCEEDED|DONE/)
+
+    await openSecrets(page)
+    await page.getByTestId('secrets-access-history-open').click()
+    const history = page.getByRole('dialog', { name: 'Access history', exact: true })
+    await expect(history).toBeVisible()
+    await expect(history.getByText(`API_TOKEN — ${source.Label}`).first()).toBeVisible()
+    await history.getByLabel('Close').click()
+
+    // Open the integration's own edit form and leave it mounted: the
+    // key is still there, so the picker names it with no caption.
+    await page.getByRole('link', { name: 'Configure' }).click()
+    await requestRow(page, 'ZzE2eSourceSecretIntegration').getByText('ZzE2eSourceSecretIntegration', { exact: true }).click()
+    await page.getByTestId('summary-edit').click()
+    await expect(page.getByTestId('request-secret-picker')).toHaveValue(`env:${source.ID}/API_TOKEN`)
+    await expect(page.getByTestId('secret-ref-unresolved')).toHaveCount(0)
+
+    // The file loses the key while the form stays open -- the watch
+    // (goal 0408 S1) reaches this same picker live, no reload.
+    writeFileSync(envPath, 'OTHER=x\n')
+    await expect(page.getByTestId('secret-ref-unresolved')).toContainText('API_TOKEN')
+    await expect(page.getByTestId('secret-ref-unresolved')).toContainText(source.Label)
+    await page.getByRole('button', { name: 'Cancel' }).click()
+
+    // The next run refuses before it starts, naming the same key and
+    // source rather than failing mid-run.
+    await page.getByRole('link', { name: 'Workflows' }).click()
+    await workflowRow(page, 'ZzE2eSourceSecretWorkflow').getByRole('button', { name: 'Run' }).click()
+    await expect(page.getByTestId('workflow-run-error')).toContainText('Unresolved secret reference: API_TOKEN')
+    await expect(page.getByTestId('workflow-run-error')).toContainText(source.Label)
+
+    await callBindingViaRPC(page, COMPOSITION + 'DeleteWorkflow', [workflow.ID])
+    await callBindingViaRPC(page, CONFIGURE + 'DeleteHTTPRequest', [request.ID])
+  } finally {
+    await callBindingViaRPC(page, CONFIGURE + 'DeleteSecretSource', [source.ID]).catch(() => undefined)
+    await new Promise<void>((resolve) => server.close(() => resolve()))
+    rmSync(dir, { recursive: true, force: true })
   }
 })
 

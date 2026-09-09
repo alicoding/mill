@@ -138,6 +138,18 @@ export interface GuardedActionDecision {
 }
 
 /**
+ * GuardedActionEvaluation is the read-only "what would happen" answer
+ * (goal 0374's Write-UX decision 1): no side effect, no park, nothing
+ * recorded -- the frame's OWN informational call, never authoritative.
+ * PerformGuardedActionForPlugin re-evaluates independently before
+ * ever performing anything.
+ */
+export interface GuardedActionEvaluation {
+    "Effect": string;
+    "RuleLabel": string;
+}
+
+/**
  * InstallPreview is what the user is shown BEFORE anything downloads:
  * who the extension is, what installing it would earn for trust, and
  * what it can do once it runs. Every permission-shaped fact a manifest
@@ -183,6 +195,14 @@ export interface InstallPreview {
      * prompt can say "reinstall" rather than "install".
      */
     "AlreadyInstalled": boolean;
+
+    /**
+     * CanvasHost is true when this manifest earns the "canvas-host"
+     * grant (pluginGrants, docs/goals/0375 S1b/S2): it declares a
+     * canvas object and runs same-DOM in Mill's own window rather than
+     * the sandboxed activation frame. Always false for a built-in.
+     */
+    "CanvasHost": boolean;
 
     /**
      * PolicyRefusal is the organisation policy's sentence when it
@@ -521,6 +541,18 @@ export interface PluginFileEntry {
 }
 
 /**
+ * PluginGuardedActionResult is PerformGuardedActionForPlugin's outcome
+ * -- the same shape requestGuardedAction's existing GuardedActionResult
+ * already carries on the frontend, so the two doors read alike there.
+ */
+export interface PluginGuardedActionResult {
+    "Approved": boolean;
+    "Effect": string;
+    "RuleLabel": string;
+    "Performed": boolean;
+}
+
+/**
  * PluginInfo is one scanned plugin as the Extensions surface and the
  * loader see it. Error is a load-blocking validation problem stated
  * for the human (the row renders it; the loader skips the plugin) --
@@ -538,9 +570,17 @@ export interface PluginInfo {
     /**
      * ContentHash is the folder's current content hash
      * (pluginservice_hash.go), "" for a built-in or an invalid plugin
-     * -- what the lock compares against.
+     * -- what signature verification (Signed) checks against. NOT what
+     * the lock compares against; that is CodeHash (docs/goals/0375 S2).
      */
     "ContentHash": string;
+
+    /**
+     * CodeHash excludes manifest.json (docs/goals/0375 S2): the trust
+     * lock's own comparison input, so a manifest-only edit never trips
+     * it -- only Widened does.
+     */
+    "CodeHash": string;
 
     /**
      * SigningPolicy reports whether an administrator pinned signing
@@ -578,6 +618,15 @@ export interface PluginInfo {
      * built-in's do. Always empty for a built-in.
      */
     "Grants": string[] | null;
+
+    /**
+     * Widened is non-nil for a non-built-in plugin whose manifest
+     * declares MORE than its own consent covered (docs/goals/0375 S2,
+     * MV3's re-consent-on-widen rule): the NEW elements only, in the
+     * shape permissionLines() renders. Nil when narrowed/unchanged,
+     * never allowed, or built-in.
+     */
+    "Widened": InstallPreview | null;
 
     /**
      * Warnings are non-blocking manifest notices -- a deprecated key
@@ -702,8 +751,9 @@ export interface SecretSourcePathContribution {
  * SettingContribution is one declared plugin setting. Type is the
  * four-type floor every declarative settings platform shares --
  * "boolean", "string", "number", "enum" -- plus "secretRef" (ADR-0048):
- * the user picks a vault entry, the stored value is that entry's id,
- * and the plugin only ever reads its title. Default is the value in
+ * the user picks any reference the picker offers -- a vault entry or a
+ * configured source's key (goal 0408 S1) -- the stored value is that
+ * reference, and the plugin only ever reads its title. Default is the value in
  * effect until the user touches the control (the converged
  * `default` spelling), decoded as whatever JSON scalar the manifest
  * wrote; validateContributes pins it to Type. Options is enum-only;

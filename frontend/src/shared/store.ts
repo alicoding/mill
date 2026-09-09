@@ -5,15 +5,12 @@ import type { NodeType, Workflow } from '../../bindings/github.com/alicoding/mil
 import type { HTTPRequest } from '../../bindings/github.com/alicoding/mill/internal/domain/httprequest/models'
 import type { Capability } from '../../bindings/github.com/alicoding/mill/internal/domain/capabilities/models'
 import type { KeyCombo } from './keybinding'
-import { newLocalID } from './localId'
 import { background } from './background'
 import {
   activeKeyIfPresent,
   isRestorable,
-  pruneStaleWorkTabs,
+  pruneRecentWorkTabKeys,
   restoreWorkTabSnapshot,
-  sameWorkTarget,
-  shouldUpgradeToEdit,
   type WorkTab,
   type WorkTabCloseRequest,
   type WorkTabSpec,
@@ -21,6 +18,7 @@ import {
 import { redirectRetiredView } from './viewRedirects'
 import { normalizeAtlasBoardView, viewFor, viewsEqual, type AtlasBoardView, type View } from './viewKinds'
 import { createRequestFormTabState, type RequestFormTabState } from './requestFormTabState'
+import { createWorkTabActions, type WorkTabActionsState } from './workTabActions'
 
 // Re-exported so every existing `from '../shared/store'` import of
 // WorkTab/WorkTabSpec (app/WorkTabShell.tsx, composition/
@@ -88,7 +86,7 @@ export type CanvasCommandRequest =
   | { kind: 'toggleAddSteps' }
   | { kind: 'addNote'; pos: { x: number; y: number } }
 
-export interface AppState extends RequestFormTabState {
+export interface AppState extends RequestFormTabState, WorkTabActionsState {
   workflows: Workflow[] | null
   // nodeTypes/requests join workflows as store-shared server data (one
   // fetch, many consumers) now that the global work-tab shell renders
@@ -104,46 +102,6 @@ export interface AppState extends RequestFormTabState {
   pushActivity: (entry: ActivityEntry) => void
   setCapabilities: (capabilities: Capability[]) => void
   setView: (view: View) => void
-  // The app-wide work-tab strip (docs/SPEC.md §3.8). null active key =
-  // the sidebar's current section page shows.
-  workTabs: WorkTab[]
-  activeWorkTabKey: string | null
-  // Reuses an already-open tab for the same target (sameWorkTarget)
-  // rather than opening a second one -- for a 'workflow-edit' target,
-  // reuse NEVER downgrades an already-'edit' tab back to 'view' just
-  // because a view-intent opener (a row click) asked for it again, but
-  // DOES upgrade an existing 'view' tab to 'edit' when the opener's own
-  // intent is explicitly edit (a pencil/menu action, mode: 'edit') --
-  // see setWorkTabMode below for the same in-place switch driven from
-  // inside an already-open tab's own Edit button.
-  openWorkTab: (tab: WorkTabSpec) => void
-  closeWorkTab: (key: string) => void
-  // Bulk closers for the work-tab overflow menu (docs/goals/0018): close
-  // every open work tab, or every one except keepKey. Scratch cleanup for
-  // the closed keys stays WorkTabShell's job (this store has no scratch/
-  // localStorage knowledge) -- it clears scratch for the removed keys
-  // before calling these.
-  closeAllWorkTabs: () => void
-  closeOtherWorkTabs: (keepKey: string) => void
-  activateWorkTab: (key: string | null) => void
-  // Drops tabs whose entity no longer exists -- called by WorkTabShell
-  // once real data is in, so a restored tab for a since-deleted
-  // workflow/request doesn't linger as a ghost.
-  pruneWorkTabs: (keep: (tab: WorkTab) => boolean) => void
-  // requestOpenWorkflow opens (or reuses) a workflow's editor tab from
-  // anywhere -- the hover-preview's Open, an Activity row -- via the
-  // global strip. An optional runId (the Review page's row drill-down,
-  // docs/goals/0002-review-queue-maturation.md item 5) additionally asks
-  // that run to be preselected on the Runs inner tab once the editor
-  // opens -- see pendingRunFocus below for how that's consumed.
-  requestOpenWorkflow: (id: string, runId?: string) => void
-  // The run a just-opened workflow editor should preselect on its Runs
-  // inner tab, set by requestOpenWorkflow's optional runId and read by
-  // WorkflowEditorTab/WorkflowRunsPanel. Consumed once (cleared via
-  // consumePendingRunFocus) so switching tabs afterward, or reopening
-  // the same workflow later, doesn't keep re-focusing a stale run.
-  pendingRunFocus: { workflowId: string; runId: string } | null
-  consumePendingRunFocus: () => void
   // Hot-exit UI signals (docs/goals/0012-authoring-hot-exit.md), keyed
   // by WorkTab.key -- pure state, no localStorage/scratch knowledge
   // here (that stays in composition/canvasScratch.ts; shared/ is a
@@ -311,83 +269,7 @@ export const useAppStore = create<AppState>()(
       // tab (it stays open in the strip): clicking a sidebar item or
       // pressing a view hotkey means "show me that page."
       setView: (view) => set({ view: redirectRetiredView(view), activeWorkTabKey: null }),
-      workTabs: [],
-      activeWorkTabKey: null,
-      openWorkTab: (tab) =>
-        set((state) => {
-          const existing = state.workTabs.find((t) => sameWorkTarget(t, tab))
-          if (existing) {
-            const upgrade = shouldUpgradeToEdit(existing, tab)
-            // A requested run (goal 0294) always lands on the existing
-            // tab, even when nothing else about it changes.
-            const runId = tab.kind === 'workflow-edit' ? tab.runId : undefined
-            if (upgrade || runId) {
-              return {
-                activeWorkTabKey: existing.key,
-                workTabs: state.workTabs.map((t) => (t.key === existing.key
-                  ? { ...t, ...(upgrade ? { mode: 'edit' as const } : {}), ...(runId ? { runId } : {}) }
-                  : t)),
-              }
-            }
-            return { activeWorkTabKey: existing.key }
-          }
-          const created: WorkTab = { ...tab, key: newLocalID() }
-          return { workTabs: [...state.workTabs, created], activeWorkTabKey: created.key }
-        }),
-      closeWorkTab: (key) =>
-        set((state) => {
-          const workTabDirty = { ...state.workTabDirty }
-          delete workTabDirty[key]
-          const workTabRestored = { ...state.workTabRestored }
-          delete workTabRestored[key]
-          const requestFormTestReady = { ...state.requestFormTestReady }
-          delete requestFormTestReady[key]
-          return {
-            workTabs: state.workTabs.filter((t) => t.key !== key),
-            activeWorkTabKey: state.activeWorkTabKey === key ? null : state.activeWorkTabKey,
-            workTabDirty,
-            workTabRestored,
-            requestFormTestReady,
-          }
-        }),
-      closeAllWorkTabs: () =>
-        set({ workTabs: [], activeWorkTabKey: null, workTabDirty: {}, workTabRestored: {}, requestFormTestReady: {} }),
-      closeOtherWorkTabs: (keepKey) =>
-        set((state) => {
-          const kept = state.workTabs.filter((t) => t.key === keepKey)
-          if (kept.length === state.workTabs.length) return {}
-          const workTabDirty = keepKey in state.workTabDirty ? { [keepKey]: state.workTabDirty[keepKey] } : {}
-          const workTabRestored = keepKey in state.workTabRestored ? { [keepKey]: state.workTabRestored[keepKey] } : {}
-          const requestFormTestReady = keepKey in state.requestFormTestReady ? { [keepKey]: state.requestFormTestReady[keepKey] } : {}
-          return {
-            workTabs: kept,
-            activeWorkTabKey: kept.length > 0 ? keepKey : null,
-            workTabDirty,
-            workTabRestored,
-            requestFormTestReady,
-          }
-        }),
-      activateWorkTab: (key) => set({ activeWorkTabKey: key }),
-      pruneWorkTabs: (keep) =>
-        set((state) => pruneStaleWorkTabs(state.workTabs, state.activeWorkTabKey, keep) ?? {}),
-      pendingRunFocus: null,
-      // Opens (or reuses, whatever mode it's currently in) a workflow's
-      // tab from a jump/preview context -- hover-preview's Open, the
-      // Review queue's row drill-down, Home's Most-used list. Defaults
-      // a freshly-created tab to 'view' (docs/goals/0022): every one of
-      // these callers is a "go look at this workflow" gesture (a run's
-      // own data, a referenced child's layout), never an implicit edit
-      // request -- an Edit button is one click away inside the opened
-      // tab for whoever actually wants to change it.
-      requestOpenWorkflow: (id, runId) =>
-        set((state) => {
-          const pendingRunFocus = runId ? { workflowId: id, runId } : null
-          const existing = state.workTabs.find((t) => t.kind === 'workflow-edit' && t.workflowId === id)
-          if (existing) return { activeWorkTabKey: existing.key, pendingRunFocus }
-          const created: WorkTab = { key: newLocalID(), kind: 'workflow-edit', workflowId: id, mode: 'view' }
-          return { workTabs: [...state.workTabs, created], activeWorkTabKey: created.key, pendingRunFocus }
-        }),
-      consumePendingRunFocus: () => set({ pendingRunFocus: null }),
+      ...createWorkTabActions(set),
       workTabDirty: {},
       setWorkTabDirty: (key, dirty) =>
         set((state) => {
@@ -453,6 +335,8 @@ export const useAppStore = create<AppState>()(
         // degrades to "no active tab" rather than persisting a key
         // with nothing to match it against.
         activeWorkTabKey: activeKeyIfPresent(state.workTabs.filter(isRestorable), state.activeWorkTabKey),
+        // Same restorable-only scope as workTabs above (goal 0407).
+        recentWorkTabKeys: pruneRecentWorkTabKeys(state.recentWorkTabKeys, state.workTabs.filter(isRestorable)),
         // Pins are plain workflow-ID strings, not entity snapshots -- no
         // restore/prune step needed at merge time the way workTabs
         // needs one; a pin for a since-deleted workflow just never
@@ -464,10 +348,10 @@ export const useAppStore = create<AppState>()(
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<AppState>
-        const { workTabs, activeWorkTabKey } = restoreWorkTabSnapshot(p.workTabs, p.activeWorkTabKey)
+        const { workTabs, activeWorkTabKey, recentWorkTabKeys } = restoreWorkTabSnapshot(p.workTabs, p.activeWorkTabKey, p.recentWorkTabKeys)
         // The persisted boardView reads through the one mapping
-        // (viewKinds.normalizeAtlasBoardView): a 'roadmap' stored
-        // before the Roadmap became a plugin-contributed pane, and
+        // (viewKinds.normalizeAtlasBoardView): a literal stored before
+        // its core projection became a plugin-contributed pane, and
         // any since-unknown value, resolves here on read.
         if (p.view?.kind === 'atlas') p.view = { ...p.view, boardView: normalizeAtlasBoardView(p.view.boardView) }
         // A tab whose entity was deleted since the snapshot was taken
@@ -481,6 +365,7 @@ export const useAppStore = create<AppState>()(
           ...p,
           workTabs,
           activeWorkTabKey,
+          recentWorkTabKeys,
         }
       },
     },

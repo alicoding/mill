@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toEntryID, toReference } from './secretReference'
+import { parseSourceRef, toEntryID, toReference } from './secretReference'
 
 // The two shapes a picked secret takes (goal 0306): a Configure
 // entity's field holds a REFERENCE, while the title cache and a
@@ -22,5 +22,27 @@ describe('secret reference conversion', () => {
     expect(toEntryID('vault:abc')).toBe('abc')
     expect(toEntryID(toReference('abc'))).toBe('abc')
     expect(toReference(toEntryID('vault:abc'))).toBe('vault:abc')
+  })
+})
+
+// goal 0408 S1: the picker's own unresolved-caption logic parses a
+// provider-qualified id into its source and key WITHOUT a round trip,
+// so it can name which source and key a reference points at even when
+// that key is no longer in the titles cache.
+describe('parseSourceRef', () => {
+  it('splits a provider-qualified id into its source and key', () => {
+    expect(parseSourceRef('env:proj-env/API_TOKEN')).toEqual({ sourceID: 'proj-env', key: 'API_TOKEN' })
+  })
+
+  it('keeps only the first "/" as the split point, for a key that itself contains one', () => {
+    expect(parseSourceRef('bruno:gazette/path/to/KEY')).toEqual({ sourceID: 'gazette', key: 'path/to/KEY' })
+  })
+
+  it('is null for a bare vault id, an empty pick, and a malformed reference', () => {
+    expect(parseSourceRef('abc')).toBeNull()
+    expect(parseSourceRef('')).toBeNull()
+    expect(parseSourceRef('env:no-slash')).toBeNull()
+    expect(parseSourceRef('env:/KEY')).toBeNull()
+    expect(parseSourceRef('env:proj-env/')).toBeNull()
   })
 })

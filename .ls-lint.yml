@@ -56,7 +56,12 @@ ls:
   # approval prompt), split from main.go along that family seam when it
   # crossed the 500-line convention -- `package main` (they wire into
   # main.go's app object) so they cannot move under internal/.
-  .go: regex:(main|auxwindows|singleinstance_(production|dev))
+  # events: main.go's own application.RegisterEvent[T] calls (goal 0408
+  # S1), split out the same way when adding one more call crossed the
+  # 500-line convention -- `package main`, since RegisterEvent needs the
+  # concrete Go type at the call site and every payload type already
+  # belongs to a service package main.go itself imports.
+  .go: regex:(main|auxwindows|events|singleinstance_(production|dev))
   # SECURITY/CONTRIBUTING added goal 0028 (public-repo hygiene): both are
   # standard GitHub community-profile root files, same allowlist family as
   # README below (checked, not new -- CODE_OF_CONDUCT deliberately stays

@@ -7,7 +7,8 @@
  * `fields` — a card's own typed field values (kind 'card' only);
  * the schema they read against stays with the kind, from api.kinds.
  * `kindId` — a card's own kind id (kind 'card' only), repeating
- * subkind. */
+ * subkind. `mirrorPath` — the local file this card's content is
+ * synced from (kind 'card' only), absent when it has none. */
 export interface ContentEntry {
     id: string;
     kind: string;
@@ -24,6 +25,7 @@ export interface ContentEntry {
     };
     fields?: Record<string, string>;
     kindId?: string;
+    mirrorPath?: string;
     payload: Record<string, string>;
 }
 export interface ContentQuery {
@@ -97,6 +99,29 @@ export interface KindInfo {
     icon?: string;
     fields: KindFieldInfo[];
 }
+/** One typed relation between two cards, as api.links lists it —
+ * read-only and directional: source is the card the relation was
+ * drawn from, target the other end, kind the relation's own type
+ * (its id, matching an entry from api.linkKinds). */
+export interface LinkInfo {
+    id: string;
+    kind: string;
+    source: string;
+    target: string;
+}
+/** Narrows api.links to one relation kind and/or one end; a field left
+ * out matches every value. */
+export interface LinkQuery {
+    kind?: string;
+    source?: string;
+    target?: string;
+}
+/** One kind of relation, as api.linkKinds lists it: the label a
+ * link's own `kind` id reads against. */
+export interface LinkKindInfo {
+    id: string;
+    label: string;
+}
 /** The request api.fetch sends. A plugin never opens a connection
  * itself — api.fetch asks Mill, whose rules allow, park for approval,
  * or deny the request; on approval Mill performs it and hands back the
@@ -107,12 +132,12 @@ export interface PluginFetchInit {
     method?: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
     headers?: Record<string, string>;
     body?: string;
-    /** Attaches a vault entry the user picked in one of this plugin's
-     * secretRef settings: Mill resolves it after the request is
-     * approved, sends it as `header` (default Authorization) with
-     * `prefix` (default "Bearer "), and redacts the value from the
-     * response you receive. The value itself never reaches plugin
-     * code. */
+    /** Attaches the secret the user picked in one of this plugin's
+     * secretRef settings (a vault entry, or a key from a configured
+     * source): Mill resolves it after the request is approved, sends it
+     * as `header` (default Authorization) with `prefix` (default
+     * "Bearer "), and redacts the value from the response you receive.
+     * The value itself never reaches plugin code. */
     secret?: {
         settingKey: string;
         header?: string;
