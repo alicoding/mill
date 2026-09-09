@@ -149,7 +149,8 @@ test('a framed plugin view runs its own page, reaches Mill only through the brid
 		await applyCpuThrottle(settings)
 		await settings.goto('/')
 		await openSettings(settings, 'appearance')
-		await settings.getByRole('button', { name: 'Dark', exact: true }).click()
+		await settings.getByTestId('theme-mode-select').selectOption('single')
+		await settings.getByTestId('single-theme-select-option-dark').click()
 		await expect.poll(async () => frame.getByTestId('probe-token').textContent()).not.toBe(lightToken)
 		await settings.close()
 

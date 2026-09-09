@@ -61,6 +61,7 @@ vi.mock('@primer/react', () => {
   const TextInput = (rest: Props) => <input {...strip(rest)} />
   const Textarea = (rest: Props) => <textarea {...strip(rest)} />
   const Flash = ({ children, ...rest }: Props) => <div {...strip(rest)}>{children}</div>
+  const VisuallyHidden = ({ children, ...rest }: Props) => <span {...strip(rest)}>{children}</span>
   const FormControlLabel = ({ children, ...rest }: Props) => <label {...strip(rest)}>{children}</label>
   const FormControlCaption = ({ children, ...rest }: Props) => <span {...strip(rest)}>{children}</span>
   const FormControl = Object.assign(({ children, ...rest }: Props) => <div {...strip(rest)}>{children}</div>, { Label: FormControlLabel, Caption: FormControlCaption })
@@ -70,13 +71,16 @@ vi.mock('@primer/react', () => {
   const SegmentedControlIconButton = (rest: Props) => <button {...strip(rest)} />
   const SegmentedControl = Object.assign(({ children, ...rest }: Props) => <div {...strip(rest)}>{children}</div>, { Button: SegmentedControlButton, IconButton: SegmentedControlIconButton })
   const ActionListItem = ({ children, ...rest }: Props) => <div {...strip(rest)}>{children}</div>
+  const ActionListGroup = ({ children, ...rest }: Props) => <div {...strip(rest)}>{children}</div>
+  const ActionListGroupHeading = ({ children, ...rest }: Props) => <div {...strip(rest)}>{children}</div>
   const ActionListLeadingVisual = ({ children, ...rest }: Props) => <span {...strip(rest)}>{children}</span>
   const ActionListDescription = ({ children, ...rest }: Props) => <span {...strip(rest)}>{children}</span>
   const ActionList = Object.assign(({ children, ...rest }: Props) => <div {...strip(rest)}>{children}</div>, {
-    Item: ActionListItem, LeadingVisual: ActionListLeadingVisual, Description: ActionListDescription,
+    Item: ActionListItem, Group: ActionListGroup, GroupHeading: ActionListGroupHeading,
+    LeadingVisual: ActionListLeadingVisual, Description: ActionListDescription,
   })
   return {
-    Stack, Text, Heading, Link, Label, Button, IconButton, Checkbox, TextInput, Textarea, Flash,
+    Stack, Text, Heading, Link, Label, Button, IconButton, Checkbox, TextInput, Textarea, Flash, VisuallyHidden,
     FormControl, Select, SegmentedControl, ActionList,
   }
 })

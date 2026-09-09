@@ -44,12 +44,14 @@ export const SETTINGS: readonly SettingEntry[] = [
     id: 'appearance.colorMode',
     group: 'appearance',
     labelKey: 'settings.appearance.themeLabel',
-    keywords: ['color theme', 'light mode', 'dark mode', 'system appearance'],
+    captionKey: 'settings.appearance.themeCaption',
+    keywords: ['theme mode', 'single theme', 'follow system', 'light mode', 'dark mode', 'system appearance'],
   },
   {
     id: 'appearance.theme',
     group: 'appearance',
     labelKey: 'settings.theme.label',
+    captionKey: 'settings.theme.caption',
     keywords: ['theme', 'color scheme', 'appearance'],
   },
   {

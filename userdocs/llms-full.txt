@@ -3088,7 +3088,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `settings.open.shortcuts` | Settings › Shortcuts | — | Global | Always available |
 | `settings.open.updates` | Settings › Updates | — | Global | Always available |
 | `settings.search` | Search settings | `⌘F` | settings | Always available |
-| `settings.show.appearance.colorMode` | Setting: Color theme | — | Global | Always available |
+| `settings.show.appearance.colorMode` | Setting: Theme mode | — | Global | Always available |
 | `settings.show.appearance.darkTheme` | Setting: Dark theme | — | Global | Always available |
 | `settings.show.appearance.density` | Setting: Density | — | Global | Always available |
 | `settings.show.appearance.lightTheme` | Setting: Light theme | — | Global | Always available |
@@ -3710,15 +3710,24 @@ group.
 
 ## Appearance
 
-- **Color theme** — light, dark, or follow the system. Every open Mill
-  window follows the change at once, including the Quick Panel, the
+- **Theme mode** — Single theme keeps the selected light or dark theme
+  active. Follow system uses separate Light theme and Dark theme
+  preferences as your system appearance changes. Every open Mill
+  window follows a selection at once, including the Quick Panel, the
   menu-bar panel, and the run monitor.
-- **Light appearance** and **Dark appearance** — the color scheme used
-  in each: Default, High contrast, Colorblind, Colorblind high
-  contrast, Tritanopia, and Tritanopia high contrast, plus Dimmed for
-  the dark appearance. When the theme follows the system and the system
-  asks for more contrast, Mill switches to the high-contrast version of
-  the scheme you picked.
+- **Theme** — point at a theme or move through the list with the
+  keyboard to preview it across the current window. Select it to keep
+  it; press Escape or leave the list to restore the saved appearance.
+  Single theme lists both families, so selecting any theme applies it
+  immediately.
+- **Light theme** and **Dark theme** — under Follow system, each choice
+  saves the theme used for that system appearance and keeps following
+  the system. Finishing a preview restores the system's current
+  appearance. Use Single theme to keep a specific theme active.
+  Available themes are Default, High contrast, Colorblind, Colorblind
+  high contrast, Tritanopia, and Tritanopia high contrast, plus Dimmed
+  for the dark family. When the system asks for more contrast, Mill
+  switches to the high-contrast version of the saved theme.
 - **Accent** — Mill uses your system accent color when the platform
   reports one, and its own teal when it doesn't. There is no accent
   picker.

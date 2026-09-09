@@ -53,8 +53,8 @@ test('a plugin theme is offered only once its plugin is allowed, and picking it 
 		// after the next paint picks the fresh trust state back up.
 		await page.reload()
 		await openSettings(page, 'appearance')
-		await page.getByRole('button', { name: 'Light', exact: true }).click()
-		const option = page.getByTestId(`light-scheme-select-option-${SCHEME_ID}`)
+		await page.getByTestId('theme-mode-select').selectOption('single')
+		const option = page.getByTestId(`single-theme-select-option-${SCHEME_ID}`)
 		await expect(option).toBeVisible()
 		await expect(option).toContainText('Dusk')
 		await expect(option).toContainText('From Theme probe')

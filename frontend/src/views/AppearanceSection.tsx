@@ -1,42 +1,35 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Flash, SegmentedControl } from '@primer/react'
-import { SunIcon, MoonIcon, DeviceDesktopIcon } from '@primer/octicons-react'
+import { Flash, SegmentedControl, Select } from '@primer/react'
 import { SettingsService } from '../shared/bindings'
 import { applyDensity, type DisplayDensity } from '../shared/density'
 import { SettingsRow } from './SettingsRow'
 import { mustSetting } from '../shared/settingsRegistry'
-import { ThemePicker } from './ThemePicker'
+import { ThemePicker, type ThemeGroup, type ThemeSelection } from './ThemePicker'
 import { useThemeOptions } from './useThemeOptions'
 import { background } from '../shared/background'
 import { pluginThemeRejections, subscribePluginThemes, type PluginThemeRejection } from '../shared/appearanceThemes'
+import { dispatchThemePreview } from '../shared/appearancePreview'
 import {
   DARK_SCHEMES,
   LIGHT_SCHEMES,
   getAppearance,
   setAppearance,
   subscribeAppearance,
-  type ColorMode,
+  type ResolvedMode,
 } from '../shared/appearance'
 
-// Settings > Appearance (goal 0320, re-shaped by 0321 and 0342): the
-// color mode, the theme used in whichever appearance the mode names,
-// then density.
+// Settings > Appearance: Single theme presents both families as one
+// collection, while Follow system keeps a saved preference for each
+// family. The persisted light/dark/auto mode remains the rendering
+// contract; this view translates it to the two user-facing modes.
 //
-// The pickers FOLLOW THE MODE. Under a fixed Light or Dark there is
-// one list, of that family's themes; under Match system there are two,
-// one per family, each captioned with when it applies. Showing both
-// lists under a fixed mode is what made a change look like it did
-// nothing: half the control on screen could not affect the window in
-// front of you.
-//
-// Every commit writes through the door that reaches EVERY open window
+// Every commit writes through the door that reaches every open window
 // -- setAppearance for the theme, SetDisplayDensity plus the same
 // broadcast for density -- so a change made here lands in the Quick
 // Panel, the tray panel and the run monitor without a reload. A
-// PREVIEW deliberately does not: it never leaves this window.
+// preview deliberately does not: it never leaves this window.
 
-const COLOR_MODES = ['light', 'dark', 'auto'] as const
 const DENSITIES = ['comfortable', 'compact'] as const
 
 // Primer's scheme ids, paired with the copy key each is listed under.
@@ -79,30 +72,77 @@ export default function AppearanceSection() {
     void background(SettingsService.SetDisplayDensity(value), 'appearance.setDisplayDensity')
   }
 
-  const setMode = (mode: ColorMode) => setAppearance({ ...appearance, mode })
   const labelOf = useCallback((id: string) => t(`settings.appearance.schemes.${SCHEME_LABEL_KEY[id]}`), [t])
   const lightOptions = useThemeOptions('light', LIGHT_SCHEMES, labelOf)
   const darkOptions = useThemeOptions('dark', DARK_SCHEMES, labelOf)
   const rejections = useSyncExternalStore(subscribePluginThemes, pluginThemeRejections, noRejections)
 
+  const lightGroup = useMemo<ThemeGroup>(() => ({
+    family: 'light',
+    label: t('settings.theme.lightGroup'),
+    options: lightOptions,
+  }), [lightOptions, t])
+  const darkGroup = useMemo<ThemeGroup>(() => ({
+    family: 'dark',
+    label: t('settings.theme.darkGroup'),
+    options: darkOptions,
+  }), [darkOptions, t])
+  const singleGroups = useMemo(() => [lightGroup, darkGroup], [lightGroup, darkGroup])
+
+  const commitSingle = (selection: ThemeSelection) => {
+    const current = getAppearance()
+    setAppearance({
+      ...current,
+      mode: selection.family,
+      ...(selection.family === 'light' ? { lightScheme: selection.scheme } : { darkScheme: selection.scheme }),
+    })
+  }
+  const commitSystemPreference = (selection: ThemeSelection) => {
+    const current = getAppearance()
+    setAppearance({
+      ...current,
+      mode: 'auto',
+      ...(selection.family === 'light' ? { lightScheme: selection.scheme } : { darkScheme: selection.scheme }),
+    })
+  }
+  const setThemeMode = (value: 'single' | 'auto') => {
+    dispatchThemePreview({ kind: 'cancel' })
+    const current = getAppearance()
+    if (value === 'auto') {
+      setAppearance({ ...current, mode: 'auto' })
+      return
+    }
+    const family: ResolvedMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    setAppearance({ ...current, mode: family })
+  }
+
   const lightPicker = (labelId: string) => (
     <ThemePicker
-      family="light"
-      options={lightOptions}
-      value={appearance.lightScheme}
+      groups={[lightGroup]}
+      value={{ family: 'light', scheme: appearance.lightScheme }}
       labelId={labelId}
       testId="light-scheme-select"
-      onCommit={(scheme) => setAppearance({ ...appearance, lightScheme: scheme })}
+      onCommit={commitSystemPreference}
     />
   )
   const darkPicker = (labelId: string) => (
     <ThemePicker
-      family="dark"
-      options={darkOptions}
-      value={appearance.darkScheme}
+      groups={[darkGroup]}
+      value={{ family: 'dark', scheme: appearance.darkScheme }}
       labelId={labelId}
       testId="dark-scheme-select"
-      onCommit={(scheme) => setAppearance({ ...appearance, darkScheme: scheme })}
+      onCommit={commitSystemPreference}
+    />
+  )
+  const singlePicker = (labelId: string) => (
+    <ThemePicker
+      groups={singleGroups}
+      value={appearance.mode === 'dark'
+        ? { family: 'dark', scheme: appearance.darkScheme }
+        : { family: 'light', scheme: appearance.lightScheme }}
+      labelId={labelId}
+      testId="single-theme-select"
+      onCommit={commitSingle}
     />
   )
 
@@ -110,16 +150,19 @@ export default function AppearanceSection() {
     <>
       <SettingsRow
         setting={mustSetting('appearance.colorMode')}
-        control={() => (
-          <SegmentedControl aria-label={t('settings.appearance.themeLabel')} onChange={(i) => setMode(COLOR_MODES[i])}>
-            <SegmentedControl.IconButton icon={SunIcon} aria-label={t('settings.appearance.lightLabel')} selected={appearance.mode === 'light'} />
-            <SegmentedControl.IconButton icon={MoonIcon} aria-label={t('settings.appearance.darkLabel')} selected={appearance.mode === 'dark'} />
-            <SegmentedControl.IconButton icon={DeviceDesktopIcon} aria-label={t('settings.appearance.systemLabel')} selected={appearance.mode === 'auto'} />
-          </SegmentedControl>
+        control={(labelId) => (
+          <Select
+            aria-labelledby={labelId}
+            value={appearance.mode === 'auto' ? 'auto' : 'single'}
+            onChange={(event) => setThemeMode(event.target.value as 'single' | 'auto')}
+            data-testid="theme-mode-select"
+          >
+            <Select.Option value="single">{t('settings.appearance.singleOption')}</Select.Option>
+            <Select.Option value="auto">{t('settings.appearance.systemOption')}</Select.Option>
+          </Select>
         )}
       />
-      {appearance.mode === 'light' && <SettingsRow setting={mustSetting('appearance.theme')} control={lightPicker} />}
-      {appearance.mode === 'dark' && <SettingsRow setting={mustSetting('appearance.theme')} control={darkPicker} />}
+      {appearance.mode !== 'auto' && <SettingsRow setting={mustSetting('appearance.theme')} control={singlePicker} />}
       {appearance.mode === 'auto' && (
         <>
           <SettingsRow setting={mustSetting('appearance.lightTheme')} control={lightPicker} />

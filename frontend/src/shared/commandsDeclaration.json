@@ -1983,7 +1983,7 @@
   },
   {
     "id": "settings.show.appearance.colorMode",
-    "label": "Setting: Color theme",
+    "label": "Setting: Theme mode",
     "binding": null,
     "surface": null,
     "enabled": false,

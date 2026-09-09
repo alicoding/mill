@@ -251,7 +251,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `settings.open.shortcuts` | Settings › Shortcuts | — | Global | Always available |
 | `settings.open.updates` | Settings › Updates | — | Global | Always available |
 | `settings.search` | Search settings | `⌘F` | settings | Always available |
-| `settings.show.appearance.colorMode` | Setting: Color theme | — | Global | Always available |
+| `settings.show.appearance.colorMode` | Setting: Theme mode | — | Global | Always available |
 | `settings.show.appearance.darkTheme` | Setting: Dark theme | — | Global | Always available |
 | `settings.show.appearance.density` | Setting: Density | — | Global | Always available |
 | `settings.show.appearance.lightTheme` | Setting: Light theme | — | Global | Always available |
