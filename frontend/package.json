@@ -72,7 +72,7 @@
     "@axe-core/playwright": "4.13.0",
     "@eslint/js": "^10.0.1",
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "1.63.0",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
