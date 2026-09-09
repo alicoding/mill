@@ -328,6 +328,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-drag-regions-selftest.sh
 
+  # Fixture-tests check-frame-runtime-fresh.sh's predicates (goal 0396),
+  # same shape as drag-regions-selftest above. Grep/bash-only against
+  # synthetic temp dirs, so it needs no frontend build setup.
+  frame-runtime-fresh-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/check-frame-runtime-fresh-selftest.sh
+
   # Goal 0403 S2f: proves gocache-trim.sh's busy-process guard and
   # --dry-run without hardcache installed. The plist/plutil half of the
   # selftest SKIPs itself here (Linux runner, no launchd).
@@ -706,6 +716,10 @@ jobs:
         run: npm run plugin:lint
         working-directory: frontend
       - run: npm run build
+        working-directory: frontend
+      # Mirrors lefthook.yml's own frame-runtime-fresh job -- same
+      # script (goal 0396). Runs right after the build it inspects.
+      - run: ../scripts/check-frame-runtime-fresh.sh
         working-directory: frontend
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -1387,6 +1401,7 @@ jobs:
       - ui-copy
       - drag-regions
       - drag-regions-selftest
+      - frame-runtime-fresh-selftest
       - gocache-trim-selftest
       - vendor-names
       - vendor-names-selftest

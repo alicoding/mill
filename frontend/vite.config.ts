@@ -5,6 +5,7 @@ import { defineConfig, type Plugin } from "vite";
 import { configDefaults } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import wails from "@wailsio/runtime/plugins/vite";
+import { pluginFrameDevMiddleware } from "./vite.config.frame.ts";
 
 // The repo's HEAD at bundle-compile time -- compared at runtime against
 // the Go binary's own embedded build commit (SettingsService.GetBuildInfo)
@@ -124,7 +125,7 @@ export default defineConfig({
       },
     },
   },
-  plugins: [react(), wails("./bindings"), goLivenessPlugin()],
+  plugins: [react(), wails("./bindings"), goLivenessPlugin(), pluginFrameDevMiddleware()],
   test: {
     // e2e/**/*.spec.ts are Playwright tests (real browser + server),
     // not Vitest unit tests -- exclude them here or Vitest tries to run

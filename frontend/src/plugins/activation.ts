@@ -4,6 +4,7 @@ import { attachActivationBridge, createActivationFrameContext, sendExtensionCall
 import { buildPluginAPI } from './hostApi'
 import { settingDeclsFromManifest, snapshotPluginSettings } from './pluginSettings'
 import { buildPluginStorage } from './pluginStorage'
+import { settingsPluginStorageDoors } from './pluginStorageHostDoors'
 import { captureFramedExports, clearExports, setFramedExportCallHandler } from './extensionExports'
 
 // Sandboxed activation for a third-party plugin with no canvas object
@@ -63,7 +64,7 @@ export async function activateFramed(info: PluginInfo, millVersion: string, stor
   const api = buildPluginAPI(manifest, millVersion, storageSnapshot)
   teardownActivationFrame(pluginId)
 
-  const storage = buildPluginStorage(pluginId, storageSnapshot)
+  const storage = buildPluginStorage(pluginId, storageSnapshot, settingsPluginStorageDoors(pluginId))
   const decodedStorage: Record<string, unknown> = {}
   for (const key of storage.keys()) decodedStorage[key] = storage.get(key)
   const exportAllowlist = manifest.exports ?? []

@@ -49,11 +49,28 @@ function callSimpleDoor(api: MillPluginAPI, method: string, args: unknown[]): Pr
   }
 }
 
-const SIMPLE_DOORS = new Set<string>([
+// Exported (goal 0396) so the plugin-frame runtime's own build
+// (frontend/src/plugin-frame/activation.ts) can be checked against
+// this SAME list instead of drifting from it by hand -- the byte-
+// parity test a hand-copied frame runtime used to need.
+export const SIMPLE_DOORS = new Set<string>([
   'notify', 'storage.set', 'storage.delete', 'query', 'kinds', 'open', 'fetch',
   'content.createNote', 'content.createCard', 'content.updateCard', 'content.appendListRow', 'content.createList', 'content.setCardFields',
   'files.list', 'convert.htmlToMarkdown', 'convert.markdownToHtml', 'requestGuardedAction',
 ])
+
+// ACTIVATION_ONLY_METHODS is every door callActivationMethod answers
+// that is NOT in SIMPLE_DOORS: an activation frame may register
+// contributions and relay view/capture messages, doors an entry-page
+// frame's own callFrameMethod (pluginFrameBridge.ts) never needs. Keep
+// this list equal to the case labels callActivationMethod's own switch
+// below answers -- the plugin-frame protocol test enforces it.
+export const ACTIVATION_ONLY_METHODS = [
+  'register.command', 'register.view', 'register.capture',
+  'view.postMessage', 'capture.postMessage',
+  'subscribe', 'unsubscribe',
+  'extensions.get', 'extensions.call',
+] as const
 
 interface ActivationSubscription {
   unsubscribe: () => void

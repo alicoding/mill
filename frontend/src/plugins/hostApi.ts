@@ -14,6 +14,7 @@ import { buildThirdPartyNoun, seedStyleValues } from './canvasToolAdapter'
 import { settingDeclsFromManifest } from './pluginSettings'
 import { secretTitleOf } from '../shared/secretTitleCache'
 import { buildPluginStorage } from './pluginStorage'
+import { settingsPluginStorageDoors } from './pluginStorageHostDoors'
 import { buildFetchJSON } from './pluginFetchJSON'
 import { buildElement } from './pluginElementBuilder'
 import { formatPluginDate } from './pluginDateFormat'
@@ -143,7 +144,7 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		pluginId,
 		settings,
 		notify,
-		storage: buildPluginStorage(pluginId, storageSnapshot),
+		storage: buildPluginStorage(pluginId, storageSnapshot, settingsPluginStorageDoors(pluginId)),
 		// The read doors (goal 0278): query is the bound content index
 		// (the same Go index the MCP atlas_list_contents tool reads);
 		// on('contents:changed') is the existing 'atlas' dataevent every
