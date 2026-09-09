@@ -77,7 +77,6 @@ export default function ExtensionsSection() {
   useEffect(() => {
     void refreshDisabledExtensions()
     void background(SettingsService.AppVersion().then(setAppVersion), 'extensions.appVersion')
-    void background(SettingsService.GetAllowedPlugins().then((ids) => setAllowedNow(ids ?? [])), 'extensions.getAllowedPlugins')
   }, [])
 
   useEffect(() => {

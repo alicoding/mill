@@ -43,7 +43,7 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
   const id = plugin.Manifest.id
   const name = plugin.Manifest.name || id
   const runtime = pluginLoadStates().get(id)
-  const status = runtime?.status ?? (!plugin.Builtin && !allowed ? 'unallowed' : undefined)
+  const status = runtime?.status ?? (plugin.ThemeImport && !allowed ? 'unallowed' : undefined)
   const error = plugin.Error || (runtime?.status === 'error' ? runtime.error : '')
   const contributes = plugin.Manifest.contributes
 

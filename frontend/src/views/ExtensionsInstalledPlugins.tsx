@@ -107,7 +107,7 @@ export function ExtensionsInstalledPlugins({ plugins, allowedIds, selectedId, on
   const effectiveStatus = (plugin: PluginInfo): string | undefined => {
     const runtime = states.get(plugin.Manifest.id)?.status
     if (runtime) return runtime
-    if (!plugin.Builtin && !allowedIds.includes(plugin.Manifest.id)) return 'unallowed'
+    if (plugin.ThemeImport && !allowedIds.includes(plugin.Manifest.id)) return 'unallowed'
     return undefined
   }
   const visibleReviewCount = own.filter((plugin) => needsReview(effectiveStatus(plugin))).length
