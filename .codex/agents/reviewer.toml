@@ -1,0 +1,10 @@
+name = "reviewer"
+description = "Reviews a finished diff against its written contract."
+model = "gpt-5.6-luna"
+model_reasoning_effort = "high"
+sandbox_mode = "read-only"
+developer_instructions = """
+Read AGENTS.md first, then .claude/agents/reviewer.md.
+Execute that canonical role body with the Codex translations in AGENTS.md.
+Honor the dispatched brief, role boundaries and available runtime limits.
+"""
