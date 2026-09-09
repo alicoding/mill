@@ -3,6 +3,11 @@
     "title": "Settings",
     "loadError": "Couldn't load some settings. The app may need a restart.",
     "learnMore": "Learn more",
+    "search": {
+      "placeholder": "Search settings",
+      "noMatches": "No settings match \"{{query}}\"",
+      "notFound": "That setting isn't available right now."
+    },
     "groups": {
       "general": "General",
       "appearance": "Appearance",

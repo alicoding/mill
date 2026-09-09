@@ -133,6 +133,7 @@ export default function AppearanceSection() {
       ))}
       <SettingsRow
         setting={mustSetting('appearance.density')}
+        ready={density !== null}
         control={() => (
           <SegmentedControl
             aria-label={t('settings.appearance.densityLabel')}

@@ -88,3 +88,16 @@
 .panel {
     padding-block: var(--mill-density-row-pad-y, var(--base-size-12));
 }
+
+/* Jump-and-highlight's own transient state (goal 0412 S2): a search
+   result or a `settings.show.<id>` palette command lands here for
+   SETTINGS_HIGHLIGHT_MS (shared/settingsHighlight.ts), then the class
+   is removed -- the same selected/attention tokens OutputViewer's own
+   focus ring and ListCard's own selected row already use, not a new
+   pair. */
+.searchHighlight {
+    outline: 2px solid var(--borderColor-accent-emphasis);
+    outline-offset: 2px;
+    background-color: var(--bgColor-accent-muted);
+    border-radius: var(--borderRadius-medium);
+}

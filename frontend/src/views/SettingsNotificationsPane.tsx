@@ -43,6 +43,10 @@ export default function SettingsNotificationsPane() {
       )}
       <SettingsRow
         setting={mustSetting('notifications.awayAfter')}
+        // The control's own `key` below remounts it once `idleThreshold`
+        // resolves -- ready (goal 0412 S2 Amendment 1) is what stops
+        // jump-and-highlight from focusing the about-to-be-replaced node.
+        ready={idleThreshold !== null}
         control={(labelId) => (
           <TextInput
             className={listStyles.themedNumberInput}

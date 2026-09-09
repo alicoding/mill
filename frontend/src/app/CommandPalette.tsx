@@ -16,8 +16,8 @@ import type { WorkTab } from '../shared/store'
 import { tabLabel } from './workTabLabel'
 import { findRootNode } from '../composition/triggerRowInfo'
 import { clearScratch } from '../composition/canvasScratch'
-import { filterPaletteEntries } from './paletteFilter'
-import type { PaletteSearchable } from './paletteFilter'
+import { filterPaletteEntries } from '../shared/paletteFilter'
+import type { PaletteSearchable } from '../shared/paletteFilter'
 import { sortWorkflowsByPinnedAndFrecency } from './workflowFrecency'
 import { HotkeyHint } from '../shared/HotkeyHint'
 import { WorkflowRowTrailingVisual } from './WorkflowRowTrailingVisual'
@@ -260,6 +260,7 @@ export function CommandPalette() {
     id: `cmd:${command.id}`,
     groupId: command.surface ? 'surface' : 'commands',
     text: commandLabel(command),
+    description: command.paletteDescription,
     searchText: `${commandLabel(command)} ${command.id}`.toLowerCase(),
     keywords: command.keywords,
     leadingVisual: CommandPaletteIcon,

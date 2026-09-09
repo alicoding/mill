@@ -77,12 +77,20 @@ export function resolveSettingsGroup(value: string | undefined | null): Settings
 // deliberately bypassing i18next (a module-scope array like
 // commands.ts's COMMANDS has no React tree to call useTranslation()
 // from, and shared/ can't import app/i18n.ts, the only place the
-// i18next singleton is initialized).
-export function resolveGroupTitle(group: SettingsGroup): string {
+// i18next singleton is initialized). Exported (goal 0412 S2) for
+// shared/settingsCommands.ts's own module-scope `settings.show.<id>`
+// commands, which need the same raw resolution for a setting's
+// labelKey that resolveGroupTitle below already does for a group's
+// titleKey -- one walker, not two copies.
+export function resolveViewsKey(key: string): string | undefined {
   let node: unknown = views
-  for (const part of group.titleKey.split('.')) {
-    if (typeof node !== 'object' || node === null) return group.id
+  for (const part of key.split('.')) {
+    if (typeof node !== 'object' || node === null) return undefined
     node = (node as Record<string, unknown>)[part]
   }
-  return typeof node === 'string' ? node : group.id
+  return typeof node === 'string' ? node : undefined
+}
+
+export function resolveGroupTitle(group: SettingsGroup): string {
+  return resolveViewsKey(group.titleKey) ?? group.id
 }
