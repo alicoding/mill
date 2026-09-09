@@ -56,6 +56,18 @@ export function framedToolRuntime(pluginId: string, toolId: string): FramedToolR
   return runtimes.get(runtimeKey(pluginId, toolId))
 }
 
+// armedToolCursor -- the pointer shape a tool asked for while it is
+// armed. Mill shows a crosshair for every armed tool by default
+// (AtlasBoard.module.css), so this narrows that for the tools whose
+// job reads as something else; an undeclared tool keeps the default.
+export function armedToolCursor(toolId: string | null): string | null {
+  if (!toolId) return null
+  for (const runtime of runtimes.values()) {
+    if (runtime.descriptor.kind === toolId) return runtime.descriptor.cursor ?? null
+  }
+  return null
+}
+
 export function forgetFramedTools(pluginId: string): void {
   for (const key of [...runtimes.keys()]) {
     if (key.startsWith(`${pluginId}::`)) runtimes.delete(key)

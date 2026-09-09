@@ -20,7 +20,7 @@ export function registerEraser(api) {
 		label: 'Erase things on the board',
 		description: 'Erases whatever you drag over on the board.',
 		icon: 'trash',
-		cursor: 'cell',
+		cursor: 'crosshair',
 		shortcutKey: 'E',
 		group: 'annotate',
 		source: 'board-local',

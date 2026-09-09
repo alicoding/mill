@@ -62,6 +62,28 @@
     cursor: crosshair;
 }
 
+/* A tool may narrow the armed cursor to say what its own job is
+   (docs/goals/0380): the crosshair above is what every armed tool gets
+   by default, and these override it only where one asked for
+   something else. Each reaches the same three places the crosshair
+   does, so a declared cursor wins at the pointer everywhere the
+   default would have. */
+.board[data-armed-cursor='cell'] :global(.react-flow__pane),
+.board[data-armed-cursor='cell'] :global(.react-flow__node) *,
+.board[data-armed-cursor='cell'] :global(.react-flow__node .react-flow__resize-control) {
+    cursor: cell;
+}
+.board[data-armed-cursor='copy'] :global(.react-flow__pane),
+.board[data-armed-cursor='copy'] :global(.react-flow__node) *,
+.board[data-armed-cursor='copy'] :global(.react-flow__node .react-flow__resize-control) {
+    cursor: copy;
+}
+.board[data-armed-cursor='grab'] :global(.react-flow__pane),
+.board[data-armed-cursor='grab'] :global(.react-flow__node) *,
+.board[data-armed-cursor='grab'] :global(.react-flow__node .react-flow__resize-control) {
+    cursor: grab;
+}
+
 /* Resize handles/lines in Mill's own accent token, not the library's
    default blue -- matches the selection ring's own border-color-accent-
    emphasis above. Set once here (the `--xy-resize-*` custom property

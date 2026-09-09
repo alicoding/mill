@@ -57,6 +57,7 @@ import { canvasNavigationProps, useCanvasNavigationMode } from '../shared/canvas
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasBoard.module.css'
 import { background } from '../shared/background'
+import { armedToolCursor } from '../plugins/canvasToolFramed'
 
 // The one board every level renders through (goal 0072 slice A,
 // retiring the old canvas/shelves split): Auto-arrange positions
@@ -336,6 +337,7 @@ function AtlasBoardInner({ boardFilter, onBoardFilterChange, filterMatchCount, f
       className={styles.board}
       data-testid="atlas-board"
       data-armed={creation.armedTool !== null}
+      data-armed-cursor={armedToolCursor(armedTool.armedToolId) ?? undefined}
       data-panning={gesture.panning}
       data-file-drop-target
       data-file-drop-context={FILE_DROP_CONTEXT_BOARD}
