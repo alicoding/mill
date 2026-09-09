@@ -65,11 +65,30 @@ describe('canvas drafts', () => {
   it('selects the placed object only after the undo mark has closed', async () => {
     const order: string[] = []
     endUndoMark.mockImplementation(() => { order.push('mark closed'); return Promise.resolve() })
-    const place = { place: () => Promise.resolve('object-1'), select: () => order.push('selected') }
+    const place = { place: () => Promise.resolve('object-1'), select: () => { order.push('selected') } }
     const draft = createDraft('mill-drawing', 'shape', CREATE, place)
     await commitDraft('mill-drawing', draft.id, true)
     expect(order).toEqual(['mark closed', 'selected'])
     endUndoMark.mockImplementation(() => Promise.resolve())
+  })
+
+  // A placement's select() refreshes the board before touching the
+  // selection door (canvasToolFramed.ts) -- commitDraft must await
+  // that promise rather than fire it and resolve, or a caller awaiting
+  // the commit (this test, a chained placement) can observe the
+  // object placed but the refresh-then-select still in flight.
+  it('awaits select fully before the commit itself resolves', async () => {
+    const order: string[] = []
+    const place = {
+      place: () => Promise.resolve('object-1'),
+      select: () => {
+        order.push('select started')
+        return Promise.resolve().then(() => { order.push('select settled') })
+      },
+    }
+    const draft = createDraft('mill-drawing', 'shape', CREATE, place)
+    await commitDraft('mill-drawing', draft.id, true)
+    expect(order).toEqual(['select started', 'select settled'])
   })
 
   it('closes the undo mark even when the placement itself fails', async () => {

@@ -38,7 +38,11 @@ export interface CanvasDraftRecord {
 // because selecting has to happen after the undo mark closes.
 export interface CanvasDraftPlacement {
   place: (draft: CanvasDraftRecord) => Promise<string | null>
-  select: (id: string) => void
+  // Returns a promise so the commit path can await it: selecting reads
+  // the board's own node list, which is only guaranteed current once
+  // the placement's own post-commit refresh has resolved (see select's
+  // implementation in canvasToolFramed.ts).
+  select: (id: string) => void | Promise<void>
 }
 
 interface CanvasDraftState {
@@ -123,9 +127,12 @@ export async function commitDraft(pluginId: string, id: string, select: boolean)
     await mark
     await AtlasService.EndUndoMark()
   }
-  // After the mark, never inside it: closing one refreshes the board,
-  // and a selection made before that refresh does not survive it.
-  if (placed && select) place.select(placed)
+  // After the mark, never inside it: a selection made before it closes
+  // does not survive the refresh closing it triggers. Awaited, not
+  // fired-and-forgotten -- select's own refresh (canvasToolFramed.ts)
+  // must settle before commitDraft resolves, so a caller awaiting the
+  // commit never observes the object placed but not yet selected.
+  if (placed && select) await place.select(placed)
   return placed
 }
 

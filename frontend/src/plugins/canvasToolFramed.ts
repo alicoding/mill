@@ -155,11 +155,18 @@ function placementFor(descriptor: CanvasToolDescriptor, ctx: AtlasGestureCtx): C
       await refreshAtlas()
       return created.ID
     },
-    // Selecting is deliberately AFTER the undo mark closes: closing one
-    // refreshes the board, and a selection made inside the mark is
-    // dropped by that refresh -- the placed shape would come back
-    // unselected, with no resize handles to grab.
-    select: (id) => ctx.onShapeCreated(id),
+    // Selecting refreshes FIRST and awaits it -- the same refresh-then-
+    // select ordering createObject (canvasToolAdapter.ts) and the paste
+    // fallback note (useAtlasPaste.ts) already use. The apply effect
+    // (AtlasBoard.tsx) only marks a node selected if it is already
+    // present in allNodes; place()'s own refresh runs before the undo
+    // mark closes, so selecting straight off that snapshot races the
+    // refresh the mark's close triggers. A fresh, awaited refresh here
+    // removes the race without a timeout.
+    select: async (id) => {
+      await refreshAtlas()
+      ctx.onShapeCreated(id)
+    },
   }
 }
 
