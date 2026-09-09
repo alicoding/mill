@@ -109,6 +109,7 @@ export function ConfigureLists() {
     refetch()
     refreshSeedLifecycle()
     void refreshListUsage()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshSeedLifecycle is recreated every render (useSeedLifecycle.ts); this effect deliberately runs once on mount only
   }, [])
 
   const editingList = lists?.find((l) => l.ID === editingID) ?? null

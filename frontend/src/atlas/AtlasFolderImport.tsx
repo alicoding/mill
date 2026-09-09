@@ -9,14 +9,14 @@ import { refreshAtlas } from './atlasStore'
 import { folderScanEntryDepth, groupFolderScanEntries, type FolderScanGroup } from './atlasFolderScanGrouping'
 import { useAtlasFolderImportRequestStore } from './atlasFolderImportRequest'
 import { useUISignalStore } from '../shared/uiSignalStore'
+import { AtlasKindProposal } from './AtlasKindProposal'
 import {
-  AtlasKindProposal,
   CREATE_KIND_OPTION,
   buildProposalFields,
   initialProposalState,
   proposalNameTaken,
   type KindProposalState,
-} from './AtlasKindProposal'
+} from './atlasKindProposalLogic'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasFolderImport.module.css'
 

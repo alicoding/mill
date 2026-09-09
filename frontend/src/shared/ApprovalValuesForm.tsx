@@ -38,15 +38,3 @@ export function ApprovalValuesForm({
     </Stack>
   )
 }
-
-// attrsForPending: given a workflow's full declared Attributes and an
-// optional requested-subset list (PendingApproval.inputAttributes, goal
-// 0001), returns the ones actually worth asking for -- empty/absent
-// means all. A non-component export alongside ApprovalValuesForm trips
-// react-refresh/only-export-components (a Fast Refresh perf lint, not a
-// correctness one) -- accepted as a harmless warning (0 errors) rather
-// than splitting a one-line pure helper into its own file for a lint
-// rule that doesn't apply to a `npm run build` output.
-export function attrsForPending(all: AttributeDef[], requested: string[] | null | undefined): AttributeDef[] {
-  return requested && requested.length > 0 ? all.filter((a) => requested.includes(a.Key)) : all
-}

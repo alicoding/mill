@@ -18,7 +18,7 @@ import styles from './ListGrid.module.css'
 
 // The tab/newline text the selected rows copy as: every showing column,
 // in the order the grid shows them.
-export function rowsAsText(rows: GridRow[], columns: GridColumn[]): string {
+function rowsAsText(rows: GridRow[], columns: GridColumn[]): string {
   return rows.map((row) => columns.map((c) => row.Values?.[c.Key] ?? '').join('\t')).join('\n')
 }
 

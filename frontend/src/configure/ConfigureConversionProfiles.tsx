@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, FormControl, IconButton, Stack, Text, TextInput } from '@primer/react'
 import { PencilIcon, PlusIcon, TrashIcon, ArrowSwitchIcon } from '@primer/octicons-react'
@@ -47,21 +47,21 @@ export function ConfigureConversionProfiles() {
     void background(CompositionService.ConversionRuleSets().then((r) => setRuleSets(r ?? [])), 'configureConversionProfiles.conversionRuleSets')
   }, [])
 
-  const startCreate = () => {
+  const startCreate = useCallback(() => {
     setEditingID(null)
     setLabel('')
     setDescription('')
     setChosen(ruleSets.map((r) => r.id))
     setFormOpen(true)
     setError('')
-  }
+  }, [ruleSets])
   const configureCreateRequest = useUISignalStore((s) => s.configureCreateRequest)
   const consumeConfigureCreate = useUISignalStore((s) => s.consumeConfigureCreate)
   useEffect(() => {
     if (configureCreateRequest !== 'conversionprofiles') return
     startCreate()
     consumeConfigureCreate()
-  }, [configureCreateRequest])
+  }, [configureCreateRequest, consumeConfigureCreate, startCreate])
 
   const startEdit = (p: Profile) => {
     setEditingID(p.ID)

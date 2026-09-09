@@ -57,7 +57,15 @@ export default tseslint.config(
       'react-hooks/set-state-in-effect': 'off',
       'react-refresh/only-export-components': [
         'warn',
-        { allowConstantExport: true },
+        {
+          allowConstantExport: true,
+          // Component-factory functions (goal 0419 S1b): each returns a
+          // parameterized React component rather than being one itself,
+          // so the plugin's own name-shape heuristic can't recognize it
+          // -- the plugin's own suggested resolution for a real HOC
+          // export, not a suppression.
+          extraHOCs: ['makeMirrorImageContent', 'pluginFramedFaceComponent', 'optionsRenderer'],
+        },
       ],
     },
   },

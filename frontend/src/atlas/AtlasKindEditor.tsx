@@ -8,19 +8,7 @@ import type { Field, FieldTombstone } from '../../bindings/github.com/alicoding/
 import { AtlasService } from '../shared/bindings'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import runbookStyles from '../shared/ListCard.module.css'
-
-// The five field types the card surface actually renders
-// (AtlasFieldsForm) -- offering more here would author fields the
-// page can only show as plain text. Exported so AtlasKindProposal.tsx
-// (goal 0172 S2) offers this exact same set for a proposed field's own
-// Type select, rather than a second hand-maintained list.
-export const FIELD_TYPES: { value: FieldType; labelKey: string }[] = [
-  { value: FieldType.TypeText, labelKey: 'kinds.fieldTypeText' },
-  { value: FieldType.TypeNumber, labelKey: 'kinds.fieldTypeNumber' },
-  { value: FieldType.TypeBoolean, labelKey: 'kinds.fieldTypeBoolean' },
-  { value: FieldType.TypeOptions, labelKey: 'kinds.fieldTypeOptions' },
-  { value: FieldType.TypeCardRef, labelKey: 'kinds.fieldTypeCardRef' },
-]
+import { FIELD_TYPES } from './atlasFieldTypes'
 
 function emptyField(): Field {
   return { Key: '', Label: '', Type: FieldType.TypeText } as Field

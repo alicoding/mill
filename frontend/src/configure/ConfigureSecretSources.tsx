@@ -112,7 +112,7 @@ export function ConfigureSecretSources() {
     if (configureCreateRequest !== 'secretsources') return
     startCreate()
     consumeConfigureCreate()
-  }, [configureCreateRequest])
+  }, [configureCreateRequest, consumeConfigureCreate])
 
   // "Find .env files…" from the palette or Quick Panel (goal 0367):
   // navigate already landed this view; consume the signal by opening
@@ -123,7 +123,7 @@ export function ConfigureSecretSources() {
     if (!dotenvScanRequest) return
     setScanOpen(true)
     consumeDotenvScan()
-  }, [dotenvScanRequest])
+  }, [dotenvScanRequest, consumeDotenvScan])
 
   // The collapsed row's count is one name-read per dotenv source,
   // refreshed with the sources themselves: an unreadable file's
@@ -140,7 +140,7 @@ export function ConfigureSecretSources() {
       }
     })).then((entries) => { if (live) setKeyCounts(Object.fromEntries(entries)) })
     return () => { live = false }
-  }, [sources, liveChangeSignal])
+  }, [sources, liveChangeSignal, t])
 
   // Sources ▸ a dotenv row's own key read-back opens the merged Secrets
   // list rather than expanding inline (goal 0408 S2): every key is a

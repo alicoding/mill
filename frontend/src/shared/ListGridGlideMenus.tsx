@@ -7,6 +7,7 @@ import type { GridColumn, GridRow } from './listGridTypes'
 import { ListGridColumnPopover } from './ListGridColumnPopover'
 import { ListGridGlideFilter } from './ListGridGlideFilter'
 import type { GridColumnFilter, GridSortDirection } from './listStandard'
+import type { Anchor } from './listGridGlideAnchor'
 import styles from './ListGrid.module.css'
 
 // The adopted grid's schema and row menus (ADR-0049 §2: schema editing
@@ -16,21 +17,6 @@ import styles from './ListGrid.module.css'
 // does the rest -- the same ActionMenu/ActionList the hand-rolled
 // grid's row menu used, the same column popover for type / options /
 // deprecate / remove.
-
-export interface Anchor { x: number; y: number; width: number; height: number }
-
-// Screen rectangle -> host-relative CSS px (the board's zoom scales
-// the host, the grid reports unscaled screen px).
-export function anchorFromBounds(host: HTMLElement | null, bounds: Anchor): Anchor {
-  const rect = host?.getBoundingClientRect()
-  const scale = host && rect ? rect.width / host.offsetWidth || 1 : 1
-  return {
-    x: (bounds.x - (rect?.left ?? 0)) / scale,
-    y: (bounds.y - (rect?.top ?? 0)) / scale,
-    width: bounds.width / scale,
-    height: bounds.height / scale,
-  }
-}
 
 // AnchorBox places a zero-size anchor at a host-relative rectangle.
 function AnchorBox({ at, anchorRef }: { at: Anchor; anchorRef: React.RefObject<HTMLDivElement | null> }) {

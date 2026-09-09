@@ -2,18 +2,10 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Checkbox, FormControl, Select, Stack, Text, TextInput } from '@primer/react'
 import { Type as FieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
-import { FIELD_TYPES } from './AtlasKindEditor'
+import { FIELD_TYPES } from './atlasFieldTypes'
 import { type KindProposalState, type ProposalFieldState } from './atlasKindProposalLogic'
 import runbookStyles from '../shared/ListCard.module.css'
 import styles from './AtlasKindProposal.module.css'
-
-// The Kind picker's own sentinel value, and every pure state-shaping
-// helper this panel needs, live in atlasKindProposalLogic.ts (unit-
-// tested standalone there) -- re-exported here too so an existing
-// import of `./AtlasKindProposal` (AtlasFolderImport.tsx) keeps working
-// unchanged.
-export { CREATE_KIND_OPTION, buildProposalFields, initialProposalState, proposalNameTaken } from './atlasKindProposalLogic'
-export type { KindProposalState, ProposalFieldState } from './atlasKindProposalLogic'
 
 // AtlasKindProposal is the inline panel goal 0172 S2 adds beneath a
 // scan category's own Kind picker, once "Create a new type from these

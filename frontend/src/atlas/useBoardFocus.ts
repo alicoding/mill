@@ -93,7 +93,7 @@ export function useBoardFocus({ focusRequest, renderedIDs, reduceMotion, fitBoun
     return () => {
       cancelled = true
     }
-  }, [focusRequest, renderedIDs, reduceMotion, fitBounds, getNodesBounds])
+  }, [focusRequest, renderedIDs, reduceMotion, fitBounds, getNodesBounds, setHintedID, setPulsedID, wrapperRef])
 
   // The hint chip's own lifecycle -- deliberately a separate effect
   // keyed only on hintedID (not on focusRequest, pulsedID, or any
@@ -121,5 +121,5 @@ export function useBoardFocus({ focusRequest, renderedIDs, reduceMotion, fitBoun
       window.removeEventListener('pointerdown', dismiss)
       window.clearTimeout(timer)
     }
-  }, [hintedID])
+  }, [hintedID, setHintedID])
 }

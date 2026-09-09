@@ -9,6 +9,7 @@ import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal
 import { Category } from '../../bindings/github.com/alicoding/mill/internal/domain/decision/models'
 import { Shell, ProfileMode } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
 import { Kind as AIProviderKind } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
+import { decisionCategoryLabelFor } from './entityRefFieldLogic'
 
 // A workflow is only a valid child-workflow target if it's rooted in
 // trigger-callable (docs/adr/0010) -- mirrors trigger.ExtractTrigger's
@@ -191,21 +192,6 @@ export function EntityRefField({ refKind, value, onChange, readOnly }: { refKind
 // create form (docs/adr/0009 §3) -- just enough to produce a usable
 // entity; the Configure page stays the canonical full-editing surface
 // (secret, OpenAPI spec, entries, args) for refining it afterward.
-// docs/adr/0027: Category is required (and immutable once created), so
-// a Decision's quick-create needs one more field than request/mcpserver's
-// label+secondary shape -- still deliberately minimal (no Outputs/
-// webhook here; Configure > Decisions is the canonical place to add
-// those afterward, same "quick-create produces a usable starting point,
-// Configure refines it" split every other kind here already has).
-export function decisionCategoryLabelFor(t: (key: string) => string): Record<string, string> {
-  return {
-    [Category.CategoryApprove]: t('entityRefField.decisionCategoryLabel.approve'),
-    [Category.CategoryDeny]: t('entityRefField.decisionCategoryLabel.deny'),
-    [Category.CategoryManualReview]: t('entityRefField.decisionCategoryLabel.manualReview'),
-    [Category.CategoryActionNeeded]: t('entityRefField.decisionCategoryLabel.actionNeeded'),
-    [Category.CategoryUncategorized]: t('entityRefField.decisionCategoryLabel.uncategorized'),
-  }
-}
 
 function QuickCreateDialog({ refKind, onCancel, onCreated }: { refKind: string; onCancel: () => void; onCreated: (id: string) => void }) {
   const { t } = useTranslation('configure')

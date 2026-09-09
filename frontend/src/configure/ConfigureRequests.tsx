@@ -63,6 +63,7 @@ export function ConfigureRequests() {
   useEffect(() => {
     void refreshRequests()
     refreshSeedLifecycle()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshSeedLifecycle is recreated every render (useSeedLifecycle.ts); this effect deliberately runs once on mount only
   }, [])
 
   const openImportPicker = () => {

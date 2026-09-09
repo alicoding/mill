@@ -5,7 +5,7 @@ import { IMAGE_EXTENSIONS } from './atlasUnitMirror'
 // The placement popover's own two pure decisions (goal 0081 slice A1),
 // split out so both are Vitest-unit-testable without a React render --
 // same "no React dependency, no reason to require one" reasoning
-// HotkeyHint.tsx's own resolveHotkeyLabel already documents.
+// shared/hotkeyHintLogic.ts's own resolveHotkeyLabel already documents.
 
 const LAST_KIND_STORAGE_KEY = 'atlas.lastKindId'
 const PROMOTE_TITLE_MAX = 80
