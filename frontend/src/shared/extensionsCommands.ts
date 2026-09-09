@@ -9,7 +9,7 @@ import { pushNotice } from './noticeStore'
 import { removePluginNow } from './pluginHostCommands'
 import { entityRowCommands } from './entityRowCommands'
 import { refreshDisabledExtensions, useExtensionEnablementStore } from './extensionEnablementStore'
-import { pluginLoadStates } from '../plugins/loader'
+import { pluginLoadStates, pluginsAwaitingReview, pluginsAwaitingReviewIds } from '../plugins/loader'
 import { ConfigureService } from './bindings'
 import { appTranslate, messageFor } from './userError'
 import { checkForUpdatesWithNotice, updateAllWithNotice, updateCandidateFor, useExtensionUpdatesStore } from './extensionUpdatesStore'
@@ -83,6 +83,24 @@ export const EXTENSIONS_COMMANDS: Command[] = [
     defaultBinding: { mods: ['cmd', 'shift'], key: 'X' },
     keywords: ['extensions', 'plugins', 'marketplace', 'install', 'store'],
     run: () => useAppStore.getState().setView({ kind: 'extensions' }),
+  },
+  {
+    // The boot notice's action (goal 0420): opens Extensions and, when
+    // exactly one plugin waits, selects it -- its status note (Allow/
+    // Remove) is then already in view. With several, the list opens
+    // with its pinned "Needs review" group first. Palette-visible (not
+    // hidden) since a user who dismissed the notice can still reach the
+    // same door later.
+    id: 'extensions.review',
+    label: 'commands.extensions.review',
+    defaultBinding: null,
+    keywords: ['extensions', 'plugins', 'review', 'allow'],
+    enabled: () => pluginsAwaitingReview() > 0,
+    run: () => {
+      const ids = pluginsAwaitingReviewIds()
+      useAppStore.getState().setView({ kind: 'extensions' })
+      if (ids.length === 1) useUISignalStore.getState().requestExtensionReview(ids[0])
+    },
   },
   {
     id: 'extensions.sources',

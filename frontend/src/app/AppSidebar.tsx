@@ -15,7 +15,7 @@ import { useIsNarrowViewport } from '../shared/useNarrowViewport'
 // sidebar), capability nav, and the settings footer. Extracted from
 // App.tsx along this seam when the identity-anchor work pushed it over
 // the 500-line limit (.claude/rules/architecture.md).
-export function AppSidebar({ sidebarOpen, setSidebarOpen, mobileNavOpen, setMobileNavOpen, view, currentSection, setView, capabilities, reviewPendingCount }: {
+export function AppSidebar({ sidebarOpen, setSidebarOpen, mobileNavOpen, setMobileNavOpen, view, currentSection, setView, capabilities, reviewPendingCount, extensionsReviewCount }: {
   sidebarOpen: boolean
   setSidebarOpen: (open: boolean) => void
   // The narrow-viewport drawer's own open/closed flag (goal 0068) --
@@ -35,6 +35,11 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, mobileNavOpen, setMobi
   setView: (v: View) => void
   capabilities: Capability[]
   reviewPendingCount: number
+  // The Extensions nav item's own persistent count (goal 0420): every
+  // installed plugin waiting for a decision -- unlike reviewPendingCount
+  // above, cleared only by a decision (Allow/Remove) plus reload, never
+  // by visiting the page.
+  extensionsReviewCount: number
 }) {
   const { t } = useTranslation('app')
   // Closes the mobile drawer on any nav action -- a no-op at regular/
@@ -154,6 +159,14 @@ export function AppSidebar({ sidebarOpen, setSidebarOpen, mobileNavOpen, setMobi
                             aria-label={t('reviewPendingAriaLabel', { count: reviewPendingCount })}
                           >
                             {reviewPendingCount}
+                          </CounterLabel>
+                        )}
+                        {c.ID === 'capability-extensions' && extensionsReviewCount > 0 && (
+                          <CounterLabel
+                            data-testid="extensions-review-count"
+                            aria-label={t('extensionsReviewPendingAriaLabel', { count: extensionsReviewCount })}
+                          >
+                            {extensionsReviewCount}
                           </CounterLabel>
                         )}
                         <span title={c.Status} className={styles.statusDot}>

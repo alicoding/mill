@@ -46,6 +46,7 @@ import { useKeymapDispatch } from './useKeymapDispatch'
 import { useNativeMenu } from './useNativeMenu'
 import { useBrowserNotify } from './useBrowserNotify'
 import { usePluginReviewNotice } from './usePluginReviewNotice'
+import { pluginsAwaitingReview } from '../plugins/loader'
 import styles from "./App.module.css";
 import { newLocalID } from '../shared/localId'
 import { background } from '../shared/background'
@@ -207,6 +208,10 @@ function App() {
     void background(SettingsService.IsIsolatedData().then(setIsIsolatedData), 'app.isIsolatedData');
   }, []);
   usePluginReviewNotice()
+  // The boot scan's own map only changes on a full reload (plugins load
+  // at app start), so a plain read at render time -- no subscription --
+  // stays correct (goal 0420).
+  const extensionsReviewCount = pluginsAwaitingReview()
 
   useEffect(() => {
     void background(SettingsService.GetBuildInfo().then(setBuildInfo), 'app.getBuildInfo');
@@ -408,7 +413,7 @@ function App() {
           (page-scroll-oriented, wrong fit here), while .Sidebar stays a
           persistent side rail at any width -- see docs/SPEC.md. */}
       <PageLayout className={styles.appBody} containerWidth="full" padding="none" rowGap="none" columnGap="none">
-        <AppSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} mobileNavOpen={mobileNavOpen} setMobileNavOpen={setMobileNavOpen} view={view} currentSection={currentSection} setView={setView} capabilities={capabilities} reviewPendingCount={reviewPendingCount} />
+        <AppSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} mobileNavOpen={mobileNavOpen} setMobileNavOpen={setMobileNavOpen} view={view} currentSection={currentSection} setView={setView} capabilities={capabilities} reviewPendingCount={reviewPendingCount} extensionsReviewCount={extensionsReviewCount} />
 
         <PageLayout.Content className="view-pane" padding="none">
           {/* The app-wide work-tab strip (docs/SPEC.md §3.8): the

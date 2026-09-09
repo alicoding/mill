@@ -74,7 +74,19 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
     extra: (contributes?.mcpServers ?? []).length > 0
       ? <ExtensionsMCPServers pluginId={id} servers={contributes?.mcpServers ?? []} />
       : undefined,
-    status: <PluginStatusNote error={error} status={runtime?.status} policyReason={plugin.PolicyBlocked ?? ''} waitsFor={runtime?.waitsFor} allowed={allowed} widened={!!plugin.Widened} onAllow={onAllow} warnings={[...(plugin.Warnings ?? []), ...missingExampleWarnings(contributes?.canvasObjects)]} />,
+    status: (requestRemove: () => void) => (
+      <PluginStatusNote
+        error={error}
+        status={runtime?.status}
+        policyReason={plugin.PolicyBlocked ?? ''}
+        waitsFor={runtime?.waitsFor}
+        allowed={allowed}
+        widened={!!plugin.Widened}
+        onAllow={onAllow}
+        onRemove={requestRemove}
+        warnings={[...(plugin.Warnings ?? []), ...missingExampleWarnings(contributes?.canvasObjects)]}
+      />
+    ),
     actions: reloadCommand?.enabled?.() ? (
       <Button
         size="small"
@@ -200,7 +212,7 @@ function pluginClaims(plugin: PluginInfo, t: Translate): string[] {
 // settings alias, a menu id Mill has no seat for), which stand beside
 // whatever primary status the switch below renders rather than
 // replacing it -- a disabled plugin can still be told to rename a key.
-function PluginStatusNote({ error, status, policyReason, waitsFor, allowed, widened, onAllow, warnings }: {
+function PluginStatusNote({ error, status, policyReason, waitsFor, allowed, widened, onAllow, onRemove, warnings }: {
   error: string | undefined
   status: string | undefined
   policyReason: string
@@ -208,9 +220,10 @@ function PluginStatusNote({ error, status, policyReason, waitsFor, allowed, wide
   allowed: boolean
   widened: boolean
   onAllow: () => void
+  onRemove: () => void
   warnings: string[]
 }) {
-  const primary = PrimaryStatusNote({ error, status, policyReason, waitsFor, allowed, widened, onAllow })
+  const primary = PrimaryStatusNote({ error, status, policyReason, waitsFor, allowed, widened, onAllow, onRemove })
   if (!primary && warnings.length === 0) return null
   return (
     <Stack direction="vertical" gap="condensed">
@@ -226,7 +239,7 @@ function PluginStatusNote({ error, status, policyReason, waitsFor, allowed, wide
   )
 }
 
-function PrimaryStatusNote({ error, status, policyReason, waitsFor, allowed, widened, onAllow }: {
+function PrimaryStatusNote({ error, status, policyReason, waitsFor, allowed, widened, onAllow, onRemove }: {
   error: string | undefined
   status: string | undefined
   policyReason: string
@@ -238,6 +251,7 @@ function PrimaryStatusNote({ error, status, policyReason, waitsFor, allowed, wid
   // the note and the allow action both say so.
   widened: boolean
   onAllow: () => void
+  onRemove: () => void
 }) {
   const { t } = useTranslation('views')
   if (status === 'waits') {
@@ -269,18 +283,37 @@ function PrimaryStatusNote({ error, status, policyReason, waitsFor, allowed, wid
     return <Text as="p" size="small" className={listStyles.muted} data-testid="extensions-plugin-unsigned">{t('settings.extensions.pluginUnsignedNote')}</Text>
   }
   if (status === 'unallowed' || status === 'changed') {
+    // Chrome's Accept/Remove shape (Decision 3): unallowed offers Allow
+    // alone (nothing was ever running to remove instead); changed and
+    // widened offer Remove beside Allow/Allow again, since both are
+    // real decisions about a plugin that DID run before.
+    const showRemove = !allowed && (status === 'changed' || widened)
     return (
       <Stack direction="horizontal" gap="condensed" align="center" data-testid="extensions-plugin-review">
         <Text size="small" weight="semibold">{t(reviewNoteKey(status, allowed, widened))}</Text>
         {!allowed && (
           <Button size="small" variant="primary" onClick={onAllow} data-testid="extensions-plugin-allow">
-            {t(widened ? 'extensions.widened.allow' : 'settings.extensions.pluginAllow')}
+            {t(allowLabelKey(status, widened))}
+          </Button>
+        )}
+        {showRemove && (
+          <Button size="small" onClick={onRemove} data-testid="extensions-plugin-remove">
+            {t('settings.extensions.remove')}
           </Button>
         )}
       </Stack>
     )
   }
   return null
+}
+
+// allowLabelKey: widened reads its own MV3-style copy (Decision 3's
+// "Allow" shorthand -- extensions.widened.allow already says "Allow the
+// new permissions"); a plain 'changed' plugin says "Allow again" (it
+// ran before); a never-reviewed 'unallowed' plugin says plain "Allow".
+function allowLabelKey(status: string, widened: boolean): string {
+  if (widened) return 'extensions.widened.allow'
+  return status === 'changed' ? 'settings.extensions.pluginAllowAgain' : 'settings.extensions.pluginAllow'
 }
 
 // reviewNoteKey picks the "unallowed"/"changed" states' one sentence:

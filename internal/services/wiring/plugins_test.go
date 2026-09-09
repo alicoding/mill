@@ -1,6 +1,7 @@
 package wiring
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -264,5 +265,88 @@ func TestWirePluginTrust_NarrowedOrUnrelatedManifestEditKeepsTheGrant(t *testing
 	writeManifest(t, `{"id":"widen-probe","name":"Widen Probe Renamed","version":"1.0.0","capabilities":["open-url"]}`)
 	if !trust.mayRun("widen-probe", false) {
 		t.Fatal("an unrelated manifest edit re-gated the plugin")
+	}
+}
+
+// The lock's pre-#806 format (recorded against the whole-folder
+// ContentHash, before docs/goals/0375 S2 split CodeHash off it): an
+// upgraded instance must migrate it onto CodeHash rather than reading
+// every already-allowed plugin as changed the moment it boots, while a
+// genuinely changed plugin's entry stays untouched (docs/goals/0420).
+func TestWirePluginTrust_MigratesPreCodeHashLockFormat(t *testing.T) {
+	root := t.TempDir()
+	unchangedDir := filepath.Join(root, "plugins", "old-format")
+	changedDir := filepath.Join(root, "plugins", "really-changed")
+	for _, dir := range []string{unchangedDir, changedDir} {
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writePluginFiles := func(dir, id string) {
+		manifest := `{"id":"` + id + `","name":"N","version":"1.0.0"}`
+		if err := os.WriteFile(filepath.Join(dir, "manifest.json"), []byte(manifest), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "main.js"), []byte("export function activate() {}"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writePluginFiles(unchangedDir, "old-format")
+	writePluginFiles(changedDir, "really-changed")
+
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	trig := triggersvc.NewTriggerService(comp, slog.Default(), store)
+	settings := settingssvc.NewSettingsService(store, trig, false)
+	plugins := NewPluginService(filepath.Join(root, "settings.json"), nil, "source", "", "", nil)
+	secrets := secretsvc.NewSecretService(secretvault.New(filepath.Join(root, "secrets.kdbx")), credential.NewInMemory(), store)
+
+	oldFormatContentHash := plugins.ContentHashOf("old-format")
+	oldFormatCodeHash := plugins.CodeHashOf("old-format")
+	if oldFormatContentHash == oldFormatCodeHash {
+		t.Fatal("test setup: manifest.json must make ContentHash and CodeHash differ")
+	}
+
+	if err := settings.SetPluginAllowed("old-format", true); err != nil {
+		t.Fatal(err)
+	}
+	if err := settings.SetPluginAllowed("really-changed", true); err != nil {
+		t.Fatal(err)
+	}
+	// Seed the lock the way a pre-0375-S2 install already carries it:
+	// old-format recorded at its own ContentHash (the migration's
+	// target), really-changed recorded at a hash matching neither of
+	// its current hashes (a genuine file edit since it was allowed).
+	// Written before WirePluginTrust installs the hasher, so neither
+	// SetPluginAllowed call above touched the lock itself.
+	lockJSON := fmt.Sprintf(`{"old-format":{"version":"1.0.0","hash":%q},"really-changed":{"version":"1.0.0","hash":"sha256-stale"}}`, oldFormatContentHash)
+	if err := store.Set("settings-plugin-lock", lockJSON); err != nil {
+		t.Fatal(err)
+	}
+
+	WirePluginTrust(plugins, settings, secrets)
+
+	trust := settingsTrust{settings: settings, hashOf: plugins.CodeHashOf, widenedOf: plugins.Widened}
+	if !trust.mayRun("old-format", false) {
+		t.Fatal("a migrated pre-CodeHash lock entry re-entered review")
+	}
+	if got := settings.GetPluginLock()["old-format"].Hash; got != oldFormatCodeHash {
+		t.Fatalf("migrated lock hash = %q, want the CodeHash %q", got, oldFormatCodeHash)
+	}
+	if trust.mayRun("really-changed", false) {
+		t.Fatal("a genuinely changed plugin ran without review")
+	}
+	if got := settings.GetPluginLock()["really-changed"].Hash; got != "sha256-stale" {
+		t.Fatalf("a genuinely changed lock entry was rewritten to %q", got)
+	}
+
+	// Idempotent: running the migration again over an already-migrated
+	// (or never-matching) lock changes nothing.
+	migratePluginLockFormat(plugins, settings)
+	if got := settings.GetPluginLock()["old-format"].Hash; got != oldFormatCodeHash {
+		t.Fatalf("second migration pass changed the already-migrated hash to %q", got)
+	}
+	if got := settings.GetPluginLock()["really-changed"].Hash; got != "sha256-stale" {
+		t.Fatalf("second migration pass changed the still-stale hash to %q", got)
 	}
 }

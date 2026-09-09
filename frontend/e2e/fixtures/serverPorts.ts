@@ -481,3 +481,11 @@ export const BROWSER_EXTENSION_MV3_MCP_BASE_PORT = 12320
 // widening the shared pool's plugin set for every cohabiting spec.
 export const PLUGIN_EXAMPLE_GALLERY_SERVER_BASE_PORT = 12340
 export const PLUGIN_EXAMPLE_GALLERY_MCP_BASE_PORT = 12360
+
+// runtime-plugin-review.spec.ts's own dedicated pair (goal 0420): each
+// case seeds settings-plugin-lock/settings-allowed-plugins directly
+// (an upgrade fixture, a changed plugin) -- global plugin-trust state
+// no shared-pool cohabitant may see, same reasoning as every other
+// runtime-plugin-*.spec.ts pair above.
+export const RUNTIME_PLUGIN_REVIEW_SERVER_BASE_PORT = 12380
+export const RUNTIME_PLUGIN_REVIEW_MCP_BASE_PORT = 12400

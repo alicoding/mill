@@ -64,10 +64,31 @@ export function pluginDisplayName(id: string): string {
 	return loadStates.get(id)?.info.Manifest.name || id
 }
 
-export function pluginsAwaitingReview(): number {
+// A plugin needs a decision in 'unallowed' (never reviewed, or widened
+// past its consent -- pluginTrust.ts folds 'widened' into this same
+// status) and 'changed' (files edited since it was allowed). Every
+// consumer -- the boot notice, the nav badge, the installed list's
+// pinned group -- reads pluginsAwaitingReview()/pluginsAwaitingReviewIds()
+// rather than re-deriving the state set, so they can never disagree.
+function needsReview(status: PluginLoadStatus): boolean {
+	return status === 'unallowed' || status === 'changed'
+}
+
+// states defaults to the boot scan's own map; a test passes a synthetic
+// one rather than driving a real plugin load.
+export function pluginsAwaitingReview(states: ReadonlyMap<string, PluginLoadState> = loadStates): number {
 	let n = 0
-	for (const s of loadStates.values()) if (s.status === 'unallowed') n++
+	for (const s of states.values()) if (needsReview(s.status)) n++
 	return n
+}
+
+// pluginsAwaitingReviewIds -- the same set, by id: the notice's deep
+// link reads this to decide whether exactly one plugin waits (select
+// it) or several do (open the list with its pinned group).
+export function pluginsAwaitingReviewIds(states: ReadonlyMap<string, PluginLoadState> = loadStates): string[] {
+	const ids: string[] = []
+	for (const [id, s] of states) if (needsReview(s.status)) ids.push(id)
+	return ids
 }
 
 // readLock flattens the lock to id -> hash; unreadable means an empty

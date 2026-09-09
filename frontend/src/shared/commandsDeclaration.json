@@ -1424,6 +1424,14 @@
     "needs": null
   },
   {
+    "id": "extensions.review",
+    "label": "Review extensions waiting for you",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "extensions.sources",
     "label": "Extensions: marketplace sources",
     "binding": null,

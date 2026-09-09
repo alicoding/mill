@@ -186,6 +186,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `extensions.checkUpdates` | Extensions: check for updates | — | Global | Always available |
 | `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
 | `extensions.open` | Extensions | `⌘⇧X` | Global | Always available |
+| `extensions.review` | Review extensions waiting for you | — | Global | Conditional — available only in a matching state |
 | `extensions.sources` | Extensions: marketplace sources | — | Global | Always available |
 | `extensions.updateAll` | Extensions: update all | — | Global | Conditional — available only in a matching state |
 | `guardrail.rule.delete` | Delete rule | — | Global | Acts on the selected entity |

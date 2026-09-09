@@ -460,6 +460,7 @@
     "extensions": {
       "exportAudit": "Export plugin audit",
       "open": "Extensions",
+      "review": "Review extensions waiting for you",
       "sources": "Extensions: marketplace sources",
       "checkUpdates": "Extensions: check for updates",
       "updateAll": "Extensions: update all"

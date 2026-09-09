@@ -1,6 +1,13 @@
 package settingssvc
 
-import "testing"
+import (
+	"log/slog"
+	"testing"
+
+	"github.com/alicoding/mill/internal/services/compositionsvc"
+	"github.com/alicoding/mill/internal/services/servicetest"
+	"github.com/alicoding/mill/internal/services/triggersvc"
+)
 
 func TestPluginLock_RecordsOnConsentAndCompares(t *testing.T) {
 	set := newExtensionsHarness(t)
@@ -39,6 +46,41 @@ func TestPluginLock_RecordsOnConsentAndCompares(t *testing.T) {
 	}
 	if !set.PluginLockMatches("mill-b", "") {
 		t.Fatal("an unreadable current hash must not revoke consent")
+	}
+}
+
+// RecordPluginLockNow re-baselines a RECORDED entry onto the hasher's
+// current snapshot, for the pre-#806 lock migration (docs/goals/0420):
+// a pre-#806 entry carries no capability-shaped grant fields at all
+// (docs/goals/0375 S2 introduced them in the same change as CodeHash),
+// which reads as "granted nothing" and widens on the plugin's very
+// next declared capability -- a hash-only fix is not enough, so the
+// migration re-baselines the WHOLE entry.
+func TestPluginLock_RecordNow(t *testing.T) {
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	trig := triggersvc.NewTriggerService(comp, slog.Default(), store)
+	set := NewSettingsService(store, trig, false)
+	set.SetPluginHasher(func(id string) PluginGrantSnapshot {
+		return PluginGrantSnapshot{Version: "1.0.0", Hash: "sha256-new", Capabilities: []string{"open-url"}}
+	})
+	if err := set.RecordPluginLockNow("mill-a"); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := set.GetPluginLock()["mill-a"]; ok {
+		t.Fatal("re-baselining an unrecorded plugin created an entry")
+	}
+	// Seed a pre-#806 entry directly: hash only, no capability-shaped
+	// grant at all -- the format the migration must repair.
+	if err := store.Set("settings-plugin-lock", `{"mill-a":{"version":"0.9.0","hash":"sha256-old"}}`); err != nil {
+		t.Fatal(err)
+	}
+	if err := set.RecordPluginLockNow("mill-a"); err != nil {
+		t.Fatal(err)
+	}
+	got := set.GetPluginLock()["mill-a"]
+	if got.Hash != "sha256-new" || got.Version != "1.0.0" || len(got.Capabilities) != 1 || got.Capabilities[0] != "open-url" {
+		t.Fatalf("lock after re-baseline = %+v, want the hasher's current snapshot whole", got)
 	}
 }
 

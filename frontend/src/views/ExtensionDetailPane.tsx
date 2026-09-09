@@ -49,8 +49,11 @@ export interface ExtensionDetail {
   // -- a bundled plugin would otherwise read "Built into Mill" twice.
   provenance?: string
   // Whatever the row's own state needs said in full: an error, a
-  // policy block, the awaiting-review strip with its Allow button.
-  status?: ReactNode
+  // policy block, the awaiting-review strip with its Allow/Remove
+  // buttons. A function form (goal 0420) receives requestRemove -- the
+  // SAME confirm-then-remove door the header's own … menu triggers, so
+  // a status note's inline Remove button never invents a second one.
+  status?: ReactNode | ((requestRemove: () => void) => ReactNode)
   // Row-specific actions in the header (an installed plugin's Reload).
   actions?: ReactNode
   // A contribution block with controls of its own (the MCP servers a
@@ -155,7 +158,9 @@ export function ExtensionDetailPane({ detail, showBackLink, onClose, tabStrip, b
 
       {tabStrip}
 
-      <div className={styles.detailChrome}>{detail.status}</div>
+      <div className={styles.detailChrome}>
+        {typeof detail.status === 'function' ? detail.status(() => setConfirmingRemove(true)) : detail.status}
+      </div>
 
       {body}
 

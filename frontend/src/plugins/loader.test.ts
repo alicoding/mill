@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { dependencyOrder } from './loader'
+import { dependencyOrder, pluginsAwaitingReview, pluginsAwaitingReviewIds } from './loader'
 import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
+import type { PluginLoadState } from './loader'
 
 // dependencyOrder is goal 0364's activation-ordering rule as a pure
 // function: a dependency activates before its dependant, and a cycle
@@ -46,5 +47,45 @@ describe('dependencyOrder (goal 0364)', () => {
 	it('skips a dependency id that is not among the scanned plugins', () => {
 		const a = info('mill-a', ['mill-missing'])
 		expect(dependencyOrder([a]).map((p) => p.Manifest.id)).toEqual(['mill-a'])
+	})
+})
+
+// pluginsAwaitingReview/pluginsAwaitingReviewIds (docs/goals/0420): the
+// one count and id set the boot notice, the nav badge and the
+// installed list's pinned group all read, so they can never disagree.
+function state(status: PluginLoadState['status']): PluginLoadState {
+	return { status, info: info('unused') }
+}
+
+describe('pluginsAwaitingReview / pluginsAwaitingReviewIds (goal 0420)', () => {
+	it('counts unallowed and changed, never loaded/disabled/blocked/policy/unsigned/error/waits', () => {
+		const states = new Map<string, PluginLoadState>([
+			['a', state('unallowed')],
+			['b', state('changed')],
+			['c', state('loaded')],
+			['d', state('disabled')],
+			['e', state('blocked')],
+			['f', state('policy')],
+			['g', state('unsigned')],
+			['h', state('error')],
+			['i', state('waits')],
+		])
+		expect(pluginsAwaitingReview(states)).toBe(2)
+		expect(pluginsAwaitingReviewIds(states)).toEqual(['a', 'b'])
+	})
+
+	it('is zero/empty with nothing awaiting review', () => {
+		const states = new Map<string, PluginLoadState>([['a', state('loaded')]])
+		expect(pluginsAwaitingReview(states)).toBe(0)
+		expect(pluginsAwaitingReviewIds(states)).toEqual([])
+	})
+
+	// 'widened' rides pluginTrust.ts's own fold into 'unallowed' (a
+	// widened manifest returns to the same run-state a fresh install
+	// shows) -- there is no separate PluginLoadStatus for it, so the
+	// unallowed count above already includes it.
+	it('defaults to the boot scan map when called with no argument', () => {
+		expect(pluginsAwaitingReview()).toBe(0)
+		expect(pluginsAwaitingReviewIds()).toEqual([])
 	})
 })

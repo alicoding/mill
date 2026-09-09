@@ -11,6 +11,7 @@ import { usePluginRemoveVersion } from '../shared/pluginRemoveSignal'
 import { usePluginReloadVersion } from '../plugins/pluginReloadSignal'
 import { useHasSidePane } from '../shared/useNarrowViewport'
 import { useAppStore } from '../shared/store'
+import { useUISignalStore } from '../shared/uiSignalStore'
 import { ExtensionRow } from './ExtensionRow'
 import { ExtensionsInstalledPlugins } from './ExtensionsInstalledPlugins'
 import ExtensionsBuiltInDetail from './ExtensionsBuiltInDetail'
@@ -87,6 +88,18 @@ export default function ExtensionsSection() {
     if (selection?.kind !== 'plugin' || plugins === null) return
     if (!plugins.some((p) => p.Manifest.id === selection.id)) setSelection(null)
   }, [plugins, selection])
+
+  // extensions.review's single-plugin deep link (goal 0420): set-then-
+  // consume, the same shape extensionUpdateRequest already uses --
+  // this component may mount FRESH on the same navigation that raises
+  // the signal.
+  const pluginReviewRequest = useUISignalStore((s) => s.extensionReviewRequest)
+  const consumeExtensionReview = useUISignalStore((s) => s.consumeExtensionReview)
+  useEffect(() => {
+    if (!pluginReviewRequest) return
+    setSelection({ kind: 'plugin', id: pluginReviewRequest })
+    consumeExtensionReview()
+  }, [pluginReviewRequest, consumeExtensionReview])
 
   const toggle = (id: string, enabled: boolean) => {
     void background(SettingsService.SetExtensionEnabled(id, enabled).then(refreshDisabledExtensions), 'extensions.setExtensionEnabled')

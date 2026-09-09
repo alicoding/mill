@@ -5,7 +5,7 @@ import { PlugIcon } from '@primer/octicons-react'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { SettingsService } from '../shared/bindings'
-import { pluginLoadStates } from '../plugins/loader'
+import { pluginLoadStates, pluginsAwaitingReview } from '../plugins/loader'
 import { ExamplesSection } from '../shared/ExamplesSection'
 import { ExtensionRow } from './ExtensionRow'
 import { ExtensionsLinkPasteControl } from './ExtensionsLinkPasteControl'
@@ -49,6 +49,14 @@ function rowControl(status: string | undefined, error: string | undefined): 'swi
   return 'switch'
 }
 
+// needsReview mirrors plugins/loader.ts's own pluginsAwaitingReview
+// state set ('unallowed' folds in 'widened', pluginTrust.ts's own
+// fold) -- the row pill, the pinned group and the shared count can
+// never disagree about which rows these are (goal 0420).
+function needsReview(status: string | undefined): boolean {
+  return status === 'unallowed' || status === 'changed'
+}
+
 export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
   plugins: PluginInfo[] | null
   selectedId: string | null
@@ -81,12 +89,21 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
     const kind = kinds.length === 0 || kinds.some((k) => contributedKinds(p).includes(k))
     return text && kind
   }
+  // The "Needs review" group is pinned first (goal 0420, Decision 2):
+  // a stable partition ahead of pagination, so the group -- and its
+  // header -- lands on page 1 rather than wherever a plugin's scan
+  // order happened to put it. Array.prototype.sort is stable (ES2019,
+  // the same guarantee shared/listStandard.ts's sortItems relies on).
   const ownFiltered = own.filter(matches)
+    .sort((a, b) => Number(needsReview(states.get(b.Manifest.id)?.status)) - Number(needsReview(states.get(a.Manifest.id)?.status)))
   const builtInFiltered = builtIns.filter(matches)
 
   const pageCount = pageCountFor(ownFiltered.length)
   const page = clampPage(state.page, pageCount)
   const ownPage = pageItems(ownFiltered, page)
+  const reviewCount = pluginsAwaitingReview()
+  const reviewPage = ownPage.filter((p) => needsReview(states.get(p.Manifest.id)?.status))
+  const restPage = ownPage.filter((p) => !needsReview(states.get(p.Manifest.id)?.status))
   const firstOnPage = (page - 1) * LIST_PAGE_SIZE + 1
   // The count is the user's OWN plugins -- the Built-in section carries
   // its own number in its own heading (goal 0337).
@@ -140,6 +157,7 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
                 <Label variant="attention" data-testid="extensions-row-policy">{t('extensions.policy.blockedStatus')}</Label>
               )}
               {waitsFor && <Label data-testid="extensions-row-waits">{t('settings.extensions.pluginWaitsLabel', { id: waitsFor })}</Label>}
+              {needsReview(runtime?.status) && <Label variant="attention" data-testid="extensions-row-needs-review">{t('settings.extensions.needsReviewPill')}</Label>}
             </>
           )}
           actions={p.Builtin ? undefined : <ExtensionRowMenu id={id} name={name} />}
@@ -193,9 +211,19 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
             <Text as="p" size="small" className={listStyles.muted}>{tc('inventoryList.noMatchesFor', { query })}</Text>
           ) : (
             <>
-              {ownPage.length > 0 && (
+              {reviewPage.length > 0 && (
+                <Stack direction="vertical" gap="none" data-testid="extensions-needs-review-group">
+                  <Text as="h4" size="small" className={listStyles.muted}>
+                    {t('settings.extensions.needsReviewGroup', { count: reviewCount })}
+                  </Text>
+                  <ul className={styles.rows} aria-label={t('settings.extensions.needsReviewGroup', { count: reviewCount })}>
+                    {reviewPage.map(rowFor)}
+                  </ul>
+                </Stack>
+              )}
+              {restPage.length > 0 && (
                 <ul className={styles.rows} aria-label={t('settings.extensions.installedTitle')}>
-                  {ownPage.map(rowFor)}
+                  {restPage.map(rowFor)}
                 </ul>
               )}
               {pageCount > 1 && (
