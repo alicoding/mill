@@ -43,6 +43,16 @@ This registry stays the ONLY list of checks that need this Mac specifically.
   an approval shows the count beside the icon (SetLabel) and
   clearing it removes the count; the panel's Stop actually cancels
   a live run; right-click still opens the Open Mill/Quit menu.
+- **Tray panel on a secondary display** (goal 0417,
+  `traypaneldisplay.go`'s `wireTrayPanelDisplay` + `CursorDisplayID`) --
+  multi-monitor placement needs a real second display, which no
+  headless harness has; the translation math is unit-proven
+  (`traypaneldisplay_test.go`). Verify on an installed build with an
+  external display attached: click the Mill menu-bar icon on the
+  NON-primary display -- the panel opens under THAT display's menu
+  bar, centred under the icon at the same 6px offset a single-display
+  click already uses; clicking the icon on the primary display still
+  opens it there.
 - **Away-attention dock bounce** (`dockBounceFn`,
   `settingsservice_attention.go`) — the notify adapter's cgo send
   aborts headless; verify desktop-mode by parking an approval while

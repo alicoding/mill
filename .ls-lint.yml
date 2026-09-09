@@ -61,7 +61,13 @@ ls:
   # 500-line convention -- `package main`, since RegisterEvent needs the
   # concrete Go type at the call site and every payload type already
   # belongs to a service package main.go itself imports.
-  .go: regex:(main|auxwindows|events|singleinstance_(production|dev))
+  # traypaneldisplay (goal 0417): the tray panel's cursor-display
+  # correction (trayPanelPosition + its wiring) -- `package main`
+  # since it composes auxwindows.go's trayPanel/setupTray with
+  # *application.App directly, and is its own file so the pure
+  # translation function carries a dedicated, portable (non-darwin)
+  # unit test file (traypaneldisplay_test.go).
+  .go: regex:(main|auxwindows|events|singleinstance_(production|dev)|traypaneldisplay(_test)?)
   # SECURITY/CONTRIBUTING added goal 0028 (public-repo hygiene): both are
   # standard GitHub community-profile root files, same allowlist family as
   # README below (checked, not new -- CODE_OF_CONDUCT deliberately stays
