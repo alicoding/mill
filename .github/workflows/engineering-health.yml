@@ -103,13 +103,15 @@ jobs:
           jq -s '.' /tmp/jobs.ndjson > enghealth-data/jobs.json
 
       # --- test: Playwright JSON reports off recent main runs ------------
-      # No `ci-gate`-required job currently uploads a JSON-reporter
-      # artifact on a green run (only the HTML report, and only on
-      # failure -- confirmed against ci.yml's own e2e job at authoring
-      # time). This step degrades to writing nothing for a window with no
-      # matching artifact, which is the tool's own honest "no data" path,
-      # not a silent zero -- wiring the artifact upload into ci.yml is a
-      # separate change (ci.yml is out of this workflow's own touch-set).
+      # ci.yml's e2e job uploads one JSON-reporter artifact PER SHARD
+      # (`playwright-json-shard-<n>`, always, goal 0413 S1c) -- v4+
+      # rejects re-uploading multiple jobs' artifacts under one shared
+      # name in the same run, so there is no single fixed artifact name
+      # to `-n` for. `-p` downloads every shard artifact matching the
+      # glob, each into its own subdirectory under `-D`, which the
+      # recursive `find` below already walks. A window with no matching
+      # run/artifact still degrades to writing nothing, which is the
+      # tool's own honest "no data" path, not a silent zero.
       - name: Gather Playwright JSON reports (7d)
         run: |
           set -euo pipefail
@@ -118,7 +120,7 @@ jobs:
             --json databaseId --limit 50 --jq '.[].databaseId')
           mkdir -p /tmp/pw-7
           for id in $run_ids; do
-            gh run download "$id" --repo "$REPO" -n playwright-json-report -D "/tmp/pw-7/$id" 2>/dev/null || true
+            gh run download "$id" --repo "$REPO" -p 'playwright-json-shard-*' -D "/tmp/pw-7/$id" 2>/dev/null || true
           done
           reports=$(find /tmp/pw-7 -name '*.json' 2>/dev/null || true)
           if [ -n "$reports" ]; then
@@ -133,7 +135,7 @@ jobs:
             --json databaseId --limit 50 --jq '.[].databaseId')
           mkdir -p /tmp/pw-28
           for id in $run_ids; do
-            gh run download "$id" --repo "$REPO" -n playwright-json-report -D "/tmp/pw-28/$id" 2>/dev/null || true
+            gh run download "$id" --repo "$REPO" -p 'playwright-json-shard-*' -D "/tmp/pw-28/$id" 2>/dev/null || true
           done
           reports=$(find /tmp/pw-28 -name '*.json' 2>/dev/null || true)
           if [ -n "$reports" ]; then

@@ -1,0 +1,12 @@
+{
+  "config": { "workers": 1 },
+  "suites": [
+    {
+      "title": "e2e/atlas-authoring.spec.ts",
+      "specs": [
+        { "title": "creates a card", "tests": [ { "results": [ { "status": "passed", "retry": 0 } ] } ] },
+        { "title": "flaky under load", "tests": [ { "results": [ { "status": "failed", "retry": 0 }, { "status": "passed", "retry": 1 } ] } ] }
+      ]
+    }
+  ]
+}

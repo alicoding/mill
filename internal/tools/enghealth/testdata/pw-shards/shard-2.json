@@ -1,0 +1,12 @@
+{
+  "config": { "workers": 1 },
+  "suites": [
+    {
+      "title": "e2e/board-panes.spec.ts",
+      "specs": [
+        { "title": "switches views", "tests": [ { "results": [ { "status": "passed", "retry": 0 } ] } ] },
+        { "title": "keeps selection", "tests": [ { "results": [ { "status": "passed", "retry": 0 } ] } ] }
+      ]
+    }
+  ]
+}

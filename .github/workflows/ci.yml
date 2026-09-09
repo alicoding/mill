@@ -1206,6 +1206,18 @@ jobs:
           name: playwright-report-${{ matrix.shardIndex }}
           path: frontend/playwright-report
           retention-days: 7
+      # goal 0413 S1c: every shard's own JSON reporter output, on every
+      # outcome (not just failure) -- the engineering-health workflow's
+      # retry-passed metrics read these off main-branch runs. One
+      # artifact per shard (v4+ rejects re-uploading under a shared
+      # name across jobs in the same run), globbed back together by
+      # that workflow's own gather steps.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: playwright-json-shard-${{ matrix.shardIndex }}
+          path: frontend/test-results/playwright-report.json
+          retention-days: 7
 
   # Advisory, goal 0401 (Decision 3): Playwright's own `--only-changed`
   # heuristic (its docs say to back it with a full run, never replace
