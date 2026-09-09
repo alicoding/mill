@@ -14,7 +14,7 @@ import (
 // What a workflow step needs from a replay, beyond "did it finish":
 // every step's own result, and a budget the caller sets. Split from
 // bridgeservice_test.go along that seam (the 500-line convention); the
-// shared harness (newService, openStream, readCommand, postResult)
+// shared harness (newService, openSocket, readCommand, postResult)
 // stays there, in the same test package.
 
 // TestReplay_CarriesEveryStepResultInOrder pins the half a workflow
@@ -23,7 +23,7 @@ import (
 // once, in the flow's own order, with what it extracted.
 func TestReplay_CarriesEveryStepResultInOrder(t *testing.T) {
 	svc, srv := newService(t, &stubAuth{token: "good"})
-	stream, stop := openStream(t, srv)
+	conn, stop := openSocket(t, srv)
 	defer stop()
 	waitForBrowsers(t, svc)
 
@@ -37,7 +37,7 @@ func TestReplay_CarriesEveryStepResultInOrder(t *testing.T) {
 		results <- outcome{out, err}
 	}()
 
-	command := readCommand(t, stream)
+	command := readCommand(t, conn)
 	// Deliberately out of order, and with a download attached to the
 	// last step.
 	second, first, third := 1, 0, 2
@@ -81,7 +81,7 @@ func TestReplay_CarriesEveryStepResultInOrder(t *testing.T) {
 // decision, both are the extension's.
 func TestReplay_DownloadDataAndTooLargeSurviveThePassThrough(t *testing.T) {
 	svc, srv := newService(t, &stubAuth{token: "good"})
-	stream, stop := openStream(t, srv)
+	conn, stop := openSocket(t, srv)
 	defer stop()
 	waitForBrowsers(t, svc)
 
@@ -95,7 +95,7 @@ func TestReplay_DownloadDataAndTooLargeSurviveThePassThrough(t *testing.T) {
 		results <- outcome{out, err}
 	}()
 
-	command := readCommand(t, stream)
+	command := readCommand(t, conn)
 	underCap, overCap := 0, 1
 	postResult(t, srv, "good", browserbridge.Result{ID: command.ID, StepIndex: &underCap, Status: browserbridge.StatusOK,
 		Download: &browserbridge.Download{Path: "/tmp/small.pdf", Filename: "small.pdf", Bytes: 4, Data: "YWJjZA=="}})
@@ -128,7 +128,7 @@ func TestReplay_DownloadDataAndTooLargeSurviveThePassThrough(t *testing.T) {
 // minutes, far longer than this test would wait.
 func TestReplay_HonoursTheCallersTimeout(t *testing.T) {
 	svc, srv := newService(t, &stubAuth{token: "good"})
-	stream, stop := openStream(t, srv)
+	conn, stop := openSocket(t, srv)
 	defer stop()
 	waitForBrowsers(t, svc)
 
@@ -139,7 +139,7 @@ func TestReplay_HonoursTheCallersTimeout(t *testing.T) {
 			bridgesvc.ReplayOptions{Timeout: 300 * time.Millisecond})
 		errs <- err
 	}()
-	readCommand(t, stream)
+	readCommand(t, conn)
 
 	select {
 	case err := <-errs:
@@ -156,7 +156,7 @@ func TestReplay_HonoursTheCallersTimeout(t *testing.T) {
 // releases the replay rather than holding it for the whole budget.
 func TestReplay_CancelledRunStopsWaiting(t *testing.T) {
 	svc, srv := newService(t, &stubAuth{token: "good"})
-	stream, stop := openStream(t, srv)
+	conn, stop := openSocket(t, srv)
 	defer stop()
 	waitForBrowsers(t, svc)
 
@@ -166,7 +166,7 @@ func TestReplay_CancelledRunStopsWaiting(t *testing.T) {
 		_, err := svc.Replay(ctx, browserbridge.TestFlow(srv.URL+bridgesvc.TestPagePath), bridgesvc.ReplayOptions{Timeout: time.Minute})
 		errs <- err
 	}()
-	readCommand(t, stream)
+	readCommand(t, conn)
 	cancel()
 
 	select {

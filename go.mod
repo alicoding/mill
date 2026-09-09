@@ -9,6 +9,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/PuerkitoBio/goquery v1.13.0
 	github.com/andybalholm/cascadia v1.3.5
+	github.com/coder/websocket v1.8.14
 	github.com/dbos-inc/dbos-transact-golang v1.3.0
 	github.com/dop251/goja v0.0.0-20260901132549-43234fa61381
 	github.com/expr-lang/expr v1.17.8
@@ -46,7 +47,6 @@ require (
 	github.com/adrg/xdg v0.5.3 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.2 // indirect
-	github.com/coder/websocket v1.8.14 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/dlclark/regexp2/v2 v2.5.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect

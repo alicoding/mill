@@ -174,6 +174,7 @@ func TestHandleWebhook_UnauthorizedToken_RecordsRejectedRowWithFailureKind(t *te
 }
 
 func TestReplay_NoBrowserConnected_RecordsRejectedRow(t *testing.T) {
+	t.Setenv(bridgesvc.ConnectWaitEnvVar, "50")
 	svc, srv, reader := newAuditedService(t, &stubAuth{token: "good"})
 	flow := browserbridge.TestFlow(srv.URL + bridgesvc.TestPagePath)
 	_, err := svc.Replay(context.Background(), flow, bridgesvc.ReplayOptions{})

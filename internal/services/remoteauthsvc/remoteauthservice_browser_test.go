@@ -30,7 +30,7 @@ func TestPairBrowser_UsesTheSameCodeRules(t *testing.T) {
 		t.Fatalf("GeneratePairingCode() = %v, want nil error", err)
 	}
 
-	pairing, err := s.PairBrowser(info.Code, "Chrome on this Mac", "127.0.0.1")
+	pairing, err := s.PairBrowser(info.Code, "Chrome on this Mac", "127.0.0.1", "")
 	if err != nil {
 		t.Fatalf("PairBrowser(live code) = %v, want nil error", err)
 	}
@@ -41,7 +41,7 @@ func TestPairBrowser_UsesTheSameCodeRules(t *testing.T) {
 		t.Fatalf("label = %q, want the announced one", pairing.Label)
 	}
 
-	if _, err := s.PairBrowser(info.Code, "Second try", "127.0.0.1"); err == nil {
+	if _, err := s.PairBrowser(info.Code, "Second try", "127.0.0.1", ""); err == nil {
 		t.Fatalf("PairBrowser(spent code) = nil error, want a refusal")
 	}
 }
@@ -53,7 +53,7 @@ func TestPairBrowser_BadCodeCarriesItsSentence(t *testing.T) {
 	if _, err := s.GeneratePairingCode(); err != nil {
 		t.Fatalf("GeneratePairingCode() = %v, want nil error", err)
 	}
-	_, err := s.PairBrowser("WRONGCOD", "Chrome", "127.0.0.1")
+	_, err := s.PairBrowser("WRONGCOD", "Chrome", "127.0.0.1", "")
 	declared, ok := usererror.Of(err)
 	if !ok || declared.Code != CodeBadPairingCode {
 		t.Fatalf("PairBrowser(wrong code) = %v, want code %q", err, CodeBadPairingCode)
@@ -72,7 +72,7 @@ func TestPairBrowser_LocksOutAGuessingLoop(t *testing.T) {
 	}
 	var last error
 	for i := 0; i <= maxFailuresBeforeLockout; i++ {
-		_, last = s.PairBrowser("WRONGCOD", "Chrome", "10.0.0.9")
+		_, last = s.PairBrowser("WRONGCOD", "Chrome", "10.0.0.9", "")
 	}
 	declared, ok := usererror.Of(last)
 	if !ok || declared.Code != CodePairingLockedOut {
@@ -89,7 +89,7 @@ func TestBrowserToken_NeverCrossesIntoAppAccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GeneratePairingCode() = %v, want nil error", err)
 	}
-	pairing, err := s.PairBrowser(info.Code, "Chrome", "127.0.0.1")
+	pairing, err := s.PairBrowser(info.Code, "Chrome", "127.0.0.1", "")
 	if err != nil {
 		t.Fatalf("PairBrowser() = %v, want nil error", err)
 	}
@@ -123,7 +123,7 @@ func TestListDevices_AndListBrowsers_NeverMix(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GeneratePairingCode() = %v, want nil error", err)
 	}
-	if _, err := s.PairBrowser(info.Code, "Chrome", "127.0.0.1"); err != nil {
+	if _, err := s.PairBrowser(info.Code, "Chrome", "127.0.0.1", ""); err != nil {
 		t.Fatalf("PairBrowser() = %v, want nil error", err)
 	}
 	s.mu.Lock()
@@ -148,7 +148,7 @@ func TestListDevices_AndListBrowsers_NeverMix(t *testing.T) {
 func TestPairBrowser_RevokeEndsIt(t *testing.T) {
 	s := newBrowserTestService(t)
 	info, _ := s.GeneratePairingCode()
-	pairing, err := s.PairBrowser(info.Code, "Chrome", "127.0.0.1")
+	pairing, err := s.PairBrowser(info.Code, "Chrome", "127.0.0.1", "")
 	if err != nil {
 		t.Fatalf("PairBrowser() = %v, want nil error", err)
 	}

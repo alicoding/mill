@@ -459,3 +459,14 @@ export const RUNTIME_PLUGIN_FACE_FRAME_MCP_BASE_PORT = 12020
 // SECRETS_SERVER_BASE_PORT above.
 export const SECRET_REFERENCES_SERVER_BASE_PORT = 12040
 export const SECRET_REFERENCES_MCP_BASE_PORT = 12060
+
+// browser-extension-mv3.spec.ts's own dedicated pair (goal 0418): the
+// real unpacked extension is loaded into its own persistent Chromium
+// profile and pairs against this server specifically, then the proof
+// force-stops its live service worker mid-run -- nothing else in the
+// suite should share a listener with a browser this test can leave in
+// an unusual state. Past the popup spec's own locally-declared
+// STATIC_PORT_BASE/BRIDGE_PORT_BASE (12100/12120) with room for their
+// own per-worker spread.
+export const BROWSER_EXTENSION_MV3_SERVER_BASE_PORT = 12300
+export const BROWSER_EXTENSION_MV3_MCP_BASE_PORT = 12320

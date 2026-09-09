@@ -15,13 +15,13 @@ package bridgesvc
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -39,6 +39,13 @@ const AddrEnvVar = "MILL_BRIDGE_ADDR"
 // carries a credential that can drive somebody's logged-in tabs, so it
 // never binds wider without an explicit env decision.
 const AddrDefault = "127.0.0.1:8092"
+
+// ConnectWaitEnvVar overrides beginRun's own wait, in milliseconds --
+// test-only (a real deploy always gets browserbridge.ConnectWaitSeconds).
+// A Go test outside this package can't reach the unexported connectWait
+// field newService constructs against, so this is that same shortcut
+// through an env var, mirroring AddrEnvVar's own precedent.
+const ConnectWaitEnvVar = "MILL_BRIDGE_CONNECT_WAIT_MS"
 
 // readHeaderTimeout bounds the slow-headers window on a listener any
 // other local process can reach (gosec G112).
@@ -59,19 +66,25 @@ const commandBuffer = 8
 // paired thing Mill knows about -- browser extensions and headless
 // webhook tokens alike.
 type TokenAuthority interface {
-	PairBrowser(code, label, source string) (remoteauthsvc.BrowserPairing, error)
+	PairBrowser(code, label, source, origin string) (remoteauthsvc.BrowserPairing, error)
 	ValidateBrowserToken(token string) (remoteauthsvc.DeviceInfo, bool)
 	ValidateWebhookToken(token string) (remoteauthsvc.DeviceInfo, bool)
 	// RequestPairing and PairingStatus back the nearby discovery flow
 	// (goal 0379): a popup-minted request, confirmed by a human
 	// Accept/Deny in Mill, never a code typed out of band.
-	RequestPairing(label, source string) (remoteauthsvc.PairingRequestInfo, error)
+	RequestPairing(label, source, origin string) (remoteauthsvc.PairingRequestInfo, error)
 	PairingStatus(requestID string) remoteauthsvc.PairingRequestStatus
 	// RevokeDevice backs the self-revoke door (goal 0379 S2): a paired
 	// browser presenting its own bearer token ends its own pairing
 	// through the SAME door Settings' own revoke uses -- never a
 	// second trust model.
 	RevokeDevice(id string) error
+	// BrowserOrigin and RecordBrowserOrigin back the WebSocket door's
+	// own Origin binding (goal 0418): a paired credential accepts a
+	// socket only from the Origin recorded on it, learned once for a
+	// credential paired before this existed.
+	BrowserOrigin(deviceID string) (string, bool)
+	RecordBrowserOrigin(deviceID, origin string)
 }
 
 // client is one browser holding a stream open.
@@ -106,10 +119,20 @@ type BridgeService struct {
 	// package-level variable two goroutines would then share.
 	keepalive time.Duration
 
+	// connectWait bounds how long beginRun waits for a browser to
+	// (re)connect before failing -- same shorten-before-Start posture
+	// as keepalive.
+	connectWait time.Duration
+
 	mu      sync.Mutex
 	clients []*client
 	runs    map[string]*run
 	seq     uint64
+	// arrived is closed and replaced (under mu) every time a client
+	// connects -- a beginRun waiting for a browser selects on the
+	// channel it read here, so closing it broadcasts to every waiter at
+	// once without a goroutine leak once none are left waiting.
+	arrived chan struct{}
 
 	// The extension's own files, and where they are written for a
 	// browser to load -- see bridgeservice_extension.go.
@@ -157,8 +180,20 @@ func New(auth TokenAuthority, logger *slog.Logger) *BridgeService {
 		addr:        addr,
 		envOverride: envOverride,
 		keepalive:   browserbridge.KeepaliveSeconds * time.Second,
+		connectWait: resolveConnectWait(os.Getenv(ConnectWaitEnvVar)),
 		runs:        make(map[string]*run),
+		arrived:     make(chan struct{}),
 	}
+}
+
+// resolveConnectWait mirrors ResolveAddr's own env-override shape: the
+// override wins when it parses as a positive number of milliseconds,
+// else the production default.
+func resolveConnectWait(envMS string) time.Duration {
+	if ms, err := strconv.Atoi(envMS); err == nil && ms > 0 {
+		return time.Duration(ms) * time.Millisecond
+	}
+	return browserbridge.ConnectWaitSeconds * time.Second
 }
 
 // Start binds the bridge listener in the background. A bind failure
@@ -275,9 +310,10 @@ type ReplayOptions struct {
 }
 
 // Replay sends flow to the most recently connected browser and blocks
-// until that browser closes the run. With nothing connected it fails
-// immediately rather than waiting out a timeout that would tell the
-// reader nothing.
+// until that browser closes the run. With nothing connected yet it
+// waits up to connectWait for one to (re)connect -- the extension's own
+// alarm/popup wakes an idle worker within one cycle -- before failing
+// with the same named error a caller can act on.
 //
 // A failed run still carries its step results: the outcome is returned
 // ALONGSIDE the error, so a caller can show which step stopped the run
@@ -289,9 +325,9 @@ func (s *BridgeService) Replay(ctx context.Context, flow browserbridge.UserFlow,
 		return Outcome{}, fmt.Errorf("bridgesvc: %w", err)
 	}
 
-	id, r, c, err := s.beginRun()
+	id, r, c, waitedMS, err := s.beginRun(ctx)
 	if err != nil {
-		s.recordCommand(ctx, "replay", audit.Target{Kind: "bridge-run"}, "", "rejected", "", 0, "")
+		s.recordCommand(ctx, "replay", audit.Target{Kind: "bridge-run"}, "", "rejected", "", 0, "", waitAttrs(waitedMS)...)
 		return Outcome{}, err
 	}
 	defer s.endRun(id)
@@ -302,7 +338,7 @@ func (s *BridgeService) Replay(ctx context.Context, flow browserbridge.UserFlow,
 	select {
 	case c.commands <- command:
 	default:
-		s.recordCommand(ctx, "replay", runTarget, actorSource, "rejected", "", 0, "")
+		s.recordCommand(ctx, "replay", runTarget, actorSource, "rejected", "", 0, "", waitAttrs(waitedMS)...)
 		return Outcome{}, browserbridge.ErrNoBrowser()
 	}
 	s.logger.Info("browser bridge: replay started", "run", id, "browser", c.deviceID, "steps", len(flow.Steps))
@@ -320,42 +356,78 @@ func (s *BridgeService) Replay(ctx context.Context, flow browserbridge.UserFlow,
 		outcome := s.collect(id, started)
 		if final.Status != browserbridge.StatusDone {
 			s.logger.Info("browser bridge: replay failed", "run", id, "browser", c.deviceID, "error", final.Error)
-			s.recordCommand(ctx, "replay", runTarget, actorSource, "error", "replay-failed", 0, final.Error)
+			s.recordCommand(ctx, "replay", runTarget, actorSource, "error", "replay-failed", 0, final.Error, waitAttrs(waitedMS)...)
 			return outcome, browserbridge.ErrReplayFailed(final.Error)
 		}
 		s.logger.Info("browser bridge: replay finished", "run", id, "browser", c.deviceID, "steps", outcome.Steps, "ms", outcome.DurationMS)
-		s.recordCommand(ctx, "replay", runTarget, actorSource, "accepted", "", 0, "")
+		s.recordCommand(ctx, "replay", runTarget, actorSource, "accepted", "", 0, "", waitAttrs(waitedMS)...)
 		return outcome, nil
 	case <-timer.C:
 		s.logger.Info("browser bridge: replay timed out", "run", id, "browser", c.deviceID, "seconds", int(budget.Seconds()))
-		s.recordCommand(ctx, "replay", runTarget, actorSource, "error", "timeout", 0, "")
+		s.recordCommand(ctx, "replay", runTarget, actorSource, "error", "timeout", 0, "", waitAttrs(waitedMS)...)
 		return s.collect(id, started), browserbridge.ErrReplayTimedOutAfter(budget)
 	case <-ctx.Done():
 		// A cancelled run (the workflow run was stopped) is not a
 		// browser fault, and reads as the timeout it effectively is
 		// rather than as a pairing problem.
 		s.logger.Info("browser bridge: replay cancelled", "run", id, "browser", c.deviceID)
-		s.recordCommand(ctx, "replay", runTarget, actorSource, "error", "cancelled", 0, "")
+		s.recordCommand(ctx, "replay", runTarget, actorSource, "error", "cancelled", 0, "", waitAttrs(waitedMS)...)
 		return s.collect(id, started), browserbridge.ErrReplayTimedOut()
 	}
 }
 
-// beginRun registers a run against the newest connected browser.
-func (s *BridgeService) beginRun() (string, *run, *client, error) {
+// waitAttrs is recordCommand's own extra tail: a run that waited on the
+// browser's own reconnect gets an audit attribute naming how long, and
+// a run that found one already connected gets none -- never a zero
+// entry cluttering every ordinary run.
+func waitAttrs(waitedMS int64) []string {
+	if waitedMS <= 0 {
+		return nil
+	}
+	return []string{"waited_for_browser_ms", strconv.FormatInt(waitedMS, 10)}
+}
+
+// beginRun registers a run against the newest connected browser. With
+// nothing connected yet, it waits up to connectWait for addClient's own
+// broadcast, the run's own context, or the timeout -- whichever comes
+// first -- before giving up. waitedMS reports how long it actually
+// waited, 0 when a browser was already there.
+func (s *BridgeService) beginRun(ctx context.Context) (id string, r *run, c *client, waitedMS int64, err error) {
 	s.mu.Lock()
+	if len(s.clients) == 0 {
+		arrived := s.arrived
+		s.mu.Unlock()
+
+		started := time.Now()
+		timer := time.NewTimer(s.connectWait)
+		defer timer.Stop()
+		select {
+		case <-arrived:
+			waitedMS = time.Since(started).Milliseconds()
+		case <-ctx.Done():
+			return "", nil, nil, time.Since(started).Milliseconds(), browserbridge.ErrNoBrowser()
+		case <-timer.C:
+			return "", nil, nil, time.Since(started).Milliseconds(), browserbridge.ErrNoBrowser()
+		}
+		s.mu.Lock()
+	}
 	defer s.mu.Unlock()
 	if len(s.clients) == 0 {
-		return "", nil, nil, browserbridge.ErrNoBrowser()
+		// The browser that triggered the broadcast above disconnected
+		// again before this goroutine could relock -- rare enough (a
+		// flap inside one wakeup) that failing immediately rather than
+		// waiting a second time is the honest answer to give.
+		return "", nil, nil, waitedMS, browserbridge.ErrNoBrowser()
 	}
 	// The newest stream wins when more than one browser is paired and
 	// connected: the one the user just opened is the one they are
 	// looking at.
-	c := s.clients[len(s.clients)-1]
+	c = s.clients[len(s.clients)-1]
 	s.seq++
-	id := fmt.Sprintf("run-%d-%d", time.Now().UnixNano(), s.seq)
-	r := &run{done: make(chan browserbridge.Result, 1)}
+	id = fmt.Sprintf("run-%d-%d", time.Now().UnixNano(), s.seq)
+	r = &run{done: make(chan browserbridge.Result, 1)}
 	s.runs[id] = r
-	return id, r, c, nil
+	return id, r, c, waitedMS, nil
 }
 
 func (s *BridgeService) endRun(id string) {
@@ -413,10 +485,4 @@ func (s *BridgeService) recordResult(result browserbridge.Result) {
 	case r.done <- result:
 	default:
 	}
-}
-
-// marshalCommand is the one place an envelope becomes stream bytes, so
-// the wire shape has a single author.
-func marshalCommand(c browserbridge.Command) ([]byte, error) {
-	return json.Marshal(c)
 }

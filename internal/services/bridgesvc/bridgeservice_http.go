@@ -1,13 +1,11 @@
 package bridgesvc
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/alicoding/mill/internal/domain/audit"
 	"github.com/alicoding/mill/internal/domain/browserbridge"
@@ -30,7 +28,7 @@ import (
 // token -- kept beside PairPath as the mint/revoke pair for the same
 // credential.
 const (
-	EventsPath      = "/__mill/bridge/events"
+	WSPath          = "/__mill/bridge/ws"
 	ResultPath      = "/__mill/bridge/result"
 	PairPath        = "/__mill/bridge/pair"
 	DisconnectPath  = "/__mill/bridge/disconnect"
@@ -68,7 +66,7 @@ const maxResultBytes = 64 * 1024
 //wails:ignore
 func (s *BridgeService) Handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc(EventsPath, s.handleEvents)
+	mux.HandleFunc(WSPath, s.handleWS)
 	mux.HandleFunc(ResultPath, s.handleResult)
 	mux.HandleFunc(PairPath, s.handlePair)
 	mux.HandleFunc(DisconnectPath, s.handleDisconnect)
@@ -105,7 +103,7 @@ func (s *BridgeService) handlePair(w http.ResponseWriter, r *http.Request) {
 		writeUserError(w, http.StatusBadRequest, usererror.New("bad-pairing-request", "That pairing request wasn't readable."))
 		return
 	}
-	pairing, err := s.auth.PairBrowser(body.Code, body.Label, sourceKey(r))
+	pairing, err := s.auth.PairBrowser(body.Code, body.Label, sourceKey(r), r.Header.Get("Origin"))
 	if err != nil {
 		s.recordCommand(r.Context(), "pair", audit.Target{}, actorSource, "rejected", pairFailureKind(err), http.StatusUnauthorized, "")
 		writeUserError(w, http.StatusUnauthorized, err)
@@ -158,11 +156,15 @@ func (s *BridgeService) handleDisconnect(w http.ResponseWriter, r *http.Request)
 }
 
 // discoverResponse is what a browser's popup learns before typing
-// anything (goal 0379): Mill is here, and whether THIS caller is
-// already paired.
+// anything (goal 0379): Mill is here, whether THIS caller is already
+// paired, and whether its credential holds a live socket right now
+// (goal 0418) -- paired and connected are two separate facts, never
+// conflated into one "Connected" the popup used to report on pairing
+// alone.
 type discoverResponse struct {
-	Name   string `json:"name"`
-	Paired bool   `json:"paired"`
+	Name      string `json:"name"`
+	Paired    bool   `json:"paired"`
+	Connected bool   `json:"connected"`
 }
 
 // handleDiscover answers the Bluetooth-style nearby flow's first
@@ -170,9 +172,13 @@ type discoverResponse struct {
 // handleTestPage -- a popup that has never paired has no bearer to
 // send. Paired reflects THIS caller specifically: any bearer token it
 // already holds is checked against the live paired list, so a popup
-// that still has a good token skips straight to "Connected to Mill"
-// without a second round trip, and one whose token was since revoked
-// learns that too rather than reading a stale local flag.
+// that still has a good token skips straight to reporting its live
+// state without a second round trip, and one whose token was since
+// revoked learns that too rather than reading a stale local flag.
+// Connected is true only while THIS credential also holds an open
+// socket -- a paired browser whose worker went idle is Paired but not
+// Connected, and the popup's own reconnect view is what tells the
+// difference.
 func (s *BridgeService) handleDiscover(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -182,8 +188,9 @@ func (s *BridgeService) handleDiscover(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	_, paired := s.auth.ValidateBrowserToken(bearerToken(r))
-	writeJSON(w, http.StatusOK, discoverResponse{Name: "Mill", Paired: paired})
+	device, paired := s.auth.ValidateBrowserToken(bearerToken(r))
+	connected := paired && s.hasClient(device.ID)
+	writeJSON(w, http.StatusOK, discoverResponse{Name: "Mill", Paired: paired, Connected: connected})
 }
 
 // handlePairRequest mints a pairing REQUEST -- not a credential -- for
@@ -210,7 +217,7 @@ func (s *BridgeService) handlePairRequest(w http.ResponseWriter, r *http.Request
 		writeUserError(w, http.StatusBadRequest, usererror.New("bad-pairing-request", "That pairing request wasn't readable."))
 		return
 	}
-	info, err := s.auth.RequestPairing(body.Label, sourceKey(r))
+	info, err := s.auth.RequestPairing(body.Label, sourceKey(r), r.Header.Get("Origin"))
 	if err != nil {
 		writeUserError(w, http.StatusUnauthorized, err)
 		return
@@ -277,79 +284,6 @@ func (s *BridgeService) handleRoot(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(rootPageHTML))
 }
 
-// handleEvents is the one long-lived stream: server-sent events, one
-// JSON envelope per message, plus a keepalive every
-// browserbridge.KeepaliveSeconds. The keepalive is not cosmetic -- a
-// browser extension's service worker is torn down when idle, and a
-// chunk arriving on this stream is what keeps it alive to receive the
-// next command.
-func (s *BridgeService) handleEvents(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	device, ok := s.auth.ValidateBrowserToken(bearerToken(r))
-	if !ok {
-		writeUserError(w, http.StatusUnauthorized, browserbridge.ErrNoBrowser())
-		return
-	}
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.WriteHeader(http.StatusOK)
-	flusher.Flush()
-
-	ctx, cancel := context.WithCancel(r.Context())
-	defer cancel()
-	c := s.addClient(device.ID, device.Label, cancel)
-	defer s.removeClient(c)
-	s.logger.Info("browser bridge: browser connected", "browser", device.ID, "label", device.Label)
-	defer s.logger.Info("browser bridge: browser disconnected", "browser", device.ID)
-
-	ticker := time.NewTicker(s.keepalive)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case command := <-c.commands:
-			if !writeEvent(w, flusher, command) {
-				return
-			}
-		case <-ticker.C:
-			// Re-checked on every keepalive rather than only at connect:
-			// revoking a browser in Settings must end its stream, not
-			// merely stop the next one from opening.
-			if _, still := s.auth.ValidateBrowserToken(bearerToken(r)); !still {
-				return
-			}
-			if !writeEvent(w, flusher, browserbridge.Command{Kind: browserbridge.KindPing}) {
-				return
-			}
-		}
-	}
-}
-
-// writeEvent writes one SSE frame, reporting whether the stream is
-// still usable.
-func writeEvent(w http.ResponseWriter, flusher http.Flusher, command browserbridge.Command) bool {
-	payload, err := marshalCommand(command)
-	if err != nil {
-		return false
-	}
-	if _, err := w.Write([]byte("data: " + string(payload) + "\n\n")); err != nil {
-		return false
-	}
-	flusher.Flush()
-	return true
-}
-
 // handleResult files one step result, or the final result that closes
 // a run.
 func (s *BridgeService) handleResult(w http.ResponseWriter, r *http.Request) {
@@ -381,29 +315,6 @@ func (s *BridgeService) handleResult(w http.ResponseWriter, r *http.Request) {
 	// step rather than one per command.
 	s.recordResult(result)
 	w.WriteHeader(http.StatusNoContent)
-}
-
-// addClient registers a connected browser as the newest one.
-func (s *BridgeService) addClient(deviceID, label string, cancel context.CancelFunc) *client {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.seq++
-	c := &client{seq: s.seq, deviceID: deviceID, label: label, commands: make(chan browserbridge.Command, commandBuffer), cancel: cancel}
-	s.clients = append(s.clients, c)
-	return c
-}
-
-func (s *BridgeService) removeClient(target *client) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	kept := s.clients[:0]
-	for _, c := range s.clients {
-		if c.seq == target.seq {
-			continue
-		}
-		kept = append(kept, c)
-	}
-	s.clients = kept
 }
 
 // bearerToken reads the Authorization header's bearer value, "" when

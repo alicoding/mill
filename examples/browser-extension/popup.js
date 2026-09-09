@@ -16,11 +16,13 @@
 const STORAGE_KEY = 'millBridge'
 const DEFAULT_ADDRESS = 'http://127.0.0.1:8092'
 const POLL_MS = 1000
+const RECONNECT_POLL_MS = 2000
 
 const views = {
   closed: document.getElementById('view-closed'),
   unpaired: document.getElementById('view-unpaired'),
   waiting: document.getElementById('view-waiting'),
+  reconnecting: document.getElementById('view-reconnecting'),
   connected: document.getElementById('view-connected'),
 }
 
@@ -70,29 +72,54 @@ function browserLabel() {
   return 'Browser'
 }
 
-// discover reports whether Mill answered at all (reachable) and, if
-// so, whether THIS browser is already paired. A response that came
-// back but was refused (Mill running, but this request wasn't
-// loopback -- a remote Mill) still counts as reachable: the typed
-// fallback stays available for exactly that case, discovery just
-// can't finish it.
+// discover reports whether Mill answered at all (reachable), whether
+// THIS browser is already paired, and whether its credential also
+// holds a live socket right now (goal 0418) -- paired and connected are
+// two separate facts. A response that came back but was refused (Mill
+// running, but this request wasn't loopback -- a remote Mill) still
+// counts as reachable: the typed fallback stays available for exactly
+// that case, discovery just can't finish it.
 async function discover(address, token) {
   const headers = token ? { Authorization: `Bearer ${token}` } : {}
   let response
   try {
     response = await fetch(`${address}/__mill/bridge/discover`, { headers })
   } catch {
-    return { reachable: false, paired: false }
+    return { reachable: false, paired: false, connected: false }
   }
-  if (!response.ok) return { reachable: true, paired: false }
+  if (!response.ok) return { reachable: true, paired: false, connected: false }
   const body = await response.json().catch(() => ({}))
-  return { reachable: true, paired: Boolean(body.paired) }
+  return { reachable: true, paired: Boolean(body.paired), connected: Boolean(body.connected) }
 }
 
 function showConnected(address, label) {
   connectedLabel.textContent = label || 'Browser'
   connectedAddress.textContent = address
   showView('connected')
+}
+
+// pollReconnect watches discover() every RECONNECT_POLL_MS while the
+// reconnecting view is showing: the worker's own alarm/message trigger
+// reconnects it in the background, and this is what notices and moves
+// the popup on once it does, without the person having to reopen it.
+function pollReconnect(address, token, label) {
+  pollTimer = setInterval(async () => {
+    const result = await discover(address, token)
+    if (!result.reachable) {
+      stopPolling()
+      showView('closed')
+      return
+    }
+    if (!result.paired) {
+      stopPolling()
+      showView('unpaired')
+      return
+    }
+    if (result.connected) {
+      stopPolling()
+      showConnected(address, label)
+    }
+  }, RECONNECT_POLL_MS)
 }
 
 async function init() {
@@ -106,8 +133,25 @@ async function init() {
     showView('closed')
     return
   }
-  if (result.paired) {
+  if (result.paired && result.connected) {
     showConnected(address, current.label)
+    return
+  }
+  if (result.paired) {
+    // Paired, but this credential holds no live socket right now --
+    // the worker likely went idle. Ask it to reconnect: a real user
+    // action (opening this popup) always reaches even a fully
+    // terminated worker, where the platform's own alarm would have to
+    // wait out its next cycle.
+    showView('reconnecting')
+    try {
+      chrome.runtime.sendMessage({ type: 'reconnect' })
+    } catch {
+      // No background context to reach (e.g. this popup loaded outside
+      // a real extension) -- the poll below still catches a reconnect
+      // from any of the worker's OTHER triggers.
+    }
+    pollReconnect(address, current.token, current.label)
     return
   }
   // Reachable but not paired -- including a token this browser held

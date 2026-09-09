@@ -52,10 +52,18 @@ starting up — press **Enter a code instead** in the popup:
 4. The popup shows **Connected to Mill**, and the browser appears in the
    Browsers list.
 
-Once paired, the popup shows **Connected to Mill** with the address kept
-behind a **Show details** disclosure — **Disconnect** ends the pairing:
-the browser drops off Mill's Browsers list, and the popup's own
-credential clears right away even if Mill can't be reached.
+Once paired, the popup shows one of three states:
+
+- **Connected to Mill** — the address is kept behind a **Show details**
+  disclosure, and **Disconnect** ends the pairing: the browser drops
+  off Mill's Browsers list, and the popup's own credential clears
+  right away even if Mill can't be reached.
+- **Paired, reconnecting…** — the browser goes idle enough that Chrome
+  shuts down the extension's own background process; opening the
+  popup reconnects it. Open the Mill extension in your browser to
+  reconnect if a step ever reports nothing is listening.
+- **Not paired** — the credential was revoked, or nothing has been
+  paired here yet; press **Pair with Mill** again.
 
 ## Test it
 
@@ -64,8 +72,9 @@ presses a button on it, and waits for what the press reveals — the three
 things every recorded flow depends on. It then reports how many steps
 ran and how long they took.
 
-If nothing is listening, Mill says so rather than waiting: *No browser is
-connected. Pair the Mill extension first.*
+If the browser went idle since it last paired, Mill waits briefly for
+it to reconnect on its own before reporting: *No browser is connected.
+Open the Mill extension in your browser and run again.*
 
 ## Record the steps
 
@@ -116,8 +125,9 @@ call.
 
 ### When it stops
 
-- *No browser is connected. Pair the Mill extension first.* — nothing is
-  listening; pair a browser.
+- *No browser is connected. Open the Mill extension in your browser and
+  run again.* — the browser didn't reconnect in time; open its popup
+  and try again.
 - *Couldn't find the element for step 3 (#email).* — the page changed
   under the recording. Re-record that step.
 - *The browser didn't finish the flow in 60 seconds.* — the flow is

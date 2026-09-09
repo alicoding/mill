@@ -12,7 +12,9 @@
   button { font: inherit; padding: 5px 12px; }
   button.primary { margin-top: 4px; }
   .code { font: 700 22px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.08em; margin: 10px 0 4px; }
+  .view-title { font-weight: 600; margin: 0 0 8px; }
   .connected-title { color: #1a7f37; font-weight: 600; }
+  .reconnecting-title { color: #9a6700; font-weight: 600; }
   #typed-status[data-state="error"] { color: #cf222e; }
   .hint { color: #59636e; margin-top: 4px; }
   details.disclosure { margin-top: 14px; }
@@ -30,6 +32,7 @@
 </section>
 
 <section id="view-unpaired" hidden>
+  <p class="view-title">Not paired</p>
   <button id="pair-with-mill" type="button" class="primary">Pair with Mill</button>
   <p id="unpaired-message" class="hint"></p>
   <details class="disclosure">
@@ -47,6 +50,11 @@
 <section id="view-waiting" hidden>
   <p class="code" id="waiting-code"></p>
   <p>Waiting for Mill&hellip;</p>
+</section>
+
+<section id="view-reconnecting" hidden>
+  <p class="reconnecting-title">Paired, reconnecting&hellip;</p>
+  <p class="hint">Mill can't reach this browser right now. It reconnects automatically.</p>
 </section>
 
 <section id="view-connected" hidden>

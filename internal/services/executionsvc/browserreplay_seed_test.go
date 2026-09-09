@@ -145,9 +145,9 @@ func TestSeededBrowserReplay_RunsTheRecordingAndExtractsTheEcho(t *testing.T) {
 	}
 }
 
-// Nothing paired is the one failure a reader can fix themselves, and
+// Nothing connected is the one failure a reader can fix themselves, and
 // the run must say so rather than failing with a generic sentence.
-func TestSeededBrowserReplay_WithNoBrowserFailsWithThePairFirstSentence(t *testing.T) {
+func TestSeededBrowserReplay_WithNoBrowserFailsWithTheOpenExtensionSentence(t *testing.T) {
 	exec, wfID := newBrowserReplayHarness(t)
 	swapBrowserReplayer(t, func(browserbridge.UserFlow, time.Duration) (composition.BrowserReplayOutcome, error) {
 		return composition.BrowserReplayOutcome{}, browserbridge.ErrNoBrowser()
@@ -161,8 +161,8 @@ func TestSeededBrowserReplay_WithNoBrowserFailsWithThePairFirstSentence(t *testi
 	if final.Status == "SUCCESS" {
 		t.Fatal("the run succeeded with no browser connected")
 	}
-	if !strings.Contains(final.Error, "No browser is connected. Pair the Mill extension first.") {
-		t.Errorf("final.Error = %q, want the pair-first sentence", final.Error)
+	if !strings.Contains(final.Error, "No browser is connected. Open the Mill extension in your browser and run again.") {
+		t.Errorf("final.Error = %q, want the open-extension sentence", final.Error)
 	}
 }
 

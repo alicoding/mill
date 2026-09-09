@@ -7,18 +7,24 @@ import (
 	"github.com/alicoding/mill/internal/domain/usererror"
 )
 
-// The command kinds Mill sends down an open browser stream. KindPing is
-// the keepalive: a browser extension's service worker is shut down
-// after a short idle period, and a chunk arriving on the open stream is
-// what resets that timer -- so the keepalive is a liveness requirement
-// of the transport, not decoration.
+// The command kinds Mill sends down an open browser stream.
+// KindKeepalive is the liveness message: a browser extension's service
+// worker is torn down after 30s idle, and a WebSocket message is one of
+// the events that resets that timer (Chrome 116+) -- so the keepalive
+// is a transport requirement, not decoration.
 const (
-	KindReplay = "replay"
-	KindPing   = "ping"
+	KindReplay    = "replay"
+	KindKeepalive = "keepalive"
 )
 
-// KeepaliveSeconds is how often a connected stream receives a ping.
+// KeepaliveSeconds is how often a connected stream receives a keepalive
+// message.
 const KeepaliveSeconds = 25
+
+// ConnectWaitSeconds is how long a replay waits for a browser to
+// (re)connect before failing -- one `chrome.alarms` reconnect cycle
+// (the platform's own 30s alarm floor) plus margin for the handshake.
+const ConnectWaitSeconds = 45
 
 // Target narrows where a flow runs. An empty URL means the flow's own
 // first navigate step decides.
@@ -27,7 +33,8 @@ type Target struct {
 }
 
 // Command is one envelope written to a connected browser's stream. ID
-// correlates every result the browser posts back; a ping carries none.
+// correlates every result the browser posts back; a keepalive carries
+// none.
 type Command struct {
 	ID     string    `json:"id,omitempty"`
 	Kind   string    `json:"kind"`
@@ -93,11 +100,12 @@ func (r Result) Final() bool { return r.StepIndex == nil }
 // is listening -- the one failure a user can actually fix, by pairing.
 const CodeNoBrowser = "browser-not-connected"
 
-// ErrNoBrowser is returned the moment a replay is asked for with no
-// browser stream open, rather than waiting out a timeout that would
-// tell the reader nothing.
+// ErrNoBrowser is returned once a replay has waited ConnectWaitSeconds
+// for a browser to (re)connect and none did. The sentence names the
+// reader's real lever: the browser is already paired, so re-pairing
+// fixes nothing -- opening the extension is what wakes it.
 func ErrNoBrowser() error {
-	return usererror.New(CodeNoBrowser, "No browser is connected. Pair the Mill extension first.")
+	return usererror.New(CodeNoBrowser, "No browser is connected. Open the Mill extension in your browser and run again.")
 }
 
 // CodeReplayFailed is the handle for a run the browser started and

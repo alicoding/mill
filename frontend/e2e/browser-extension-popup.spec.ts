@@ -47,9 +47,61 @@ interface BridgeState {
   pairRequestStatus: 'pending' | 'accepted' | 'denied' | 'expired'
   token: string
   label: string
+  // connected stands in for a live socket (goal 0418): discover()
+  // reports it only alongside a matching paired token, the same
+  // paired-and-connected-are-two-facts split the real bridge answers.
+  connected: boolean
   // disconnectCalls pins that the popup's own Disconnect really POSTs
   // the self-revoke door (goal 0379 S2), not just a local clear.
   disconnectCalls: number
+}
+
+type BridgeRouteHandler = (req: IncomingMessage, res: ServerResponse, state: BridgeState) => void
+
+function serveDiscover(req: IncomingMessage, res: ServerResponse, state: BridgeState): void {
+  const paired = Boolean(state.token) && req.headers.authorization === `Bearer ${state.token}`
+  res.writeHead(200, { 'Content-Type': 'application/json' })
+  res.end(JSON.stringify({ name: 'Mill', paired, connected: paired && state.connected }))
+}
+
+function servePairRequest(req: IncomingMessage, res: ServerResponse, state: BridgeState): void {
+  state.pairRequestStatus = 'pending'
+  res.writeHead(200, { 'Content-Type': 'application/json' })
+  res.end(JSON.stringify({ requestId: 'req-1', code: '482913', expiresAt: new Date(Date.now() + 120_000).toISOString() }))
+}
+
+function servePairStatus(req: IncomingMessage, res: ServerResponse, state: BridgeState): void {
+  res.writeHead(200, { 'Content-Type': 'application/json' })
+  const body: Record<string, string> = { status: state.pairRequestStatus }
+  if (state.pairRequestStatus === 'accepted') {
+    body.token = state.token
+    body.deviceId = 'browser-1'
+    body.label = state.label
+  }
+  res.end(JSON.stringify(body))
+}
+
+function serveDisconnect(req: IncomingMessage, res: ServerResponse, state: BridgeState): void {
+  state.disconnectCalls += 1
+  const authorized = Boolean(state.token) && req.headers.authorization === `Bearer ${state.token}`
+  if (!authorized) {
+    res.writeHead(401, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ error: 'unauthorized' }))
+    return
+  }
+  state.token = ''
+  res.writeHead(204).end()
+}
+
+// One handler per method+path, dispatched below -- keeps serveBridge's
+// own request handler a flat lookup rather than a growing if/else
+// chain (each route's own logic, and its own cognitive-complexity
+// budget, lives with its handler).
+const BRIDGE_ROUTES: Record<string, BridgeRouteHandler> = {
+  'GET /__mill/bridge/discover': serveDiscover,
+  'POST /__mill/bridge/pair-request': servePairRequest,
+  'GET /__mill/bridge/pair-status': servePairStatus,
+  'POST /__mill/bridge/disconnect': serveDisconnect,
 }
 
 function serveBridge(port: number, state: BridgeState): Promise<http.Server> {
@@ -68,60 +120,37 @@ function serveBridge(port: number, state: BridgeState): Promise<http.Server> {
       return
     }
     const url = new URL(req.url || '/', `http://127.0.0.1:${port}`)
-    if (url.pathname === '/__mill/bridge/discover' && req.method === 'GET') {
-      const paired = Boolean(state.token) && req.headers.authorization === `Bearer ${state.token}`
-      res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ name: 'Mill', paired }))
+    const handler = BRIDGE_ROUTES[`${req.method} ${url.pathname}`]
+    if (!handler) {
+      res.writeHead(404).end()
       return
     }
-    if (url.pathname === '/__mill/bridge/pair-request' && req.method === 'POST') {
-      state.pairRequestStatus = 'pending'
-      res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ requestId: 'req-1', code: '482913', expiresAt: new Date(Date.now() + 120_000).toISOString() }))
-      return
-    }
-    if (url.pathname === '/__mill/bridge/pair-status' && req.method === 'GET') {
-      res.writeHead(200, { 'Content-Type': 'application/json' })
-      const body: Record<string, string> = { status: state.pairRequestStatus }
-      if (state.pairRequestStatus === 'accepted') {
-        body.token = state.token
-        body.deviceId = 'browser-1'
-        body.label = state.label
-      }
-      res.end(JSON.stringify(body))
-      return
-    }
-    if (url.pathname === '/__mill/bridge/disconnect' && req.method === 'POST') {
-      state.disconnectCalls += 1
-      const authorized = Boolean(state.token) && req.headers.authorization === `Bearer ${state.token}`
-      if (!authorized) {
-        res.writeHead(401, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ error: 'unauthorized' }))
-        return
-      }
-      state.token = ''
-      res.writeHead(204).end()
-      return
-    }
-    res.writeHead(404).end()
+    handler(req, res, state)
   })
   return new Promise((resolve) => server.listen(port, '127.0.0.1', () => resolve(server)))
 }
 
-// Shims chrome.storage.local with an in-memory object before popup.js's
-// own top-level `void init()` runs -- there is no real extension
-// context in a plain page.
+// Shims chrome.storage.local and chrome.runtime.sendMessage with an
+// in-memory object before popup.js's own top-level `void init()` runs
+// -- there is no real extension context in a plain page.
+// reconnectMessages (window.__reconnectMessages) is how a test reads
+// back whether the popup's own reconnect nudge (goal 0418) was sent.
 async function withPopup(browser: Browser, popupURL: string, seedStorage: Record<string, unknown> = {}): Promise<Page> {
   const page = await browser.newPage()
   await applyCpuThrottle(page)
   await page.addInitScript((seed) => {
     const store: Record<string, unknown> = { millBridge: seed }
+    const reconnectMessages: unknown[] = []
+    ;(window as unknown as { __reconnectMessages: unknown[] }).__reconnectMessages = reconnectMessages
     ;(window as unknown as { chrome: unknown }).chrome = {
       storage: {
         local: {
           get: async (key: string) => ({ [key]: store[key] }),
           set: async (obj: Record<string, unknown>) => { Object.assign(store, obj) },
         },
+      },
+      runtime: {
+        sendMessage: (message: unknown) => { reconnectMessages.push(message) },
       },
     }
   }, seedStorage)
@@ -160,12 +189,13 @@ test.describe('the extension popup (goal 0379)', () => {
   // eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
   test('unpaired: "Pair with Mill" leads, "Enter a code instead" stays reachable', async ({}, testInfo) => {
     const bridgePort = BRIDGE_PORT_BASE + 20 + testInfo.parallelIndex
-    const state: BridgeState = { pairRequestStatus: 'pending', token: '', label: '', disconnectCalls: 0 }
+    const state: BridgeState = { pairRequestStatus: 'pending', token: '', label: '', connected: false, disconnectCalls: 0 }
     const bridgeServer = await serveBridge(bridgePort, state)
     const browser = await chromium.launch()
     try {
       const page = await withPopup(browser, `http://127.0.0.1:${staticPort}/popup.html`, { address: `http://127.0.0.1:${bridgePort}` })
       await expect(page.locator('#view-unpaired')).toBeVisible()
+      await expect(page.locator('#view-unpaired .view-title')).toHaveText('Not paired')
       await expect(page.locator('#pair-with-mill')).toHaveText('Pair with Mill')
       await expect(page.getByText('Enter a code instead')).toBeVisible()
     } finally {
@@ -177,7 +207,7 @@ test.describe('the extension popup (goal 0379)', () => {
   // eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
   test('Pair with Mill: waiting shows the code, Accept in Mill connects', async ({}, testInfo) => {
     const bridgePort = BRIDGE_PORT_BASE + 40 + testInfo.parallelIndex
-    const state: BridgeState = { pairRequestStatus: 'pending', token: 'minted-token', label: 'Chrome', disconnectCalls: 0 }
+    const state: BridgeState = { pairRequestStatus: 'pending', token: 'minted-token', label: 'Chrome', connected: true, disconnectCalls: 0 }
     const bridgeServer = await serveBridge(bridgePort, state)
     const browser = await chromium.launch()
     try {
@@ -200,7 +230,7 @@ test.describe('the extension popup (goal 0379)', () => {
   // eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
   test('Deny in Mill: the popup falls back to "Pair with Mill", no retry loop', async ({}, testInfo) => {
     const bridgePort = BRIDGE_PORT_BASE + 60 + testInfo.parallelIndex
-    const state: BridgeState = { pairRequestStatus: 'pending', token: '', label: '', disconnectCalls: 0 }
+    const state: BridgeState = { pairRequestStatus: 'pending', token: '', label: '', connected: false, disconnectCalls: 0 }
     const bridgeServer = await serveBridge(bridgePort, state)
     const browser = await chromium.launch()
     try {
@@ -220,7 +250,7 @@ test.describe('the extension popup (goal 0379)', () => {
   // eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
   test('connected: discover(paired:true) skips straight past the form', async ({}, testInfo) => {
     const bridgePort = BRIDGE_PORT_BASE + 80 + testInfo.parallelIndex
-    const state: BridgeState = { pairRequestStatus: 'pending', token: 'already-good', label: 'Firefox', disconnectCalls: 0 }
+    const state: BridgeState = { pairRequestStatus: 'pending', token: 'already-good', label: 'Firefox', connected: true, disconnectCalls: 0 }
     const bridgeServer = await serveBridge(bridgePort, state)
     const browser = await chromium.launch()
     try {
@@ -256,7 +286,7 @@ test.describe('the extension popup (goal 0379)', () => {
   // eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
   test('Disconnect with Mill down: the credential still clears locally', async ({}, testInfo) => {
     const bridgePort = BRIDGE_PORT_BASE + 100 + testInfo.parallelIndex
-    const state: BridgeState = { pairRequestStatus: 'pending', token: 'already-good', label: 'Firefox', disconnectCalls: 0 }
+    const state: BridgeState = { pairRequestStatus: 'pending', token: 'already-good', label: 'Firefox', connected: true, disconnectCalls: 0 }
     const bridgeServer = await serveBridge(bridgePort, state)
     const browser = await chromium.launch()
     try {
@@ -288,6 +318,42 @@ test.describe('the extension popup (goal 0379)', () => {
       expect(stored?.token).toBeUndefined()
     } finally {
       await browser.close()
+    }
+  })
+
+  // eslint-disable-next-line no-empty-pattern -- needs `testInfo`, not any fixture.
+  test('paired, not connected: "Paired, reconnecting…" shows, the popup nudges the worker, then follows it to Connected', async ({}, testInfo) => {
+    const bridgePort = BRIDGE_PORT_BASE + 120 + testInfo.parallelIndex
+    const state: BridgeState = { pairRequestStatus: 'pending', token: 'already-good', label: 'Firefox', connected: false, disconnectCalls: 0 }
+    const bridgeServer = await serveBridge(bridgePort, state)
+    const browser = await chromium.launch()
+    try {
+      const page = await withPopup(browser, `http://127.0.0.1:${staticPort}/popup.html`, {
+        address: `http://127.0.0.1:${bridgePort}`,
+        token: 'already-good',
+        label: 'Firefox',
+      })
+      await expect(page.locator('#view-reconnecting')).toBeVisible()
+      await expect(page.locator('.reconnecting-title')).toHaveText('Paired, reconnecting…')
+      await expect(page.locator('#view-connected')).toBeHidden()
+      await expect(page.locator('#view-unpaired')).toBeHidden()
+
+      // Opening the popup nudged the (stubbed) worker to reconnect --
+      // a real user action that always reaches even a fully terminated
+      // worker.
+      await expect.poll(() =>
+        page.evaluate(() => (window as unknown as { __reconnectMessages: unknown[] }).__reconnectMessages.length),
+      ).toBeGreaterThan(0)
+
+      // The worker reconnects (its own alarm/message trigger in the
+      // real extension) -- the popup's own 2s poll picks it up with no
+      // further action here.
+      state.connected = true
+      await expect(page.locator('#view-connected')).toBeVisible({ timeout: 5_000 })
+      await expect(page.locator('#connected-label')).toHaveText('Firefox')
+    } finally {
+      await browser.close()
+      await new Promise((resolve) => bridgeServer.close(resolve))
     }
   })
 })

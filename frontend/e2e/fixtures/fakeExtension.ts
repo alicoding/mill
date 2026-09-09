@@ -2,16 +2,19 @@ import type { Page } from '@playwright/test'
 
 // A stand-in for the Mill browser extension (examples/browser-extension),
 // speaking its exact wire protocol against a running Mill: pair with a
-// code, hold one SSE stream open, replay whatever arrives, and post a
+// code, hold one WebSocket open, replay whatever arrives, and post a
 // result per step plus one closing result.
 //
 // It exists because loading a real unpacked MV3 extension into the
 // suite's Chromium would make every run carry a second browser profile
-// and a service worker whose lifetime the test cannot observe. The
-// contract is what matters here -- the runner's own logic is unit-tested
-// directly (frontend/src/shared/replayRunner.test.ts). What this proves
-// is Mill's half: the code exchange, the stream, the correlation of
-// results by run id, and the sentence the test result renders.
+// and a service worker whose lifetime the test cannot observe (the real
+// wake-from-idle path is instead proven by browser-extension-mv3.spec.ts,
+// which DOES load the real unpacked extension, under Playwright's own
+// persistent-context path). The contract is what matters here -- the
+// runner's own logic is unit-tested directly
+// (frontend/src/shared/replayRunner.test.ts). What this proves is Mill's
+// half: the code exchange, the socket, the correlation of results by run
+// id, and the sentence the test result renders.
 
 interface Step {
   type: string
@@ -134,39 +137,30 @@ export function connectFakeExtension(bridgeURL: string, token: string, page: Pag
     if (command.kind === 'replay') await replay(command)
   }
 
-  void (async () => {
-    const response = await fetch(`${bridgeURL}/__mill/bridge/events`, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: controller.signal,
-    })
-    if (!response.ok || !response.body) throw new Error(`stream refused (${response.status})`)
-    markReady()
-    await readSSE(response.body.getReader(), onCommand)
-  })().catch(() => { /* the stream ends when the test aborts it */ })
-
-  return { ready, received, stop: () => controller.abort() }
-}
-
-// Reads the SSE body frame by frame, handing each `data:` line's
-// envelope to onCommand.
-async function readSSE(
-  reader: ReadableStreamDefaultReader<Uint8Array>,
-  onCommand: (command: Command) => Promise<void>,
-): Promise<void> {
-  const decoder = new TextDecoder()
-  let buffer = ''
-  for (;;) {
-    const { value, done } = await reader.read()
-    if (done) return
-    buffer += decoder.decode(value, { stream: true })
-    let split: number
-    while ((split = buffer.indexOf('\n\n')) !== -1) {
-      const frame = buffer.slice(0, split)
-      buffer = buffer.slice(split + 2)
-      for (const line of frame.split('\n')) {
-        if (line.startsWith('data: ')) await onCommand(JSON.parse(line.slice(6)) as Command)
-      }
+  // Node's own global WebSocket (Node 22+) speaks the same wire shape
+  // the real extension's worker does: the bearer token as the
+  // Sec-WebSocket-Protocol value, one JSON message per envelope.
+  const wsURL = `${bridgeURL.replace(/^http/, 'ws')}/__mill/bridge/ws`
+  const socket = new WebSocket(wsURL, [`mill-token.${token}`])
+  socket.addEventListener('open', () => markReady())
+  socket.addEventListener('message', (event: MessageEvent) => {
+    let command: Command
+    try {
+      command = JSON.parse(String(event.data)) as Command
+    } catch {
+      return
     }
+    if (command.kind === 'keepalive') return
+    void onCommand(command)
+  })
+
+  return {
+    ready,
+    received,
+    stop: () => {
+      controller.abort()
+      socket.close()
+    },
   }
 }
 

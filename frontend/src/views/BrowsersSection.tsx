@@ -307,10 +307,17 @@ function BrowsersSection() {
                 </Label>
               </Stack>
               <ActionList.Description variant="block">
-                {t('settings.browsers.browserMeta', {
-                  created: formatUpdated(b.createdAt),
-                  lastSeen: formatUpdated(b.lastSeenAt),
-                })}
+                <Text as="p" size="small" style={{ margin: 0 }}>
+                  {t('settings.browsers.browserMeta', {
+                    created: formatUpdated(b.createdAt),
+                    lastSeen: formatUpdated(b.lastSeenAt),
+                  })}
+                </Text>
+                {!status?.connected && (
+                  <Text as="p" size="small" style={{ margin: 0 }} data-testid="browser-reconnect-hint">
+                    {t('settings.browsers.reconnectHint')}
+                  </Text>
+                )}
               </ActionList.Description>
               <ActionList.TrailingVisual>
                 <div style={{ pointerEvents: 'auto' }} onClick={(e) => e.stopPropagation()}>
