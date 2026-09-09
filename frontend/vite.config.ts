@@ -89,6 +89,34 @@ export default defineConfig({
     port: Number(process.env.WAILS_VITE_PORT) || 9245,
     strictPort: true,
   },
+  build: {
+    // A vendored diagram/editor engine (elk.bundled, milkdownCore,
+    // typescript, the mermaid/katex core chunk) legitimately clears
+    // Rolldown's 500kB default before any code-splitting -- vendoring
+    // for completeness rather than trimming capability for MB is this
+    // repo's own stance, so the fix for that class of warning is
+    // raising the limit past today's largest real chunk, not chasing
+    // a split that would just reshuffle the same bytes.
+    chunkSizeWarningLimit: 2200,
+    rolldownOptions: {
+      // Rolldown's onwarn is a deprecated alias (its own type comment
+      // points at onLog); onLog is the current interception point and
+      // the one Rolldown's own docs use for this exact "no warning
+      // survives a build" pattern. A warning raised by a native
+      // builtin plugin (e.g. the large-chunk reporter) logs through
+      // this same hook but doesn't propagate a thrown exception into
+      // the build's own promise chain, so exitCode is set directly
+      // rather than relied on to come from the throw.
+      onLog(level, log) {
+        if (level === "warn") {
+          const message = `[vite build] warning treated as error: ${log.code ?? ""} ${log.message}`;
+          console.error(message);
+          process.exitCode = 1;
+          throw new Error(message);
+        }
+      },
+    },
+  },
   plugins: [react(), wails("./bindings"), goLivenessPlugin()],
   test: {
     // e2e/**/*.spec.ts are Playwright tests (real browser + server),

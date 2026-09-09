@@ -10,6 +10,45 @@ vars:
   # tasks below dispatch to the matching platform Taskfile via this variable.
   GOOS: '{{.GOOS | default OS}}'
 
+# ONE deployment target for Mill's own darwin cgo files (goal 0419 S1):
+# Wails3's own scaffold floor, matching build/darwin/Taskfile.yml's
+# build:native task exactly -- root-level env in Task propagates into
+# every included Taskfile's tasks (confirmed against this Task version;
+# a task-level env of the same name, e.g. build/ios/Taskfile.yml's own
+# CGO_CFLAGS, still overrides this per task, so iOS's isysroot/target
+# flags are unaffected). CGO_CFLAGS/LDFLAGS are inert wherever
+# CGO_ENABLED=0 (windows' own default) and a no-op for a
+# Docker-isolated cross-build (linux/windows build:docker, which never
+# inherits host env at all); the one theoretical gap is a genuinely
+# native (non-Docker) Linux Task build run directly ON a Linux host,
+# a path no CI job or documented workflow exercises.
+env:
+  MACOSX_DEPLOYMENT_TARGET: "12.0"
+  CGO_CFLAGS: "-mmacosx-version-min=12.0"
+  # -Wl,-no_warn_duplicate_libraries: every cgo package built with -x
+  # objective-c (Mill's own darwin packages, Wails' own
+  # pkg/application/pkg/services/{dock,notifications}, golang.design/x/hotkey)
+  # gets an automatic -lobjc from cgo itself; linking five-plus such
+  # packages together repeats it, which ld already de-duplicates
+  # correctly -- this silences its advisory notice about work it did
+  # right, confirmed via `go build -x` (scripts/lib/build-env.sh's own
+  # comment has the full trace).
+  CGO_LDFLAGS: "-mmacosx-version-min=12.0 -Wl,-no_warn_duplicate_libraries"
+  # go.mod's own `go 1.26` line is a floor, not a pin -- GOTOOLCHAIN's
+  # default (auto) keeps using whatever `go` binary is already on
+  # PATH once it satisfies that floor, even a newer one. A newer local
+  # toolchain's own linker embeds a higher default minimum macOS
+  # version into the Go-authored half of a darwin binary regardless of
+  # MACOSX_DEPLOYMENT_TARGET (confirmed empirically: go1.27.1 emits
+  # `ld: warning: ... was built for newer macOS version (13.0) than
+  # being linked (12.0)`; go1.26.8 -- what CI's setup-go actually
+  # resolves for its own `go-version: '1.26'` pin -- does not). Pinning
+  # here keeps every local Task build matching CI's toolchain exactly
+  # without moving the repo's declared minimum (scripts/lib/build-env.sh
+  # carries the same pin for the bare-`go`/lefthook path Task doesn't
+  # reach).
+  GOTOOLCHAIN: go1.26.8
+
 includes:
   common: ./build/Taskfile.yml
   windows: ./build/windows/Taskfile.yml

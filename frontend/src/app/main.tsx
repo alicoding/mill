@@ -38,6 +38,7 @@ import { RunMonitorApp } from './RunMonitorApp'
 import { AppearanceProvider } from './AppearanceProvider'
 import { background } from '../shared/background'
 import { installDriveBridge } from '../shared/driveBridge'
+import { markPluginsSettled } from '../plugins/loadGate'
 
 // A no-op outside a MILL_DRIVE_BRIDGE=1 build (see driveBridge.ts) --
 // registered before the first render so a driving check never races
@@ -116,7 +117,6 @@ async function bootstrap() {
     loadPlugins().catch((err) => console.error('plugin loading failed', err)),
     new Promise((resolve) => window.setTimeout(resolve, 4000)),
   ])
-  const { markPluginsSettled } = await import('../plugins/loadGate')
   markPluginsSettled()
   root.render(
     <React.StrictMode>
