@@ -30,6 +30,14 @@ interface UISignalState {
   extensionUpdateRequest: string | null
   requestExtensionUpdate: (id: string) => void
   consumeExtensionUpdate: () => void
+  // extensions.review (goal 0420): which plugin's detail to open, set
+  // only when exactly one plugin waits for review -- consumed the same
+  // set-then-consume way extensionUpdateRequest above is, since
+  // ExtensionsSection may mount FRESH on the same navigation that
+  // raises this signal.
+  extensionReviewRequest: string | null
+  requestExtensionReview: (id: string) => void
+  consumeExtensionReview: () => void
   // atlas.board.home (goal 0357): back OUT of a projection pane to the
   // canvas. A plugin pane is a sandboxed frame a keydown can never
   // leave, so its page's own Escape handling reaches the pane contract
@@ -375,6 +383,9 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   extensionUpdateRequest: null,
   requestExtensionUpdate: (id) => set({ extensionUpdateRequest: id }),
   consumeExtensionUpdate: () => set({ extensionUpdateRequest: null }),
+  extensionReviewRequest: null,
+  requestExtensionReview: (id) => set({ extensionReviewRequest: id }),
+  consumeExtensionReview: () => set({ extensionReviewRequest: null }),
   reviewRulesRequest: 0,
   requestReviewRules: () => set((s) => ({ reviewRulesRequest: s.reviewRulesRequest + 1 })),
   atlasArmToolRequest: null,

@@ -1,5 +1,6 @@
 {
   "reviewPendingAriaLabel": "{{count}} pending in Review",
+  "extensionsReviewPendingAriaLabel": "{{count}} extensions need your review",
   "pendingApprovalDescription": "{{workflowLabel}}: {{step}} needs approval",
   "pendingApprovalStepFallback": "a step",
   "browserNotificationTitle": "Approval needed",

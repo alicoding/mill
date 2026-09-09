@@ -39,15 +39,19 @@ test('a plugin installed after boot waits for review: the boot notice names it, 
 		// The boot notice names the count and opens the Extensions section.
 		const review = page.getByTestId('notice-review-plugins')
 		await expect(review).toBeVisible()
-		await expect(page.locator('[data-testid^="notice-pushed-"]').first()).toContainText('1 new plugin is waiting for you to allow it')
+		await expect(page.locator('[data-testid^="notice-pushed-"]').first()).toContainText('1 extension needs your review')
 		await review.click()
 
+		// Exactly one plugin waits: the deep link selects it directly, its
+		// status note already in view (goal 0420) -- no extra row click.
 		const row = pluginRow(page, 'late-arrival')
 		await expect(row).toBeVisible()
+		await expect(row.getByTestId('extensions-row-needs-review')).toContainText('Needs review')
 		await expect(row.getByTestId('extensions-plugin-toggle')).toHaveCount(0)
+		const detail = page.locator('[data-testid="extensions-detail"][data-extension-id="late-arrival"]')
+		await expect(detail).toBeVisible()
 		// The reach summary reads before anything runs (goal 0321: in
 		// the detail pane the row opens).
-		const detail = await openExtensionDetail(page, row, 'late-arrival')
 		await openExtensionDetailTab(detail, 'contributions')
 		await expect(detail).toContainText('Can request: open-url')
 		await expect(detail.getByTestId('extensions-detail-reach')).toContainText('example.com')
@@ -160,7 +164,9 @@ test('a plugin whose files change after it was allowed stops running until allow
 			hasText: 'its files changed since you allowed it. Allow it again on its row',
 		})
 		await expect(refusal).toBeVisible()
-		await expect(page.locator('[data-testid^="notice-pushed-"]')).not.toContainText(' -- ')
+		// Scoped to the refusal itself: more than one pushed notice can be
+		// showing at once, so the bare pushed-notice locator is ambiguous.
+		await expect(refusal).not.toContainText(' -- ')
 
 		await detail.getByTestId('extensions-plugin-allow').click()
 		await expect(detail.getByTestId('extensions-plugin-review')).toContainText('Allowed. Reload to load it.')

@@ -20,6 +20,16 @@ whether it writes to your boards, what it adds — and installs only
 after you confirm. A newly installed extension waits under Installed
 until you allow it to run.
 
+## Needs review
+
+An extension that just arrived, that changed on disk, or that now asks
+for more than you allowed carries a **Needs review** label on its row,
+grouped together at the top of Installed. A banner names how many are
+waiting and takes you straight to the one, or the group, that needs
+you. Its Allow (or Allow again) button is right there in its detail;
+Remove is beside it when the extension already ran before. Nothing
+clears until you decide.
+
 ## Sources
 
 A marketplace is any repository or folder with a `.mill/marketplace.json`

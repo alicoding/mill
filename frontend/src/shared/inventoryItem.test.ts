@@ -42,6 +42,28 @@ describe('groupOrder', () => {
     ]
     expect(groupOrder(items).map((i) => i.id)).toEqual(['a2', 'a1'])
   })
+
+  // A pinned group outranks even the default ungrouped bucket (goal
+  // 0420): the only way a NAMED group can lead a list, since every
+  // other group sorts alphabetically after the ungrouped bucket.
+  it('puts a pinned group ahead of the ungrouped bucket and every other group', () => {
+    const pinned: InventoryItemGroup = { ...group('needs-review', 'Needs review'), pinned: true }
+    const items = [
+      item('u', 'Ungrouped'),
+      item('z', 'In Zeta', group('src-z', 'Zeta source')),
+      item('p', 'Pinned one', pinned),
+      item('a', 'In Alpha', group('src-a', 'Alpha source')),
+    ]
+    expect(groupOrder(items).map((i) => i.id)).toEqual(['p', 'u', 'a', 'z'])
+  })
+
+  it('does not disturb the existing ungrouped-first order when nothing is pinned', () => {
+    const items = [
+      item('u', 'Ungrouped'),
+      item('z', 'In Zeta', group('src-z', 'Zeta source')),
+    ]
+    expect(groupOrder(items).map((i) => i.id)).toEqual(['u', 'z'])
+  })
 })
 
 describe('listRuns', () => {

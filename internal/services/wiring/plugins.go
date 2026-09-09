@@ -214,6 +214,7 @@ func (t settingsTrust) mayRun(id string, builtin bool) bool {
 func WirePluginTrust(plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService, secrets *secretsvc.SecretService) {
 	settings.SetPluginHasher(pluginGrantSnapshotter(plugins))
 	plugins.SetSigningKeys(settings.GetPluginSigningKeys)
+	migratePluginLockFormat(plugins, settings)
 	grandfatherInstalledPlugins(plugins, settings)
 	trust := settingsTrust{settings: settings, hashOf: plugins.CodeHashOf, signedOK: plugins.SignedOK, policyOK: plugins.PolicyAllows, widenedOf: plugins.Widened}
 	plugins.WireAudit(trust, pluginSecretAccessReader(secrets))
@@ -243,6 +244,40 @@ func WirePluginTrust(plugins *pluginsvc.PluginService, settings *settingssvc.Set
 		}
 		return "", false, false
 	})
+}
+
+// migratePluginLockFormat re-baselines a lock entry recorded before
+// docs/goals/0375 S2 split CodeHash off the whole-folder ContentHash
+// (and introduced the capability-shaped grant fields in the same
+// change): back then, consent was recorded at ContentHash with no
+// grant shape at all, which now reads every entry as 'changed' AND
+// 'widened' the instant an upgraded instance boots, even though the
+// plugin's files never moved (docs/goals/0420). An entry whose Hash
+// equals the plugin's CURRENT ContentHash but not its CodeHash
+// predates the split; only the format changed, so the whole entry
+// (hash and grant shape alike) re-baselines onto what the plugin
+// currently declares. Anything else -- a genuine edit, a hasher
+// WirePluginTrust has not run for yet -- is left exactly as recorded.
+// Idempotent: once re-baselined, Hash equals CodeHash and the loop
+// skips it on the next boot.
+func migratePluginLockFormat(plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService) {
+	for id, entry := range settings.GetPluginLock() {
+		if entry.Hash == "" {
+			continue
+		}
+		codeHash := plugins.CodeHashOf(id)
+		if codeHash == "" || entry.Hash == codeHash {
+			continue
+		}
+		if entry.Hash != plugins.ContentHashOf(id) {
+			continue
+		}
+		if err := settings.RecordPluginLockNow(id); err != nil {
+			slog.Error("migrate plugin lock", "id", id, "error", err)
+			continue
+		}
+		slog.Info("migrated plugin lock to code hash", "id", id)
+	}
 }
 
 func grandfatherInstalledPlugins(plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService) {

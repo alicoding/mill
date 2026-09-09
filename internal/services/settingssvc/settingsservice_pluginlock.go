@@ -97,6 +97,26 @@ func (s *SettingsService) recordPluginLock(ids ...string) error {
 	return s.writePluginLock(lock)
 }
 
+// RecordPluginLockNow re-baselines id's WHOLE recorded entry -- hash
+// and capability-shaped grant alike -- onto the hasher's CURRENT
+// snapshot (docs/goals/0420's pre-#806 lock migration): a format
+// predating the capability-shaped grant fields (docs/goals/0375 S2)
+// carries no Capabilities/Hosts/Kinds baseline at all, which reads as
+// "granted nothing" and widens on the plugin's very next declared
+// capability -- a hash-only fix is not enough. Re-recording the whole
+// entry from what the plugin currently declares is exactly the
+// migration's own "the files are byte-identical, so nothing changed"
+// premise applied to the grant shape too. A no-op when nothing is
+// recorded for id, or no hasher is installed.
+//
+//wails:ignore
+func (s *SettingsService) RecordPluginLockNow(id string) error {
+	if _, ok := s.GetPluginLock()[id]; !ok {
+		return nil
+	}
+	return s.recordPluginLock(id)
+}
+
 func (s *SettingsService) forgetPluginLock(id string) error {
 	lock := s.GetPluginLock()
 	if _, ok := lock[id]; !ok {

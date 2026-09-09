@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Label, Pagination, Stack, Text } from '@primer/react'
-import { PlugIcon } from '@primer/octicons-react'
+import { AlertIcon, PlugIcon } from '@primer/octicons-react'
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { SettingsService } from '../shared/bindings'
-import { pluginLoadStates } from '../plugins/loader'
+import { pluginLoadStates, pluginsAwaitingReview } from '../plugins/loader'
 import { ExamplesSection } from '../shared/ExamplesSection'
 import { ExtensionRow } from './ExtensionRow'
 import { ExtensionsLinkPasteControl } from './ExtensionsLinkPasteControl'
@@ -17,6 +17,7 @@ import { refreshDisabledExtensions, useExtensionEnablementStore } from '../share
 import { LIST_PAGE_SIZE, clampPage, listCountLabel, pageCountFor, pageItems } from '../shared/listStandard'
 import { useListState } from '../shared/useListState'
 import { ListToolbar } from '../shared/ListToolbar'
+import { groupOrder, type InventoryItemGroup } from '../shared/inventoryItem'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './ExtensionsSection.module.css'
 import { background } from '../shared/background'
@@ -47,6 +48,26 @@ function rowControl(status: string | undefined, error: string | undefined): 'swi
   if (error) return 'none'
   if (status === 'policy' || status === 'blocked' || status === 'unallowed' || status === 'changed' || status === 'unsigned') return 'none'
   return 'switch'
+}
+
+// needsReview mirrors plugins/loader.ts's own pluginsAwaitingReview
+// state set ('unallowed' folds in 'widened', pluginTrust.ts's own
+// fold) -- the row pill, the pinned group and the shared count can
+// never disagree about which rows these are (goal 0420).
+function needsReview(status: string | undefined): boolean {
+  return status === 'unallowed' || status === 'changed'
+}
+
+// The pinned group groupOrder ranks first (goal 0420): this view keeps
+// its own bespoke ExtensionRow rendering (never InventoryList's), but
+// the GROUPING is the same shared/inventoryItem.ts primitive Secrets'
+// merged list already orders by -- never a hand-rolled reimplementation
+// of what that primitive already does. Its icon is never rendered here
+// (no InventoryList group header uses it); attention colors so a
+// future InventoryList-rendered consumer inherits the right cue.
+const NEEDS_REVIEW_GROUP_ICON = { Icon: AlertIcon, bg: 'var(--bgColor-attention-muted)', fg: 'var(--fgColor-attention)' }
+function needsReviewGroup(label: string): InventoryItemGroup {
+  return { key: 'needs-review', label, icon: NEEDS_REVIEW_GROUP_ICON, pinned: true }
 }
 
 export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
@@ -81,12 +102,25 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
     const kind = kinds.length === 0 || kinds.some((k) => contributedKinds(p).includes(k))
     return text && kind
   }
-  const ownFiltered = own.filter(matches)
+  const reviewCount = pluginsAwaitingReview()
+  const reviewGroup = needsReviewGroup(t('settings.extensions.needsReviewGroup', { count: reviewCount }))
+  // The "Needs review" group is pinned first (goal 0420, Decision 2) --
+  // groupOrder's own pinned-group ordering, ahead of pagination, so the
+  // group -- and its header -- lands on page 1 rather than wherever a
+  // plugin's scan order happened to put it.
+  const ownFiltered = groupOrder(
+    own.filter(matches).map((plugin) => ({
+      plugin,
+      group: needsReview(states.get(plugin.Manifest.id)?.status) ? reviewGroup : undefined,
+    })),
+  ).map((g) => g.plugin)
   const builtInFiltered = builtIns.filter(matches)
 
   const pageCount = pageCountFor(ownFiltered.length)
   const page = clampPage(state.page, pageCount)
   const ownPage = pageItems(ownFiltered, page)
+  const reviewPage = ownPage.filter((p) => needsReview(states.get(p.Manifest.id)?.status))
+  const restPage = ownPage.filter((p) => !needsReview(states.get(p.Manifest.id)?.status))
   const firstOnPage = (page - 1) * LIST_PAGE_SIZE + 1
   // The count is the user's OWN plugins -- the Built-in section carries
   // its own number in its own heading (goal 0337).
@@ -140,6 +174,7 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
                 <Label variant="attention" data-testid="extensions-row-policy">{t('extensions.policy.blockedStatus')}</Label>
               )}
               {waitsFor && <Label data-testid="extensions-row-waits">{t('settings.extensions.pluginWaitsLabel', { id: waitsFor })}</Label>}
+              {needsReview(runtime?.status) && <Label variant="attention" data-testid="extensions-row-needs-review">{t('settings.extensions.needsReviewPill')}</Label>}
             </>
           )}
           actions={p.Builtin ? undefined : <ExtensionRowMenu id={id} name={name} />}
@@ -193,9 +228,19 @@ export function ExtensionsInstalledPlugins({ plugins, selectedId, onSelect }: {
             <Text as="p" size="small" className={listStyles.muted}>{tc('inventoryList.noMatchesFor', { query })}</Text>
           ) : (
             <>
-              {ownPage.length > 0 && (
+              {reviewPage.length > 0 && (
+                <Stack direction="vertical" gap="none" data-testid="extensions-needs-review-group">
+                  <Text as="h4" size="small" className={listStyles.muted}>
+                    {t('settings.extensions.needsReviewGroup', { count: reviewCount })}
+                  </Text>
+                  <ul className={styles.rows} aria-label={t('settings.extensions.needsReviewGroup', { count: reviewCount })}>
+                    {reviewPage.map(rowFor)}
+                  </ul>
+                </Stack>
+              )}
+              {restPage.length > 0 && (
                 <ul className={styles.rows} aria-label={t('settings.extensions.installedTitle')}>
-                  {ownPage.map(rowFor)}
+                  {restPage.map(rowFor)}
                 </ul>
               )}
               {pageCount > 1 && (

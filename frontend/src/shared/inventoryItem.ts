@@ -99,6 +99,11 @@ export interface InventoryItemGroup {
   key: string
   label: string
   icon: InventoryItemIcon
+  // A pinned group outranks even the default (ungrouped) bucket --
+  // groupOrder's own alphabetical-after-ungrouped order otherwise has
+  // no way to put a group FIRST (goal 0420's "Needs review" group: a
+  // decision waiting on the user outranks every named category).
+  pinned?: boolean
 }
 
 export interface InventoryEmptyState {
@@ -162,36 +167,53 @@ export function menuActionsToContextMenuItems(actions: InventoryMenuAction[]): C
   }))
 }
 
-export interface InventoryItemRun {
+export interface InventoryItemRun<T extends { group?: InventoryItemGroup } = InventoryItem> {
   group?: InventoryItemGroup
-  items: InventoryItem[]
+  items: T[]
 }
 
-// groupOrder reorders items into stable buckets (goal 0408 S2): every
-// ungrouped item first (a list's own default bucket -- Secrets' vault
-// entries), then one bucket per distinct group key, ordered
-// alphabetically by the group's own label so the order is deterministic
-// with no second, caller-supplied ranking. Stable WITHIN each bucket --
-// Array.prototype.sort's own ES2019 guarantee, the same one
-// listStandard.ts's sortItems already relies on -- so grouping never
-// fights whichever sort (updated/name/created) the caller already
-// applied.
-export function groupOrder(items: InventoryItem[]): InventoryItem[] {
+// A grouped item, generic over the row shape (goal 0420): groupOrder/
+// listRuns are the ordering/run-splitting halves of InventoryList's own
+// grouping contract, usable by a caller that groups WITHOUT rendering
+// through InventoryList itself (Extensions' installed list keeps its
+// own bespoke ExtensionRow rendering, but its "Needs review" group is
+// the same primitive, not a hand-rolled reimplementation).
+type Grouped = { group?: InventoryItemGroup }
+
+// groupOrder reorders items into stable buckets (goal 0408 S2): a
+// pinned group first (goal 0420), then every ungrouped item (a list's
+// own default bucket -- Secrets' vault entries), then one bucket per
+// remaining distinct group key, ordered alphabetically by the group's
+// own label so the order is deterministic with no second, caller-
+// supplied ranking. Stable WITHIN each bucket -- Array.prototype.sort's
+// own ES2019 guarantee, the same one listStandard.ts's sortItems
+// already relies on -- so grouping never fights whichever sort
+// (updated/name/created) the caller already applied.
+export function groupOrder<T extends Grouped>(items: T[]): T[] {
   const labels = new Map<string, string>()
+  const pinnedKeys = new Set<string>()
   for (const item of items) {
-    if (item.group && !labels.has(item.group.key)) labels.set(item.group.key, item.group.label)
+    if (!item.group || labels.has(item.group.key)) continue
+    labels.set(item.group.key, item.group.label)
+    if (item.group.pinned) pinnedKeys.add(item.group.key)
   }
-  const order = [...labels.keys()].sort((a, b) => labels.get(a)!.localeCompare(labels.get(b)!, undefined, { sensitivity: 'base' }))
+  const order = [...labels.keys()].filter((key) => !pinnedKeys.has(key))
+    .sort((a, b) => labels.get(a)!.localeCompare(labels.get(b)!, undefined, { sensitivity: 'base' }))
   const rank = new Map(order.map((key, i) => [key, i + 1]))
-  return [...items].sort((a, b) => (a.group ? rank.get(a.group.key)! : 0) - (b.group ? rank.get(b.group.key)! : 0))
+  const rankOf = (item: T) => {
+    if (!item.group) return 0
+    if (pinnedKeys.has(item.group.key)) return -1
+    return rank.get(item.group.key)!
+  }
+  return [...items].sort((a, b) => rankOf(a) - rankOf(b))
 }
 
 // listRuns splits an already-ordered sequence (groupOrder's own output,
 // or a page slice of it) into the contiguous runs InventoryList renders
 // one header per -- never reorders, so a page starting mid-group still
 // opens with that group's header rather than an unlabeled continuation.
-export function listRuns(items: InventoryItem[]): InventoryItemRun[] {
-  const runs: InventoryItemRun[] = []
+export function listRuns<T extends Grouped>(items: T[]): InventoryItemRun<T>[] {
+  const runs: InventoryItemRun<T>[] = []
   for (const item of items) {
     const last = runs[runs.length - 1]
     if (last && last.group?.key === item.group?.key) {
