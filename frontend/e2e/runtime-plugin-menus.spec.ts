@@ -60,7 +60,7 @@ pluginTest('the Request tester tab shows a "Send again" title action that re-sen
     await baseExpect(sendAgain).toBeVisible()
 
     const frame = page.frameLocator('[data-testid="plugin-view-mill-request-tester-tester"]')
-    await frame.getByTestId('tester-url').fill('http://127.0.0.1:1/unreachable')
+    await frame.getByTestId('tester-url').fill('http://127.0.0.1:1/unreachable') // port-literal: a deliberately unreachable address proving the re-send path, never a spawned server port
     await frame.getByTestId('tester-send').click()
     await baseExpect(frame.getByTestId('tester-status')).toContainText('needs your approval')
 
