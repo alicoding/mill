@@ -3,7 +3,9 @@ import { clickRowAction } from './inventoryRow'
 import { workflowRow, activePanel } from './fixtures/canvas'
 import { openSettings } from './fixtures/settingsNav'
 import { gotoAppReady } from './fixtures/appReady'
-import { hintText } from './fixtures/keybindingHint'
+import { hintText, pinMacPlatform } from './fixtures/keybindingHint'
+
+pinMacPlatform(test)
 
 // Exercises docs/goals/0016-keymap-system.md's command registry +
 // in-window keybinding dispatch (shared/commands.ts, App.tsx's one

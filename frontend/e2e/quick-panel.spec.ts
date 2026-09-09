@@ -6,9 +6,11 @@ import {
   findWorkflowIdByLabel, restoreMCPWriteDefaults, stripExportedID,
 } from './mcpTestClient'
 import { assignDebugWorkflowHotkey } from './hotkeyDebugKnob'
-import { hintText } from './fixtures/keybindingHint'
+import { hintText, pinMacPlatform } from './fixtures/keybindingHint'
 import { workflowRow, activePanel, dragBetweenHandles, dragPaletteItemToCanvas } from './fixtures/canvas'
 import { waitForViewportStable } from './fixtures/animation'
+
+pinMacPlatform(test)
 
 // Exercises the Quick Panel's frontend (docs/adr/0033-quick-panel-
 // second-window.md, app/QuickPanel.tsx) at its hash route

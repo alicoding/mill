@@ -1,6 +1,8 @@
 import { test, expect } from './fixtures/server'
 import { gotoAppReady } from './fixtures/appReady'
-import { hintText } from './fixtures/keybindingHint'
+import { hintText, pinMacPlatform } from './fixtures/keybindingHint'
+
+pinMacPlatform(test)
 
 // The bare-?/⌘? shortcuts-help overlay (goal 0071, app/ShortcutsHelpDialog.tsx):
 // context-first ("On this page" bindings ahead of "Everywhere"),

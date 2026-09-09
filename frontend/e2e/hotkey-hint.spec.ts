@@ -1,7 +1,9 @@
 import { test, expect } from './fixtures/server'
 import { wheelAt } from './fixtures/pointer'
 import { openSettings } from './fixtures/settingsNav'
-import { hintText } from './fixtures/keybindingHint'
+import { hintText, pinMacPlatform } from './fixtures/keybindingHint'
+
+pinMacPlatform(test)
 
 // docs/goals/0015-summon-quick-invoke.md's inline-hotkey-hint remainder:
 // the tab-overflow dropdown (app/WorkTabShell.tsx) now shows each

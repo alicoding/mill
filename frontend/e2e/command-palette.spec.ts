@@ -6,7 +6,9 @@ import { workflowRow, activePanel, dragBetweenHandles, dragPaletteItemToCanvas }
 import { waitForViewportStable } from './fixtures/animation'
 import { paletteDialog } from './fixtures/palette'
 import { gotoAppReady } from './fixtures/appReady'
-import { hintText } from './fixtures/keybindingHint'
+import { hintText, pinMacPlatform } from './fixtures/keybindingHint'
+
+pinMacPlatform(test)
 
 // Exercises the ⌘K command palette (docs/goals/0015-summon-quick-invoke.md,
 // app/CommandPalette.tsx) over real Go bindings (Wails3 server mode),
