@@ -1508,7 +1508,7 @@ jobs:
       - name: Install Task and wails3 CLI
         run: |
           go install github.com/go-task/task/v3/cmd/task@v3.52.0
-          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.6
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.18
       # BETA_VERSION must be valid, monotonically increasing SemVer --
       # not just a bare "beta" tag -- because main.go's millUpdateVersion
       # doc comment explains why: wails3/pkg/updater's GitHub provider

@@ -2,7 +2,7 @@
 
 package windowing
 
-// framework-api-audit: wails/v3@v3.0.0-beta.15 lacks any drag-OUT file-promise API -- webview_window_darwin_drag.m only registerForDraggedTypes to receive drops; no NSFilePromiseProvider/NSDraggingSource wrapper exists on any platform.
+// framework-api-audit: wails/v3@v3.0.0-beta.18 lacks any drag-OUT file-promise API -- webview_window_darwin_drag.m only registerForDraggedTypes to receive drops; no NSFilePromiseProvider/NSDraggingSource wrapper exists on any platform.
 
 /*
 // -Wno-unused-parameter: see locktriggers_darwin.go's own comment --

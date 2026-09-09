@@ -78,7 +78,7 @@ func newQuickPanelWindow(app *application.App, settingsService *settingssvc.Sett
 }
 
 // clampedPanelPosition converts app.Screen's live WorkArea data
-// (wails/v3@v3.0.0-beta.15's ScreenManager.GetAll/GetPrimary,
+// (wails/v3@v3.0.0-beta.18's ScreenManager.GetAll/GetPrimary,
 // pkg/application/screenmanager.go -- confirmed directly against the
 // vendored source) into settingssvc.Rect and hands off to
 // ClampPanelPosition -- the one point that touches the real Screen
@@ -257,7 +257,7 @@ func wireAuxWindows(app *application.App, settingsService *settingssvc.SettingsS
 // visible windows the conventional way: the main window comes back,
 // nothing else.
 //
-// framework-api-audit: wails/v3@v3.0.0-beta.15 lacks an option to
+// framework-api-audit: wails/v3@v3.0.0-beta.18 lacks an option to
 // choose what reopen shows -- MacOptions (pkg/application/
 // application_options.go) carries only ActivationPolicy and
 // ApplicationShouldTerminateAfterLastWindowClosed, and the SDK's own
