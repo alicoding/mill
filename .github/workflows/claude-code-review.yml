@@ -18,6 +18,10 @@ jobs:
     #   github.event.pull_request.user.login == 'new-developer' ||
     #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
 
+    # A dependency bot's PR carries no brief to review against, and the
+    # action refuses a non-human actor outright -- skipping keeps the job
+    # green on every such PR instead of permanently red (goal 0419).
+    if: github.actor != 'dependabot[bot]' && !startsWith(github.head_ref, 'dependabot/')
     runs-on: ubuntu-latest
     permissions:
       contents: read
