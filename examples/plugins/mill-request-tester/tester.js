@@ -101,5 +101,11 @@ async function refreshSettings() {
 }
 
 mill.on('settings:changed', () => { void refreshSettings() })
+// The host's "Send again" title action (goal 0349 S2b): re-clicks Send
+// with whatever this page's own fields currently hold, exactly the
+// gesture a person clicking Send themselves would make.
+mill.onMessage((message) => {
+	if (message && message.type === 'send-again') sendEl.click()
+})
 void refreshSettings()
 void renderHistory()

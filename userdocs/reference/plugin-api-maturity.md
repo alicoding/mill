@@ -13,7 +13,7 @@ kind: reference
 | captures | experimental | no | no | yes | yes | yes | n/a | — |
 | settings | stable | yes | yes | yes | yes | yes | n/a | — |
 | configuration | experimental | no | yes | no | yes | no | no | — |
-| menus | experimental | no | no | no | yes | no | no | — |
+| menus | experimental | no | no | yes | yes | no | no | — |
 | network | experimental | no | yes | yes | yes | yes | n/a | — |
 | views | experimental | no | yes | yes | yes | yes | n/a | — |
 | commands | stable | yes | yes | yes | yes | yes | yes | — |

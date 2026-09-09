@@ -3,8 +3,8 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import { Tabs } from '@primer/react/experimental'
-import { ActionList, ActionMenu, Banner, IconButton } from '@primer/react'
-import { ChevronDownIcon } from '@primer/octicons-react'
+import { ActionBar, ActionList, ActionMenu, Banner, IconButton } from '@primer/react'
+import { ChevronDownIcon, PlayIcon } from '@primer/octicons-react'
 import { ConfigureService } from '../shared/bindings'
 import { TabItem, TabList, TabPanel } from '../shared/Tabs'
 import { ENTITY_ICON } from '../shared/entityIcons'
@@ -16,11 +16,13 @@ import editorStyles from '../composition/CompositionView.module.css'
 import { tabLabel } from './workTabLabel'
 import { PluginViewHost } from './PluginViewHost'
 import { getPluginView } from '../plugins/pluginViews'
+import { viewTitleSeatItems } from '../plugins/pluginMenuSeats'
 import { OutputViewer } from '../shared/OutputViewer'
 import { readStashedOutput } from '../shared/outputTabStore'
 import { HotkeyHint } from '../shared/HotkeyHint'
 import { useWorkTabCloseGuard } from './useWorkTabCloseGuard'
 import { ContextMenu, type ContextMenuState } from '../shared/ContextMenu'
+import { commandAvailable, commandLabel, findCommand, runCommand } from '../shared/commands'
 import styles from './WorkTabShell.module.css'
 import { background } from '../shared/background'
 
@@ -61,6 +63,44 @@ function tabEntityVisual(tab: WorkTab): ReactNode {
   return (
     <span data-testid="tab-icon" data-entity={entity} style={{ color: e.fg, display: 'inline-flex' }}>
       <e.Icon size={14} />
+    </span>
+  )
+}
+
+// The view/title seat (goal 0349 S2b): a plugin view's own tab gets an
+// icon-only action bar for every declared contributes.menus["view/title"]
+// entry -- label/enabled/run come straight off the SAME registry command
+// the palette runs, never a second copy. A tab whose plugin declares
+// none renders nothing (no empty chrome). PlayIcon is the one shared
+// glyph every such button uses: the manifest has no per-command icon
+// field (this slice is seat presentation only, no new contract
+// surface), so every title action reads the same "runs a command"
+// affordance and leans on its tooltip/aria-label to say which.
+// ActionBar's own overflow (goal 0349 S2b research: confirmed against
+// its compiled source -- OverflowObserverProvider collapses whatever
+// doesn't fit into a "More items" menu on its own) is what the design
+// calls for, so no hand-rolled item count/overflow logic lives here.
+function PluginTitleActions({ pluginId, viewId }: { pluginId: string; viewId: string }) {
+  const { t } = useTranslation('app')
+  const items = viewTitleSeatItems(pluginId)
+  if (items.length === 0) return null
+  return (
+    <span data-testid={`work-tab-title-actions-${pluginId}-${viewId}`}>
+      <ActionBar aria-label={t('workTabShell.titleActionsAriaLabel')} size="small">
+        {items.map((item) => {
+          const command = findCommand(item.commandId)
+          if (!command) return null
+          return (
+            <ActionBar.IconButton
+              key={item.commandId}
+              icon={PlayIcon}
+              aria-label={commandLabel(command)}
+              disabled={!commandAvailable(command)}
+              onClick={() => void runCommand(item.commandId)}
+            />
+          )
+        })}
+      </ActionBar>
     </span>
   )
 }
@@ -221,6 +261,7 @@ export function WorkTabShell({ pageLabel, pageIcon, titlebarSlot, children }: { 
             key={tab.key}
             value={tab.key}
             leadingVisual={tabEntityVisual(tab)}
+            titleActions={tab.kind === 'plugin-view' ? <PluginTitleActions pluginId={tab.pluginId} viewId={tab.viewId} /> : undefined}
             onClose={() => requestClose({ kind: 'one', key: tab.key })}
             onContextMenu={(e) => { e.preventDefault(); openTabMenu(tab, { x: e.clientX, y: e.clientY }) }}
           >

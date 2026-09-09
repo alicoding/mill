@@ -39,8 +39,12 @@ export function TabList({ 'aria-label': ariaLabel, scrollRegion, children }: { '
 // A close control is rendered as a DOM *sibling* of the tab's own
 // <button role="tab">, not a nested <button> -- interactive elements
 // can't validly nest inside a <button>, which would also make a click
-// on Close ambiguously also select the tab.
-export function TabItem({ value, children, kicker, leadingVisual, onClose, onContextMenu }: { value: string; children: ReactNode; kicker?: string; leadingVisual?: ReactNode; onClose?: () => void; onContextMenu?: (e: MouseEvent) => void }) {
+// on Close ambiguously also select the tab. titleActions (goal 0349
+// S2b) joins it as another sibling, in normal flow rather than
+// absolutely overlaid, so a tab carrying any grows the row exactly the
+// way an extra-long label already does -- the strip is a scroller for
+// that reason (Tabs.module.css's own header comment).
+export function TabItem({ value, children, kicker, leadingVisual, titleActions, onClose, onContextMenu }: { value: string; children: ReactNode; kicker?: string; leadingVisual?: ReactNode; titleActions?: ReactNode; onClose?: () => void; onContextMenu?: (e: MouseEvent) => void }) {
   const { tabProps } = useTab<HTMLButtonElement>({ value })
   return (
     <div className={styles.tabItem} onContextMenu={onContextMenu}>
@@ -67,24 +71,29 @@ export function TabItem({ value, children, kicker, leadingVisual, onClose, onCon
           {children}
         </span>
       </button>
-      {onClose && (
-        <span
-          role="button"
-          tabIndex={0}
-          aria-label={copy('tabs.closeTab')}
-          className={styles.tabClose}
-          onClick={(e) => {
-            e.stopPropagation()
-            onClose()
-          }}
-          onKeyDown={(e: KeyboardEvent) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              onClose()
-            }
-          }}
-        >
-          <XIcon size={12} />
+      {(titleActions || onClose) && (
+        <span className={styles.tabTrailing}>
+          {titleActions}
+          {onClose && (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label={copy('tabs.closeTab')}
+              className={styles.tabClose}
+              onClick={(e) => {
+                e.stopPropagation()
+                onClose()
+              }}
+              onKeyDown={(e: KeyboardEvent) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onClose()
+                }
+              }}
+            >
+              <XIcon size={12} />
+            </span>
+          )}
         </span>
       )}
     </div>

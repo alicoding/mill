@@ -13,6 +13,14 @@
       { "kind": "shape" },
       { "kind": "eraser" },
       { "kind": "laser" }
-    ]
+    ],
+    "commands": [
+      { "id": "mill-drawing.showTips", "label": "Drawing tips" }
+    ],
+    "menus": {
+      "editor/context": [
+        { "command": "mill-drawing.showTips" }
+      ]
+    }
   }
 }

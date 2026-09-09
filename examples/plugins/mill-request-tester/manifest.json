@@ -30,6 +30,17 @@
         "entry": "tester.html"
       }
     ],
+    "commands": [
+      {
+        "id": "mill-request-tester.sendAgain",
+        "label": "Send again"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        { "command": "mill-request-tester.sendAgain" }
+      ]
+    },
     "configuration": [
       {
         "key": "defaultMethod",
