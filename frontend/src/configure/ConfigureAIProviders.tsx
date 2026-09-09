@@ -263,6 +263,7 @@ export function ConfigureAIProviders() {
           listId="configure.aiproviders"
           items={providerItems}
           searchPlaceholder={t('configureAIProviders.searchPlaceholder')}
+          selection={{ entity: 'aiprovider' }}
           emptyState={{
             icon: SparkleFillIcon,
             heading: t('configureAIProviders.emptyHeading'),

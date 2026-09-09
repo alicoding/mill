@@ -67,6 +67,7 @@ func (c *CompositionService) DeleteWorkflow(id string) error {
 	if c.onDeleted != nil {
 		c.onDeleted(id)
 	}
+	c.registerWorkflowDelete(id, removed.Label, removed, idx, wasBuiltIn)
 	dataevent.Emit("workflow", id) // goal 0017: live-sync every open surface
 	return nil
 }

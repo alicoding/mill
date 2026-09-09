@@ -328,6 +328,7 @@ export function ConfigureSecretSources() {
           listId="configure.secretsources"
           items={items}
           searchPlaceholder={t('configureSecretSources.searchPlaceholder')}
+          selection={{ entity: 'secretsource' }}
           emptyState={{
             icon: LockIcon,
             heading: t('configureSecretSources.emptyHeading'),

@@ -183,6 +183,7 @@ export function ConfigureConversionProfiles() {
             listId="configure.conversionprofiles"
             items={items}
             searchPlaceholder={t('configureConversionProfiles.searchPlaceholder')}
+            selection={{ entity: 'conversionprofile' }}
             emptyState={{
               icon: ArrowSwitchIcon,
               heading: t('configureConversionProfiles.emptyHeading'),

@@ -10,8 +10,13 @@ import { useUISignalStore } from './uiSignalStore'
 // contract (goal 0346): Workflows and the secrets vault. They are here
 // rather than in shared/configureRowCommands.ts because neither is a
 // Configure entity -- the command ids say so (`workflow.row.delete`,
-// not `configure.workflow.delete`), and neither service registers a
-// delete-undo, so both declare `undoable: false`.
+// not `configure.workflow.delete`). A workflow delete now joins the
+// same undo journal a Configure entity's does (goal 0404 S1's
+// CompositionService.WireUndoJournal), so `workflows` drops
+// `undoable: false` and gains the toast every other family gets; a
+// secret's delete still registers nothing (an undo journal holding a
+// deleted secret's value is the wrong primitive -- goal 0406 is the
+// recently-deleted trash instead), so `secrets` keeps it.
 
 const workflows: EntityRowFamily<EntityRowItem & { Seed: { SeedRevision: number; Modified: boolean } }> = {
   entity: 'workflow',
@@ -35,7 +40,6 @@ const workflows: EntityRowFamily<EntityRowItem & { Seed: { SeedRevision: number;
   seedOf: (item) => item.Seed,
   shippedRevision: (item) => shippedRevision('workflow', item.ID, item.Seed.SeedRevision),
   remove: (id) => CompositionService.DeleteWorkflow(id),
-  undoable: false,
 }
 
 // A secret row needs nothing but its id: both panels it opens are the
@@ -98,6 +102,13 @@ const perspectives: EntityRowFamily<EntityRowItem> = {
     run: (item) => useUISignalStore.getState().requestAtlasPerspectiveDelete(item.ID),
   },
 }
+
+// Exported for shared/entityDeleteDoors.ts (goal 0404 S1): workflows
+// and secrets are the two InventoryList consumers outside Configure
+// that get list.deleteSelection wired through their existing delete
+// door -- guardrailRules and perspectives render in their OWN panels,
+// never through InventoryList, so they carry no bulk-delete door.
+export const BULK_DELETABLE_INVENTORY_FAMILIES: EntityRowFamily<EntityRowItem>[] = [workflows, secrets] as EntityRowFamily<EntityRowItem>[]
 
 export const INVENTORY_ROW_COMMANDS: Command[] = [workflows, secrets, guardrailRules, perspectives]
   .flatMap((family) => entityRowCommands(family as EntityRowFamily<EntityRowItem>))

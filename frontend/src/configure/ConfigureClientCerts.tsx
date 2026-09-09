@@ -280,6 +280,7 @@ export function ConfigureClientCerts() {
           listId="configure.clientcerts"
           items={items}
           searchPlaceholder={t('configureClientCerts.searchPlaceholder')}
+          selection={{ entity: 'clientcert' }}
           emptyState={{
             icon: ShieldLockIcon,
             heading: t('configureClientCerts.emptyHeading'),

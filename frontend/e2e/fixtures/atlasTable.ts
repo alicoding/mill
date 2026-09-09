@@ -47,6 +47,17 @@ export async function escapeGridToObject(page: Page, object: Locator): Promise<v
   await expect(object.locator('xpath=ancestor::*[contains(@class, "react-flow__node")][1]')).toBeFocused()
 }
 
+// Configure Lists' own create flow (goal 0404 S1: promoted the moment
+// a second spec needed it, testing.md's rule for a helper used by 2+
+// files) -- assumes Configure > Lists is already the open pane.
+export async function createList(page: Page, label: string): Promise<void> {
+  await page.getByTestId('new-list').click()
+  await page.getByLabel('Label').fill(label)
+  await page.getByRole('button', { name: 'Save list' }).click()
+  await expect(page.getByTestId('list-rows-editor')).toBeVisible()
+  await page.getByRole('button', { name: 'Close' }).click()
+}
+
 export async function deleteListNamed(page: Page, label: string): Promise<void> {
   await page.getByRole('link', { name: 'Configure' }).click()
   await openConfigureKind(page, 'Lists')

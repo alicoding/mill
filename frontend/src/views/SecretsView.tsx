@@ -450,6 +450,14 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
         searchPlaceholder={t('searchPlaceholder')}
         searchQuery={search}
         onSearchQueryChange={setSearch}
+        // No Undo (goal 0404 S1 amendment): a secret's delete registers
+        // nothing in the journal -- an undo journal holding a deleted
+        // secret's VALUE is the wrong primitive (goal 0406 is the
+        // recently-deleted trash instead). The bulk toast still reports
+        // the outcome, just with no Undo button
+        // (shared/entityDeleteDoors.ts reads `secrets`' own
+        // `undoable: false`).
+        selection={{ entity: 'secret' }}
         emptyState={{
           icon: KeyIcon,
           heading: t('emptyHeading'),
