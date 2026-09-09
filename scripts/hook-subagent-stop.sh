@@ -35,7 +35,10 @@ if command -v jq >/dev/null 2>&1; then
 fi
 : "$session_id" "$cwd_field" # read for future direct-match targeting only
 
-worktree_glob="${MILL_SUBAGENT_STOP_WORKTREE_GLOB:-/Users/ali/code/mill-wt-*}"
+# Sibling worktrees live beside the checkout (`<parent>/mill-wt-*`); the
+# default derives from this script's own location, never a home path.
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+worktree_glob="${MILL_SUBAGENT_STOP_WORKTREE_GLOB:-$(dirname "$repo_root")/mill-wt-*}"
 stale_minutes="${MILL_SUBAGENT_STOP_STALE_MINUTES:-30}"
 
 for wt in $worktree_glob; do
