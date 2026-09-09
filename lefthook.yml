@@ -11,6 +11,13 @@ pre-commit:
     - name: workflow-yaml
       glob: ".github/workflows/*.yml"
       run: ./scripts/check-workflow-yaml.sh
+    - name: actionlint
+      # goal 0419 S1c: semantic checks (expression types, deprecated
+      # runtimes, shellcheck on run: scripts) the parse-only check above
+      # can't see -- own script's header explains the no-install-here,
+      # skip-if-absent posture.
+      glob: ".github/workflows/*.yml"
+      run: ./scripts/check-actionlint.sh
     - name: comment-hygiene
       glob: "*.{go,ts,tsx}"
       run: ./scripts/check-comment-hygiene.sh
@@ -335,11 +342,18 @@ pre-commit:
       glob: "*.go"
       run: go build -tags server -o /dev/null .
     - name: build-warnings
-      # goal 0419 S1: go-build-desktop/go-vet above only check exit
+      # goal 0419 S1/S1c: go-build-desktop/go-vet above only check exit
       # status -- a linker/clang warning on stderr passes silently.
-      # This gate fails the commit on any of it instead.
+      # This gate fails the commit on any of it instead, including the
+      # test-binary compile step (the launchatlogin-shaped class a
+      # bare `go build .` never links).
       glob: "*.go"
       run: ./scripts/check-build-warnings.sh
+    - name: build-warnings-selftest
+      # Fixture-tests the gate above via a stubbed `go` -- same
+      # probe-on-touch shape as review-report-selftest.
+      glob: "scripts/check-build-warnings*.sh"
+      run: ./scripts/check-build-warnings-selftest.sh
     - name: eslint
       root: "frontend/"
       glob: "frontend/**/*.{ts,tsx}"

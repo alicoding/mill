@@ -168,12 +168,16 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-workflow-yaml.sh
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      # goal 0419 S1c: SHA-pinned Docker image, not `go install @<tag>`
+      # (an unpinned network fetch at every run) -- rhysd/actionlint
+      # ships no action.yml of its own (confirmed against the repo:
+      # https://github.com/rhysd/actionlint, plain Go-module layout, no
+      # composite/docker action at its root), so the Docker route is
+      # the SHA-pinnable one; digest resolved against Docker Hub's own
+      # registry API for the rhysd/actionlint:1.7.12 tag.
+      - uses: docker://rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
         with:
-          go-version-file: go.mod
-          cache: false
-      - run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
-      - run: actionlint
+          args: -color
 
   # Mirrors lefthook.yml's own comment-hygiene job -- same script
   # (.claude/rules/comments.md is the standard it enforces). Grep-only,
@@ -658,8 +662,21 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
+      # goal 0419 S1c: npm has no --max-warnings-style gate of its own,
+      # so this greps `npm ci`'s own captured output for the one line
+      # shape (`npm warn deprecated ...`) that means a resolved
+      # dependency ships its own deprecation notice -- clear a new one
+      # via `overrides` (package.json), never by ignoring the line.
+      - name: Install frontend dependencies
         working-directory: frontend
+        run: |
+          set -o pipefail
+          npm ci --loglevel=warn 2>&1 | tee /tmp/npm-ci.log
+          if grep -q '^npm warn deprecated' /tmp/npm-ci.log; then
+            echo "::error::npm ci reported a deprecated dependency -- pin the non-deprecated transitive via frontend/package.json's overrides." >&2
+            grep '^npm warn deprecated' /tmp/npm-ci.log >&2
+            exit 1
+          fi
       - if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.plugins == 'true'
         run: npm run lint
         working-directory: frontend
@@ -801,6 +818,10 @@ jobs:
       # itself always builds the desktop target, the macos leg's own tags.
       - if: matrix.os == 'macos-latest'
         run: ./scripts/check-build-warnings.sh
+      # goal 0419 S1c: the gate's own selftest stubs `go` entirely, so it
+      # needs no OS-specific toolchain -- runs on every leg like lefthook's
+      # mirrored job does, not just macOS.
+      - run: ./scripts/check-build-warnings-selftest.sh
 
   # New (goal 0384): a macOS-hosted runner already carries a real window
   # server (confirmed empirically by webview-smoke.yml booting a real
@@ -1159,8 +1180,14 @@ jobs:
       # this runner's CPU/IO, not real regressions -- splitting into
       # per-shard jobs (real process isolation) with one worker each
       # removes the contention instead of just tuning the number down.
+      # goal 0419 S1c: same --throw-deprecation posture as `npm run test`
+      # (vitest) -- confirmed locally (view-hotkeys.spec.ts, NODE_OPTIONS
+      # set) that the Playwright runner's own runtime trips nothing; a
+      # real deprecated call inside app code under test still surfaces.
       - run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
         working-directory: frontend
+        env:
+          NODE_OPTIONS: --throw-deprecation
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
         with:
@@ -1232,6 +1259,10 @@ jobs:
           # reporter's env override is PLAYWRIGHT_JSON_OUTPUT_FILE, not
           # the *_NAME some other Playwright reporters use.
           PLAYWRIGHT_JSON_OUTPUT_FILE: /tmp/e2e-affected.json
+          # goal 0419 S1c: same --throw-deprecation posture as `npm run
+          # test` (vitest) and the required e2e job -- confirmed locally
+          # the Playwright runner's own runtime trips nothing.
+          NODE_OPTIONS: --throw-deprecation
         run: npx playwright test --only-changed=origin/main --reporter=line,json
       - name: Write step summary
         if: always()
