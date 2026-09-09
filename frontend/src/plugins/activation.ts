@@ -43,17 +43,23 @@ setFramedExportCallHandler((id, method, args) => {
 })
 
 // isFramedActivation decides which activation an extension gets. The
-// deciding fact is its FACES, not its tools: a tool is declarative and
-// runs the same either way (docs/goals/0380), but a face drawn by an
-// extension's own function has to run where Mill's document is. So an
-// extension whose canvas kinds all draw their faces from entry pages
-// runs sandboxed, and one with any kind that draws its own face runs
-// in Mill's document, behind the "canvas-host" grant for a
-// non-built-in.
-
+// deciding fact is which door a kind's REGISTRATION crosses, not where
+// its face ends up drawn: registerCanvasObject (a `tool`-less kind, or
+// one whose face is the legacy renderFace function) is a same-DOM-only
+// door -- plugin-frame/activation.ts never implements it, since a
+// function cannot cross postMessage. registerCanvasTool (a `tool` kind)
+// IS available framed, but its own face still crosses only through
+// buildThirdPartyNoun's entry-page lookup (host-side, off the
+// manifest), never through a renderFace function the frame can't send
+// -- so a `tool` kind with no `entry` still needs Mill's own document
+// for its face. A kind is framed-safe only when it is BOTH: declared a
+// tool (registers through the door that survives the bridge) AND names
+// an entry page (its face needs nothing the frame cannot send). One
+// kind missing either is enough to need the whole extension's own
+// document, since the whole extension shares one activation.
 export function isFramedActivation(builtin: boolean, manifest: Manifest): boolean {
   const canvas = manifest.contributes?.canvasObjects ?? []
-  if (canvas.length > 0) return canvas.every((kind) => !!kind.entry)
+  if (canvas.length > 0) return canvas.every((kind) => !!kind.tool && !!kind.entry)
   return !builtin
 }
 

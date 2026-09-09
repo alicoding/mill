@@ -16,14 +16,20 @@ func pluginGrants(builtin bool, m Manifest) []string {
 
 // NeedsCanvasHost answers whether a manifest's canvas contributions
 // still need Mill's own document (docs/goals/0380). The deciding fact
-// is the FACE: a tool is declarative and runs the same sandboxed or
-// not, but a kind that draws its own face needs somewhere to draw it,
-// and only a kind naming an entry page draws inside its own frame. One
-// such kind is enough to need the grant, since the whole extension
-// shares one activation.
+// is which door a kind's registration crosses: a kind not declared Tool
+// registers through registerCanvasObject, a same-DOM-only door
+// (plugin-frame/activation.ts never implements it, since a function
+// cannot cross postMessage). A Tool kind registers through
+// registerCanvasTool, which IS available framed -- but its own face
+// still resolves only through the manifest's own Entry lookup, never a
+// renderFace function the frame cannot send, so a Tool kind with no
+// Entry still needs Mill's own document for its face. A kind is
+// framed-safe only when it is BOTH Tool and Entry; one kind missing
+// either is enough to need the grant, since the whole extension shares
+// one activation.
 func NeedsCanvasHost(m Manifest) bool {
 	for _, o := range m.Contributes.CanvasObjects {
-		if o.Entry == "" {
+		if !o.Tool || o.Entry == "" {
 			return true
 		}
 	}
