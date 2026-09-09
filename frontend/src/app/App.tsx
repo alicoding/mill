@@ -47,6 +47,8 @@ import { useNativeMenu } from './useNativeMenu'
 import { useBrowserNotify } from './useBrowserNotify'
 import { usePluginReviewNotice } from './usePluginReviewNotice'
 import { pluginsAwaitingReview } from '../plugins/loader'
+import { usePluginReloadVersion } from '../plugins/pluginReloadSignal'
+import { usePluginRemoveVersion } from '../shared/pluginRemoveSignal'
 import styles from "./App.module.css";
 import { newLocalID } from '../shared/localId'
 import { background } from '../shared/background'
@@ -208,9 +210,12 @@ function App() {
     void background(SettingsService.IsIsolatedData().then(setIsIsolatedData), 'app.isIsolatedData');
   }, []);
   usePluginReviewNotice()
-  // The boot scan's own map only changes on a full reload (plugins load
-  // at app start), so a plain read at render time -- no subscription --
-  // stays correct (goal 0420).
+  // The load-state map changes on every in-page plugin reload (an Allow
+  // + Reload) and removal, so the shell re-renders on both signals and
+  // reads the count fresh -- the nav badge never outlives the decision
+  // it asked for.
+  usePluginReloadVersion()
+  usePluginRemoveVersion()
   const extensionsReviewCount = pluginsAwaitingReview()
 
   useEffect(() => {

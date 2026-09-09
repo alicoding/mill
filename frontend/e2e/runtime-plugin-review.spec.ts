@@ -92,7 +92,7 @@ test('a plugin whose files change after it was allowed: the pill, the pinned gro
 		// The notice names it and the badge/pill/group all read the same count.
 		const review = page.getByTestId('notice-review-plugins')
 		await expect(review).toBeVisible()
-		await expect(page.locator('[data-testid^="notice-pushed-"]').first()).toContainText('1 extension needs your review')
+		await expect(page.getByTestId('notice-plugin-review')).toContainText('1 extension needs your review')
 		await expect(page.getByTestId('extensions-review-count')).toContainText('1')
 
 		await openExtensions(page)
@@ -112,9 +112,16 @@ test('a plugin whose files change after it was allowed: the pill, the pinned gro
 		await expect(detail.getByTestId('extensions-plugin-review')).toContainText('Allowed. Reload to load it.')
 		await expect(detail.getByTestId('extensions-plugin-remove')).toHaveCount(0)
 
-		// A decision plus reload clears every indicator together.
+		// A decision plus the detail's own Reload clears every indicator
+		// together, in the page: the notice and the nav badge follow the
+		// live count, never a restart.
+		await detail.getByTestId('extensions-plugin-reload').click()
+		await expect(page.getByTestId('notice-plugin-review')).toHaveCount(0)
+		await expect(page.getByTestId('extensions-review-count')).toHaveCount(0)
+		await expect(page.getByTestId('extensions-needs-review-group')).toHaveCount(0)
+		// And the next boot has nothing to re-toast.
 		await page.reload()
-		await expect(page.getByTestId('notice-review-plugins')).toHaveCount(0)
+		await expect(page.getByTestId('notice-plugin-review')).toHaveCount(0)
 		await expect(page.getByTestId('extensions-review-count')).toHaveCount(0)
 		await openExtensions(page)
 		await expect(page.getByTestId('extensions-needs-review-group')).toHaveCount(0)
@@ -143,6 +150,10 @@ test('Remove on a changed plugin runs the existing uninstall door: the confirm n
 
 		await expect(pluginRow(page, 'mill-bookmark')).toHaveCount(0)
 		await expect(page.getByTestId('extensions-needs-review-group')).toHaveCount(0)
+		// Removing the one plugin that waited clears the notice and the
+		// nav badge with it, in the page.
+		await expect(page.getByTestId('notice-plugin-review')).toHaveCount(0)
+		await expect(page.getByTestId('extensions-review-count')).toHaveCount(0)
 	} finally {
 		await close()
 	}

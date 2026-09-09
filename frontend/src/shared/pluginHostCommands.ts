@@ -28,6 +28,9 @@ import { drainedPluginCommands } from '../plugins/pluginCommands'
 export function removePluginNow(id: string, name: string): void {
   SettingsService.RemovePlugin(id)
     .then((destination) => {
+      // The count of plugins awaiting review reads the load-state map,
+      // so a removed plugin leaves it now, not at the next boot.
+      pluginLoadStates().delete(id)
       notifyPluginRemoved()
       pushNotice({
         level: 'success',

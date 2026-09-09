@@ -39,7 +39,7 @@ test('a plugin installed after boot waits for review: the boot notice names it, 
 		// The boot notice names the count and opens the Extensions section.
 		const review = page.getByTestId('notice-review-plugins')
 		await expect(review).toBeVisible()
-		await expect(page.locator('[data-testid^="notice-pushed-"]').first()).toContainText('1 extension needs your review')
+		await expect(page.getByTestId('notice-plugin-review')).toContainText('1 extension needs your review')
 		await review.click()
 
 		// Exactly one plugin waits: the deep link selects it directly, its
