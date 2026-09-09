@@ -4,6 +4,7 @@
 // plugin's code to reach outside its own module.
 
 import type { CanvasObjectDecl } from './canvasObjects'
+import type { CanvasMeasureResult, CanvasToolDecl } from './canvasTools'
 import type { GuardedActionEvaluation, GuardedActionResult } from './guardedAction'
 import type { PluginCommandDecl } from './commands'
 import type { PluginSettingsAPI } from './settings'
@@ -18,6 +19,13 @@ export interface MillPluginAPI {
   millVersion: string
   pluginId: string
   registerCanvasObject: (decl: CanvasObjectDecl) => void
+  /** Declares a drawing tool Mill drives: Mill owns every pointer
+   * event and draws the tool's live preview from the draft's own data,
+   * so the tool needs no access to the board itself. */
+  registerCanvasTool: (decl: CanvasToolDecl) => void
+  /** Measures markup off the board at real pixel size, for a face
+   * whose own layout depends on how big its content turned out. */
+  measure: (markup: string, maxWidth: number) => Promise<CanvasMeasureResult>
   registerCommand: (decl: PluginCommandDecl) => void
   /** Asks Mill to perform an action the plugin cannot perform itself.
    * See CanvasObjectFaceCtx's own requestGuardedAction for the full

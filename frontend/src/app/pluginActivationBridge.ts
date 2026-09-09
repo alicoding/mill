@@ -4,7 +4,9 @@ import { getPluginCapture } from '../plugins/pluginCaptures'
 import { subscribeExtensionSetting } from '../shared/extensionSettingsStore'
 import type { ExtensionSettingDecl } from '../atlas/atlasNounRegistry'
 import type { MillPluginAPI } from '../plugins/sdk'
+import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { callExportedMethod, toWireDescriptor } from '../plugins/extensionExports'
+import { CANVAS_TOOL_DOORS, callCanvasToolDoor, forgetCanvasTools } from '../plugins/canvasToolHostDoors'
 
 // The host half of a third-party plugin's activation frame (docs/
 // goals/0375 S1b): the same envelope pluginFrameBridge.ts's entry-page
@@ -70,6 +72,11 @@ export const ACTIVATION_ONLY_METHODS = [
   'view.postMessage', 'capture.postMessage',
   'subscribe', 'unsubscribe',
   'extensions.get', 'extensions.call',
+  // The framed canvas contract (docs/goals/0380): a tool declares
+  // itself, draws through drafts, measures off the board, and erases
+  // through the host -- CANVAS_TOOL_DOORS is that whole list, owned by
+  // canvasToolHostDoors.ts so the routing below stays one line.
+  ...CANVAS_TOOL_DOORS,
 ] as const
 
 interface ActivationSubscription {
@@ -85,6 +92,10 @@ export interface ActivationFrameContext {
   frame: HTMLIFrameElement
   pluginId: string
   alive: boolean
+  // manifest is what the canvas-tool doors check a capability and an
+  // ingestion claim against (docs/goals/0380) -- carried here because a
+  // framed plugin's own JS never holds its manifest.
+  manifest: Manifest
   // settingDecls is this plugin's OWN declared settings (the same
   // list its snapshot was built from), so a settings.onChange
   // subscription resolves the exact declaration the snapshot did.
@@ -100,8 +111,8 @@ export interface ActivationFrameContext {
   nextSubId: number
 }
 
-export function createActivationFrameContext(frame: HTMLIFrameElement, pluginId: string, settingDecls: readonly ExtensionSettingDecl[]): ActivationFrameContext {
-  return { frame, pluginId, alive: true, settingDecls, pendingCommandRuns: new Map(), pendingExtensionCalls: new Map(), nextCallId: 0, subscriptions: new Map(), nextSubId: 0 }
+export function createActivationFrameContext(frame: HTMLIFrameElement, pluginId: string, settingDecls: readonly ExtensionSettingDecl[], manifest: Manifest): ActivationFrameContext {
+  return { frame, pluginId, alive: true, manifest, settingDecls, pendingCommandRuns: new Map(), pendingExtensionCalls: new Map(), nextCallId: 0, subscriptions: new Map(), nextSubId: 0 }
 }
 
 // teardownActivationFrameContext ends every live subscription and
@@ -109,6 +120,7 @@ export function createActivationFrameContext(frame: HTMLIFrameElement, pluginId:
 // arrive -- a torn-down frame answers nothing again.
 export function teardownActivationFrameContext(ctx: ActivationFrameContext): void {
   ctx.alive = false
+  forgetCanvasTools(ctx.pluginId)
   for (const sub of ctx.subscriptions.values()) sub.unsubscribe()
   ctx.subscriptions.clear()
   for (const pending of ctx.pendingCommandRuns.values()) pending.reject(new Error(`plugin ${ctx.pluginId}: its extension frame was torn down`))
@@ -290,7 +302,11 @@ export async function callActivationMethod(ctx: ActivationFrameContext, api: Mil
     // those method names.
     case 'extensions.get': return toWireDescriptor(await api.extensions.get(String(first)))
     case 'extensions.call': return callExtensionExportDoor(api, args as [string, string, unknown[] | undefined])
-    default: throw new Error(`${method} is not available in a frame`)
+    default:
+      if ((CANVAS_TOOL_DOORS as readonly string[]).includes(method)) {
+        return callCanvasToolDoor({ pluginId: ctx.pluginId, manifest: ctx.manifest, post: (event, payload) => post(ctx, { mill: 1, kind: 'event', event, payload }) }, method, args)
+      }
+      throw new Error(`${method} is not available in a frame`)
   }
 }
 

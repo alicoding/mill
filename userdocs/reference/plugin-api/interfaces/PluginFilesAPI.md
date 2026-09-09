@@ -28,3 +28,34 @@ list: (path) => Promise<PluginListDirResult>;
 #### Returns
 
 `Promise`\<[`PluginListDirResult`](PluginListDirResult.md)\>
+
+***
+
+### saveImageBytes
+
+```ts
+saveImageBytes: (base64, ext, title) => Promise<string>;
+```
+
+Saves bytes into Mill's own file store and resolves with the
+stored file's path, ready to use as a file-backed object's
+payload. base64 is the file's content; ext is a lowercase
+".ext".
+
+#### Parameters
+
+##### base64
+
+`string`
+
+##### ext
+
+`string`
+
+##### title
+
+`string`
+
+#### Returns
+
+`Promise`\<`string`\>

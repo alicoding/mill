@@ -29,18 +29,25 @@ clean_bundle() {
 EOF
 }
 
+# The entry list the gate itself checks -- one place, so adding a
+# runtime entry costs one edit here rather than one per fixture.
+FRAME_ENTRIES="activation bootstrap measure"
+
+write_clean_bundles() {
+	local dir="$1" name
+	for name in $FRAME_ENTRIES; do clean_bundle >"$dir/$name.js"; done
+}
+
 # clean: both bundles present, self-contained, no public/ leftovers.
 clean="$(mktemp -d)"
 mkdir -p "$clean/dist/plugin-frame"
-clean_bundle >"$clean/dist/plugin-frame/activation.js"
-clean_bundle >"$clean/dist/plugin-frame/bootstrap.js"
+write_clean_bundles "$clean/dist/plugin-frame"
 probe 0 "a fresh build with no hand-written leftovers passes" "$clean"
 
 # reappeared: a hand-written file sits back under public/plugin-frame.
 reappeared="$(mktemp -d)"
 mkdir -p "$reappeared/dist/plugin-frame" "$reappeared/public/plugin-frame"
-clean_bundle >"$reappeared/dist/plugin-frame/activation.js"
-clean_bundle >"$reappeared/dist/plugin-frame/bootstrap.js"
+write_clean_bundles "$reappeared/dist/plugin-frame"
 echo "(function(){})()" >"$reappeared/public/plugin-frame/activation.js"
 probe 1 "a hand-written public/plugin-frame/*.js fails" "$reappeared"
 
@@ -51,15 +58,15 @@ probe 1 "a missing built bundle fails" "$missing"
 # stale: the bundle still carries a module import (never cleanly built).
 stale="$(mktemp -d)"
 mkdir -p "$stale/dist/plugin-frame"
+write_clean_bundles "$stale/dist/plugin-frame"
 printf 'import { x } from "./x.js"\n(function(){})()\n' >"$stale/dist/plugin-frame/activation.js"
-clean_bundle >"$stale/dist/plugin-frame/bootstrap.js"
 probe 1 "a stale bundle carrying an import statement fails" "$stale"
 
 # eval: a bundle calling eval() fails the CSP check.
 evalcase="$(mktemp -d)"
 mkdir -p "$evalcase/dist/plugin-frame"
+write_clean_bundles "$evalcase/dist/plugin-frame"
 echo "(function () { eval('1') })()" >"$evalcase/dist/plugin-frame/activation.js"
-clean_bundle >"$evalcase/dist/plugin-frame/bootstrap.js"
 probe 1 "a bundle calling eval() fails" "$evalcase"
 
 rm -rf "$clean" "$reappeared" "$missing" "$stale" "$evalcase"

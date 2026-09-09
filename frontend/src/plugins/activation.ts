@@ -75,6 +75,7 @@ export async function activateFramed(info: PluginInfo, millVersion: string, stor
     settings: snapshotPluginSettings(manifest),
     storage: decodedStorage,
     exports: exportAllowlist,
+    capabilities: [...(manifest.capabilities ?? [])],
   }
   const srcdoc = buildFrameSrcdoc(pluginAssetBase(pluginId), [activationScriptUrl()], '', init, millTokenCss(hostTokenReader()))
 
@@ -88,7 +89,7 @@ export async function activateFramed(info: PluginInfo, millVersion: string, stor
   document.body.appendChild(frame)
   frame.srcdoc = srcdoc
 
-  const ctx = createActivationFrameContext(frame, pluginId, settingDeclsFromManifest(manifest))
+  const ctx = createActivationFrameContext(frame, pluginId, settingDeclsFromManifest(manifest), manifest)
   await new Promise<void>((resolve, reject) => {
     const detachBridge = attachActivationBridge({
       ctx,

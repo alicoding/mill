@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build:frame": "MILL_FRAME_ENTRY=activation vite build --config vite.config.frame.ts --mode production && MILL_FRAME_ENTRY=bootstrap vite build --config vite.config.frame.ts --mode production",
+    "build:frame": "MILL_FRAME_ENTRY=activation vite build --config vite.config.frame.ts --mode production && MILL_FRAME_ENTRY=bootstrap vite build --config vite.config.frame.ts --mode production && MILL_FRAME_ENTRY=measure vite build --config vite.config.frame.ts --mode production",
     "build:dev": "tsc && vite build --minify false --mode development && npm run build:frame",
     "build": "tsc && vite build --mode production && npm run build:frame",
     "preview": "vite preview",

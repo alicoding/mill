@@ -17,7 +17,7 @@ import { build, defineConfig, type Plugin, type UserConfig } from "vite";
 // CLI invocation below, and twice more (in-memory-adjacent, written to
 // the same dist/plugin-frame/) by pluginFrameDevMiddleware so `task dev`
 // serves the identical build, not the raw TypeScript.
-export const FRAME_ENTRIES = ["activation", "bootstrap"] as const;
+export const FRAME_ENTRIES = ["activation", "bootstrap", "measure"] as const;
 export type FrameEntryName = (typeof FRAME_ENTRIES)[number];
 
 export function frameLibConfig(entry: FrameEntryName, outDir = "dist/plugin-frame"): UserConfig {
@@ -93,7 +93,7 @@ export function pluginFrameDevMiddleware(): Plugin {
         });
       });
       server.middlewares.use((req, res, next) => {
-        const match = /^\/plugin-frame\/(activation|bootstrap)\.js$/.exec((req.url ?? "").split("?")[0]);
+        const match = /^\/plugin-frame\/(activation|bootstrap|measure)\.js$/.exec((req.url ?? "").split("?")[0]);
         if (!match) { next(); return; }
         void (building ?? Promise.resolve()).then(() => {
           try {

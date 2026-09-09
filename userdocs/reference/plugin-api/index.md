@@ -6,15 +6,24 @@
 
 ## Interfaces
 
+- [CanvasDraft](interfaces/CanvasDraft.md)
 - [CanvasGestureCtx](interfaces/CanvasGestureCtx.md)
 - [CanvasGestureDecl](interfaces/CanvasGestureDecl.md)
 - [CanvasGesturePoint](interfaces/CanvasGesturePoint.md)
 - [CanvasItemsInRect](interfaces/CanvasItemsInRect.md)
+- [CanvasMeasureResult](interfaces/CanvasMeasureResult.md)
 - [CanvasObjectDecl](interfaces/CanvasObjectDecl.md)
 - [CanvasObjectFaceCtx](interfaces/CanvasObjectFaceCtx.md)
 - [CanvasObjectMenuItem](interfaces/CanvasObjectMenuItem.md)
 - [CanvasObjectRef](interfaces/CanvasObjectRef.md)
+- [CanvasPreviewDecl](interfaces/CanvasPreviewDecl.md)
+- [CanvasPreviewShape](interfaces/CanvasPreviewShape.md)
 - [CanvasRect](interfaces/CanvasRect.md)
+- [CanvasToolCtx](interfaces/CanvasToolCtx.md)
+- [CanvasToolDecl](interfaces/CanvasToolDecl.md)
+- [CanvasToolMenuItemDecl](interfaces/CanvasToolMenuItemDecl.md)
+- [CanvasToolPoint](interfaces/CanvasToolPoint.md)
+- [CanvasToolPointerEvent](interfaces/CanvasToolPointerEvent.md)
 - [ContentEntry](interfaces/ContentEntry.md)
 - [ContentQuery](interfaces/ContentQuery.md)
 - [GuardedActionEvaluation](interfaces/GuardedActionEvaluation.md)
@@ -61,7 +70,9 @@
 ## Type Aliases
 
 - [CanvasEditRoute](type-aliases/CanvasEditRoute.md)
+- [CanvasPreviewKind](type-aliases/CanvasPreviewKind.md)
 - [CanvasStyleFieldDecl](type-aliases/CanvasStyleFieldDecl.md)
+- [CanvasToolPhase](type-aliases/CanvasToolPhase.md)
 - [MillFrameEvent](type-aliases/MillFrameEvent.md)
 - [PluginElAttrs](type-aliases/PluginElAttrs.md)
 - [PluginElChild](type-aliases/PluginElChild.md)
