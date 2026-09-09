@@ -12,7 +12,7 @@ import type { ExecEnv } from '../../bindings/github.com/alicoding/mill/internal/
 import type { AIProvider } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 import type { DeclaredStepType } from '../../bindings/github.com/alicoding/mill/internal/domain/declaredsteptype/models'
 import { ENTITY_ICON } from '../shared/entityIcons'
-import type { PaletteSearchable } from './paletteFilter'
+import type { PaletteSearchable } from '../shared/paletteFilter'
 import { CAPABILITY_ICON } from './navIcon'
 import { HotkeyHint } from '../shared/HotkeyHint'
 

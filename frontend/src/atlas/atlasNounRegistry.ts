@@ -1,4 +1,5 @@
 import type { BoardObject } from '../../bindings/github.com/alicoding/mill/internal/domain/atlas/models'
+import type { CanvasObjectExample } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import type { EnclosedIDs, Rect } from './atlasEnclosure'
 import type { ComponentType } from 'react'
 import type { Icon } from '@primer/octicons-react'
@@ -407,6 +408,13 @@ export type ThirdPartyNounShape = Omit<AtlasToolShapeBase, 'boardObjectKind'> & 
   // objects of this kind, validated and bound to the object ctx by
   // plugins/canvasToolAdapter.ts, read by atlas/useAtlasObjectMenu.ts.
   menuItems: readonly ThirdPartyMenuItem[]
+  // example (goal 0411 S2): this kind's own declared working example,
+  // read straight off the manifest's contributed canvasObjects entry
+  // (buildThirdPartyNoun) -- null for a kind that ships none.
+  // atlasThirdPartyPlacement.ts's placeThirdPartyObject reads this to
+  // materialize an empty-payload insert before the object's first
+  // render; a non-null value here is otherwise inert.
+  example: CanvasObjectExample | null
 }
 
 export interface ThirdPartyMenuItem {

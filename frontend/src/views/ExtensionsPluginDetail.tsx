@@ -17,7 +17,7 @@ import {
 } from './ExtensionsDetailTabs'
 import { tierLabelKey, tierVariant } from './extensionTrust'
 import { ExtensionsMCPServers } from './ExtensionsMCPServers'
-import { reachLabel } from './extensionMeta'
+import { missingExampleWarnings, reachLabel } from './extensionMeta'
 import listStyles from '../shared/ListCard.module.css'
 
 // The detail pane for an INSTALLED plugin (goal 0321): the same
@@ -74,7 +74,7 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
     extra: (contributes?.mcpServers ?? []).length > 0
       ? <ExtensionsMCPServers pluginId={id} servers={contributes?.mcpServers ?? []} />
       : undefined,
-    status: <PluginStatusNote error={error} status={runtime?.status} policyReason={plugin.PolicyBlocked ?? ''} waitsFor={runtime?.waitsFor} allowed={allowed} widened={!!plugin.Widened} onAllow={onAllow} warnings={plugin.Warnings ?? []} />,
+    status: <PluginStatusNote error={error} status={runtime?.status} policyReason={plugin.PolicyBlocked ?? ''} waitsFor={runtime?.waitsFor} allowed={allowed} widened={!!plugin.Widened} onAllow={onAllow} warnings={[...(plugin.Warnings ?? []), ...missingExampleWarnings(contributes?.canvasObjects)]} />,
     actions: reloadCommand?.enabled?.() ? (
       <Button
         size="small"

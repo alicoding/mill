@@ -77,6 +77,7 @@ export default function SettingsConnectionsPane() {
           <McpAddressField />
           <SettingsRow
             setting={mustSetting('connections.mcpAllowImport')}
+            ready={mcpWriteEnabled !== null}
             control={(labelId) => (
               <Checkbox
                 aria-labelledby={labelId}
@@ -93,6 +94,7 @@ export default function SettingsConnectionsPane() {
           {mcpWriteEnabled && (
             <SettingsRow
               setting={mustSetting('connections.mcpAskBeforeImport')}
+              ready={mcpApprovalRequired !== null}
               control={(labelId) => (
                 <Checkbox
                   aria-labelledby={labelId}

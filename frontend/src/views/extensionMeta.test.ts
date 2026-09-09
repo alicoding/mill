@@ -3,9 +3,10 @@ import { copy } from '../shared/copy'
 import { ATLAS_TOOLS } from '../atlas/atlasTools'
 import { toolLessNounExtensions } from '../atlas/atlasNounRegistry'
 import {
-  descriptionLabel, editRouteLabel, groupLabel, groupSectionLabel, reachLabel, sourceLabel, versionLabel,
+  descriptionLabel, editRouteLabel, groupLabel, groupSectionLabel, missingExampleWarnings, reachLabel, sourceLabel, versionLabel,
   toolLessRowSource, toolRowSource, extensionRowPadY, extensionRowHeight,
 } from './extensionMeta'
+import type { CanvasObjectContribution } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 
 describe('groupLabel', () => {
   it('maps every declared group to user-facing text', () => {
@@ -76,6 +77,26 @@ describe('reachLabel', () => {
   it('lists declared capabilities verbatim, derived rather than hardcoded', () => {
     expect(reachLabel(['network: example.com'])).toBe('Reaches network: example.com.')
     expect(reachLabel(['read files', 'write files'])).toBe('Reaches read files, write files.')
+  })
+})
+
+describe('missingExampleWarnings (goal 0411 S2)', () => {
+  const withExample: CanvasObjectContribution['example'] = { title: 'Example', payload: {}, revision: 1, fixtures: [] }
+
+  it('warns once when a declared canvas object has no example', () => {
+    const objects: CanvasObjectContribution[] = [{ kind: 'mindmap', fileExtensions: [], pastesURLs: false, entry: '', example: null }]
+    expect(missingExampleWarnings(objects)).toEqual(['Declare a working example so a new object shows something on insert.'])
+  })
+
+  it('stays silent once every declared canvas object has an example', () => {
+    const objects: CanvasObjectContribution[] = [{ kind: 'mindmap', fileExtensions: [], pastesURLs: false, entry: '', example: withExample }]
+    expect(missingExampleWarnings(objects)).toEqual([])
+  })
+
+  it('stays silent for a plugin that declares no canvas objects at all', () => {
+    expect(missingExampleWarnings(undefined)).toEqual([])
+    expect(missingExampleWarnings(null)).toEqual([])
+    expect(missingExampleWarnings([])).toEqual([])
   })
 })
 

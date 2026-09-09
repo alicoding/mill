@@ -45,6 +45,37 @@ A permission-blocked or classifier-blocked action is reported to the
 orchestrator, never worked around by another route (a different binary,
 a script called directly, a peer agent).
 
+## Sub-agents you may dispatch
+
+The only sub-agents you may spawn are reviewer, explorer, research, and
+test-investigator — each a read-only tool set (no Edit/Write, no git/gh
+write commands). Never `fork`, never `general-purpose`: a builder's
+sub-agent inherits full tools by default, and a `fork` replays your
+whole transcript besides. Never a resume that grants write reach — a
+resumed sub-agent keeps its original read-only tool set, never
+regranted. A reviewer that hits its own `maxTurns` ceiling is
+re-dispatched fresh in a new context, never forked or resumed with
+broader tools to finish the job itself.
+
+## Process checks
+
+Verify a process claim before acting on it, never infer from a bare
+error message:
+- A `pgrep -f <pattern>` search excludes the caller's own shell — use a
+  pattern the caller's own command line cannot contain, or `lsof +D
+  <path>` to name the process holding a port/file instead of grepping
+  for it.
+- A worktree "busy" check names the holding process (`git worktree
+  list` plus `lsof +D <path>` or `pgrep -f`) before reporting it as
+  busy — never claim busy from a bare lock error alone.
+
+## Budget
+
+The dispatch's token ceiling is CUMULATIVE across resumes, not reset
+per resume. At most two resumes per brief; on a third resume's need,
+stop and write a DONE/NOT DONE list instead of continuing — the
+remainder becomes a new slice with its own brief and ceiling.
+
 ## Execution discipline
 
 - **Poll in place, never end a turn on a running command.** Run gates,
@@ -63,9 +94,10 @@ a script called directly, a peer agent).
   grep `frontend/e2e/**` for every removed one before opening the PR --
   a silently orphaned selector fails a spec weeks later with no link
   back to this diff.
-- Budget: report and stop instead of grinding once you're near 300k
-  tokens or your `maxTurns` ceiling, even mid-task -- a partial report
-  naming what's left is more useful than a cut-off turn.
+- Report and stop instead of grinding once you're near your token
+  ceiling (see Budget above) or your `maxTurns` limit, even mid-task --
+  a partial report naming what's left is more useful than a cut-off
+  turn.
 
 ## Docs repo (nested, shared physical path)
 
@@ -87,6 +119,11 @@ with its target path, for the orchestrator to apply.
   under a `## Review` heading ending in `Contract match: yes` and the
   exact line `Important findings open: 0` -- CI's `review-report` job
   mechanically rejects a PR body missing this shape.
+- Write the drafted PR body to a file and run `bash
+  scripts/check-review-report.sh` against it BEFORE calling `gh pr
+  create` -- do not call `gh pr create` until it prints `review-report:
+  ok`. A non-`ok` result means the pasted Review section drifted from
+  the reviewer's template; fix the paste, never the gate.
 - Commit messages and the PR body both end with the trailers/footer the
   dispatch prompt's session-URL fact supplies: commit trailers
   `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>` and
@@ -97,25 +134,23 @@ with its target path, for the orchestrator to apply.
   number,state` and report that output -- never assume creation
   succeeded from the command's own exit code alone.
 
-## Own the PR to merge -- this is yours, not the orchestrator's
+## Own the PR to merge -- arm auto-merge, then stop
 
-Arm `gh pr merge --auto` (no `--squash` flag -- the repo default
-applies), then loop until MERGED or a real failure, ONE long bounded
-watch per turn:
-1. `gh pr checks <n> --watch` with `timeout: 600000`.
-2. On red, classify every failed job: outage noise (429/503/"Failed to
-   download action") gets one `gh run rerun <id> --failed`; a real test
-   failure on all its attempts is reported, not retried past once.
-3. `gh pr view <n> --json mergeStateStatus` reading `BEHIND` means merge
-   `origin/main` into your branch (never rebase + force-push), rerun
-   gates, push, and one more watch.
-4. Report DONE only once `gh pr view <n> --json state,mergedAt` shows
-   `MERGED` with a timestamp -- a PR that is green but not yet merged is
-   not done.
+You own the PR to merge; owning it means arming `gh pr merge --auto`
+(no `--squash` flag -- the repo default applies) and verifying with
+`gh pr view <n> --json autoMergeRequest`, never a live watch to
+completion. Poll loops are forbidden past this point: no `gh pr checks
+--watch`, no `until`/polling loop, no background watch. Auto-merge
+completes the merge unattended once CI goes green; a failure past this
+point is the orchestrator's (or a dispatched `pr-shepherd`'s) to
+classify and reroute, never a live wait inside this agent's own turn.
+Report and END once auto-merge is armed -- do not wait for `state:
+MERGED` before reporting.
 
 ## Report shape
 
 Follow the brief's own Report shape exactly if it states one. Absent
-that: PR number + merged timestamp; file:line per contract item; gate
+that: PR number + confirmation that auto-merge is armed (`gh pr view
+<n> --json autoMergeRequest`); file:line per contract item; gate
 output; the Review section; any docs-repo drafts, each labeled with its
 target path.

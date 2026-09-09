@@ -14,6 +14,7 @@ import DataStewardshipSection from './DataStewardshipSection'
 import UpdatesSection from './UpdatesSection'
 import SettingsGroupNav from './SettingsGroupNav'
 import { clearSettingsHash, groupFromHash, readLastSettingsGroup, rememberSettingsGroup, writeSettingsHash } from './settingsRoute'
+import { useSettingsHighlight } from './useSettingsHighlight'
 import styles from './SettingsView.module.css'
 import rail from '../shared/RailLayout.module.css'
 import PageContainer from '../shared/PageContainer'
@@ -61,6 +62,13 @@ function SettingsView({ initialSection }: { initialSection?: string } = {}) {
     rememberSettingsGroup(group)
   }, [group])
   useEffect(() => clearSettingsHash, [])
+
+  // A search result or a `settings.show.<id>` palette command lands
+  // here (goal 0412 S2) -- the highlight signal may also change
+  // `group` itself, independent of `initialSection` above (the
+  // in-app search field never routes through the view's own section
+  // prop, only the highlight request).
+  useSettingsHighlight(group, setGroup)
 
   const select = useCallback((next: SettingsGroupID) => setGroup(next), [])
 

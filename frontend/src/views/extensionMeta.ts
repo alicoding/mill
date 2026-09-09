@@ -4,6 +4,7 @@ import type { DisplayDensity } from '../shared/density'
 import type { EditRouteDecl, ObjectSource } from '../atlas/objectSeams'
 import type { AtlasToolShape } from '../atlas/atlasTools'
 import type { AtlasNounGroup, ExtensionSettingDecl, ToolLessNounExtension } from '../atlas/atlasNounRegistry'
+import type { CanvasObjectContribution } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 
 // Pure enum -> user-vocabulary mapping for the Extensions section
 // (Settings > Extensions). Kept in its own file, apart from
@@ -163,6 +164,16 @@ export function descriptionLabel(tool: { description?: string; label: string }):
 export function reachLabel(capabilities: readonly string[] | undefined): string {
   if (!capabilities || capabilities.length === 0) return copy('views:settings.extensions.meta.reachNothing')
   return copy('views:settings.extensions.meta.reachList', { list: capabilities.join(', ') })
+}
+
+// missingExampleWarnings (goal 0411 S2): a canvas object declared
+// without a working example gets a non-blocking notice in the
+// Extensions pane detail, never a load refusal -- a bundled/example
+// plugin without one already fails the repo's own conformance suite,
+// so this only ever fires for a third-party install.
+export function missingExampleWarnings(canvasObjects: readonly CanvasObjectContribution[] | null | undefined): string[] {
+  const missing = (canvasObjects ?? []).some((c) => !c.example)
+  return missing ? [copy('views:settings.extensions.pluginMissingExampleWarning')] : []
 }
 
 // versionLabel -- every extension today is compiled into Mill itself

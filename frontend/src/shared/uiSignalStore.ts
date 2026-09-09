@@ -317,6 +317,24 @@ interface UISignalState {
   atlasContextMenuRequest: ContextMenuState | null
   requestAtlasContextMenu: (state: ContextMenuState) => void
   consumeAtlasContextMenu: () => void
+  // settings.search (goal 0412 S2, ⌘F while Settings is the active
+  // view): same monotonic-counter shape as atlasJumpRequest --
+  // views/SettingsGroupNav.tsx watches it via a ref-compared effect
+  // and focuses its own search input, which the command's `run()`
+  // (shared/settingsCommands.ts) has no direct reference to (the
+  // registry is module-scope, the input lives inside a mounted
+  // component).
+  settingsSearchFocusRequest: number
+  requestSettingsSearchFocus: () => void
+  // settings.show.<id> / a search result's own selection (goal 0412
+  // S2's jump-and-highlight): token-carrying like atlasTableRenameRequest
+  // above -- SettingsView may mount FRESH on the navigation this same
+  // request raises (a palette command fired from outside Settings), or
+  // may already be mounted on a different group, so a seq (not a bare
+  // boolean) lets a REPEAT request for the same setting id still fire
+  // its own effect.
+  settingsHighlightRequest: { id: string; seq: number } | null
+  requestSettingsHighlight: (id: string) => void
 }
 
 export const useUISignalStore = create<UISignalState>()((set) => ({
@@ -443,4 +461,8 @@ export const useUISignalStore = create<UISignalState>()((set) => ({
   atlasContextMenuRequest: null,
   requestAtlasContextMenu: (state) => set({ atlasContextMenuRequest: state }),
   consumeAtlasContextMenu: () => set({ atlasContextMenuRequest: null }),
+  settingsSearchFocusRequest: 0,
+  requestSettingsSearchFocus: () => set((s) => ({ settingsSearchFocusRequest: s.settingsSearchFocusRequest + 1 })),
+  settingsHighlightRequest: null,
+  requestSettingsHighlight: (id) => set((s) => ({ settingsHighlightRequest: { id, seq: (s.settingsHighlightRequest?.seq ?? 0) + 1 } })),
 }))

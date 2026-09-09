@@ -25,11 +25,18 @@ export default function SettingsShortcutsPane() {
   const [summonRecording, setSummonRecording] = useState(false)
   const [summonError, setSummonError] = useState('')
   const [loadError, setLoadError] = useState(false)
+  // Amendment 1 (goal 0412 S2): distinct from `summonBinding === null`,
+  // which is ALSO the real "no hotkey set" state once loaded -- jump-
+  // and-highlight (shared/settingsHighlight.ts) needs to tell "still
+  // fetching" apart from "confirmed unset" to know when focusing the
+  // row's control is safe.
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     SettingsService.GetSummonHotkey()
       .then((label) => setSummonBinding(label || null))
       .catch((err) => { console.error(err); setLoadError(true) })
+      .finally(() => setLoaded(true))
   }, [])
 
   // Same menu-accelerator-suspension bracket as
@@ -96,6 +103,7 @@ export default function SettingsShortcutsPane() {
       )}
       <SettingsRow
         setting={mustSetting('shortcuts.globalHotkey')}
+        ready={loaded}
         control={() => (
           summonRecording ? (
             <Text size="small" className={listStyles.recording}>{t('settings.globalHotkey.recording')}</Text>
@@ -107,7 +115,11 @@ export default function SettingsShortcutsPane() {
               <Button size="small" variant="invisible" onClick={clearSummonHotkey}>{t('common:actions.clear')}</Button>
             </>
           ) : (
-            <Button size="small" onClick={() => setSummonRecording(true)} data-testid="set-summon-hotkey">
+            // Same shape whether still loading or confirmed unset --
+            // disabled until `loaded` (Amendment 1's stable-shape half:
+            // the swap to the chip/Change/Clear group above only ever
+            // happens once fully resolved, never mid-fetch).
+            <Button size="small" onClick={() => setSummonRecording(true)} disabled={!loaded} data-testid="set-summon-hotkey">
               {t('settings.globalHotkey.setShortcut')}
             </Button>
           )

@@ -29,6 +29,11 @@ pre-commit:
       # comment-hygiene it needs no build setup.
       glob: ".claude/agents/*.md"
       run: ./scripts/check-agent-definitions.sh
+    - name: agent-definitions-selftest
+      # Fixture-tests the gate above (goal 0414 S2) -- same probe-on-touch
+      # shape as review-report-selftest.
+      glob: "{.claude/agents/*.md,scripts/check-agent-definitions*.sh}"
+      run: ./scripts/check-agent-definitions-selftest.sh
     - name: framework-api-first
       glob: "*.go"
       run: ./scripts/check-framework-api-first.sh

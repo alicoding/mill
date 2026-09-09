@@ -1,5 +1,5 @@
 import { useMemo, type RefObject } from 'react'
-import { filterPaletteEntries } from './paletteFilter'
+import { filterPaletteEntries } from '../shared/paletteFilter'
 import { matchFacetSuggestions, parseFacetQuery } from '../shared/facetQuery'
 import type { FacetVocabEntry } from '../shared/facetQuery'
 import type { PanelEntry } from './quickPanelActionEntries'

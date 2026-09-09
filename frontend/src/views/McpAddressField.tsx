@@ -19,13 +19,18 @@ function McpAddressField() {
   const [envOverride, setEnvOverride] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  // Amendment 1 (goal 0412 S2): the Save button's own visibility
+  // branches on `envOverride`, fetched here -- jump-and-highlight
+  // needs to know when that's settled before focusing this row.
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     void background(SettingsService.MCPAccessAddressInfo()
       .then((info) => {
         setAddress(info.address)
         setEnvOverride(info.envOverride)
-      }), 'mcpAddress.addressInfo')
+      })
+      .finally(() => setLoaded(true)), 'mcpAddress.addressInfo')
   }, [])
 
   const save = () => {
@@ -48,6 +53,7 @@ function McpAddressField() {
         setting={mustSetting('connections.mcpAddress')}
         caption={envOverride ? t('settings.mcp.addressEnvOverrideCaption') : t('settings.mcp.addressCaption')}
         docsPage={envOverride ? false : undefined}
+        ready={loaded}
         control={(labelId) => (
           <Stack direction="horizontal" gap="condensed" align="center">
             <TextInput

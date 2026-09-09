@@ -3043,6 +3043,27 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `settings.open.security` | Settings › Security | — | Global | Always available |
 | `settings.open.shortcuts` | Settings › Shortcuts | — | Global | Always available |
 | `settings.open.updates` | Settings › Updates | — | Global | Always available |
+| `settings.search` | Search settings | `⌘F` | settings | Always available |
+| `settings.show.appearance.colorMode` | Setting: Color theme | — | Global | Always available |
+| `settings.show.appearance.darkTheme` | Setting: Dark theme | — | Global | Always available |
+| `settings.show.appearance.density` | Setting: Density | — | Global | Always available |
+| `settings.show.appearance.lightTheme` | Setting: Light theme | — | Global | Always available |
+| `settings.show.appearance.theme` | Setting: Theme | — | Global | Always available |
+| `settings.show.connections.mcpAddress` | Setting: Address | — | Global | Always available |
+| `settings.show.connections.mcpAllowImport` | Setting: Allow MCP clients to change content | — | Global | Always available |
+| `settings.show.connections.mcpAskBeforeImport` | Setting: Ask me before each MCP import | — | Global | Always available |
+| `settings.show.general.canvasNavigation` | Setting: Canvas navigation | — | Global | Always available |
+| `settings.show.general.launchAtLogin` | Setting: Launch Mill at login | — | Global | Always available |
+| `settings.show.general.saveMode` | Setting: Save changes | — | Global | Always available |
+| `settings.show.notifications.alertPermission` | Setting: Alerts that stay on screen | — | Global | Always available |
+| `settings.show.notifications.awayAfter` | Setting: Away after (seconds) | — | Global | Always available |
+| `settings.show.security.extensionAllowedSources` | Setting: Allowed sources | — | Global | Always available |
+| `settings.show.security.extensionBlockedCapabilities` | Setting: Blocked capabilities | — | Global | Always available |
+| `settings.show.security.extensionLists` | Setting: Allow and block lists | — | Global | Always available |
+| `settings.show.security.extensionManagedBy` | Setting: Managed by | — | Global | Always available |
+| `settings.show.security.extensionPolicyFile` | Setting: Policy file | — | Global | Always available |
+| `settings.show.security.extensionRequiredTier` | Setting: Required trust tier | — | Global | Always available |
+| `settings.show.shortcuts.globalHotkey` | Setting: Global hotkey | — | Global | Always available |
 | `tab.close` | Close tab | `⌘W` | Global | Conditional — available only in a matching state |
 | `tab.closeAll` | Close all tabs | `⌘⇧W` | Global | Always available |
 | `tab.closeOthers` | Close other tabs | `⌘⌥W` | Global | Conditional — available only in a matching state |

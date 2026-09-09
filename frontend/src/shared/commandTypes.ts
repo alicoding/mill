@@ -54,6 +54,14 @@ export interface Command {
   // palette has no way to supply. Still reachable via HotkeyHint,
   // ContextMenu items, and the Shortcuts Help overlay.
   paletteHidden?: boolean
+  // A resolved (not a key) secondary line the palette shows under
+  // `label` (goal 0412 S2, e.g. a per-setting deep link's own group
+  // breadcrumb: "General"). Resolved, not a key, for the same
+  // module-scope reason commandLabel's own `resolveGroupTitle`-style
+  // callers already resolve at build time -- this registry has no
+  // React tree to call t() from. Omit for a command with no secondary
+  // line.
+  paletteDescription?: string
   // Search aliases (goal 0295, the launcher convention Raycast calls
   // keywords): a query that starts any keyword ranks the command as a
   // prefix match, ahead of rows that merely contain it -- so "update"
