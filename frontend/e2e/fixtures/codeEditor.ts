@@ -21,7 +21,7 @@ import { expect, type Locator, type Page } from '@playwright/test'
 export async function fillCodeEditor(page: Page, testId: string, text: string) {
   const content = page.locator(`[data-testid="${testId}"] .cm-content`)
   await content.click()
-  await page.keyboard.press('Meta+a') // Meta on every host: the page's platform is pinned to MacIntel (fixtures/server.ts)
+  await page.keyboard.press('ControlOrMeta+a') // the editor binds select-all to the host's modifier: Meta on macOS, Control on the Linux runner
   await page.keyboard.press('Delete')
   await page.keyboard.insertText(text)
 }
@@ -75,7 +75,7 @@ export async function fillMilkdown(page: Page, testId: string, text: string) {
     // Mod key to Meta regardless of the runner's OS -- a host-OS choice
     // here sent Control on the Linux runner, select-all never fired, and
     // typing merged into leftover text.
-    await page.keyboard.press('Meta+a')
+    await page.keyboard.press('ControlOrMeta+a')
     await page.keyboard.press('Delete')
     if (await emptied()) break
   }
