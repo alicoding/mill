@@ -2,7 +2,7 @@
 
 package windowing
 
-// framework-api-audit: wails/v3@v3.0.0-beta.15 lacks a cursor-location / lastClickedScreen API -- macosSystemTray.lastClickedScreen
+// framework-api-audit: wails/v3@v3.0.0-beta.18 lacks a cursor-location / lastClickedScreen API -- macosSystemTray.lastClickedScreen
 // (pkg/application/systemtray_darwin.go) is unexported and never
 // surfaced, and screen_darwin.go's getScreenForSystemTray/
 // getScreenForWindow read a WINDOW's own screen, never the cursor's.

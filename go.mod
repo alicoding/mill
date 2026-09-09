@@ -28,7 +28,7 @@ require (
 	github.com/rapid7/go-get-proxied v1.4.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/tobischo/gokeepasslib/v3 v3.7.0
-	github.com/wailsapp/wails/v3 v3.0.0-beta.15
+	github.com/wailsapp/wails/v3 v3.0.0-beta.18
 	github.com/xuri/excelize/v2 v2.11.0
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 	github.com/yuin/goldmark v1.8.6
