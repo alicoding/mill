@@ -224,29 +224,6 @@ func (w pluginContentWriter) CreateCard(kindID, title, note string, fields map[s
 	return w.atlas.CreateCardForPlugin(kindID, title, note, fields, parentID)
 }
 
-// WireCanvasObjectExamples seeds Board gallery with every valid
-// plugin's declared canvasObjects[].example (goal 0411): the one seam
-// that knows both atlassvc's gallery-reconcile shape and pluginsvc's
-// manifest-claim shape, so neither service imports the other. Called
-// once at boot, after PluginService has scanned its manifests -- the
-// same "re-run reconcile once a dependency becomes available" order
-// WireAtlasStorageDirs' SetCapturesDir call already established for
-// captures-dir-backed goldens.
-func WireCanvasObjectExamples(atlas *atlassvc.AtlasService, plugins *pluginsvc.PluginService) {
-	claims := plugins.CanvasObjectExamples()
-	examples := make([]atlassvc.PluginCanvasObjectExample, 0, len(claims))
-	for _, c := range claims {
-		fixtures := make([]atlassvc.PluginCanvasObjectExampleFixture, 0, len(c.Example.Fixtures))
-		for _, f := range c.Example.Fixtures {
-			fixtures = append(fixtures, atlassvc.PluginCanvasObjectExampleFixture{Kind: f.Kind, Body: f.Body, PayloadKey: f.PayloadKey})
-		}
-		examples = append(examples, atlassvc.PluginCanvasObjectExample{
-			Kind: c.Kind, Title: c.Example.Title, Payload: c.Example.Payload, Revision: c.Example.Revision, Fixtures: fixtures,
-		})
-	}
-	atlas.ReconcilePluginCanvasObjectExamples(examples)
-}
-
 func (w pluginContentWriter) UpdateCard(id, title, note string, fields map[string]string) (atlasdomain.Card, error) {
 	return w.atlas.UpdateCardForPlugin(id, title, note, fields)
 }
