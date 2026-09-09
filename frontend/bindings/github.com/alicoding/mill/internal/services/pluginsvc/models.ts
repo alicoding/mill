@@ -138,6 +138,18 @@ export interface GuardedActionDecision {
 }
 
 /**
+ * GuardedActionEvaluation is the read-only "what would happen" answer
+ * (goal 0374's Write-UX decision 1): no side effect, no park, nothing
+ * recorded -- the frame's OWN informational call, never authoritative.
+ * PerformGuardedActionForPlugin re-evaluates independently before
+ * ever performing anything.
+ */
+export interface GuardedActionEvaluation {
+    "Effect": string;
+    "RuleLabel": string;
+}
+
+/**
  * InstallPreview is what the user is shown BEFORE anything downloads:
  * who the extension is, what installing it would earn for trust, and
  * what it can do once it runs. Every permission-shaped fact a manifest
@@ -529,6 +541,18 @@ export interface PluginFileEntry {
 }
 
 /**
+ * PluginGuardedActionResult is PerformGuardedActionForPlugin's outcome
+ * -- the same shape requestGuardedAction's existing GuardedActionResult
+ * already carries on the frontend, so the two doors read alike there.
+ */
+export interface PluginGuardedActionResult {
+    "Approved": boolean;
+    "Effect": string;
+    "RuleLabel": string;
+    "Performed": boolean;
+}
+
+/**
  * PluginInfo is one scanned plugin as the Extensions surface and the
  * loader see it. Error is a load-blocking validation problem stated
  * for the human (the row renders it; the loader skips the plugin) --
@@ -546,7 +570,8 @@ export interface PluginInfo {
     /**
      * ContentHash is the folder's current content hash
      * (pluginservice_hash.go), "" for a built-in or an invalid plugin
-     * -- what the lock compares against.
+     * -- what signature verification (Signed) checks against. NOT what
+     * the lock compares against; that is CodeHash (docs/goals/0375 S2).
      */
     "ContentHash": string;
 

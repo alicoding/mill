@@ -20,6 +20,9 @@ var AllowedAttributes = map[Kind][]string{
 	KindBridgeCommand: {
 		"error_text", "status_code",
 	},
+	KindGuardedAction: {
+		"plugin_id", "plugin_builtin", "item_key", "integration_id", "rule_label", "error_text",
+	},
 }
 
 // ValidateAttributes rejects any key not in kind's own AllowedAttributes

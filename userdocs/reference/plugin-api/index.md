@@ -17,6 +17,7 @@
 - [CanvasRect](interfaces/CanvasRect.md)
 - [ContentEntry](interfaces/ContentEntry.md)
 - [ContentQuery](interfaces/ContentQuery.md)
+- [GuardedActionEvaluation](interfaces/GuardedActionEvaluation.md)
 - [GuardedActionResult](interfaces/GuardedActionResult.md)
 - [KindFieldInfo](interfaces/KindFieldInfo.md)
 - [KindInfo](interfaces/KindInfo.md)

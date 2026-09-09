@@ -1,12 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Text } from '@primer/react'
+import { Button, Stack, Text } from '@primer/react'
 import { Events } from '@wailsio/runtime'
 import { pluginAPIFor } from '../plugins/hostApi'
 import { pluginThemeAttrs, usePluginTheme } from '../plugins/pluginTheme'
 import { attachFrameBridge, sendFrameEvent, sendFrameMessage, type CaptureControls, type FaceControls } from './pluginFrameBridge'
 import { buildFrameSrcdoc, frameBootstrapUrl, hostTokenReader, millTokenCss, pluginAssetBase } from './pluginFrameBootstrap'
+import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
+import type { GuardedActionResult } from '../plugins/sdk/guardedAction'
 import listStyles from '../shared/ListCard.module.css'
+import frameStyles from './PluginFrame.module.css'
 
 // PluginFrame mounts one plugin-owned page in its own sandboxed frame
 // (docs/goals/0349, docs/adr/0047): the plugin's entry HTML, fetched
@@ -44,14 +47,44 @@ export interface PluginFrameProps {
   testId: string
 }
 
+// PendingAsk is one in-flight inline confirmation (goal 0374): the
+// banner PluginFrame itself renders, outside the sandboxed frame, for
+// a guarded write whose rule says "ask". resolve settles the promise
+// performGuardedWrite is holding open -- true only from THIS
+// component's own Post click, never from anything the frame sent.
+interface PendingAsk {
+  description: string
+  resolve: (confirmed: boolean) => void
+}
+
 export function PluginFrame(props: PluginFrameProps) {
   const { t } = useTranslation('app')
   const { pluginId, entry, version, stateKey, title, context, testId } = props
   const frameRef = useRef<HTMLIFrameElement>(null)
   const [srcdoc, setSrcdoc] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
+  const [pendingAsk, setPendingAsk] = useState<PendingAsk | null>(null)
   const theme = usePluginTheme()
   const api = pluginAPIFor(pluginId)
+
+  // performGuardedWrite is the ONLY place confirmed=true is ever set
+  // (goal 0374 amendment 1): the frame's own performGuardedAction call
+  // reaches here, never Go directly, so an "ask" outcome always shows
+  // THIS component's own banner before a second, confirmed call is
+  // ever made -- the frame cannot skip it, and cannot supply confirmed
+  // itself, since this function's signature never takes one.
+  const performGuardedWrite = useCallback(async (kind: string, attributes: Record<string, string>, description: string): Promise<GuardedActionResult> => {
+    const verdict = await PluginService.EvaluateGuardedActionForPlugin(pluginId, kind, attributes)
+    if (verdict.Effect !== 'ask') {
+      const r = await PluginService.PerformGuardedActionForPlugin(pluginId, kind, attributes, description, false)
+      return { approved: r.Approved, effect: r.Effect, ruleLabel: r.RuleLabel, performed: r.Performed }
+    }
+    const confirmed = await new Promise<boolean>((resolve) => setPendingAsk({ description, resolve }))
+    setPendingAsk(null)
+    if (!confirmed) return { approved: false, effect: verdict.Effect, ruleLabel: verdict.RuleLabel, performed: false }
+    const r = await PluginService.PerformGuardedActionForPlugin(pluginId, kind, attributes, description, true)
+    return { approved: r.Approved, effect: r.Effect, ruleLabel: r.RuleLabel, performed: r.Performed }
+  }, [pluginId])
 
   // The page's own bytes, fetched once. The version rides the query so
   // a reinstalled plugin never serves a cached page.
@@ -89,6 +122,7 @@ export function PluginFrame(props: PluginFrameProps) {
       api,
       capture: props.capture,
       face: props.face,
+      guardedWrite: { perform: performGuardedWrite },
       onPageMessage: props.onPageMessage,
       onState: (state) => { void api.storage.set(stateKey, state).catch((err: unknown) => console.error(`plugin ${pluginId}: view state could not be saved`, err)) },
       onReady: () => sendFrameEvent(frame, 'ctx', context),
@@ -138,25 +172,42 @@ export function PluginFrame(props: PluginFrameProps) {
   }
   if (srcdoc === null) return <div data-testid={`${testId}-loading`} style={{ height: '100%', flex: '1 1 auto' }} />
   return (
-    <iframe
-      ref={frameRef}
-      // No allow-same-origin: the page's origin stays opaque, which is
-      // what keeps it out of Mill's document, cookies and storage.
-      sandbox="allow-scripts allow-forms"
-      srcDoc={srcdoc}
-      title={title}
-      data-testid={testId}
-      data-plugin-id={pluginId}
-      data-surface-id={props.surfaceId}
-      // Same theming contract as every other plugin host element (goal
-      // 0349 S1): the resolved theme rides the host node's attributes so
-      // a stylesheet outside the frame (and the theme conformance check)
-      // can read it with no JavaScript.
-      {...pluginThemeAttrs(theme)}
-      // The frame fills the box its host hands it. An iframe's own
-      // intrinsic height is 150px, so the host must give it a definite
-      // one; flex is how every other filling surface here does it.
-      style={{ width: '100%', height: '100%', flex: '1 1 auto', minHeight: 0, border: 0, display: 'block', colorScheme: 'normal' }}
-    />
+    <div className={frameStyles.host}>
+      <iframe
+        ref={frameRef}
+        // No allow-same-origin: the page's origin stays opaque, which is
+        // what keeps it out of Mill's document, cookies and storage.
+        sandbox="allow-scripts allow-forms"
+        srcDoc={srcdoc}
+        title={title}
+        data-testid={testId}
+        data-plugin-id={pluginId}
+        data-surface-id={props.surfaceId}
+        // Same theming contract as every other plugin host element (goal
+        // 0349 S1): the resolved theme rides the host node's attributes so
+        // a stylesheet outside the frame (and the theme conformance check)
+        // can read it with no JavaScript.
+        {...pluginThemeAttrs(theme)}
+        // The frame fills the box its host hands it. An iframe's own
+        // intrinsic height is 150px, so the host must give it a definite
+        // one; flex is how every other filling surface here does it.
+        style={{ width: '100%', height: '100%', flex: '1 1 auto', minHeight: 0, border: 0, display: 'block', colorScheme: 'normal' }}
+      />
+      {/* The inline "ask" banner (goal 0374): rendered here, outside the
+          sandboxed frame, so the frame can never assert its own
+          confirmation -- docked to the bottom of this view's own box,
+          not a modal, not a detour through the Review queue. */}
+      {pendingAsk && (
+        <Stack direction="horizontal" gap="condensed" align="center" className={frameStyles.askBanner} data-testid={`${testId}-guarded-ask`}>
+          <Text size="small">{t('pluginView.guardedWrite.confirm')}</Text>
+          <Button size="small" variant="primary" data-testid={`${testId}-guarded-ask-confirm`} onClick={() => pendingAsk.resolve(true)}>
+            {pendingAsk.description}
+          </Button>
+          <Button size="small" data-testid={`${testId}-guarded-ask-cancel`} onClick={() => pendingAsk.resolve(false)}>
+            {t('pluginView.guardedWrite.cancel')}
+          </Button>
+        </Stack>
+      )}
+    </div>
   )
 }

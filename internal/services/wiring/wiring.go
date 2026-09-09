@@ -168,7 +168,21 @@ func WireConfigureSeams(atlas *atlassvc.AtlasService, cfg *configuresvc.Configur
 	WirePasteConversion(atlas, cfg)
 	WirePluginContentWrites(plugins, atlas, cfg)
 	WireListUndoJournal(atlas, cfg)
+	WirePluginIntegrations(plugins)
 	WireWorkflowUndoJournal(atlas, comp)
+}
+
+// WirePluginIntegrations connects a plugin's live-view/guarded-write
+// door (goal 0374) to composition.ExecuteOperation -- the SAME
+// execution tail integration-http nodes already share via
+// composition.SetHTTPRequestLookup (wired in configureservice.go),
+// never a second HTTP path. run stays empty: a plugin call has no
+// workflow run to correlate against, the same posture
+// composition.RefExists's own lookup already takes.
+func WirePluginIntegrations(plugins *pluginsvc.PluginService) {
+	plugins.WireIntegrations(func(requestID, path, method string, values map[string]string) (string, error) {
+		return composition.ExecuteOperation(requestID, path, method, values, composition.SecretAccessRun{})
+	})
 }
 
 // WireListUndoJournal points Configure's List row doors at the app's

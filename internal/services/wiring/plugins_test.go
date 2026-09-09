@@ -41,7 +41,7 @@ func TestNewPluginService_SourceChannelSkipsMinVersionEnforcement(t *testing.T) 
 	writeVersionPinnedPlugin(t, root)
 	settingsPath := filepath.Join(root, "settings.json")
 
-	srcInfos, err := NewPluginService(settingsPath, nil, "source", "0.5.0").ListPlugins()
+	srcInfos, err := NewPluginService(settingsPath, nil, "source", "0.5.0", "", nil).ListPlugins()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestNewPluginService_SourceChannelSkipsMinVersionEnforcement(t *testing.T) 
 		t.Fatalf("source build refused the pinned plugin: %q", row.Error)
 	}
 
-	betaInfos, err := NewPluginService(settingsPath, nil, "beta", "0.5.0").ListPlugins()
+	betaInfos, err := NewPluginService(settingsPath, nil, "beta", "0.5.0", "", nil).ListPlugins()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +229,7 @@ func TestWirePluginTrust_NarrowedOrUnrelatedManifestEditKeepsTheGrant(t *testing
 	comp := compositionsvc.NewCompositionService(store)
 	trig := triggersvc.NewTriggerService(comp, slog.Default(), store)
 	settings := settingssvc.NewSettingsService(store, trig, false)
-	plugins := NewPluginService(filepath.Join(root, "settings.json"), nil, "source", "")
+	plugins := NewPluginService(filepath.Join(root, "settings.json"), nil, "source", "", "", nil)
 	secrets := secretsvc.NewSecretService(secretvault.New(filepath.Join(root, "secrets.kdbx")), credential.NewInMemory(), store)
 	WirePluginTrust(plugins, settings, secrets)
 

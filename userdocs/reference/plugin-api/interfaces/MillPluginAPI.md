@@ -8,6 +8,41 @@
 
 ## Properties
 
+### callIntegration
+
+```ts
+callIntegration: (integrationId, path, method, values) => Promise<string>;
+```
+
+Reads through a Configure Integration the user picked in this
+plugin's own settings — never an arbitrary host. path/method name
+one operation the Integration's own OpenAPI spec declares; values
+fill that operation's declared fields.
+
+#### Parameters
+
+##### integrationId
+
+`string`
+
+##### path
+
+`string`
+
+##### method
+
+`string`
+
+##### values
+
+`Record`\<`string`, `string`\>
+
+#### Returns
+
+`Promise`\<`string`\>
+
+***
+
 ### content
 
 ```ts
@@ -21,6 +56,33 @@ content: PluginContentAPI;
 ```ts
 convert: PluginConvertAPI;
 ```
+
+***
+
+### evaluateGuardedAction
+
+```ts
+evaluateGuardedAction: (kind, attributes) => Promise<GuardedActionEvaluation>;
+```
+
+Read-only: what a kind/attributes pair would do right now, with
+no side effect. Lets a view drive its own local state before
+asking Mill to actually send — see PluginViewHost's own inline
+confirmation banner for the kinds this powers.
+
+#### Parameters
+
+##### kind
+
+`string`
+
+##### attributes
+
+`Record`\<`string`, `string`\>
+
+#### Returns
+
+`Promise`\<[`GuardedActionEvaluation`](GuardedActionEvaluation.md)\>
 
 ***
 
