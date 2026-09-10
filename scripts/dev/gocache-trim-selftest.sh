@@ -251,6 +251,17 @@ else
   fail "controlled trim did not use the required arguments or success record: $(cat "$success_out")"
 fi
 
+serializer_fail_out="$scratch_root/serializer-fail.out"
+if MILL_GOCACHE_GO="$tool_dir/go" \
+   MILL_GOCACHE_PYTHON="/usr/bin/false" \
+   bash "$setup" --print-plist >"$serializer_fail_out" 2>&1; then
+  fail "plist preview succeeded after serializer failed"
+elif grep -q "failed to serialize LaunchAgent plist" "$serializer_fail_out"; then
+  pass "plist preview refuses serializer failure"
+else
+  fail "plist preview failed without a serializer diagnostic"
+fi
+
 python_bin="$(command -v python3 2>/dev/null || true)"
 if [ -z "$python_bin" ]; then
   fail "python3 is unavailable for plist validation"

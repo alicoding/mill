@@ -73,7 +73,10 @@ PYTHON
 }
 
 if [ "${1:-}" = "--print-plist" ]; then
-  print_plist
+  if ! print_plist; then
+    echo "gocache-trim-setup: failed to serialize LaunchAgent plist" >&2
+    exit 1
+  fi
   exit 0
 fi
 
