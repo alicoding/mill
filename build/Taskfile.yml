@@ -212,18 +212,21 @@ tasks:
       - "darwin/icons.icns"
       - "windows/icon.ico"
       # Task requires one concrete path for the local legacy-only route.
-      # Repeating icons.icns there keeps that route unchanged; CI selects
-      # Assets.car so a missing modern catalog makes this task stale.
-      - '{{if eq .MODERN_APPLE_ICONS "true"}}darwin/Assets.car{{else}}darwin/icons.icns{{end}}'
+      # Repeating icons.icns there keeps that route unchanged; selected full
+      # Xcode resolves to Assets.car so a missing modern catalog makes it stale.
+      - '{{if eq .MODERN_APPLE_ICONS_RESOLVED "true"}}darwin/Assets.car{{else}}darwin/icons.icns{{end}}'
     cmds:
       - |
         rm -f darwin/Assets.car darwin/icons.icns windows/icon.ico
         wails3 generate icons -input appicon.png -macfilename darwin/icons.icns -windowsfilename windows/icon.ico -iconcomposerinput appicon.icon -macassetdir darwin
-        if [ "{{.MODERN_APPLE_ICONS}}" = "true" ] && [ ! -s darwin/Assets.car ]; then
+        if [ "{{.MODERN_APPLE_ICONS_RESOLVED}}" = "true" ] && [ ! -s darwin/Assets.car ]; then
           echo "generate:icons: full-Xcode build omitted darwin/Assets.car" >&2
           exit 1
         fi
       - cd .. && go run ./internal/iconassets -check-packaged
+    vars:
+      MODERN_APPLE_ICONS_RESOLVED:
+        sh: '{{.ROOT_DIR}}/scripts/detect-modern-apple-icons.sh "{{.MODERN_APPLE_ICONS | default "auto"}}"'
 
   dev:frontend:
     summary: Runs the frontend in development mode
