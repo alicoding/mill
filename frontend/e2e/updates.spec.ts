@@ -62,7 +62,7 @@ test('Source-channel build never offers to download, and shows the pull-and-rebu
     await page.goto(`${server.baseURL}/`)
     await openSettings(page, 'updates')
 
-    await expect(page.getByTestId('current-app-version')).toContainText('built from source')
+    await expect(page.getByTestId('current-app-version')).toContainText('local build')
 
     const card = page.getByTestId('update-available-card')
     await expect(card).toBeVisible()
@@ -109,7 +109,7 @@ test('Release-channel build offers to download, and a failed install surfaces th
     await page.goto(`${server.baseURL}/`)
     await openSettings(page, 'updates')
 
-    await expect(page.getByTestId('current-app-version')).toContainText('installed from a release')
+    await expect(page.getByTestId('current-app-version')).toContainText('release build')
 
     const card = page.getByTestId('update-available-card')
     await expect(card).toBeVisible()
@@ -174,7 +174,7 @@ test('Beta-channel build offers to download, dismissing the pill leaves the acti
     await page.goto(`${server.baseURL}/`)
     await openSettings(page, 'updates')
 
-    await expect(page.getByTestId('current-app-version')).toContainText('installed from the beta channel')
+    await expect(page.getByTestId('current-app-version')).toContainText('beta build')
 
     const card = page.getByTestId('update-available-card')
     await expect(card).toBeVisible()
@@ -204,13 +204,26 @@ test('Beta-channel build offers to download, dismissing the pill leaves the acti
     // only appears once it's on, defaulting to Hourly.
     const auto = page.getByTestId('auto-update-check')
     await expect(auto).not.toBeChecked()
+    await expect(page.getByTestId('automatic-updates-caption')).toHaveText(
+      'Checks when you open Updates or choose Check for updates. Downloads must be started manually.',
+    )
     await expect(page.getByTestId('update-check-interval-select')).toHaveCount(0)
     await auto.check()
     await expect(page.getByTestId('update-check-interval-select')).toHaveValue('hourly')
+    await expect(page.getByTestId('automatic-updates-caption')).toHaveText(
+      'Checks for updates on the schedule below and downloads available updates automatically.',
+    )
+    await page.getByTestId('update-check-interval-select').selectOption('manual')
+    await expect(page.getByTestId('automatic-updates-caption')).toHaveText(
+      'Checks when you open Updates or check manually, then downloads available updates automatically.',
+    )
     await page.reload()
     await openSettings(page, 'updates')
     await expect(page.getByTestId('auto-update-check')).toBeChecked()
-    await expect(page.getByTestId('update-check-interval-select')).toHaveValue('hourly')
+    await expect(page.getByTestId('update-check-interval-select')).toHaveValue('manual')
+    await expect(page.getByTestId('automatic-updates-caption')).toHaveText(
+      'Checks when you open Updates or check manually, then downloads available updates automatically.',
+    )
 
     await page.close()
   } finally {
@@ -263,7 +276,10 @@ test('Update-channel preference saves, explains the restart, and survives a relo
   let dir: string | undefined
   const browser = await chromium.launch()
   try {
-    ;({ server, dir } = await spawnUpdatesServer(idx, UPDATES_CHANNEL_PREF_SERVER_BASE_PORT, UPDATES_CHANNEL_PREF_MCP_BASE_PORT, {}))
+    ;({ server, dir } = await spawnUpdatesServer(idx, UPDATES_CHANNEL_PREF_SERVER_BASE_PORT, UPDATES_CHANNEL_PREF_MCP_BASE_PORT, {
+      MILL_TEST_UPDATE_FAKE_VERSION: '9.9.9',
+      MILL_TEST_UPDATE_UP_TO_DATE: '1',
+    }))
     const page = await browser.newPage()
     await applyCpuThrottle(page)
     await page.goto(`${server.baseURL}/`)
@@ -287,12 +303,30 @@ test('Update-channel preference saves, explains the restart, and survives a relo
 
     const select = page.getByTestId('update-channel-select')
     await expect(select).toHaveValue('')
+    await expect(page.getByTestId('build-origin')).toHaveText('local build')
     await select.selectOption('beta')
     await expect(page.getByTestId('update-channel-saved')).toContainText('Restart Mill')
+    await expect(page.getByTestId('build-origin')).toHaveText('local build')
+
+    const auto = page.getByTestId('auto-update-check')
+    await auto.check()
+    await expect(page.getByTestId('automatic-updates-caption')).toHaveText(
+      'Checks for updates on the schedule below. This local build does not download updates automatically.',
+    )
+    await page.getByTestId('update-check-interval-select').selectOption('manual')
+    await expect(page.getByTestId('automatic-updates-caption')).toHaveText(
+      'Checks when you open Updates or check manually; this local build requires manual downloads.',
+    )
 
     await page.reload()
     await openSettings(page, 'updates')
     await expect(page.getByTestId('update-channel-select')).toHaveValue('beta')
+    await expect(page.getByTestId('build-origin')).toHaveText('local build')
+    await expect(page.getByTestId('auto-update-check')).toBeChecked()
+    await expect(page.getByTestId('update-check-interval-select')).toHaveValue('manual')
+    await expect(page.getByTestId('automatic-updates-caption')).toHaveText(
+      'Checks when you open Updates or check manually; this local build requires manual downloads.',
+    )
     await expect(page.getByTestId('proxy-mode-select')).toHaveValue('manual')
     await expect(page.getByTestId('proxy-url-input')).toHaveValue('http://proxy.example.com:8080')
 

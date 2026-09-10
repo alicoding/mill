@@ -142,10 +142,17 @@ vi.mock('../shared/bindings', async () => {
       GetAuditRetentionEntries: resolved(1000),
       SetAuditRetentionEntries: resolved(undefined),
       AppVersion: resolved('0.0.0-test'),
+      GetBuildInfo: resolved({
+        Revision: 'test', Modified: false, Server: false, BuiltAt: 1,
+        BuildChannel: 'source', LocalBuild: true,
+      }),
       UpdateChannel: resolved('source'),
       UpdateChannelPreference: resolved(''),
+      SetUpdateChannelPreference: resolved(undefined),
       AutoUpdateCheck: resolved(false),
+      SetAutoUpdateCheck: resolved(undefined),
       UpdateCheckInterval: resolved('hourly'),
+      SetUpdateCheckInterval: resolved(undefined),
       OutboundProxyURL: resolved(''),
       SetOutboundProxyURL: resolved(undefined),
       UpdateNoticeState: resolved({
@@ -204,8 +211,10 @@ function managedPolicy() {
 
 const { usePluginPolicyStore } = await import('../shared/pluginPolicyStore')
 const { useVaultStatusStore } = await import('../shared/vaultStatusStore')
+const { refreshBuildInfo, useBuildInfoStore } = await import('../shared/buildInfoStore')
 const { getAppearance, setAppearance } = await import('../shared/appearance')
 const { PluginService } = await import('../../bindings/github.com/alicoding/mill/internal/services/pluginsvc')
+const { SettingsService } = await import('../shared/bindings')
 
 const SettingsGeneralPane = (await import('./SettingsGeneralPane')).default
 const AppearanceSection = (await import('./AppearanceSection')).default
@@ -224,6 +233,10 @@ beforeEach(() => {
   document.body.append(container)
   usePluginPolicyStore.setState({ policy: null })
   useVaultStatusStore.setState({ vaultStatus: null, vaultError: null, vaultBackupTime: null })
+  useBuildInfoStore.setState({ isDesktop: false, buildInfo: null })
+  vi.mocked(SettingsService.UpdateChannel).mockResolvedValue('source')
+  vi.mocked(SettingsService.AutoUpdateCheck).mockResolvedValue(false)
+  vi.mocked(SettingsService.UpdateCheckInterval).mockResolvedValue('hourly')
 })
 
 afterEach(() => {
@@ -346,5 +359,69 @@ describe('Settings panes render exactly their registry entries (goal 0412 S1)', 
     for (const setting of SETTINGS) {
       expect(knownGroups.has(setting.group), `${setting.id} belongs to a real group`).toBe(true)
     }
+  })
+})
+
+function buildInfo(BuildChannel: string, LocalBuild: boolean) {
+  return { Revision: 'test', Modified: false, Server: false, BuiltAt: 1, BuildChannel, LocalBuild }
+}
+
+describe('Updates renders the effective automatic-update policy', () => {
+  it.each([
+    [false, 'hourly', true, 'Checks when you open Updates or choose Check for updates. Downloads must be started manually.'],
+    [true, 'hourly', true, 'Checks for updates on the schedule below. This local build does not download updates automatically.'],
+    [true, 'manual', true, 'Checks when you open Updates or check manually; this local build requires manual downloads.'],
+    [true, 'daily', false, 'Checks for updates on the schedule below and downloads available updates automatically.'],
+    [true, 'manual', false, 'Checks when you open Updates or check manually, then downloads available updates automatically.'],
+  ] as const)('auto=%s interval=%s local=%s', async (autoCheck, interval, localBuild, expected) => {
+    useBuildInfoStore.setState({ isDesktop: true, buildInfo: buildInfo(localBuild ? 'source' : 'release', localBuild) })
+    vi.mocked(SettingsService.AutoUpdateCheck).mockResolvedValueOnce(autoCheck)
+    vi.mocked(SettingsService.UpdateCheckInterval).mockResolvedValueOnce(interval)
+
+    await mount(<UpdatesSection />)
+
+    expect(container.querySelector('[data-testid="automatic-updates-caption"]')?.textContent).toBe(expected)
+  })
+
+  it('keeps source-build origin and policy when the selected feed is beta', async () => {
+    useBuildInfoStore.setState({ isDesktop: true, buildInfo: buildInfo('source', true) })
+    vi.mocked(SettingsService.UpdateChannel).mockResolvedValueOnce('beta')
+    vi.mocked(SettingsService.AutoUpdateCheck).mockResolvedValueOnce(true)
+
+    await mount(<UpdatesSection />)
+
+    expect(container.querySelector('[data-testid="build-origin"]')?.textContent).toBe('local build')
+    expect(container.querySelector('[data-testid="automatic-updates-caption"]')?.textContent)
+      .toBe('Checks for updates on the schedule below. This local build does not download updates automatically.')
+  })
+
+  it('omits origin and automatic-download claims while build metadata is pending', async () => {
+    vi.mocked(SettingsService.AutoUpdateCheck).mockResolvedValueOnce(true)
+
+    await mount(<UpdatesSection />)
+
+    expect(container.querySelector('[data-testid="build-origin"]')).toBeNull()
+    expect(container.querySelector('[data-testid="automatic-updates-caption"]')).toBeNull()
+
+    await act(async () => {
+      useBuildInfoStore.getState().setBuildInfo(buildInfo('beta', false))
+    })
+    expect(container.querySelector('[data-testid="build-origin"]')?.textContent).toBe('beta build')
+    expect(container.querySelector('[data-testid="automatic-updates-caption"]')?.textContent)
+      .toBe('Checks for updates on the schedule below and downloads available updates automatically.')
+  })
+
+  it('keeps metadata unknown after the existing background error path records a failed fetch', async () => {
+    vi.mocked(SettingsService.GetBuildInfo).mockRejectedValueOnce(new Error('metadata unavailable'))
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    await refreshBuildInfo()
+    vi.mocked(SettingsService.AutoUpdateCheck).mockResolvedValueOnce(true)
+    await mount(<UpdatesSection />)
+
+    expect(warning).toHaveBeenCalledWith('[background:buildInfo.getBuildInfo]', expect.any(Error))
+    expect(container.querySelector('[data-testid="build-origin"]')).toBeNull()
+    expect(container.querySelector('[data-testid="automatic-updates-caption"]')).toBeNull()
+    warning.mockRestore()
   })
 })

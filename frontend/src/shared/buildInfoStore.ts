@@ -15,12 +15,14 @@ import { background } from './background'
 // before it appears.
 interface BuildInfoState {
   isDesktop: boolean
+  buildInfo: BuildInfo | null
   setBuildInfo: (info: BuildInfo) => void
 }
 
 export const useBuildInfoStore = create<BuildInfoState>()((set) => ({
   isDesktop: false,
-  setBuildInfo: (info) => set({ isDesktop: !info.Server }),
+  buildInfo: null,
+  setBuildInfo: (info) => set({ isDesktop: !info.Server, buildInfo: info }),
 }))
 
 export function refreshBuildInfo(): Promise<void> {
