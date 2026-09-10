@@ -115,7 +115,8 @@ test('Installing states what the extension can do, and the installed row wears i
 	await page.getByRole('dialog').getByRole('button', { name: 'Install', exact: true }).click()
 	await expect(dialog).toHaveCount(0)
 
-	await openExtensions(page, 'installed')
+	await expect(page.getByTestId('extensions-tab-installed')).toHaveAttribute('aria-pressed', 'true')
+	await expect(page.getByTestId('extensions-tab-browse')).toHaveAttribute('aria-pressed', 'false')
 	const row = page.locator('[data-testid="extensions-plugin-row"][data-plugin-id="fixture-notes"]')
 	await expect(row).toBeVisible()
 	await expect(row.getByTestId('extensions-row-tier')).toHaveText('Dev')

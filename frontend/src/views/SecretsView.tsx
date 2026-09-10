@@ -33,6 +33,8 @@ import styles from './SecretsView.module.css'
 
 type SecretsSection = 'vault' | 'sources' | 'trash'
 
+const SECTIONS: SecretsSection[] = ['vault', 'sources', 'trash']
+
 // The page's three sections, and the deep-link tab values that land on
 // each. An unrecognized tab lands on the entries, which is the section
 // the page is named for. Lock policy moved to Settings > Security
@@ -136,16 +138,23 @@ export default function SecretsView({ initialTab }: { initialTab?: string } = {}
   useUndoJournal({ onSkip: setUndoNotice, onApplied: () => setUndoNotice('') })
 
   const sectionSwitch = (
-    <SegmentedControl aria-label={t('sections.ariaLabel')} className={styles.sections} data-testid="secrets-sections">
-      <SegmentedControl.Button selected={section === 'vault'} onClick={() => setSection('vault')} data-testid="secrets-section-vault">
+    <SegmentedControl
+      aria-label={t('sections.ariaLabel')}
+      className={styles.sections}
+      data-testid="secrets-sections"
+      onChange={(index) => {
+        const next = SECTIONS[index]
+        if (next) setSection(next)
+      }}
+    >
+      <SegmentedControl.Button selected={section === 'vault'} data-testid="secrets-section-vault">
         {t('sections.vault')}
       </SegmentedControl.Button>
-      <SegmentedControl.Button selected={section === 'sources'} onClick={() => setSection('sources')} data-testid="secrets-section-sources">
+      <SegmentedControl.Button selected={section === 'sources'} data-testid="secrets-section-sources">
         {t('sections.sources')}
       </SegmentedControl.Button>
       <SegmentedControl.Button
         selected={section === 'trash'}
-        onClick={() => setSection('trash')}
         count={trashList !== null ? trashList.length : undefined}
         data-testid="secrets-section-trash"
       >

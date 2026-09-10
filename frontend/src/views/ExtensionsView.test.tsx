@@ -5,14 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 type Props = Record<string, unknown> & { children?: ReactNode }
 
-vi.mock('@primer/react', () => {
+vi.mock('@primer/react', async () => {
+  const actual = await vi.importActual<typeof import('@primer/react')>('@primer/react')
   const Stack = ({ children }: Props) => <div>{children}</div>
   const Text = ({ children }: Props) => <span>{children}</span>
   const Heading = ({ children }: Props) => <h1>{children}</h1>
   const Button = ({ children, ...props }: Props) => <button {...props}>{children}</button>
-  const SegmentedButton = ({ children, ...props }: Props) => <button {...props}>{children}</button>
-  const SegmentedControl = Object.assign(({ children }: Props) => <div>{children}</div>, { Button: SegmentedButton })
-  return { Button, Heading, SegmentedControl, Stack, Text }
+  return { Button, Heading, SegmentedControl: actual.SegmentedControl, Stack, Text }
 })
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 vi.mock('../shared/PageContainer', () => ({ default: ({ children }: Props) => <main>{children}</main> }))
@@ -53,6 +52,8 @@ describe('ExtensionsView command navigation', () => {
     await act(async () => root.render(<ExtensionsView initialTab="browse" />))
 
     expect(container.querySelector('[data-testid="installed-pane"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="extensions-tab-installed"]')?.getAttribute('aria-pressed')).toBe('true')
+    expect(container.querySelector('[data-testid="extensions-tab-browse"]')?.getAttribute('aria-pressed')).toBe('false')
     expect(useUISignalStore.getState().extensionInstalledRequest).toBe(0)
 
     await act(async () => {
@@ -60,9 +61,18 @@ describe('ExtensionsView command navigation', () => {
       browse?.click()
     })
     expect(container.querySelector('[data-testid="browse-pane"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="extensions-tab-installed"]')?.getAttribute('aria-pressed')).toBe('false')
+    expect(container.querySelector('[data-testid="extensions-tab-browse"]')?.getAttribute('aria-pressed')).toBe('true')
 
     await act(async () => useUISignalStore.getState().requestExtensionInstalled())
     expect(container.querySelector('[data-testid="installed-pane"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="extensions-tab-installed"]')?.getAttribute('aria-pressed')).toBe('true')
+    expect(container.querySelector('[data-testid="extensions-tab-browse"]')?.getAttribute('aria-pressed')).toBe('false')
+
+    await act(async () => useUISignalStore.getState().requestExtensionSources())
+    expect(container.querySelector('[data-testid="browse-pane"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="extensions-tab-installed"]')?.getAttribute('aria-pressed')).toBe('false')
+    expect(container.querySelector('[data-testid="extensions-tab-browse"]')?.getAttribute('aria-pressed')).toBe('true')
   })
 
   it('does not acknowledge a newer View installed request with an older token', () => {

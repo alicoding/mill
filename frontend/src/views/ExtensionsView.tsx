@@ -82,12 +82,19 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
 
       <ExtensionsPolicyBanner />
 
-      <SegmentedControl aria-label={t('extensions.tabsAria')} className={styles.tabs} data-testid="extensions-tabs">
+      <SegmentedControl
+        aria-label={t('extensions.tabsAria')}
+        className={styles.tabs}
+        data-testid="extensions-tabs"
+        onChange={(index) => {
+          const next = TABS[index]
+          if (next) setTab(next)
+        }}
+      >
         {TABS.map((id) => (
           <SegmentedControl.Button
             key={id}
             selected={tab === id}
-            onClick={() => setTab(id)}
             data-testid={`extensions-tab-${id}`}
           >
             {id === 'updates' && updateCount > 0 ? t('extensions.tabs.updatesCount', { count: updateCount }) : t(`extensions.tabs.${id}`)}
