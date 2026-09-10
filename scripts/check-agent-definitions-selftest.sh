@@ -39,9 +39,9 @@ past this point: `timeout: 600000`.
 ## Checkpoint commits (mandatory)
 
 The first commit on the goal branch happens the moment the build is
-clean -- a `wip:` commit message is fine. At turn ~80 you MUST commit
-whatever is clean and write a one-line "checkpoint at turn 80: <what
-is left>" into your scratch dir. A builder never ends a turn -- cap,
+clean -- a `wip:` commit message is fine. A WIP checkpoint commit
+happens every ~30 turns after that. At turn ~90 the pre-check pushes
+the branch before anything else. A builder never ends a turn -- cap,
 budget, or report -- with a dirty worktree on a goal branch.
 EOF
 }
