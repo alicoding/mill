@@ -1,6 +1,6 @@
 import i18n from 'i18next'
 import type { Command } from './commands'
-import { entityContext } from './commandContext'
+import { entityContext, marketplaceSourceInputContext } from './commandContext'
 import { useAppStore } from './store'
 import { useUISignalStore } from './uiSignalStore'
 import { SettingsService } from './bindings'
@@ -13,6 +13,8 @@ import { pluginLoadStates, pluginsAwaitingReview, pluginsAwaitingReviewIds } fro
 import { ConfigureService } from './bindings'
 import { appTranslate, messageFor } from './userError'
 import { checkForUpdatesWithNotice, updateAllWithNotice, updateCandidateFor, useExtensionUpdatesStore } from './extensionUpdatesStore'
+import { useExtensionSourcesStore } from './extensionSourcesStore'
+import { usePluginPolicyStore } from './pluginPolicyStore'
 
 // The Extensions surface's own commands (docs/goals/0349). The page
 // itself is one nav command; every ROW action is a command taking the
@@ -22,6 +24,7 @@ import { checkForUpdatesWithNotice, updateAllWithNotice, updateCandidateFor, use
 // EXTENSION_ENTITY is the context family these commands serve -- a
 // command here reads nothing from a workflow or card context.
 export const EXTENSION_ENTITY = 'plugin'
+export const MARKETPLACE_SOURCE_ENTITY = 'marketplaceSource'
 
 function extensionName(id: string): string {
   return pluginLoadStates().get(id)?.info.Manifest.name || id
@@ -73,7 +76,60 @@ const EXTENSION_ROW_COMMANDS: Command[] = entityRowCommands<{ ID: string; Label:
   },
 }).map((command) => ({ ...command, paletteHidden: true }))
 
+interface SourceCommandRow {
+  ID: string
+  Label: string
+  Incarnation: string
+  Included: boolean
+}
+
+const SOURCE_ROW_COMMANDS: Command[] = entityRowCommands<SourceCommandRow>({
+  entity: MARKETPLACE_SOURCE_ENTITY,
+  namespace: 'extension.source',
+  load: () => useExtensionSourcesStore.getState().sources.map((source) => ({
+    ID: source.name,
+    Label: source.name,
+    Incarnation: source.incarnation,
+    Included: source.included ?? false,
+  })),
+  refetch: () => {},
+  remove: {
+    suffix: 'remove',
+    label: 'commands.extension.source.remove',
+    undo: false,
+    confirm: {
+      title: 'views:extensions.sources.removeConfirmTitle',
+      body: 'views:extensions.sources.removeConfirmBody',
+      confirmLabel: 'views:extensions.sources.removeConfirmButton',
+    },
+    enabled: (item) => {
+      const state = useExtensionSourcesStore.getState()
+      return !item.Included && state.ready && state.mutation === null &&
+        item.Incarnation === state.confirmedIncarnation
+    },
+    run: (item) => useExtensionSourcesStore.getState().remove(item.ID, item.Incarnation),
+  },
+}).map((command) => ({ ...command, paletteHidden: true }))
+
 export const EXTENSIONS_COMMANDS: Command[] = [
+  {
+    id: 'extension.addSource',
+    label: 'commands.extension.addSource',
+    defaultBinding: null,
+    needs: 'marketplaceSourceInput',
+    paletteHidden: true,
+    enabled: (ctx) => {
+      const input = marketplaceSourceInputContext(ctx)
+      const state = useExtensionSourcesStore.getState()
+      const policy = usePluginPolicyStore.getState().policy
+      return Boolean(input?.locator.trim()) && state.ready && policy !== null && policy.Error === '' && state.mutation === null
+    },
+    run: (ctx) => {
+      const input = marketplaceSourceInputContext(ctx)
+      if (!input) return
+      return useExtensionSourcesStore.getState().add(input.locator.trim())
+    },
+  },
   {
     // The store is its own destination, not a Settings pane. ⇧⌘X is
     // free in this registry: no other command binds Shift+Cmd+X.
@@ -113,6 +169,35 @@ export const EXTENSIONS_COMMANDS: Command[] = [
     },
   },
   {
+    id: 'extensions.viewInstalled',
+    label: 'commands.extensions.viewInstalled',
+    defaultBinding: null,
+    paletteHidden: true,
+    run: () => {
+      useAppStore.getState().setView({ kind: 'extensions', tab: 'installed' })
+      useUISignalStore.getState().requestExtensionInstalled()
+    },
+  },
+  {
+    id: 'extension.browse.retry',
+    label: 'commands.extension.browse.retry',
+    defaultBinding: null,
+    paletteHidden: true,
+    enabled: () => useExtensionSourcesStore.getState().browseError !== '' && !useExtensionSourcesStore.getState().browseLoading,
+    run: () => useExtensionSourcesStore.getState().loadBrowse(),
+  },
+  {
+    id: 'extension.browse.clearFilters',
+    label: 'commands.extension.browse.clearFilters',
+    defaultBinding: null,
+    paletteHidden: true,
+    enabled: () => {
+      const state = useExtensionSourcesStore.getState()
+      return state.browseQuery !== '' || state.browseKinds.length > 0
+    },
+    run: () => useExtensionSourcesStore.getState().clearBrowseFilters(),
+  },
+  {
     id: 'extensions.importTheme',
     label: 'commands.extensions.importTheme',
     defaultBinding: null,
@@ -127,6 +212,7 @@ export const EXTENSIONS_COMMANDS: Command[] = [
   // below (goal 0346 slice B), the same descriptor every Configure
   // family uses -- their ids and labels are unchanged.
   ...EXTENSION_ROW_COMMANDS,
+  ...SOURCE_ROW_COMMANDS,
   {
     // Check for updates is the one user action that asks every source
     // and every installed extension's own source for a newer version;
@@ -200,6 +286,7 @@ export const EXTENSIONS_COMMANDS: Command[] = [
     label: 'commands.extension.refreshSources',
     defaultBinding: null,
     keywords: ['refresh', 'marketplace', 'sources'],
+    enabled: () => useExtensionSourcesStore.getState().ready && useExtensionSourcesStore.getState().mutation === null,
     run: () => refreshSourcesWithNotice(),
   },
 ]
@@ -230,13 +317,12 @@ function addMcpServerToConfigure(pluginId: string, serverId: string): void {
 // refreshSourcesWithNotice re-reads every added source. The ONLY
 // automatic thing about it is that it reports its own outcome: a
 // refresh happens because someone pressed it, never on a timer.
-export function refreshSourcesWithNotice(): void {
-  void PluginService.RefreshMarketplaceSources()
+export function refreshSourcesWithNotice(): Promise<void> {
+  return useExtensionSourcesStore.getState().refresh()
     .then((problems) => {
       const failures = problems ?? []
       pushNotice(failures.length === 0
         ? { level: 'success', text: i18n.t('views:extensions.sourcesRefreshed') }
         : { level: 'error', text: i18n.t('views:extensions.sourcesRefreshFailed', { list: failures.join('; ') }) })
     })
-    .catch((err) => pushNotice({ level: 'error', text: i18n.t('views:extensions.sourcesRefreshFailed', { list: String(err) }) }))
 }

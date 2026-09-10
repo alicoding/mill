@@ -2,6 +2,8 @@ package pluginsvc
 
 import (
 	"fmt"
+	"net/url"
+	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -24,6 +26,8 @@ type PolicySubject struct {
 	// folder's signature, 0 when none did.
 	PublisherKeyID uint64
 	Builtin        bool
+	Origin         SourceOrigin
+	OriginVerified bool
 }
 
 // capabilityDeeds names each capability the way a refusal sentence
@@ -46,6 +50,11 @@ func (p Policy) Refusal(s PolicySubject) string {
 	}
 	if reason := p.listRefusal(s); reason != "" {
 		return reason
+	}
+	if p.Version == PolicyVersion && p.Sources != nil {
+		if !s.OriginVerified || !p.SourceOriginAllowed(s.Origin) {
+			return "Source could not be verified. Reinstall this extension from an allowed source."
+		}
 	}
 	if reason := p.tierRefusal(s); reason != "" {
 		return reason
@@ -157,6 +166,13 @@ func tierMeets(tier, required string) bool {
 // source; a non-empty one allows a listed marketplace name, and a
 // listed address that the locator starts with.
 func (p Policy) SourceAllowed(marketplace, locator string) bool {
+	if p.Version == PolicyVersion {
+		if locator == "" {
+			return p.Sources == nil
+		}
+		source, err := ClassifySource(locator)
+		return err == nil && p.SourceOriginAllowed(source.Origin)
+	}
 	if len(p.AllowedSources) == 0 {
 		return true
 	}
@@ -171,7 +187,90 @@ func (p Policy) SourceAllowed(marketplace, locator string) bool {
 	return false
 }
 
+func (p Policy) SourceOriginAllowed(origin SourceOrigin) bool {
+	if p.Version != PolicyVersion {
+		return true
+	}
+	if p.Sources == nil {
+		return true
+	}
+	for _, rule := range p.Sources {
+		if sourceRuleMatches(rule, origin) {
+			return true
+		}
+	}
+	return false
+}
+
+func sourceRuleMatches(rule SourcePolicyRule, origin SourceOrigin) bool {
+	if rule.Kind != origin.Kind {
+		return false
+	}
+	switch rule.Kind {
+	case "bundled", "theme-file":
+		return true
+	case "github":
+		return strings.EqualFold(rule.Locator, origin.Locator) && (rule.Ref == "" || rule.Ref == origin.Ref)
+	case "url":
+		return rule.Locator == origin.Locator
+	case "path":
+		resolvedRule, err := filepath.EvalSymlinks(rule.Locator)
+		if err != nil {
+			return false
+		}
+		resolvedOrigin, err := filepath.EvalSymlinks(origin.Locator)
+		if err != nil {
+			return false
+		}
+		rel, err := filepath.Rel(resolvedRule, resolvedOrigin)
+		return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+	default:
+		return false
+	}
+}
+
+func (p Policy) ArtifactURLAllowed(source SourceOrigin, raw string) bool {
+	if p.Version != PolicyVersion || p.Sources == nil {
+		return true
+	}
+	canonical, err := canonicalHTTPURL(raw, false)
+	if err != nil {
+		return false
+	}
+	u, _ := url.Parse(canonical)
+	origin := (&url.URL{Scheme: u.Scheme, Host: u.Host, Path: "/"}).String()
+	for _, rule := range p.Sources {
+		if !sourceRuleMatches(rule, source) {
+			continue
+		}
+		for _, permitted := range artifactOrigins(rule, source) {
+			if permitted == origin {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func artifactOrigins(rule SourcePolicyRule, source SourceOrigin) []string {
+	if rule.ArtifactOrigins != nil {
+		return rule.ArtifactOrigins
+	}
+	switch source.Kind {
+	case "url":
+		sourceURL, _ := url.Parse(source.Locator)
+		return []string{(&url.URL{Scheme: sourceURL.Scheme, Host: sourceURL.Host, Path: "/"}).String()}
+	case "github":
+		return []string{"https://raw.githubusercontent.com/"}
+	default:
+		return nil
+	}
+}
+
 // SourceRefusal is the sentence a refused source shows.
 func (p Policy) SourceRefusal() string {
-	return fmt.Sprintf("Your organisation allows installs only from %s.", strings.Join(p.AllowedSources, ", "))
+	if p.Version == PolicyVersion {
+		return "Your organisation does not allow this extension source."
+	}
+	return "Your organisation allows installs only from " + strings.Join(p.AllowedSources, ", ") + "."
 }

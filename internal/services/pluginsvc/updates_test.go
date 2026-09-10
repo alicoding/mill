@@ -250,11 +250,10 @@ func TestCheckForUpdates_UnreachableSourceIsNamedNotHidden(t *testing.T) {
 func TestUpdateCheck_RoundTripsThroughState(t *testing.T) {
 	svc, _ := newStoreService(t)
 	want := UpdateCheck{CheckedAt: "2026-01-01T00:00:00Z", Candidates: []UpdateCandidate{{ID: "a", Installed: "1.0.0", Available: "1.2.0", Tier: TierHashPinned}}, Problems: []string{}}
-	marketplaceStateMu.Lock()
-	st := svc.readState()
-	st.Updates = want
-	err := svc.writeState(st)
-	marketplaceStateMu.Unlock()
+	_, err := svc.mutateState(func(st *marketplaceState) error {
+		st.Updates = want
+		return nil
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

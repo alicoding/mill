@@ -176,12 +176,16 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
 | `extension.addMcpServer` | Add to Configure | — | Global | Acts on the selected entity |
+| `extension.addSource` | Add extension source | — | Global | Acts on the selected marketplaceSourceInput |
+| `extension.browse.clearFilters` | Clear extension filters | — | Global | Conditional — available only in a matching state |
+| `extension.browse.retry` | Retry loading extensions | — | Global | Conditional — available only in a matching state |
 | `extension.checkUpdates` | Check for updates | — | Global | Acts on the selected entity |
 | `extension.disable` | Turn off | — | Global | Acts on the selected entity |
 | `extension.enable` | Turn on | — | Global | Acts on the selected entity |
-| `extension.refreshSources` | Extensions: refresh sources | — | Global | Always available |
+| `extension.refreshSources` | Extensions: refresh sources | — | Global | Conditional — available only in a matching state |
 | `extension.remove` | Remove | — | Global | Acts on the selected entity |
 | `extension.reveal` | Reveal folder | — | Global | Acts on the selected entity |
+| `extension.source.remove` | Remove source | — | Global | Acts on the selected entity |
 | `extension.update` | Update | — | Global | Acts on the selected entity |
 | `extensions.checkUpdates` | Extensions: check for updates | — | Global | Always available |
 | `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
@@ -190,6 +194,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `extensions.review` | Review extensions waiting for you | — | Global | Conditional — available only in a matching state |
 | `extensions.sources` | Extensions: marketplace sources | — | Global | Always available |
 | `extensions.updateAll` | Extensions: update all | — | Global | Conditional — available only in a matching state |
+| `extensions.viewInstalled` | Extensions: view installed | — | Global | Always available |
 | `guardrail.rule.delete` | Delete rule | — | Global | Acts on the selected entity |
 | `guardrail.rule.edit` | Edit rule | — | Global | Acts on the selected entity |
 | `help.openDataFolder` | Open data folder | — | Global | Always available |

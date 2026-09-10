@@ -56,10 +56,102 @@ func TestParsePolicy_DefaultsRequiredTierToAny(t *testing.T) {
 	}
 }
 
+func TestParsePolicyVersion2PreservesAbsentAndEmptySources(t *testing.T) {
+	omitted, err := ParsePolicy([]byte(`{"version":2,"managedBy":"Org"}`))
+	if err != nil || omitted.Sources != nil {
+		t.Fatalf("omitted sources = %#v, %v", omitted.Sources, err)
+	}
+	empty, err := ParsePolicy([]byte(`{"version":2,"managedBy":"Org","sources":[]}`))
+	if err != nil || empty.Sources == nil || len(empty.Sources) != 0 {
+		t.Fatalf("empty sources = %#v, %v", empty.Sources, err)
+	}
+	for _, body := range []string{
+		`{"version":2,"managedBy":"Org","allowedSources":[]}`,
+		`{"version":1,"managedBy":"Org","sources":[]}`,
+		`{"version":2,"managedBy":"Org"} {}`,
+	} {
+		if _, err := ParsePolicy([]byte(body)); err == nil {
+			t.Fatalf("parsed invalid policy %s", body)
+		}
+	}
+}
+
+func TestPolicyVersion2MatchesCanonicalOriginsExactly(t *testing.T) {
+	policy, err := ParsePolicy([]byte(`{"version":2,"managedBy":"Org","sources":[
+		{"kind":"github","locator":"Acme/Store","ref":"Release"},
+		{"kind":"url","locator":"HTTPS://Example.Test:443/Index.JSON?channel=A"}
+	]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !policy.SourceOriginAllowed(SourceOrigin{Kind: "github", Locator: "acme/store", Ref: "Release"}) {
+		t.Fatal("canonical GitHub origin refused")
+	}
+	if policy.SourceOriginAllowed(SourceOrigin{Kind: "github", Locator: "acme/store", Ref: "release"}) {
+		t.Fatal("case-changed ref allowed")
+	}
+	if !policy.SourceOriginAllowed(SourceOrigin{Kind: "url", Locator: "https://example.test/Index.JSON?channel=A"}) {
+		t.Fatal("canonical URL origin refused")
+	}
+	for _, locator := range []string{
+		"https://example.test/index.json?channel=A",
+		"https://example.test/Index.JSON?channel=B",
+		"https://example.test.evil/Index.JSON?channel=A",
+	} {
+		if policy.SourceOriginAllowed(SourceOrigin{Kind: "url", Locator: locator}) {
+			t.Fatalf("lookalike URL allowed: %s", locator)
+		}
+	}
+}
+
+func TestPolicyVersion2PathRulesResolveSymlinkContainment(t *testing.T) {
+	allowed := t.TempDir()
+	inside := filepath.Join(allowed, "inside")
+	outside := t.TempDir()
+	if err := os.Mkdir(inside, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	escape := filepath.Join(allowed, "escape")
+	if err := os.Symlink(outside, escape); err != nil {
+		t.Fatal(err)
+	}
+	policy := Policy{Version: PolicyVersion, Sources: []SourcePolicyRule{{Kind: "path", Locator: allowed}}}
+	if !policy.SourceOriginAllowed(SourceOrigin{Kind: "path", Locator: inside}) {
+		t.Fatal("contained path refused")
+	}
+	if policy.SourceOriginAllowed(SourceOrigin{Kind: "path", Locator: escape}) {
+		t.Fatal("symlink escape allowed")
+	}
+}
+
+func TestPolicyVersion2ArtifactOriginsAreExact(t *testing.T) {
+	policy, err := ParsePolicy([]byte(`{"version":2,"managedBy":"Org","sources":[{"kind":"url","locator":"https://index.example.test/catalog.json","artifactOrigins":["https://cdn.example.test"]}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := SourceOrigin{Kind: "url", Locator: "https://index.example.test/catalog.json"}
+	if !policy.ArtifactURLAllowed(source, "https://cdn.example.test/plugin.zip?token=opaque") {
+		t.Fatal("declared artifact origin refused")
+	}
+	for _, raw := range []string{"http://cdn.example.test/plugin.zip", "https://cdn.example.test.evil/plugin.zip", "https://cdn.example.test:444/plugin.zip"} {
+		if policy.ArtifactURLAllowed(source, raw) {
+			t.Fatalf("lookalike artifact origin allowed: %s", raw)
+		}
+	}
+}
+
+func TestPolicyVersion2RestrictedLegacyReceiptRefusal(t *testing.T) {
+	policy := Policy{Version: PolicyVersion, RequiredTier: TierAny, Sources: []SourcePolicyRule{{Kind: "github", Locator: "acme/store"}}}
+	got := policy.Refusal(PolicySubject{ID: "acme", Version: "1.0.0", Tier: TierVerified})
+	if got != "Source could not be verified. Reinstall this extension from an allowed source." {
+		t.Fatalf("legacy receipt refusal = %q", got)
+	}
+}
+
 func TestParsePolicy_RefusesEachMalformedKey(t *testing.T) {
 	cases := map[string]string{
 		"not json":             `{`,
-		"wrong version":        `{"version": 2, "managedBy": "Org"}`,
+		"wrong version":        `{"version": 3, "managedBy": "Org"}`,
 		"no managedBy":         `{"version": 1}`,
 		"unknown key":          `{"version": 1, "managedBy": "Org", "allowAll": true}`,
 		"empty rule":           `{"version": 1, "managedBy": "Org", "allow": [{}]}`,

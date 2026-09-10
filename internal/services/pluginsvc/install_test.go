@@ -80,7 +80,7 @@ func TestExtractZip_RefusesATopLevelParentEntry(t *testing.T) {
 	dest := t.TempDir()
 	data := zipOf(t, map[string]string{
 		"safe/manifest.json": `{"id":"acme"}`,
-		"../evil":             "nope",
+		"../evil":            "nope",
 	})
 	if err := ExtractZip(data, dest); err == nil {
 		t.Fatal("ExtractZip() = nil error, want a traversal refusal")

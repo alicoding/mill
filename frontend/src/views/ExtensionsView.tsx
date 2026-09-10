@@ -33,6 +33,7 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
   const { t } = useTranslation('views')
   const [tab, setTab] = useState<ExtensionsTab>(tabFrom(initialTab))
   const sourcesRequest = useUISignalStore((s) => s.extensionSourcesRequest)
+  const installedRequest = useUISignalStore((s) => s.extensionInstalledRequest)
   const importRequest = useUISignalStore((s) => s.extensionThemeImportRequest)
   const consumeImportRequest = useUISignalStore((s) => s.consumeExtensionThemeImport)
   const [importOpen, setImportOpen] = useState(false)
@@ -51,6 +52,13 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
       setTab('browse')
     }
   }, [sourcesRequest, seenSources])
+  const [seenInstalled, setSeenInstalled] = useState(installedRequest)
+  useEffect(() => {
+    if (installedRequest !== seenInstalled) {
+      setSeenInstalled(installedRequest)
+      setTab('installed')
+    }
+  }, [installedRequest, seenInstalled])
 
   // An install changes what the Installed tab shows; the same signal
   // a removal raises re-reads it.

@@ -102,7 +102,13 @@ func (p *PluginService) PreviewInstall(marketplace, id string) (InstallPreview, 
 	if dir, ok := p.previewDir(idx, entry); ok {
 		_, pv.Warnings = InstallChecks(dir, m)
 	}
-	if err := policyInstallRefusal(m, pv.Tier, idx.Name); err != nil {
+	origin := SourceOrigin{Kind: "bundled"}
+	if idx.Name != ReservedMarketplaceName {
+		if source, ok := p.sourceFor(idx.Name); ok {
+			origin = source.Origin
+		}
+	}
+	if err := policyInstallRefusalOriginAt(m, pv.Tier, origin, idx.Name, "", ""); err != nil {
 		pv.PolicyRefusal = err.Error()
 	}
 	pv.AlreadyInstalled = p.installedFolderExists(entry.ID)
@@ -225,37 +231,54 @@ func (p *PluginService) InstallFromMarketplace(marketplace, id string) (InstallR
 		return InstallRecord{}, err
 	}
 	defer cleanup()
-	tier, err := p.stageEntry(stage, idx, entry)
+	tier, finalURL, err := p.stageEntry(stage, idx, entry)
 	if err != nil {
 		return InstallRecord{}, err
 	}
-	return p.finishInstall(stage, InstallRecord{Source: entry.Source, Marketplace: idx.Name, Tier: tier})
+	origin := SourceOrigin{Kind: "bundled"}
+	if marketplace != ReservedMarketplaceName {
+		source, ok := p.sourceFor(marketplace)
+		if !ok {
+			return InstallRecord{}, fmt.Errorf("%q is no longer a registered source", marketplace)
+		}
+		origin = source.Origin
+	}
+	record := InstallRecord{Source: entry.Source, Marketplace: idx.Name, Tier: tier, Origin: origin, FinalArtifactURL: finalURL}
+	return p.finishInstall(stage, record)
 }
 
 // stageEntry puts one index entry's files in the staging folder and
 // answers the tier that earned. Mill's own bundled index is its own
 // case: those files come out of the binary, so nothing is fetched and
 // nothing needs checking.
-func (p *PluginService) stageEntry(stage string, idx MarketplaceIndex, entry MarketplaceEntry) (string, error) {
+func (p *PluginService) stageEntry(stage string, idx MarketplaceIndex, entry MarketplaceEntry) (string, string, error) {
 	if idx.Name == ReservedMarketplaceName {
 		if !p.hasExample(entry.ID) {
-			return "", fmt.Errorf("%q is not one of the extensions this Mill ships", entry.ID)
+			return "", "", fmt.Errorf("%q is not one of the extensions this Mill ships", entry.ID)
 		}
-		return TierVerified, CopyEmbeddedPlugin(p.examples, embeddedPluginPath(exampleMarketplaceRoot, entry.ID), stage)
+		return TierVerified, "", CopyEmbeddedPlugin(p.examples, embeddedPluginPath(exampleMarketplaceRoot, entry.ID), stage)
 	}
 	switch entry.Source.Kind {
 	case "path":
 		src, ok := p.sourceFor(idx.Name)
 		if !ok || src.Kind != "path" {
-			return "", fmt.Errorf("%q is only offered as a folder, and that source is not a folder", entry.ID)
+			return "", "", fmt.Errorf("%q is only offered as a folder, and that source is not a folder", entry.ID)
 		}
-		return TierDev, CopyPluginFolder(filepath.Join(expandHome(src.Locator), filepath.FromSlash(entry.Source.Path)), stage)
+		return TierDev, "", CopyPluginFolder(filepath.Join(expandHome(src.Locator), filepath.FromSlash(entry.Source.Path)), stage)
 	case "archive":
-		return p.stageArchive(stage, entry.Source.URL, declaredHash(entry))
+		source, ok := p.sourceFor(idx.Name)
+		if !ok {
+			return "", "", fmt.Errorf("%q is no longer a registered source", idx.Name)
+		}
+		return p.stageArchive(stage, entry.Source.URL, declaredHash(entry), source.Origin)
 	case "github":
-		return p.stageRepo(stage, entry.Source.Repo, firstNonEmpty(entry.Source.Ref, entry.Source.SHA), entry.ID, entry.Version, declaredHash(entry))
+		source, ok := p.sourceFor(idx.Name)
+		if !ok {
+			return "", "", fmt.Errorf("%q is no longer a registered source", idx.Name)
+		}
+		return p.stageRepo(stage, entry.Source.Repo, firstNonEmpty(entry.Source.Ref, entry.Source.SHA), entry.ID, entry.Version, declaredHash(entry), source.Origin)
 	}
-	return "", fmt.Errorf("unknown source kind %q", entry.Source.Kind)
+	return "", "", fmt.Errorf("unknown source kind %q", entry.Source.Kind)
 }
 
 // InstallFromLink installs from whatever the user pasted: a
@@ -265,7 +288,11 @@ func (p *PluginService) InstallFromLink(input string) (InstallRecord, error) {
 	if raw == "" {
 		return InstallRecord{}, fmt.Errorf("enter a repo, an address, or a folder")
 	}
-	if err := policySourceRefusal("", raw); err != nil {
+	classified, classifyErr := ClassifySource(raw)
+	if classifyErr != nil {
+		return InstallRecord{}, classifyErr
+	}
+	if err := policySourceRegistrationRefusal("", classified); err != nil {
 		return InstallRecord{}, err
 	}
 	stage, cleanup, err := stageDir()
@@ -273,68 +300,78 @@ func (p *PluginService) InstallFromLink(input string) (InstallRecord, error) {
 		return InstallRecord{}, err
 	}
 	defer cleanup()
-	tier, source, err := p.stageLink(stage, raw)
+	tier, source, finalURL, err := p.stageLink(stage, raw)
 	if err != nil {
 		return InstallRecord{}, err
 	}
-	return p.finishInstall(stage, InstallRecord{Source: source, Tier: tier})
+	record := InstallRecord{Source: source, Tier: tier, Origin: classified.Origin, FinalArtifactURL: finalURL}
+	return p.finishInstall(stage, record)
 }
 
 // stageLink reads what the user pasted and stages it, answering the
 // tier and the source to record.
-func (p *PluginService) stageLink(stage, raw string) (string, PluginSource, error) {
+func (p *PluginService) stageLink(stage, raw string) (string, PluginSource, string, error) {
+	classified, classifyErr := ClassifySource(raw)
+	if classifyErr != nil {
+		return "", PluginSource{}, "", classifyErr
+	}
 	if strings.HasPrefix(raw, "/") || strings.HasPrefix(raw, "~") {
-		return TierDev, PluginSource{Kind: "path", Path: raw}, CopyPluginFolder(expandHome(raw), stage)
+		return TierDev, PluginSource{Kind: "path", Path: raw}, "", CopyPluginFolder(expandHome(raw), stage)
 	}
 	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
 		if owner, repo, ok := gitHubRemoteRepo(raw); ok {
-			tier, err := p.stageRepo(stage, owner+"/"+repo, "", "", "", "")
-			return tier, PluginSource{Kind: "github", Repo: owner + "/" + repo}, err
+			tier, finalURL, err := p.stageRepo(stage, owner+"/"+repo, "", "", "", "", classified.Origin)
+			return tier, PluginSource{Kind: "github", Repo: owner + "/" + repo}, finalURL, err
 		}
-		tier, err := p.stageArchive(stage, raw, "")
-		return tier, PluginSource{Kind: "archive", URL: raw}, err
+		tier, finalURL, err := p.stageArchive(stage, raw, "", classified.Origin)
+		return tier, PluginSource{Kind: "archive", URL: raw}, finalURL, err
 	}
 	repoName, ref, _ := strings.Cut(raw, "@")
 	if !repoPattern.MatchString(repoName) {
-		return "", PluginSource{}, fmt.Errorf("that is not a repo, an address, or a folder")
+		return "", PluginSource{}, "", fmt.Errorf("that is not a repo, an address, or a folder")
 	}
-	tier, err := p.stageRepo(stage, repoName, ref, "", "", "")
-	return tier, PluginSource{Kind: "github", Repo: repoName, Ref: ref}, err
+	tier, finalURL, err := p.stageRepo(stage, repoName, ref, "", "", "", classified.Origin)
+	return tier, PluginSource{Kind: "github", Repo: repoName, Ref: ref}, finalURL, err
 }
 
 // stageArchive downloads one zip and extracts it, refusing the whole
 // install when a declared hash does not match the bytes.
-func (p *PluginService) stageArchive(stage, url, declared string) (string, error) {
-	data, err := p.httpGetBytes(url, maxDownloadBytes)
+func (p *PluginService) stageArchive(stage, url, declared string, origins ...SourceOrigin) (string, string, error) {
+	origin := SourceOrigin{}
+	if len(origins) > 0 {
+		origin = origins[0]
+	}
+	data, finalURL, err := p.httpGetBytesForOrigin(url, maxDownloadBytes, origin, true)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	actual := SHA256Hex(data)
 	if strings.TrimSpace(declared) != "" && !strings.EqualFold(strings.TrimSpace(declared), actual) {
-		return "", fmt.Errorf("the download doesn't match the hash the source declared")
+		return "", "", fmt.Errorf("the download doesn't match the hash the source declared")
 	}
 	if err := ExtractZip(data, stage); err != nil {
-		return "", err
+		return "", "", err
 	}
-	return TierFor(TierInputs{DeclaredSHA256: declared, ActualSHA256: actual}), nil
+	return TierFor(TierInputs{DeclaredSHA256: declared, ActualSHA256: actual}), finalURL, nil
 }
 
 // stageRepo installs from a repository: the release asset the standard
 // names when the entry pins a version, and the branch archive
 // otherwise -- which nothing checks, so it is unverified by
 // construction.
-func (p *PluginService) stageRepo(stage, repo, ref, id, version, declared string) (string, error) {
+func (p *PluginService) stageRepo(stage, repo, ref, id, version, declared string, origins ...SourceOrigin) (string, string, error) {
 	if id != "" && version != "" {
 		assetURL := releaseAssetURL(repo, version, ReleaseAssetName(id, version))
-		tier, err := p.stageArchive(stage, assetURL, declared)
+		tier, finalURL, err := p.stageArchive(stage, assetURL, declared, origins...)
 		if err == nil {
-			return tier, nil
+			return tier, finalURL, nil
 		}
 	}
-	if _, err := p.stageArchive(stage, BranchArchiveURL(repo, ref), ""); err != nil {
-		return "", err
+	_, finalURL, err := p.stageArchive(stage, BranchArchiveURL(repo, ref), "", origins...)
+	if err != nil {
+		return "", "", err
 	}
-	return TierUnverified, nil
+	return TierUnverified, finalURL, nil
 }
 
 func releaseAssetURL(repo, version, asset string) string {
@@ -363,8 +400,19 @@ func (p *PluginService) stagedChecks(root string, rec InstallRecord) ([]string, 
 		}
 	}
 	hash, _ := ContentHash(root)
-	if err := policyInstallRefusalAt(m, rec.Tier, rec.Marketplace, installSourceLocator(rec.Source), root, hash); err != nil {
-		return nil, err
+	var policyErr error
+	if rec.Origin.Kind != "" {
+		if rec.FinalArtifactURL != "" {
+			if err := policyRequestRefusal(rec.Origin, rec.FinalArtifactURL, true); err != nil {
+				return nil, err
+			}
+		}
+		policyErr = policyInstallRefusalOriginAt(m, rec.Tier, rec.Origin, rec.Marketplace, root, hash)
+	} else {
+		policyErr = policyInstallRefusalAt(m, rec.Tier, rec.Marketplace, installSourceLocator(rec.Source), root, hash)
+	}
+	if policyErr != nil {
+		return nil, policyErr
 	}
 	refusals, warnings := InstallChecks(root, m)
 	if len(refusals) > 0 {

@@ -1344,6 +1344,30 @@
     "needs": "entity"
   },
   {
+    "id": "extension.addSource",
+    "label": "Add extension source",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "marketplaceSourceInput"
+  },
+  {
+    "id": "extension.browse.clearFilters",
+    "label": "Clear extension filters",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "extension.browse.retry",
+    "label": "Retry loading extensions",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "extension.checkUpdates",
     "label": "Check for updates",
     "binding": null,
@@ -1372,7 +1396,7 @@
     "label": "Extensions: refresh sources",
     "binding": null,
     "surface": null,
-    "enabled": false,
+    "enabled": true,
     "needs": null
   },
   {
@@ -1386,6 +1410,14 @@
   {
     "id": "extension.reveal",
     "label": "Reveal folder",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "extension.source.remove",
+    "label": "Remove source",
     "binding": null,
     "surface": null,
     "enabled": true,
@@ -1453,6 +1485,14 @@
     "binding": null,
     "surface": null,
     "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "extensions.viewInstalled",
+    "label": "Extensions: view installed",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
     "needs": null
   },
   {

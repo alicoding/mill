@@ -1,7 +1,10 @@
 package settings
 
 import (
+	"encoding/json"
+	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 )
 
@@ -12,6 +15,82 @@ func TestNew_CreatesParentDirectory(t *testing.T) {
 	if _, err := New(filename); err != nil {
 		t.Fatalf("New(%q) = %v, want nil error", filename, err)
 	}
+}
+
+func TestSnapshotFreshStateAndPersistedDeletion(t *testing.T) {
+	filename := filepath.Join(t.TempDir(), "settings.json")
+	store, err := New(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := store.Snapshot()
+	if err != nil || string(raw) != "{}" {
+		t.Fatalf("fresh Snapshot = %q, %v", raw, err)
+	}
+	if err := store.Set("key", "value"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filename); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Snapshot(); err == nil {
+		t.Fatal("Snapshot succeeded after persisted file was deleted")
+	}
+}
+
+func TestSnapshotReturnsDetachedValidatedBytes(t *testing.T) {
+	filename := filepath.Join(t.TempDir(), "settings.json")
+	store, err := New(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Set("key", "value"); err != nil {
+		t.Fatal(err)
+	}
+	first, err := store.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	first[0] = 'x'
+	second, err := store.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var object map[string]any
+	if err := json.Unmarshal(second, &object); err != nil || object["key"] != "value" {
+		t.Fatalf("detached Snapshot = %q, %v", second, err)
+	}
+}
+
+func TestSnapshotSerializesWithAutosave(t *testing.T) {
+	filename := filepath.Join(t.TempDir(), "settings.json")
+	store, err := New(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(2)
+		go func(value int) {
+			defer wg.Done()
+			if err := store.Set("counter", value); err != nil {
+				t.Errorf("Set: %v", err)
+			}
+		}(i)
+		go func() {
+			defer wg.Done()
+			raw, err := store.Snapshot()
+			if err != nil {
+				t.Errorf("Snapshot: %v", err)
+				return
+			}
+			var object map[string]any
+			if err := json.Unmarshal(raw, &object); err != nil {
+				t.Errorf("Snapshot returned partial JSON: %q: %v", raw, err)
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 func TestNew_FreshInstall_HasNoData(t *testing.T) {

@@ -26,7 +26,9 @@ func newStoreService(t *testing.T, ids ...string) (*PluginService, string) {
 	t.Helper()
 	dir := t.TempDir()
 	svc := New(dir, nil, "")
-	svc.SetExampleMarketplace(exampleFS(ids...))
+	if len(ids) > 0 {
+		svc.SetExampleMarketplace(exampleFS(ids...))
+	}
 	return svc, dir
 }
 
@@ -38,10 +40,10 @@ func TestBrowseMarketplaces_ListsEveryBundledExample(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 2 {
-		t.Fatalf("entries = %d, want 2: %+v", len(entries), entries)
+	if len(entries.Entries) != 2 {
+		t.Fatalf("entries = %d, want 2: %+v", len(entries.Entries), entries)
 	}
-	for _, e := range entries {
+	for _, e := range entries.Entries {
 		if e.Marketplace != ReservedMarketplaceName {
 			t.Errorf("marketplace = %q, want %q", e.Marketplace, ReservedMarketplaceName)
 		}
@@ -104,14 +106,14 @@ func TestAddMarketplaceSource_ReadsAFolderIndexAndPersistsIt(t *testing.T) {
 		t.Fatalf("source = %+v, want the fixture folder source", src)
 	}
 	sources, err := svc.ListMarketplaceSources()
-	if err != nil || len(sources) != 1 {
-		t.Fatalf("sources = %+v (%v), want one", sources, err)
+	if err != nil || len(sources) != 2 {
+		t.Fatalf("sources = %+v (%v), want bundled and fixture", sources, err)
 	}
 	entries, err := svc.BrowseMarketplaces()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !hasEntry(entries, "fixture", "fixture-notes") {
+	if !hasEntry(entries.Entries, "fixture", "fixture-notes") {
 		t.Fatalf("browse = %+v, want the fixture entry", entries)
 	}
 }
@@ -129,20 +131,21 @@ func TestAddMarketplaceSource_RefusesTheSameNameTwice(t *testing.T) {
 
 func TestRemoveMarketplaceSource_DropsItsEntriesFromBrowse(t *testing.T) {
 	svc, _ := newStoreService(t)
-	if _, err := svc.AddMarketplaceSource(writeFixtureMarketplace(t)); err != nil {
+	source, err := svc.AddMarketplaceSource(writeFixtureMarketplace(t))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.RemoveMarketplaceSource("fixture"); err != nil {
+	if err := svc.RemoveMarketplaceSource("fixture", source.Incarnation); err != nil {
 		t.Fatalf("RemoveMarketplaceSource() = %v", err)
 	}
 	entries, err := svc.BrowseMarketplaces()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if hasEntry(entries, "fixture", "fixture-notes") {
+	if hasEntry(entries.Entries, "fixture", "fixture-notes") {
 		t.Error("the removed source's entries are still listed")
 	}
-	if err := svc.RemoveMarketplaceSource("fixture"); err == nil {
+	if err := svc.RemoveMarketplaceSource("fixture", source.Incarnation); err == nil {
 		t.Error("removing an unknown source = nil error, want a refusal")
 	}
 }
@@ -213,7 +216,7 @@ func TestBrowseMarketplaces_PromisesTheTierTheInstallWillRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, e := range entries {
+	for _, e := range entries.Entries {
 		if e.Marketplace == "fixture" && e.Tier != TierDev {
 			t.Fatalf("browse tier = %q, want %q for a folder entry", e.Tier, TierDev)
 		}
@@ -313,10 +316,18 @@ func writeSourceIndex(t *testing.T, svc *PluginService, index string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	st := svc.readState()
-	st.Sources = append(st.Sources, MarketplaceSource{Name: parsed.Name, Kind: "url", Locator: "https://example.test/" + IndexFile})
-	st.Indexes[parsed.Name] = parsed
-	if err := svc.writeState(st); err != nil {
+	source, err := canonicalSource(MarketplaceSource{Name: parsed.Name, Kind: "url", Locator: "https://example.test/" + IndexFile})
+	if err != nil {
+		t.Fatal(err)
+	}
+	source.Incarnation, _ = freshIncarnation()
+	source.Status = SourceCurrent
+	_, err = svc.mutateState(func(st *marketplaceState) error {
+		st.Sources = append(st.Sources, source)
+		st.Indexes[parsed.Name] = marketplaceIndexCache{Incarnation: source.Incarnation, Origin: source.Origin, Index: parsed}
+		return nil
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 }

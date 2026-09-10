@@ -462,6 +462,7 @@
       "open": "Extensions",
       "review": "Review extensions waiting for you",
       "sources": "Extensions: marketplace sources",
+      "viewInstalled": "Extensions: view installed",
       "importTheme": "Extensions: Import theme",
       "checkUpdates": "Extensions: check for updates",
       "updateAll": "Extensions: update all"
@@ -507,7 +508,15 @@
       "disable": "Turn off",
       "reveal": "Reveal folder",
       "remove": "Remove",
+      "addSource": "Add extension source",
       "refreshSources": "Extensions: refresh sources",
+      "source": {
+        "remove": "Remove source"
+      },
+      "browse": {
+        "retry": "Retry loading extensions",
+        "clearFilters": "Clear extension filters"
+      },
       "update": "Update",
       "checkUpdates": "Check for updates",
       "addMcpServer": "Add to Configure"

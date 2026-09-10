@@ -24,6 +24,7 @@ export type CommandContext =
   // discarded by every command that isn't resuming a park.
   | { kind: 'run'; runId: string; workflowId?: string; nodeId?: string; values?: Record<string, string> }
   | { kind: 'entry'; entryId: string; pinned?: boolean }
+  | { kind: 'marketplaceSourceInput'; locator: string }
   | { kind: 'card'; cardId: string }
   // The List grid's live selection (goal 0349 S4): which rows the
   // row-marker checkboxes hold, which column header is selected, and
@@ -121,6 +122,10 @@ export function jsonNodeContext(ctx: CommandContext | undefined): { path: string
 
 export function entryContext(ctx: CommandContext | undefined): { entryId: string; pinned?: boolean } | null {
   return ctx?.kind === 'entry' ? { entryId: ctx.entryId, pinned: ctx.pinned } : null
+}
+
+export function marketplaceSourceInputContext(ctx: CommandContext | undefined): { locator: string } | null {
+  return ctx?.kind === 'marketplaceSourceInput' ? { locator: ctx.locator } : null
 }
 
 export function listGridContext(ctx: CommandContext | undefined): { listID: string; rowIDs: string[]; columnKey?: string; text?: string } | null {

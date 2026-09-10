@@ -1,9 +1,12 @@
 package pluginsvc
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -174,11 +177,139 @@ func safeRelPath(p string) bool {
 // URL), "url" (a direct index address) or "path" (a folder on this
 // Mac). Name is filled in from the index the first time it parses.
 type MarketplaceSource struct {
-	Name    string `json:"name"`
+	Name          string       `json:"name"`
+	Owner         string       `json:"owner,omitempty"`
+	Kind          string       `json:"kind"`
+	Locator       string       `json:"locator"`
+	Ref           string       `json:"ref"`
+	AddedAt       string       `json:"addedAt"`
+	Origin        SourceOrigin `json:"origin"`
+	Incarnation   string       `json:"incarnation"`
+	Generation    uint64       `json:"generation"`
+	Status        string       `json:"status"`
+	LastAttemptAt string       `json:"lastAttemptAt,omitempty"`
+	LastSuccessAt string       `json:"lastSuccessAt,omitempty"`
+	ErrorCode     string       `json:"errorCode,omitempty"`
+	ErrorDetail   string       `json:"errorDetail,omitempty"`
+	Included      bool         `json:"included,omitempty"`
+}
+
+type SourceOrigin struct {
 	Kind    string `json:"kind"`
-	Locator string `json:"locator"`
-	Ref     string `json:"ref"`
-	AddedAt string `json:"addedAt"`
+	Locator string `json:"locator,omitempty"`
+	Ref     string `json:"ref,omitempty"`
+}
+
+const (
+	SourceNeverFetched = "never-fetched"
+	SourceCurrent      = "current"
+	SourceUnavailable  = "unavailable"
+	SourceBlocked      = "blocked"
+)
+
+func freshIncarnation() (string, error) {
+	raw := make([]byte, 16)
+	if _, err := rand.Read(raw); err != nil {
+		return "", fmt.Errorf("create source identity: %w", err)
+	}
+	return hex.EncodeToString(raw), nil
+}
+
+func canonicalSource(src MarketplaceSource) (MarketplaceSource, error) {
+	src.Kind = strings.ToLower(strings.TrimSpace(src.Kind))
+	src.Locator = strings.TrimSpace(src.Locator)
+	src.Ref = strings.TrimSpace(src.Ref)
+	switch src.Kind {
+	case "git":
+		owner, repo, ok := gitHubRemoteRepo(src.Locator)
+		if !ok {
+			return MarketplaceSource{}, fmt.Errorf("an index is read over https, so this remote needs its marketplace.json address instead")
+		}
+		src.Kind = "github"
+		src.Locator = strings.ToLower(owner + "/" + repo)
+	case "github":
+		if !repoPattern.MatchString(src.Locator) {
+			return MarketplaceSource{}, fmt.Errorf("a github source needs an owner/repo")
+		}
+		src.Locator = strings.ToLower(src.Locator)
+	case "url":
+		canonical, err := canonicalHTTPURL(src.Locator, false)
+		if err != nil {
+			return MarketplaceSource{}, err
+		}
+		src.Locator = canonical
+	case "path":
+		path := expandHome(src.Locator)
+		abs, err := filepath.Abs(path)
+		if err != nil {
+			return MarketplaceSource{}, fmt.Errorf("resolve source folder: %w", err)
+		}
+		if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+			abs = resolved
+		}
+		src.Locator = filepath.Clean(abs)
+	default:
+		return MarketplaceSource{}, fmt.Errorf("unknown source kind %q", src.Kind)
+	}
+	src.Origin = SourceOrigin{Kind: src.Kind, Locator: src.Locator, Ref: src.Ref}
+	return src, nil
+}
+
+func canonicalHTTPURL(raw string, originOnly bool) (string, error) {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || !isHTTPURL(u) {
+		return "", fmt.Errorf("that address must be an absolute http address")
+	}
+	if err := validateHTTPURLParts(u); err != nil {
+		return "", err
+	}
+	normalizeHTTPURL(u)
+	if err := restrictArtifactOrigin(u, originOnly); err != nil {
+		return "", err
+	}
+	return u.String(), nil
+}
+
+func isHTTPURL(u *url.URL) bool {
+	return (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
+}
+
+func validateHTTPURLParts(u *url.URL) error {
+	if u.User != nil || u.Fragment != "" {
+		return fmt.Errorf("that address cannot contain credentials or a fragment")
+	}
+	escaped := strings.ToLower(u.EscapedPath())
+	if strings.Contains(escaped, "%2f") || strings.Contains(escaped, "%5c") {
+		return fmt.Errorf("that address has an ambiguous escaped separator")
+	}
+	for _, segment := range strings.Split(escaped, "/") {
+		if segment == "." || segment == ".." || segment == "%2e" || segment == "%2e%2e" {
+			return fmt.Errorf("that address has an ambiguous path")
+		}
+	}
+	return nil
+}
+
+func normalizeHTTPURL(u *url.URL) {
+	u.Scheme = strings.ToLower(u.Scheme)
+	u.Host = strings.ToLower(u.Host)
+	if (u.Scheme == "https" && u.Port() == "443") || (u.Scheme == "http" && u.Port() == "80") {
+		u.Host = u.Hostname()
+	}
+	if u.Path == "" {
+		u.Path = "/"
+	}
+}
+
+func restrictArtifactOrigin(u *url.URL, originOnly bool) error {
+	if !originOnly {
+		return nil
+	}
+	if u.Path != "/" || u.RawQuery != "" {
+		return fmt.Errorf("an artifact origin cannot contain a path or query")
+	}
+	u.RawPath = ""
+	return nil
 }
 
 // ClassifySource reads what the user typed in "Add source" and answers
@@ -191,20 +322,20 @@ func ClassifySource(input string) (MarketplaceSource, error) {
 		return MarketplaceSource{}, fmt.Errorf("enter a repo, an address, or a folder")
 	}
 	if strings.HasPrefix(raw, "/") || strings.HasPrefix(raw, "~") {
-		return MarketplaceSource{Kind: "path", Locator: raw}, nil
+		return canonicalSource(MarketplaceSource{Kind: "path", Locator: raw})
 	}
 	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
 		if strings.HasSuffix(raw, ".git") {
-			return MarketplaceSource{Kind: "git", Locator: raw}, nil
+			return canonicalSource(MarketplaceSource{Kind: "git", Locator: raw})
 		}
-		return MarketplaceSource{Kind: "url", Locator: raw}, nil
+		return canonicalSource(MarketplaceSource{Kind: "url", Locator: raw})
 	}
 	if strings.HasPrefix(raw, "git@") || strings.HasSuffix(raw, ".git") {
-		return MarketplaceSource{Kind: "git", Locator: raw}, nil
+		return canonicalSource(MarketplaceSource{Kind: "git", Locator: raw})
 	}
 	repo, ref, _ := strings.Cut(raw, "@")
 	if repoPattern.MatchString(repo) {
-		return MarketplaceSource{Kind: "github", Locator: repo, Ref: ref}, nil
+		return canonicalSource(MarketplaceSource{Kind: "github", Locator: repo, Ref: ref})
 	}
 	return MarketplaceSource{}, fmt.Errorf("that is not a repo, an address, or a folder")
 }

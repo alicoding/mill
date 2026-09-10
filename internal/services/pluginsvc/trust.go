@@ -33,12 +33,14 @@ const InstallRecordFile = ".mill-install.json"
 // InstallRecord is that receipt: where the folder came from, what it
 // hashed to when it landed, and which tier that earned.
 type InstallRecord struct {
-	Source      PluginSource `json:"source"`
-	Marketplace string       `json:"marketplace"`
-	Version     string       `json:"version"`
-	ContentHash string       `json:"contentHash"`
-	Tier        string       `json:"tier"`
-	InstalledAt string       `json:"installedAt"`
+	Source           PluginSource `json:"source"`
+	Marketplace      string       `json:"marketplace"`
+	Origin           SourceOrigin `json:"origin,omitempty"`
+	FinalArtifactURL string       `json:"finalArtifactURL,omitempty"`
+	Version          string       `json:"version"`
+	ContentHash      string       `json:"contentHash"`
+	Tier             string       `json:"tier"`
+	InstalledAt      string       `json:"installedAt"`
 	// Warnings are the install checks' advisory findings
 	// (conform_install.go), kept so the Verification tab shows what
 	// the install prompt showed.

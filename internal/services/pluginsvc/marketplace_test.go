@@ -79,8 +79,8 @@ func TestClassifySource_ReadsEachShapeTheFieldAccepts(t *testing.T) {
 		{"acme/store", "github", "acme/store", ""},
 		{"acme/store@v2", "github", "acme/store", "v2"},
 		{"https://example.test/.mill/marketplace.json", "url", "https://example.test/.mill/marketplace.json", ""},
-		{"https://github.com/acme/store.git", "git", "https://github.com/acme/store.git", ""},
-		{"git@github.com:acme/store.git", "git", "git@github.com:acme/store.git", ""},
+		{"https://github.com/acme/store.git", "github", "acme/store", ""},
+		{"git@github.com:acme/store.git", "github", "acme/store", ""},
 		{"/Users/someone/store", "path", "/Users/someone/store", ""},
 	}
 	for _, c := range cases {

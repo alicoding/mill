@@ -26,6 +26,7 @@ import (
 	"golang.org/x/mod/semver"
 
 	"github.com/alicoding/mill/internal/adapters/auditstore"
+	"github.com/alicoding/mill/internal/adapters/pluginstate"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 )
 
@@ -156,6 +157,7 @@ var pluginIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 type PluginService struct {
 	dir        string
 	installMu  sync.Mutex
+	state      *pluginstate.Store
 	guardrail  *guardrailsvc.GuardrailService
 	openURL    func(url string) error
 	appVersion string
@@ -208,7 +210,7 @@ func New(dir string, guardrail *guardrailsvc.GuardrailService, appVersion string
 	// is a documented no-op (ErrUnsupportedInServerMode), so an approved
 	// open-url in server mode -- every e2e run of the plugin spec --
 	// never reaches the machine's real browser. The runtime opener did.
-	return &PluginService{dir: dir, guardrail: guardrail, openURL: osopen.Open, appVersion: appVersion, runCommand: invokeCommandInWebview}
+	return &PluginService{dir: dir, state: pluginstate.New(dir), guardrail: guardrail, openURL: osopen.Open, appVersion: appVersion, runCommand: invokeCommandInWebview}
 }
 
 func (p *PluginService) openInOS(url string) error {

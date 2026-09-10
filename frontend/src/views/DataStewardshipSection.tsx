@@ -27,9 +27,10 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 function summaryLine(t: (key: string, opts?: Record<string, unknown>) => string, s: ImportEverythingSummary) {
-  return (s.families ?? [])
+  const lines = (s.families ?? [])
     .map((f) => t('settings.dataStewardship.familyCount', { name: f.name, created: f.created, updated: f.updated }))
-    .join(', ')
+  if (s.pluginStateSnapshotPresent) lines.push(t('settings.dataStewardship.pluginStateSnapshot'))
+  return lines.join(' ')
 }
 
 function DataStewardshipSection() {

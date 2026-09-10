@@ -205,10 +205,10 @@ vi.mock('./SettingsAuditRetention', () => ({ default: () => <div data-testid="st
 vi.mock('./TrustDisclosure', () => ({ TrustDisclosure: () => <div data-testid="stub-trust-disclosure" /> }))
 
 function unmanagedPolicy() {
-  return { Managed: false, ManagedBy: '', RequiredTier: '', BlockedCapabilities: [], AllowedSources: [], AllowCount: 0, BlockCount: 0, Path: '', Error: '' }
+  return { Version: 0, Managed: false, ManagedBy: '', RequiredTier: '', BlockedCapabilities: [], AllowedSources: [], SourceRules: [], LegacySourceRules: false, AllowCount: 0, BlockCount: 0, Path: '', Error: '' }
 }
 function managedPolicy() {
-  return { Managed: true, ManagedBy: 'IT', RequiredTier: '', BlockedCapabilities: [], AllowedSources: [], AllowCount: 0, BlockCount: 0, Path: '/etc/mill/policy.json', Error: '' }
+  return { Version: 2, Managed: true, ManagedBy: 'IT', RequiredTier: '', BlockedCapabilities: [], AllowedSources: [], SourceRules: [], LegacySourceRules: false, AllowCount: 0, BlockCount: 0, Path: '/etc/mill/policy.json', Error: '' }
 }
 
 const { usePluginPolicyStore } = await import('../shared/pluginPolicyStore')

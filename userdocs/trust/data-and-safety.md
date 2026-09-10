@@ -14,14 +14,17 @@ channel you chose is enabled; workflow steps talk only to endpoints
 you configured.
 
 **Your data is local files.** Settings and entities live in a JSON
-store, run history in SQLite, both on your machine. Settings →
+store; run history and the extension source catalog use separate SQLite
+files on your machine. Settings →
 Backups snapshots them on a schedule, exports everything to one
 file, and imports it on another machine. Passwords and keys live in
 their own encrypted vault file on your device. Every local backup
 carries a copy of that file too — never its key, which stays in your
 OS keychain — but "Export everything" leaves it out, since that
 archive is the one meant to move to another machine or another
-person. The vault's key sits in your OS keychain, stored against that
+person. A portable export includes a validated extension source snapshot,
+but Import everything reports it without applying it over the live source
+catalog. The vault's key sits in your OS keychain, stored against that
 specific vault file — a second vault, or a vault restored from a
 backup, gets its own key rather than replacing the first one's.
 

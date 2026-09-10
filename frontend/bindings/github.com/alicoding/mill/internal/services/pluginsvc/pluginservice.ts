@@ -44,7 +44,7 @@ export function AssetMiddleware(): $CancellablePromise<any> {
  * own bundled examples, sorted by marketplace then name. Reads only
  * what is already on disk: opening Browse never fetches.
  */
-export function BrowseMarketplaces(): $CancellablePromise<$models.BrowseEntry[] | null> {
+export function BrowseMarketplaces(): $CancellablePromise<$models.BrowseResult> {
     return $Call.ByID(3648359538);
 }
 
@@ -323,8 +323,8 @@ export function RefreshMarketplaceSources(): $CancellablePromise<string[] | null
  * RemoveMarketplaceSource drops one source and its cached index.
  * Extensions already installed from it stay installed.
  */
-export function RemoveMarketplaceSource(name: string): $CancellablePromise<void> {
-    return $Call.ByID(1307149838, name);
+export function RemoveMarketplaceSource(name: string, expectedIncarnation: string): $CancellablePromise<void> {
+    return $Call.ByID(1307149838, name, expectedIncarnation);
 }
 
 /**

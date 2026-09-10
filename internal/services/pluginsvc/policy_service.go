@@ -19,11 +19,14 @@ import (
 // PolicyView is what the Extensions banner and Settings > Security
 // render: the read-only summary of the file on this machine.
 type PolicyView struct {
+	Version             int
 	Managed             bool
 	ManagedBy           string
 	RequiredTier        string
 	BlockedCapabilities []string
 	AllowedSources      []string
+	SourceRules         []SourcePolicyRule
+	LegacySourceRules   bool
 	AllowCount          int
 	BlockCount          int
 	Path                string
@@ -41,9 +44,12 @@ func (p *PluginService) PluginPolicy() (PolicyView, error) {
 		return view, nil
 	}
 	view.ManagedBy = st.Policy.ManagedBy
+	view.Version = st.Policy.Version
 	view.RequiredTier = st.Policy.RequiredTier
 	view.BlockedCapabilities = append([]string{}, st.Policy.BlockedCapabilities...)
 	view.AllowedSources = append([]string{}, st.Policy.AllowedSources...)
+	view.SourceRules = append([]SourcePolicyRule{}, st.Policy.Sources...)
+	view.LegacySourceRules = st.Policy.Version == PolicyVersionLegacy && st.Policy.AllowedSources != nil
 	view.AllowCount = len(st.Policy.Allow)
 	view.BlockCount = len(st.Policy.Block)
 	return view, nil
@@ -64,12 +70,15 @@ func (p *PluginService) applyPolicy(info *PluginInfo) {
 		info.PolicyBlocked = st.Error
 		return
 	}
+	record, hasRecord := ReadInstallRecord(info.Dir)
 	info.PolicyBlocked = st.Policy.Refusal(PolicySubject{
 		ID:             info.Manifest.ID,
 		Version:        info.Manifest.Version,
 		Tier:           info.Tier,
 		Capabilities:   info.Manifest.Capabilities,
 		PublisherKeyID: signedByKey(info.Dir, info.ContentHash, st.Policy.publisherKeys()),
+		Origin:         record.Origin,
+		OriginVerified: hasRecord && record.Origin.Kind != "",
 	})
 }
 
@@ -110,6 +119,49 @@ func policyInstallRefusalAt(m Manifest, tier, marketplace, locator, dir, hash st
 	return policyRefused(reason)
 }
 
+func policyInstallRefusalOriginAt(m Manifest, tier string, origin SourceOrigin, marketplace, dir, hash string) error {
+	st := LoadPolicy()
+	if !st.Present {
+		return nil
+	}
+	if st.Error != "" {
+		return ErrPolicyUnreadable
+	}
+	if st.Policy.Version == PolicyVersionLegacy && !st.Policy.SourceAllowed(marketplace, origin.Locator) {
+		return policyRefused(st.Policy.SourceRefusal())
+	}
+	if st.Policy.Version == PolicyVersion && !st.Policy.SourceOriginAllowed(origin) {
+		return policyRefused(st.Policy.SourceRefusal())
+	}
+	keyID := uint64(0)
+	if dir != "" {
+		keyID = signedByKey(dir, hash, st.Policy.publisherKeys())
+	}
+	reason := st.Policy.Refusal(PolicySubject{ID: m.ID, Version: m.Version, Tier: tier, Capabilities: m.Capabilities, PublisherKeyID: keyID, Origin: origin, OriginVerified: true})
+	if reason != "" {
+		return policyRefused(reason)
+	}
+	return nil
+}
+
+func policySourceRegistrationRefusal(marketplace string, source MarketplaceSource) error {
+	st := LoadPolicy()
+	if !st.Present {
+		return nil
+	}
+	if st.Error != "" {
+		return ErrPolicyUnreadable
+	}
+	if st.Policy.Version == PolicyVersionLegacy {
+		if st.Policy.SourceAllowed(marketplace, source.Locator) {
+			return nil
+		}
+	} else if st.Policy.SourceOriginAllowed(source.Origin) {
+		return nil
+	}
+	return policyRefused(st.Policy.SourceRefusal())
+}
+
 // policySourceRefusal is the Add-source and install-from-link gate.
 func policySourceRefusal(marketplace, locator string) error {
 	st := LoadPolicy()
@@ -123,6 +175,45 @@ func policySourceRefusal(marketplace, locator string) error {
 		return nil
 	}
 	return policyRefused(st.Policy.SourceRefusal())
+}
+
+func policyRequestRefusal(origin SourceOrigin, rawURL string, artifact bool) error {
+	if origin.Kind == "" {
+		return nil
+	}
+	st := LoadPolicy()
+	if !st.Present {
+		return nil
+	}
+	if st.Error != "" {
+		return ErrPolicyUnreadable
+	}
+	if !st.Policy.SourceOriginAllowed(origin) {
+		return policyRefused(st.Policy.SourceRefusal())
+	}
+	if artifact {
+		if !st.Policy.ArtifactURLAllowed(origin, rawURL) {
+			return policyRefused("Your organisation does not allow this extension download address.")
+		}
+		return nil
+	}
+	source := MarketplaceSource{Kind: origin.Kind, Locator: origin.Locator, Ref: origin.Ref, Origin: origin}
+	want, err := IndexURL(source)
+	if err != nil {
+		return err
+	}
+	wantCanonical, err := canonicalHTTPURL(want, false)
+	if err != nil {
+		return err
+	}
+	gotCanonical, err := canonicalHTTPURL(rawURL, false)
+	if err != nil {
+		return err
+	}
+	if wantCanonical != gotCanonical {
+		return policyRefused("Your organisation does not allow this source redirect.")
+	}
+	return nil
 }
 
 // PolicyRefusedCode is the error code every policy refusal carries;
