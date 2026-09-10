@@ -3,6 +3,7 @@ package backupsvc
 import (
 	"strings"
 
+	"github.com/alicoding/mill/internal/adapters/backup"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/compositionsvc"
@@ -31,8 +32,8 @@ func SQLiteDBPath(databaseURL string) string {
 // WireCompositionRunner) -- extracted to keep main.go's own wiring
 // terse (the same keep-main.go-under-its-line-count reasoning
 // InitUpdater's own extraction already documents).
-func Wire(dbPath, settingsPath, vaultPath, dir, millVersion string, comp *compositionsvc.CompositionService, cfg *configuresvc.ConfigureService, atlasSvc *atlassvc.AtlasService) *BackupService {
-	b := New(dbPath, settingsPath, vaultPath, dir, millVersion)
+func Wire(dbPath, settingsPath, vaultPath, dir, millVersion string, comp *compositionsvc.CompositionService, cfg *configuresvc.ConfigureService, atlasSvc *atlassvc.AtlasService, options ...backup.SnapshotOptions) *BackupService {
+	b := New(dbPath, settingsPath, vaultPath, dir, millVersion, options...)
 	b.SetFamilies(BuildFamilies(comp, cfg))
 	b.SetAtlasBundle(WireAtlasBundle(atlasSvc))
 	WireCompositionRunner(b)

@@ -16,9 +16,11 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" database/sql driver name
@@ -53,6 +55,16 @@ type Result struct {
 	Pruned []string
 }
 
+type Participant struct {
+	Name  string
+	Write func(destinationDirectory string) error
+}
+
+type SnapshotOptions struct {
+	Participants []Participant
+	ReadSettings func() ([]byte, error)
+}
+
 // Snapshot takes one backup of dbPath (a plain sqlite file path, never
 // a "sqlite:"-prefixed DSN -- callers strip that themselves, the same
 // scheme-is-the-caller's-decision layering internal/adapters/execution
@@ -72,29 +84,23 @@ type Result struct {
 // vaultPath are plain file copies, safe for the same reason
 // copyFile's own doc comment gives: neither is a live SQLite file held
 // open mid-write.
-func Snapshot(dbPath, settingsPath, vaultPath, dir string, keepN int) (Result, error) {
+func Snapshot(dbPath, settingsPath, vaultPath, dir string, keepN int, options ...SnapshotOptions) (Result, error) {
+	opts, err := oneSnapshotOptions(options)
+	if err != nil {
+		return Result{}, err
+	}
 	now := time.Now()
 	backupDir := filepath.Join(dir, now.Format(TimestampLayout))
-	if err := os.MkdirAll(backupDir, 0o750); err != nil {
-		return Result{}, fmt.Errorf("backup: create backup dir: %w", err)
-	}
-
-	snapshotPath := filepath.Join(backupDir, "execution.db")
-	if err := vacuumInto(dbPath, snapshotPath); err != nil {
+	assembly, err := prepareAssembly(dir, backupDir)
+	if err != nil {
 		return Result{}, err
 	}
-	if err := verifyIntegrity(snapshotPath); err != nil {
+	defer func() { _ = os.RemoveAll(assembly) }()
+	if err := writeSnapshotFiles(dbPath, settingsPath, vaultPath, assembly, opts); err != nil {
 		return Result{}, err
 	}
-	if settingsPath != "" {
-		if err := copyFile(settingsPath, filepath.Join(backupDir, "settings.json")); err != nil {
-			return Result{}, err
-		}
-	}
-	if vaultPath != "" {
-		if err := copyFile(vaultPath, filepath.Join(backupDir, vaultBackupName)); err != nil {
-			return Result{}, err
-		}
+	if err := os.Rename(assembly, backupDir); err != nil {
+		return Result{}, fmt.Errorf("backup: publish snapshot: %w", err)
 	}
 
 	pruned, err := prune(dir, keepN)
@@ -102,6 +108,90 @@ func Snapshot(dbPath, settingsPath, vaultPath, dir string, keepN int) (Result, e
 		return Result{Dir: backupDir, TakenAt: now}, err
 	}
 	return Result{Dir: backupDir, TakenAt: now, Pruned: pruned}, nil
+}
+
+func oneSnapshotOptions(options []SnapshotOptions) (SnapshotOptions, error) {
+	if len(options) > 1 {
+		return SnapshotOptions{}, fmt.Errorf("backup: expected at most one snapshot options value")
+	}
+	if len(options) == 1 {
+		return options[0], nil
+	}
+	return SnapshotOptions{}, nil
+}
+
+func prepareAssembly(dir, backupDir string) (string, error) {
+	if _, err := os.Stat(backupDir); err == nil {
+		return "", fmt.Errorf("backup: destination already exists")
+	} else if !os.IsNotExist(err) {
+		return "", fmt.Errorf("backup: inspect destination: %w", err)
+	}
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return "", fmt.Errorf("backup: create backup dir: %w", err)
+	}
+	assembly, err := os.MkdirTemp(dir, ".incomplete-")
+	if err != nil {
+		return "", fmt.Errorf("backup: create assembly dir: %w", err)
+	}
+	return assembly, nil
+}
+
+func writeSnapshotFiles(dbPath, settingsPath, vaultPath, assembly string, opts SnapshotOptions) error {
+	if dbPath != "" {
+		if err := SnapshotSQLite(dbPath, filepath.Join(assembly, "execution.db")); err != nil {
+			return err
+		}
+	}
+	if err := writeSettingsSnapshot(settingsPath, assembly, opts.ReadSettings); err != nil {
+		return err
+	}
+	if vaultPath != "" {
+		if err := copyFile(vaultPath, filepath.Join(assembly, vaultBackupName)); err != nil {
+			return err
+		}
+	}
+	return writeParticipants(assembly, opts.Participants)
+}
+
+func writeSettingsSnapshot(settingsPath, assembly string, read func() ([]byte, error)) error {
+	if read == nil {
+		if settingsPath == "" {
+			return nil
+		}
+		return copyFile(settingsPath, filepath.Join(assembly, "settings.json"))
+	}
+	raw, err := read()
+	if err != nil {
+		return fmt.Errorf("backup: snapshot settings: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(assembly, "settings.json"), raw, 0o600); err != nil {
+		return fmt.Errorf("backup: write settings snapshot: %w", err)
+	}
+	return nil
+}
+
+func writeParticipants(assembly string, participants []Participant) error {
+	for _, participant := range participants {
+		if participant.Name == "" || participant.Name == "." || participant.Name == ".." || filepath.Base(participant.Name) != participant.Name || participant.Write == nil {
+			return fmt.Errorf("backup: invalid snapshot participant %q", participant.Name)
+		}
+		destination := filepath.Join(assembly, participant.Name)
+		if err := os.MkdirAll(destination, 0o700); err != nil {
+			return fmt.Errorf("backup: create participant %q: %w", participant.Name, err)
+		}
+		if err := participant.Write(destination); err != nil {
+			return fmt.Errorf("backup: participant %q: %w", participant.Name, err)
+		}
+	}
+	return nil
+}
+
+// SnapshotSQLite creates and integrity-checks a live SQLite snapshot.
+func SnapshotSQLite(dbPath, snapshotPath string) error {
+	if err := vacuumInto(dbPath, snapshotPath); err != nil {
+		return err
+	}
+	return verifyIntegrity(snapshotPath)
 }
 
 // vacuumIntoBusyTimeout bounds how long VACUUM INTO retries against a
@@ -118,7 +208,7 @@ const vacuumIntoBusyTimeout = 5000 // milliseconds
 // VACUUM documentation before relying on it rather than assumed, so
 // snapshotPath never needs manual quote-escaping into the SQL text.
 func vacuumInto(dbPath, snapshotPath string) error {
-	db, err := sql.Open("sqlite", dbPath)
+	db, err := sql.Open("sqlite", sqliteFileDSN(dbPath))
 	if err != nil {
 		return fmt.Errorf("backup: open source database: %w", err)
 	}
@@ -132,6 +222,21 @@ func vacuumInto(dbPath, snapshotPath string) error {
 		return fmt.Errorf("backup: vacuum into snapshot: %w", err)
 	}
 	return nil
+}
+
+func sqliteFileDSN(path string) string {
+	normalized := strings.ReplaceAll(path, `\`, "/")
+	host := ""
+	if len(normalized) >= 3 && normalized[1] == ':' && normalized[2] == '/' {
+		normalized = "/" + normalized
+	} else if strings.HasPrefix(normalized, "//") {
+		rest := strings.TrimPrefix(normalized, "//")
+		if server, share, found := strings.Cut(rest, "/"); found && server != "" {
+			host = server
+			normalized = "/" + share
+		}
+	}
+	return (&url.URL{Scheme: "file", Host: host, Path: normalized}).String()
 }
 
 // verifyIntegrity opens the just-produced snapshot as its own
@@ -243,6 +348,9 @@ func backupDirNames(dir string) ([]string, error) {
 	var names []string
 	for _, e := range entries {
 		if e.IsDir() {
+			if _, err := time.ParseInLocation(TimestampLayout, e.Name(), time.Local); err != nil {
+				continue
+			}
 			names = append(names, e.Name())
 		}
 	}

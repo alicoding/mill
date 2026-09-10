@@ -134,16 +134,6 @@ func TestBackupService_GetBackupStatus_ReflectsNoBackupYet(t *testing.T) {
 	}
 }
 
-func TestBackupService_RevealBackupFolder_NoAppIsANoOp(t *testing.T) {
-	// application.Get() returns nil under `go test` (no real Wails
-	// application ever constructed) -- same defensive guard
-	// dataevent.Emit's own doc comment documents.
-	svc := New("", "", "", t.TempDir(), "test")
-	if err := svc.RevealBackupFolder(); err != nil {
-		t.Errorf("RevealBackupFolder() with no running application = %v, want nil (silent no-op)", err)
-	}
-}
-
 // TestExportEverything_RoundTripsEveryFamilyIntoAFreshInstance is this
 // goal's export-everything acceptance criterion: an archive built from
 // one instance, imported into a completely separate, empty instance,

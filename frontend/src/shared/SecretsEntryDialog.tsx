@@ -129,11 +129,22 @@ export function SecretsEntryDialog({ editID, defaultTitle, defaultKind, onClose,
             </Select>
           </FormControl>
 
-          <SegmentedControl aria-label={t('fields.storage')} data-testid="secret-storage-mode">
-            <SegmentedControl.Button selected={!fromSource} onClick={() => setFromSource(false)} data-testid="secret-storage-here">
+          <SegmentedControl
+            aria-label={t('fields.storage')}
+            data-testid="secret-storage-mode"
+            onChange={(index) => {
+              if (index === 0) {
+                setFromSource(false)
+              } else if (index === 1) {
+                setFromSource(true)
+                setSourceRef((current) => current || (sourceKeys[0]?.ID ?? ''))
+              }
+            }}
+          >
+            <SegmentedControl.Button selected={!fromSource} data-testid="secret-storage-here">
               {t('storage.here')}
             </SegmentedControl.Button>
-            <SegmentedControl.Button selected={fromSource} onClick={() => { setFromSource(true); setSourceRef((r) => r || (sourceKeys[0]?.ID ?? '')) }} data-testid="secret-storage-source">
+            <SegmentedControl.Button selected={fromSource} data-testid="secret-storage-source">
               {t('storage.fromASource')}
             </SegmentedControl.Button>
           </SegmentedControl>

@@ -2,8 +2,10 @@ package pluginsvc
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -82,45 +84,47 @@ type InstallPreview struct {
 }
 
 // PreviewInstall answers the prompt's contents for a marketplace
-// entry. It reads only the cached index -- previewing never downloads.
+// entry. Folder sources are read through their confined acquisition
+// boundary; remote entries still use only the cached index.
 func (p *PluginService) PreviewInstall(marketplace, id string) (InstallPreview, error) {
-	idx, entry, err := p.findEntry(marketplace, id)
+	resolved, err := p.resolveMarketplaceEntry(marketplace, id)
 	if err != nil {
 		return InstallPreview{}, err
 	}
+	idx, entry, source := resolved.Index, resolved.Entry, resolved.Source
 	pv := InstallPreview{
 		ID: entry.ID, Name: entry.Name, Version: entry.Version, Author: entry.Author,
 		Description: entry.Description, Marketplace: idx.Name, Tier: entryTier(idx.Name, entry),
 		Kinds: entry.Kinds,
 	}
-	m, readable := p.previewManifest(idx, entry)
+	origin := source.Origin
+	if idx.Name != ReservedMarketplaceName {
+		if err := policySourceRegistrationRefusal(idx.Name, source); err != nil {
+			pv.PolicyRefusal = err.Error()
+			pv.AlreadyInstalled = p.installedFolderExists(entry.ID)
+			return pv, nil
+		}
+	}
+	m, readable, err := p.previewManifest(resolved)
+	if err != nil {
+		return InstallPreview{}, err
+	}
 	if readable {
 		applyManifestToPreview(&pv, m, false)
 	} else {
 		m = Manifest{ID: entry.ID, Version: entry.Version}
 	}
-	if dir, ok := p.previewDir(idx, entry); ok {
-		_, pv.Warnings = InstallChecks(dir, m)
+	if readable && idx.Name != ReservedMarketplaceName && entry.Source.Kind == "path" {
+		_, pv.Warnings, err = p.sourceInstallChecks(source.Origin, entry.Source.Path, m)
+		if err != nil {
+			return InstallPreview{}, err
+		}
 	}
-	if err := policyInstallRefusal(m, pv.Tier, idx.Name); err != nil {
+	if err := policyInstallRefusalOriginAt(m, pv.Tier, origin, idx.Name, "", ""); err != nil {
 		pv.PolicyRefusal = err.Error()
 	}
 	pv.AlreadyInstalled = p.installedFolderExists(entry.ID)
 	return pv, nil
-}
-
-// previewDir answers the folder a preview's files can be read from
-// before any download: a folder source's own path. The bundled
-// examples live inside the binary and are checked as they install.
-func (p *PluginService) previewDir(idx MarketplaceIndex, entry MarketplaceEntry) (string, bool) {
-	if idx.Name == ReservedMarketplaceName || entry.Source.Kind != "path" {
-		return "", false
-	}
-	src, ok := p.sourceFor(idx.Name)
-	if !ok || src.Kind != "path" {
-		return "", false
-	}
-	return filepath.Join(expandHome(src.Locator), filepath.FromSlash(entry.Source.Path)), true
 }
 
 // previewManifest reads the manifest a preview describes, when it can
@@ -128,26 +132,27 @@ func (p *PluginService) previewDir(idx MarketplaceIndex, entry MarketplaceEntry)
 // source already on disk. A remote archive's manifest is only known
 // after the download, so its preview stands on the index's own
 // declaration.
-func (p *PluginService) previewManifest(idx MarketplaceIndex, entry MarketplaceEntry) (Manifest, bool) {
+func (p *PluginService) previewManifest(resolved marketplaceEntryResolution) (Manifest, bool, error) {
+	idx, entry, src := resolved.Index, resolved.Entry, resolved.Source
 	if idx.Name == ReservedMarketplaceName {
-		return p.exampleManifest(entry.ID)
+		m, ok := p.exampleManifest(entry.ID)
+		return m, ok, nil
 	}
 	if entry.Source.Kind != "path" {
-		return Manifest{}, false
+		return Manifest{}, false, nil
 	}
-	src, ok := p.sourceFor(idx.Name)
-	if !ok || src.Kind != "path" {
-		return Manifest{}, false
+	if src.Kind != "path" {
+		return Manifest{}, false, fmt.Errorf("%q is no longer a registered folder source", idx.Name)
 	}
-	raw, err := os.ReadFile(filepath.Join(expandHome(src.Locator), filepath.FromSlash(entry.Source.Path), "manifest.json")) // #nosec G304 -- a folder the user added as a source
+	raw, err := p.readSourceFile(src.Origin, filepath.Join(entry.Source.Path, "manifest.json"))
 	if err != nil {
-		return Manifest{}, false
+		return Manifest{}, false, fmt.Errorf("read %q from its source: %w", entry.ID, err)
 	}
 	var m Manifest
 	if err := json.Unmarshal(raw, &m); err != nil {
-		return Manifest{}, false
+		return Manifest{}, false, fmt.Errorf("%q has an unreadable manifest.json", entry.ID)
 	}
-	return m, true
+	return m, true, nil
 }
 
 // applyManifestToPreview fills pv with what m declares. builtin picks
@@ -216,7 +221,7 @@ func (p *PluginService) installedFolderExists(id string) bool {
 
 // InstallFromMarketplace installs one index entry.
 func (p *PluginService) InstallFromMarketplace(marketplace, id string) (InstallRecord, error) {
-	idx, entry, err := p.findEntry(marketplace, id)
+	resolved, err := p.resolveMarketplaceEntry(marketplace, id)
 	if err != nil {
 		return InstallRecord{}, err
 	}
@@ -225,37 +230,41 @@ func (p *PluginService) InstallFromMarketplace(marketplace, id string) (InstallR
 		return InstallRecord{}, err
 	}
 	defer cleanup()
-	tier, err := p.stageEntry(stage, idx, entry)
+	tier, finalURL, err := p.stageEntry(stage, resolved)
 	if err != nil {
 		return InstallRecord{}, err
 	}
-	return p.finishInstall(stage, InstallRecord{Source: entry.Source, Marketplace: idx.Name, Tier: tier})
+	record := InstallRecord{Source: resolved.Entry.Source, Marketplace: resolved.Index.Name, Tier: tier, Origin: resolved.Source.Origin, FinalArtifactURL: finalURL}
+	return p.finishMarketplaceInstall(stage, record, resolved.Source)
 }
 
 // stageEntry puts one index entry's files in the staging folder and
 // answers the tier that earned. Mill's own bundled index is its own
 // case: those files come out of the binary, so nothing is fetched and
 // nothing needs checking.
-func (p *PluginService) stageEntry(stage string, idx MarketplaceIndex, entry MarketplaceEntry) (string, error) {
+func (p *PluginService) stageEntry(stage string, resolved marketplaceEntryResolution) (string, string, error) {
+	idx, entry, source := resolved.Index, resolved.Entry, resolved.Source
 	if idx.Name == ReservedMarketplaceName {
 		if !p.hasExample(entry.ID) {
-			return "", fmt.Errorf("%q is not one of the extensions this Mill ships", entry.ID)
+			return "", "", fmt.Errorf("%q is not one of the extensions this Mill ships", entry.ID)
 		}
-		return TierVerified, CopyEmbeddedPlugin(p.examples, embeddedPluginPath(exampleMarketplaceRoot, entry.ID), stage)
+		return TierVerified, "", CopyEmbeddedPlugin(p.examples, embeddedPluginPath(exampleMarketplaceRoot, entry.ID), stage)
+	}
+	if err := policySourceRegistrationRefusal(idx.Name, source); err != nil {
+		return "", "", err
 	}
 	switch entry.Source.Kind {
 	case "path":
-		src, ok := p.sourceFor(idx.Name)
-		if !ok || src.Kind != "path" {
-			return "", fmt.Errorf("%q is only offered as a folder, and that source is not a folder", entry.ID)
+		if source.Kind != "path" {
+			return "", "", fmt.Errorf("%q is only offered as a folder, and that source is not a folder", entry.ID)
 		}
-		return TierDev, CopyPluginFolder(filepath.Join(expandHome(src.Locator), filepath.FromSlash(entry.Source.Path)), stage)
+		return TierDev, "", p.copySourceFolder(source.Origin, entry.Source.Path, stage)
 	case "archive":
-		return p.stageArchive(stage, entry.Source.URL, declaredHash(entry))
+		return p.stageArchive(stage, entry.Source.URL, declaredHash(entry), source.Origin)
 	case "github":
-		return p.stageRepo(stage, entry.Source.Repo, firstNonEmpty(entry.Source.Ref, entry.Source.SHA), entry.ID, entry.Version, declaredHash(entry))
+		return p.stageRepo(stage, entry.Source.Repo, firstNonEmpty(entry.Source.Ref, entry.Source.SHA), entry.ID, entry.Version, declaredHash(entry), source.Origin)
 	}
-	return "", fmt.Errorf("unknown source kind %q", entry.Source.Kind)
+	return "", "", fmt.Errorf("unknown source kind %q", entry.Source.Kind)
 }
 
 // InstallFromLink installs from whatever the user pasted: a
@@ -265,7 +274,11 @@ func (p *PluginService) InstallFromLink(input string) (InstallRecord, error) {
 	if raw == "" {
 		return InstallRecord{}, fmt.Errorf("enter a repo, an address, or a folder")
 	}
-	if err := policySourceRefusal("", raw); err != nil {
+	classified, classifyErr := ClassifySource(raw)
+	if classifyErr != nil {
+		return InstallRecord{}, classifyErr
+	}
+	if err := policySourceRegistrationRefusal("", classified); err != nil {
 		return InstallRecord{}, err
 	}
 	stage, cleanup, err := stageDir()
@@ -273,68 +286,82 @@ func (p *PluginService) InstallFromLink(input string) (InstallRecord, error) {
 		return InstallRecord{}, err
 	}
 	defer cleanup()
-	tier, source, err := p.stageLink(stage, raw)
+	tier, source, finalURL, err := p.stageLink(stage, raw)
 	if err != nil {
 		return InstallRecord{}, err
 	}
-	return p.finishInstall(stage, InstallRecord{Source: source, Tier: tier})
+	record := InstallRecord{Source: source, Tier: tier, Origin: classified.Origin, FinalArtifactURL: finalURL}
+	return p.finishInstall(stage, record)
 }
 
 // stageLink reads what the user pasted and stages it, answering the
 // tier and the source to record.
-func (p *PluginService) stageLink(stage, raw string) (string, PluginSource, error) {
-	if strings.HasPrefix(raw, "/") || strings.HasPrefix(raw, "~") {
-		return TierDev, PluginSource{Kind: "path", Path: raw}, CopyPluginFolder(expandHome(raw), stage)
+func (p *PluginService) stageLink(stage, raw string) (string, PluginSource, string, error) {
+	classified, classifyErr := ClassifySource(raw)
+	if classifyErr != nil {
+		return "", PluginSource{}, "", classifyErr
+	}
+	if classified.Kind == "path" {
+		return TierDev, PluginSource{Kind: "path", Path: raw}, "", p.copySourceFolder(classified.Origin, ".", stage)
 	}
 	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
 		if owner, repo, ok := gitHubRemoteRepo(raw); ok {
-			tier, err := p.stageRepo(stage, owner+"/"+repo, "", "", "", "")
-			return tier, PluginSource{Kind: "github", Repo: owner + "/" + repo}, err
+			tier, finalURL, err := p.stageRepo(stage, owner+"/"+repo, "", "", "", "", classified.Origin)
+			return tier, PluginSource{Kind: "github", Repo: owner + "/" + repo}, finalURL, err
 		}
-		tier, err := p.stageArchive(stage, raw, "")
-		return tier, PluginSource{Kind: "archive", URL: raw}, err
+		tier, finalURL, err := p.stageArchive(stage, raw, "", classified.Origin)
+		return tier, PluginSource{Kind: "archive", URL: raw}, finalURL, err
 	}
 	repoName, ref, _ := strings.Cut(raw, "@")
 	if !repoPattern.MatchString(repoName) {
-		return "", PluginSource{}, fmt.Errorf("that is not a repo, an address, or a folder")
+		return "", PluginSource{}, "", fmt.Errorf("that is not a repo, an address, or a folder")
 	}
-	tier, err := p.stageRepo(stage, repoName, ref, "", "", "")
-	return tier, PluginSource{Kind: "github", Repo: repoName, Ref: ref}, err
+	tier, finalURL, err := p.stageRepo(stage, repoName, ref, "", "", "", classified.Origin)
+	return tier, PluginSource{Kind: "github", Repo: repoName, Ref: ref}, finalURL, err
 }
 
 // stageArchive downloads one zip and extracts it, refusing the whole
 // install when a declared hash does not match the bytes.
-func (p *PluginService) stageArchive(stage, url, declared string) (string, error) {
-	data, err := p.httpGetBytes(url, maxDownloadBytes)
+func (p *PluginService) stageArchive(stage, url, declared string, origins ...SourceOrigin) (string, string, error) {
+	origin := SourceOrigin{}
+	if len(origins) > 0 {
+		origin = origins[0]
+	}
+	data, finalURL, err := p.httpGetBytesForOrigin(url, maxDownloadBytes, origin, true)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	actual := SHA256Hex(data)
 	if strings.TrimSpace(declared) != "" && !strings.EqualFold(strings.TrimSpace(declared), actual) {
-		return "", fmt.Errorf("the download doesn't match the hash the source declared")
+		return "", "", fmt.Errorf("the download doesn't match the hash the source declared")
 	}
 	if err := ExtractZip(data, stage); err != nil {
-		return "", err
+		return "", "", err
 	}
-	return TierFor(TierInputs{DeclaredSHA256: declared, ActualSHA256: actual}), nil
+	return TierFor(TierInputs{DeclaredSHA256: declared, ActualSHA256: actual}), finalURL, nil
 }
 
 // stageRepo installs from a repository: the release asset the standard
 // names when the entry pins a version, and the branch archive
 // otherwise -- which nothing checks, so it is unverified by
 // construction.
-func (p *PluginService) stageRepo(stage, repo, ref, id, version, declared string) (string, error) {
+func (p *PluginService) stageRepo(stage, repo, ref, id, version, declared string, origins ...SourceOrigin) (string, string, error) {
 	if id != "" && version != "" {
 		assetURL := releaseAssetURL(repo, version, ReleaseAssetName(id, version))
-		tier, err := p.stageArchive(stage, assetURL, declared)
+		tier, finalURL, err := p.stageArchive(stage, assetURL, declared, origins...)
 		if err == nil {
-			return tier, nil
+			return tier, finalURL, nil
+		}
+		var statusErr *httpStatusError
+		if strings.TrimSpace(declared) != "" || !errors.As(err, &statusErr) || statusErr.status != http.StatusNotFound {
+			return "", "", err
 		}
 	}
-	if _, err := p.stageArchive(stage, BranchArchiveURL(repo, ref), ""); err != nil {
-		return "", err
+	_, finalURL, err := p.stageArchive(stage, BranchArchiveURL(repo, ref), "", origins...)
+	if err != nil {
+		return "", "", err
 	}
-	return TierUnverified, nil
+	return TierUnverified, finalURL, nil
 }
 
 func releaseAssetURL(repo, version, asset string) string {
@@ -349,21 +376,20 @@ func releaseAssetURL(repo, version, asset string) string {
 // folder. The policy sees the tier the staging earned and, for the
 // signed tier, which policy key signed the folder.
 func (p *PluginService) stagedChecks(root string, rec InstallRecord) ([]string, error) {
-	raw, err := os.ReadFile(filepath.Join(root, "manifest.json")) // #nosec G304 -- a staged temp folder this process just wrote
+	m, err := readStagedManifest(root)
 	if err != nil {
-		return nil, fmt.Errorf("that download has no manifest.json")
-	}
-	m, parseProblem := parseManifest(raw)
-	if parseProblem != "" {
-		return nil, fmt.Errorf("%s", parseProblem)
+		return nil, err
 	}
 	if _, mainErr := os.Stat(filepath.Join(root, "main.js")); mainErr != nil && isDataOnlyManifest(m) {
 		if problem := dataOnlyFolderProblem(os.DirFS(root)); problem != "" {
 			return nil, usererror.New(InstallRefusedCode, installRefusalSentence(problem))
 		}
 	}
-	hash, _ := ContentHash(root)
-	if err := policyInstallRefusalAt(m, rec.Tier, rec.Marketplace, installSourceLocator(rec.Source), root, hash); err != nil {
+	hash, err := ContentHash(root)
+	if err != nil {
+		return nil, err
+	}
+	if err := stagedPolicyRefusal(m, rec, root, hash); err != nil {
 		return nil, err
 	}
 	refusals, warnings := InstallChecks(root, m)

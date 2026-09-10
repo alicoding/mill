@@ -28,7 +28,6 @@ export interface OutputToolbarProps {
   showOpenFull: boolean
   onExpandAll: () => void
   onCollapseAll: () => void
-  onSave: () => void
   // Every action is a registry command; the viewer publishes itself as
   // the focused target first, so a command acting on "the focused
   // viewer" acts on this one.
@@ -92,7 +91,7 @@ export function OutputViewerToolbar(props: OutputToolbarProps) {
       <IconButton icon={CopyIcon} aria-label={t('output.copy')} size="small" variant="invisible" onClick={() => props.invoke('output.copy')} data-testid="output-copy" />
 
       {props.showSave && (
-        <IconButton icon={DownloadIcon} aria-label={t('output.save')} size="small" variant="invisible" onClick={props.onSave} data-testid="output-save" />
+        <IconButton icon={DownloadIcon} aria-label={t('output.save')} size="small" variant="invisible" onClick={() => props.invoke('output.save')} data-testid="output-save" />
       )}
 
       {props.showOpenFull && (

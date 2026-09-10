@@ -17,7 +17,9 @@ installing one is copying that folder into Mill's plugins folder.
 It has three tabs: **Installed**, **Browse**, and **Updates**.
 
 Browse lists everything your marketplaces offer that you have not
-installed yet, starting with the examples Mill ships. Press **Install**
+installed yet, including the examples Mill ships when policy allows
+them. While sources load, fail, or return only installed entries,
+Browse says which state it is in instead of calling the result empty. Press **Install**
 on a row. Mill shows what the extension can do — the hosts it reaches,
 whether it writes to your boards, what it adds — and installs it only
 after you confirm. The new extension appears under **Installed**;
@@ -61,8 +63,15 @@ file at its root, listing the plugins it offers. Press **Sources** in
 the Browse tab to add one: `owner/repo`, a repository address, a direct
 address of a `marketplace.json` file, or a folder path.
 
-Mill reads a marketplace only when you add it, refresh it, install
-from it, or check for updates. It never reaches out on its own.
+Sources shows the canonical location, publisher, last successful refresh,
+and any current failure. A failed refresh keeps the last usable catalog.
+Removing a source removes its registration and cached catalog; extensions
+already installed from it stay installed. Re-adding the same name creates
+a new source identity, so an older refresh or confirmation cannot change it.
+
+Opening Sources and pressing **Retry** after a local read error do not use
+the network. Mill reads a marketplace only when you add it, press **Refresh**,
+install from it, or check for updates. It never reaches out on its own.
 
 ### Updates
 

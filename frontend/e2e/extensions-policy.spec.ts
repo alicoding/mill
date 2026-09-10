@@ -6,7 +6,7 @@
 // the door on every non-built-in extension.
 //
 // Dedicated server pair (EXTENSIONS_POLICY_*): the policy changes what
-// every Extensions row and install prompt says, which is global state.
+// every Extensions row and install action says, which is global state.
 import { expect, test } from '@playwright/test'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -76,21 +76,17 @@ test('a managed Mac says who manages it, lists a blocked extension with its reas
 	}
 })
 
-test('an install the policy refuses stops in the prompt with the reason, and Settings > Security shows the policy read-only', async () => {
+test('a policy-blocked install stays unavailable with its reason, and Settings > Security shows the policy read-only', async () => {
 	const policy = writePolicyFile(JSON.stringify(BANK_POLICY))
 	const { page, close } = await launchWithPlugins(2, { ports: PORTS, extraEnv: { MILL_PLUGIN_POLICY: policy.path } })
 	try {
 		await gotoAppReady(page)
 		await openExtensions(page, 'browse')
 		const entry = page.locator('[data-testid="extensions-browse-row"][data-plugin-id="mill-textcase"]')
-		await entry.getByTestId('extensions-browse-install').click()
-
-		const dialog = page.getByTestId('extensions-install-dialog')
-		await expect(dialog).toBeVisible()
-		await expect(dialog.getByTestId('extensions-install-refusal')).toContainText("Your organisation's policy doesn't allow this extension.")
-		await expect(dialog.getByTestId('extensions-install-refusal-reason')).toHaveText('Your organisation blocks this extension.')
-		await expect(page.getByRole('dialog').getByRole('button', { name: 'Install', exact: true })).toBeDisabled()
-		await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click()
+		await expect(entry).toBeVisible()
+		await expect(entry).toContainText('Your organisation blocks this extension.')
+		await expect(entry.getByTestId('extensions-browse-install')).toBeDisabled()
+		await expect(page.getByTestId('extensions-install-dialog')).toHaveCount(0)
 
 		await openSettings(page, 'security')
 		const section = page.getByTestId('settings-extension-policy')

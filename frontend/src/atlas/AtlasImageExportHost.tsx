@@ -105,7 +105,7 @@ export function AtlasImageExportHost({ wrapperRef, viewedID, allCards }: {
       try {
         const { blob, scoped } = await capture(settings)
         const title = allCards.find((c) => c.ID === viewedID)?.Title || t('breadcrumbRoot')
-        downloadBlob(imageFilename(scoped ? t('imageExport.selectionFilename', { title }) : title), blob)
+        await downloadBlob(imageFilename(scoped ? t('imageExport.selectionFilename', { title }) : title), blob)
         setDialogOpen(false)
       } catch (err) {
         pushNotice({ level: 'error', source: 'atlas.selection.exportAsImage', text: failureText(err) })

@@ -462,6 +462,7 @@
       "open": "Extensions",
       "review": "Review extensions waiting for you",
       "sources": "Extensions: marketplace sources",
+      "viewInstalled": "Extensions: view installed",
       "importTheme": "Extensions: Import theme",
       "checkUpdates": "Extensions: check for updates",
       "updateAll": "Extensions: update all"
@@ -500,6 +501,7 @@
       "copy": "Copy output",
       "find": "Find in output",
       "toggleWrap": "Wrap output lines",
+      "save": "Save output",
       "openFull": "Open output in full"
     },
     "extension": {
@@ -507,7 +509,21 @@
       "disable": "Turn off",
       "reveal": "Reveal folder",
       "remove": "Remove",
+      "addSource": "Add extension source",
       "refreshSources": "Extensions: refresh sources",
+      "source": {
+        "remove": "Remove source"
+      },
+      "sources": {
+        "retry": "Retry sources"
+      },
+      "browse": {
+        "retry": "Retry loading extensions",
+        "clearFilters": "Clear extension filters",
+        "previewInstall": "Review extension installation",
+        "confirmInstall": "Install extension",
+        "cancelInstall": "Cancel extension installation"
+      },
       "update": "Update",
       "checkUpdates": "Check for updates",
       "addMcpServer": "Add to Configure"

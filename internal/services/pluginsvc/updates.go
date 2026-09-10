@@ -3,8 +3,6 @@ package pluginsvc
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -36,6 +34,7 @@ type UpdateCandidate struct {
 	// download -- the same promise a Browse row makes.
 	Tier   string
 	Source PluginSource
+	Origin SourceOrigin
 }
 
 // UpdateCheck is the last check's outcome, persisted beside the
@@ -52,9 +51,11 @@ type UpdateCheck struct {
 // ListUpdates answers the last check as it was recorded -- never a
 // fetch.
 func (p *PluginService) ListUpdates() (UpdateCheck, error) {
-	marketplaceStateMu.Lock()
-	defer marketplaceStateMu.Unlock()
-	check := p.readState().Updates
+	st, err := p.readState()
+	if err != nil {
+		return UpdateCheck{}, err
+	}
+	check := st.Updates
 	if check.Candidates == nil {
 		check.Candidates = []UpdateCandidate{}
 	}
@@ -98,11 +99,11 @@ func (p *PluginService) CheckForUpdates() (UpdateCheck, error) {
 		}
 	}
 	sort.Slice(check.Candidates, func(i, j int) bool { return check.Candidates[i].ID < check.Candidates[j].ID })
-	marketplaceStateMu.Lock()
-	defer marketplaceStateMu.Unlock()
-	st := p.readState()
-	st.Updates = check
-	return check, p.writeState(st)
+	_, err = p.mutateState(func(st *marketplaceState) error {
+		st.Updates = check
+		return nil
+	})
+	return check, err
 }
 
 // updateCandidateFor asks one extension's own source what it offers
@@ -115,18 +116,25 @@ func (p *PluginService) updateCandidateFor(info PluginInfo, rec InstallRecord) (
 		Installed:   info.Manifest.Version,
 		Marketplace: rec.Marketplace,
 		Source:      rec.Source,
+		Origin:      rec.Origin,
+	}
+	if err := policyUpdateDiscoveryRefusal(rec.Origin, rec.Marketplace, rec.Source); err != nil {
+		return cand, err.Error(), false
 	}
 	var problem string
 	switch {
 	case rec.Marketplace != "":
-		idx, entry, err := p.findEntry(rec.Marketplace, info.Manifest.ID)
+		resolved, err := p.resolveMarketplaceEntry(rec.Marketplace, info.Manifest.ID)
 		if err != nil {
 			return cand, err.Error(), false
 		}
-		cand.Available = entry.Version
-		cand.Tier = entryTier(idx.Name, entry)
+		if rec.Origin.Kind != "" && resolved.Source.Origin != rec.Origin {
+			return cand, "Source could not be verified. Reinstall this extension from an allowed source.", false
+		}
+		cand.Available = resolved.Entry.Version
+		cand.Tier = entryTier(resolved.Index.Name, resolved.Entry)
 	case rec.Source.Kind == "github":
-		tag, err := p.latestReleaseTag(rec.Source.Repo)
+		tag, err := p.latestReleaseTag(rec.Source.Repo, rec.Origin)
 		if err != nil {
 			return cand, err.Error(), false
 		}
@@ -135,7 +143,7 @@ func (p *PluginService) updateCandidateFor(info PluginInfo, rec InstallRecord) (
 		// no hash Mill can pin to, so it earns the unverified tier.
 		cand.Tier = TierUnverified
 	case rec.Source.Kind == "path":
-		version, err := folderManifestVersion(expandHome(rec.Source.Path))
+		version, err := p.folderManifestVersion(rec.Source.Path, rec.Origin)
 		if err != nil {
 			return cand, err.Error(), false
 		}
@@ -180,19 +188,30 @@ func ParseLatestReleaseTag(raw []byte) (string, error) {
 	return strings.TrimSpace(body.TagName), nil
 }
 
-func (p *PluginService) latestReleaseTag(repo string) (string, error) {
+func (p *PluginService) latestReleaseTag(repo string, origin SourceOrigin) (string, error) {
+	return p.latestReleaseTagAt(repo, LatestReleaseURL(repo), origin)
+}
+
+func (p *PluginService) latestReleaseTagAt(repo, rawURL string, origin SourceOrigin) (string, error) {
 	if !repoPattern.MatchString(repo) {
 		return "", fmt.Errorf("the install receipt names no repository")
 	}
-	raw, err := p.httpGetBytes(LatestReleaseURL(repo), maxIndexBytes)
+	raw, _, err := p.httpGetBytesForOrigin(rawURL, maxIndexBytes, origin, true)
 	if err != nil {
 		return "", err
 	}
 	return ParseLatestReleaseTag(raw)
 }
 
-func folderManifestVersion(dir string) (string, error) {
-	raw, err := os.ReadFile(filepath.Join(dir, "manifest.json")) // #nosec G304 -- the folder this extension was installed from, recorded in its own receipt
+func (p *PluginService) folderManifestVersion(dir string, origin SourceOrigin) (string, error) {
+	if origin.Kind == "" {
+		source, err := canonicalSource(MarketplaceSource{Kind: "path", Locator: expandHome(dir)})
+		if err != nil {
+			return "", fmt.Errorf("the folder it was installed from could not be verified")
+		}
+		origin = source.Origin
+	}
+	raw, err := p.readSourceFile(origin, "manifest.json")
 	if err != nil {
 		return "", fmt.Errorf("the folder it was installed from has no manifest.json")
 	}
@@ -206,22 +225,27 @@ func folderManifestVersion(dir string) (string, error) {
 }
 
 // updateCandidate answers the recorded candidate for one extension.
-func (p *PluginService) updateCandidate(id string) (UpdateCandidate, bool) {
-	marketplaceStateMu.Lock()
-	defer marketplaceStateMu.Unlock()
-	for _, c := range p.readState().Updates.Candidates {
+func (p *PluginService) updateCandidate(id string) (UpdateCandidate, bool, error) {
+	st, err := p.readState()
+	if err != nil {
+		return UpdateCandidate{}, false, err
+	}
+	for _, c := range st.Updates.Candidates {
 		if c.ID == id {
-			return c, true
+			return c, true, nil
 		}
 	}
-	return UpdateCandidate{}, false
+	return UpdateCandidate{}, false, nil
 }
 
 // PreviewUpdate answers the install prompt's contents for an update:
 // what the newer version can do, and the tier applying it would earn.
 // Reads only what is cached -- previewing never downloads.
 func (p *PluginService) PreviewUpdate(id string) (InstallPreview, error) {
-	cand, ok := p.updateCandidate(id)
+	cand, ok, err := p.updateCandidate(id)
+	if err != nil {
+		return InstallPreview{}, err
+	}
 	if !ok {
 		return InstallPreview{}, fmt.Errorf("no update is known for %q; check for updates first", id)
 	}
@@ -246,7 +270,10 @@ func (p *PluginService) PreviewUpdate(id string) (InstallPreview, error) {
 // UpdatePlugin applies one recorded candidate through the same install
 // door the extension first came through, then drops it from the list.
 func (p *PluginService) UpdatePlugin(id string) (InstallRecord, error) {
-	cand, ok := p.updateCandidate(id)
+	cand, ok, err := p.updateCandidate(id)
+	if err != nil {
+		return InstallRecord{}, err
+	}
 	if !ok {
 		return InstallRecord{}, fmt.Errorf("no update is known for %q; check for updates first", id)
 	}
@@ -254,17 +281,17 @@ func (p *PluginService) UpdatePlugin(id string) (InstallRecord, error) {
 	if err != nil {
 		return InstallRecord{}, err
 	}
-	marketplaceStateMu.Lock()
-	defer marketplaceStateMu.Unlock()
-	st := p.readState()
-	kept := make([]UpdateCandidate, 0, len(st.Updates.Candidates))
-	for _, c := range st.Updates.Candidates {
-		if c.ID != id {
-			kept = append(kept, c)
+	_, err = p.mutateState(func(st *marketplaceState) error {
+		kept := make([]UpdateCandidate, 0, len(st.Updates.Candidates))
+		for _, c := range st.Updates.Candidates {
+			if c.ID != id {
+				kept = append(kept, c)
+			}
 		}
-	}
-	st.Updates.Candidates = kept
-	return rec, p.writeState(st)
+		st.Updates.Candidates = kept
+		return nil
+	})
+	return rec, err
 }
 
 func (p *PluginService) installCandidate(cand UpdateCandidate) (InstallRecord, error) {
@@ -272,18 +299,35 @@ func (p *PluginService) installCandidate(cand UpdateCandidate) (InstallRecord, e
 	case cand.Marketplace != "":
 		return p.InstallFromMarketplace(cand.Marketplace, cand.ID)
 	case cand.Source.Kind == "github":
+		if err := policyUpdateDiscoveryRefusal(cand.Origin, cand.Marketplace, cand.Source); err != nil {
+			return InstallRecord{}, err
+		}
 		stage, cleanup, err := stageDir()
 		if err != nil {
 			return InstallRecord{}, err
 		}
 		defer cleanup()
-		tier, err := p.stageRepo(stage, cand.Source.Repo, cand.Source.Ref, cand.ID, cand.Available, "")
+		tier, finalURL, err := p.stageRepo(stage, cand.Source.Repo, cand.Source.Ref, cand.ID, cand.Available, "", cand.Origin)
 		if err != nil {
 			return InstallRecord{}, err
 		}
-		return p.finishInstall(stage, InstallRecord{Source: cand.Source, Tier: tier})
+		return p.finishInstall(stage, InstallRecord{Source: cand.Source, Tier: tier, Origin: cand.Origin, FinalArtifactURL: finalURL})
 	case cand.Source.Kind == "path":
-		return p.InstallFromLink(cand.Source.Path)
+		if cand.Origin.Kind == "" {
+			return p.InstallFromLink(cand.Source.Path)
+		}
+		if err := policyUpdateDiscoveryRefusal(cand.Origin, cand.Marketplace, cand.Source); err != nil {
+			return InstallRecord{}, err
+		}
+		stage, cleanup, err := stageDir()
+		if err != nil {
+			return InstallRecord{}, err
+		}
+		defer cleanup()
+		if err := p.copySourceFolder(cand.Origin, ".", stage); err != nil {
+			return InstallRecord{}, err
+		}
+		return p.finishInstall(stage, InstallRecord{Source: cand.Source, Tier: TierDev, Origin: cand.Origin})
 	}
 	return InstallRecord{}, fmt.Errorf("%q has no source an update can come from", cand.ID)
 }

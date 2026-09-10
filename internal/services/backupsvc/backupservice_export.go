@@ -27,7 +27,7 @@ func (b *BackupService) ExportEverything() (string, error) {
 	b.mu.Lock()
 	families := b.families
 	atlas := b.atlas
-	dbPath, settingsPath, millVersion := b.dbPath, b.settingsPath, b.millVersion
+	dbPath, settingsPath, millVersion, options := b.dbPath, b.settingsPath, b.millVersion, b.snapshotOptions
 	b.mu.Unlock()
 
 	var buf bytes.Buffer
@@ -57,7 +57,7 @@ func (b *BackupService) ExportEverything() (string, error) {
 		}
 	}
 
-	if dbPath != "" {
+	if dbPath != "" || options.ReadSettings != nil || len(options.Participants) > 0 {
 		// vaultPath deliberately never reaches includeSnapshot: unlike a
 		// local backup directory, this archive is the thing people move
 		// to another machine or hand to someone else, so the vault stays
@@ -65,10 +65,10 @@ func (b *BackupService) ExportEverything() (string, error) {
 		// export (docs/trust/data-and-safety.md) -- goal 0359's own
 		// backup-set inclusion is scoped to backupsvc's local snapshot
 		// rotation only.
-		if err := includeSnapshot(zw, dbPath, settingsPath, ""); err != nil {
+		if err := includeSnapshot(zw, dbPath, settingsPath, "", options); err != nil {
 			return "", err
 		}
-		man.HasSnapshot = true
+		man.HasSnapshot = dbPath != ""
 	}
 
 	manData, err := json.MarshalIndent(man, "", "  ")
@@ -92,20 +92,22 @@ func (b *BackupService) ExportEverything() (string, error) {
 // THIS caller's own snapshot (ExportEverything passes vaultPath=""),
 // but the parameter itself is shared with backupsvc's own local
 // snapshot rotation, which does pass a real one.
-func includeSnapshot(zw *zip.Writer, dbPath, settingsPath, vaultPath string) error {
+func includeSnapshot(zw *zip.Writer, dbPath, settingsPath, vaultPath string, options ...backup.SnapshotOptions) error {
 	tmpDir, err := os.MkdirTemp("", "mill-export-snapshot-")
 	if err != nil {
 		return fmt.Errorf("export everything: snapshot temp dir: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
-	result, err := backup.Snapshot(dbPath, settingsPath, vaultPath, tmpDir, 0)
+	result, err := backup.Snapshot(dbPath, settingsPath, vaultPath, tmpDir, 0, options...)
 	if err != nil {
 		return fmt.Errorf("export everything: snapshot: %w", err)
 	}
 
-	if err := writeZipFileFromDisk(zw, "db-snapshot/execution.db", filepath.Join(result.Dir, "execution.db")); err != nil {
-		return err
+	if _, err := os.Stat(filepath.Join(result.Dir, "execution.db")); err == nil {
+		if err := writeZipFileFromDisk(zw, "db-snapshot/execution.db", filepath.Join(result.Dir, "execution.db")); err != nil {
+			return err
+		}
 	}
 	if _, err := os.Stat(filepath.Join(result.Dir, "settings.json")); err == nil {
 		if err := writeZipFileFromDisk(zw, "db-snapshot/settings.json", filepath.Join(result.Dir, "settings.json")); err != nil {
@@ -117,7 +119,29 @@ func includeSnapshot(zw *zip.Writer, dbPath, settingsPath, vaultPath string) err
 			return err
 		}
 	}
+	if err := writeZipTree(zw, filepath.Join(result.Dir, "plugin-state"), "db-snapshot/plugin-state"); err != nil {
+		return err
+	}
 	return nil
+}
+
+func writeZipTree(zw *zip.Writer, root, archiveRoot string) error {
+	if _, err := os.Stat(root); os.IsNotExist(err) {
+		return nil
+	}
+	return filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		return writeZipFileFromDisk(zw, filepath.ToSlash(filepath.Join(archiveRoot, rel)), path)
+	})
 }
 
 func writeZipFileFromDisk(zw *zip.Writer, name, path string) error {
