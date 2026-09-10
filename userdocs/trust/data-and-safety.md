@@ -25,6 +25,15 @@ person. The vault's key sits in your OS keychain, stored against that
 specific vault file — a second vault, or a vault restored from a
 backup, gets its own key rather than replacing the first one's.
 
+Mill gives one running process ownership of each local settings file
+and run-history database before it opens either file. Opening the app a
+second time restores and focuses the copy that is already running. If
+you start a server or source-built copy against files another Mill
+process owns, it stops before changing them and tells you to close that
+instance or choose different data paths. The small lock files beside
+the data stay on disk after Mill exits; their presence is harmless, and
+Mill never treats an old file by itself as a running process.
+
 Turn on the unlock requirement and Mill asks before the vault opens.
 The checkbox names what this Mac can actually offer — Touch ID, an
 Apple Watch, your Mac password — rather than promising hardware you

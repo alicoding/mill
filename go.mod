@@ -18,6 +18,7 @@ require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/getkin/kin-openapi v0.149.0
 	github.com/go-jose/go-jose/v4 v4.1.5
+	github.com/gofrs/flock v0.13.1
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/hbollon/go-edlib v1.7.0

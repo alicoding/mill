@@ -11,6 +11,6 @@ import "github.com/wailsapp/wails/v3/pkg/application"
 // `wails3 dev` rebuild would defer to the STALE window instead of
 // replacing it. Returning nil leaves application.Options.SingleInstance
 // unset, exactly as before this existed.
-func singleInstanceOptions(func() *application.WebviewWindow) *application.SingleInstanceOptions {
+func singleInstanceOptions(func()) *application.SingleInstanceOptions {
 	return nil
 }

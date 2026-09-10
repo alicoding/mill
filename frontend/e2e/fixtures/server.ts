@@ -141,7 +141,7 @@ export interface SpawnServerOptions {
 // around it. Used both by the standard per-worker fixture and directly
 // by persistence.spec.ts, which needs to start/stop more than one
 // server within a single test.
-export async function spawnMillServer(opts: SpawnServerOptions): Promise<SpawnedServer> {
+function serverEnvironment(opts: SpawnServerOptions): NodeJS.ProcessEnv {
   const env = {
     ...process.env,
     ...opts.extraEnv,
@@ -216,12 +216,21 @@ export async function spawnMillServer(opts: SpawnServerOptions): Promise<Spawned
   if (env.MILL_TEST_KEYRING !== 'memory') {
     throw new Error(`spawnMillServer: MILL_TEST_KEYRING resolved to ${JSON.stringify(env.MILL_TEST_KEYRING)}, want 'memory' -- refusing to spawn a server that could touch the real OS keychain`)
   }
+  return env
+}
 
-  const proc = spawn(MILL_SERVER_BIN, [], {
+// Starts the isolated server process without waiting for readiness. Conflict
+// proofs use this seam because the expected result is a safe early exit.
+export function spawnMillServerProcess(opts: SpawnServerOptions): ChildProcessWithoutNullStreams {
+  return spawn(MILL_SERVER_BIN, [], {
     cwd: REPO_ROOT,
-    env,
+    env: serverEnvironment(opts),
     stdio: ['ignore', 'pipe', 'pipe'],
   })
+}
+
+export async function spawnMillServer(opts: SpawnServerOptions): Promise<SpawnedServer> {
+  const proc = spawnMillServerProcess(opts)
 
   const stderrTail: string[] = []
   proc.stderr.on('data', (chunk: Buffer) => {
