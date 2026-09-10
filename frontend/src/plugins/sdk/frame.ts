@@ -18,8 +18,12 @@ import type { PluginTheme } from './theme'
  * face receives `{ object: { ID, Kind, Payload, Size }, mirror? }` --
  * `mirror` only for a file-backed kind, as `{ dataUrl, failed }`.
  * `resize` carries the `{ width, height }` of the box the page is
- * drawn in. */
-export type MillFrameEvent = 'theme:changed' | 'settings:changed' | 'contents:changed' | 'ctx' | 'resize'
+ * drawn in. `face:activate`/`face:deactivate` tell a canvas object's
+ * own face when it has been handed real input: the click shield
+ * already gates every pointer/wheel/key the page itself receives, so
+ * these two name only the moment a page may want to react to (autofocus
+ * a field, and so on) -- a page that never cares may ignore both. */
+export type MillFrameEvent = 'theme:changed' | 'settings:changed' | 'contents:changed' | 'ctx' | 'resize' | 'face:activate' | 'face:deactivate'
 
 /** What `window.acquireMillApi()` answers inside an entry page.
  *

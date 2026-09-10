@@ -40,6 +40,13 @@ export interface PluginFrameProps {
   capture?: CaptureControls
   /** A canvas object's face: the object doors the page may call. */
   face?: FaceControls
+  /** A canvas object's face only (goal 0380 S2): whether the host has
+   * just handed this face its editing moment -- pushed as
+   * `face:activate`/`face:deactivate`. Undefined for a view or
+   * capture, which draw the same distinction the click shield already
+   * enforces at the pointer/wheel/key level; this is the one thing a
+   * sandboxed page cannot observe for itself. */
+  active?: boolean
   /** Installs (and clears) the sink the plugin's postMessage uses. */
   onSink: (post: ((message: unknown) => void) | undefined) => void
   /** The plugin's own inbound handler for what the page posts. */
@@ -144,6 +151,16 @@ export function PluginFrame(props: PluginFrameProps) {
   useEffect(() => {
     sendFrameEvent(frameRef.current, 'ctx', context)
   }, [context, srcdoc])
+
+  // face:activate/face:deactivate (goal 0380 S2): pushed only when the
+  // caller actually passes `active` -- a view or capture never does, so
+  // this is a no-op for either. Fires once on mount too (an object
+  // face always mounts idle/selected, never editing, so the initial
+  // 'face:deactivate' is a correct, harmless echo of that fact).
+  useEffect(() => {
+    if (props.active === undefined || srcdoc === null) return
+    sendFrameEvent(frameRef.current, props.active ? 'face:activate' : 'face:deactivate', {})
+  }, [props.active, srcdoc])
 
   useEffect(() => {
     if (srcdoc === null) return

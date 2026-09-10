@@ -471,6 +471,7 @@ function AtlasBoardObjectNodeInner({ id, data, selected }: NodeProps<AtlasBoardO
             repickMirror={(path) => AtlasService.RepickObjectMirror(object.ID, path)}
             onOverflowChange={onOverflowChange}
             onEditingChange={onEditingChange}
+            editing={state === 'editing'}
             onPagerChange={onPagerChange}
           />
         </Suspense>
