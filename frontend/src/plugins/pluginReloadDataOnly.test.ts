@@ -32,6 +32,7 @@ vi.mock('./activation', () => ({
 const { reloadPlugin } = await import('./pluginReload')
 const { pluginLoadStates } = await import('./loader')
 const { unregisterPluginCommands } = await import('./pluginCommands')
+const { pluginContextFacts, setPluginContextKey } = await import('./pluginContextKeys')
 
 const pluginID = 'imported-theme-dark-123456789012345678901234'
 const info = {
@@ -56,9 +57,11 @@ describe('reloadPlugin data-only activation', () => {
 	afterEach(() => unregisterPluginCommands(pluginID))
 
 	it('reloads host registrations without attempting main.js activation', async () => {
+		setPluginContextKey(pluginID, 'ready', true)
 		await reloadPlugin(pluginID)
 
 		expect(mocks.activateFramed).not.toHaveBeenCalled()
+		expect(pluginContextFacts(pluginID)).toEqual({})
 		expect(pluginLoadStates().get(pluginID)).toMatchObject({ status: 'loaded', info })
 		expect(mocks.emit).toHaveBeenCalledWith('plugin-contributions-changed', pluginID)
 	})

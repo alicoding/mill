@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { COMMANDS, findCommand } from './commands'
 import { dispatchCommandForEvent } from './commandDispatch'
 import { comboKey } from './keybinding'
-import { isMenuOwnedCombo, setMenuOwnedCombos } from './menuOwnership'
+import { isMenuOwnedCombo, menuOwnershipSnapshot, setMenuOwnedCombos, subscribeMenuOwnership } from './menuOwnership'
 import { useAppStore } from './store'
 
 // Exactly one owner per combo (goal 0332). A combo the native menu bar
@@ -29,6 +29,18 @@ afterEach(() => {
 })
 
 describe('menu-owned combos', () => {
+  it('notifies subscribers when installed ownership changes', () => {
+    const listener = vi.fn()
+    const before = menuOwnershipSnapshot()
+    const unsubscribe = subscribeMenuOwnership(listener)
+    setMenuOwnedCombos([comboKey(['cmd'], 'K')])
+    expect(menuOwnershipSnapshot()).toBe(before + 1)
+    expect(listener).toHaveBeenCalledTimes(1)
+    unsubscribe()
+    setMenuOwnedCombos([])
+    expect(listener).toHaveBeenCalledTimes(1)
+  })
+
   it('are skipped by the keydown dispatcher', () => {
     const run = vi.spyOn(findCommand('view.home')!, 'run').mockImplementation(() => {})
     expect(dispatchCommandForEvent(pressing({ meta: true }, 'Digit0'), {})).toBe(true)

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { attachActivationBridge, callActivationMethod, createActivationFrameContext, sendExtensionCall, teardownActivationFrameContext } from './pluginActivationBridge'
 import { collectPluginCapture, getPluginCapture, setPluginCaptureSink, unregisterPluginCaptures } from '../plugins/pluginCaptures'
 import { collectPluginView, getPluginView, setPluginViewSink, unregisterPluginViews } from '../plugins/pluginViews'
-import { setPluginContextKey } from '../plugins/pluginContextKeys'
+import { pluginContextFacts, setPluginContextKey } from '../plugins/pluginContextKeys'
 import type { MillPluginAPI } from '../plugins/sdk'
 
 // The manifest a framed context now carries (docs/goals/0380): the
@@ -70,6 +70,17 @@ describe('callActivationMethod', () => {
     expect(api.context.set).toHaveBeenCalledWith('hasResult', true)
   })
 
+  it('passes mixed scalar arrays and refusals through the same framed context door', async () => {
+    const set = vi.fn((key: string, value: unknown) => setPluginContextKey('framed-probe', key, value))
+    const api = fakeApi({ context: { set } })
+    const { frame } = fakeFrame()
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
+    await callActivationMethod(ctx, api, 'context.set', ['values', ['ready', 0, false, null]])
+    expect(pluginContextFacts('framed-probe')).toEqual({ 'plugin.values': ['ready', 0, false, null] })
+    await expect(callActivationMethod(ctx, api, 'context.set', ['invalid', Infinity])).rejects.toThrow(/finite number/)
+    teardownActivationFrameContext(ctx)
+  })
+
   it('routes convert.markdownToHtml onto the plugin api, the activation bridge\'s one new door', async () => {
     const api = fakeApi()
     const { frame } = fakeFrame()
@@ -124,10 +135,13 @@ describe('callActivationMethod', () => {
   // the same way api.context.set writes it, host-side) turns true.
   const WHEN_GATED_MANIFEST = {
     id: 'when-probe', name: 'When probe', version: '1.0.0', description: '', author: '', minMillVersion: '', icon: '', capabilities: [], dependencies: [], exports: [],
-    contributes: { menus: { 'view/title': [{ command: 'sendAgain', when: 'plugin.hasResult', group: '' }] } },
+    contributes: {
+      commands: [{ id: 'sendAgain', label: 'Send again', enablement: 'plugin.hasResult' }],
+      menus: { 'view/title': [{ command: 'sendAgain', when: 'false', group: '' }] },
+    },
   } as unknown as Manifest
 
-  it("a framed command's enabled() honours the when clause its own manifest declared for it", async () => {
+  it("a framed command's enabled() honours command enablement independently of its menu's when clause", async () => {
     const api = fakeApi()
     const { frame } = fakeFrame()
     const ctx = createActivationFrameContext(frame, 'when-probe', [], WHEN_GATED_MANIFEST)
@@ -136,6 +150,18 @@ describe('callActivationMethod', () => {
     expect(decl.enabled()).toBe(false)
     setPluginContextKey('when-probe', 'hasResult', true)
     expect(decl.enabled()).toBe(true)
+  })
+
+  it('teardown clears this plugin context and refuses a late context.set write', async () => {
+    const api = fakeApi({ context: { set: (key, value) => setPluginContextKey('framed-probe', key, value) } })
+    const { frame } = fakeFrame()
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
+    await callActivationMethod(ctx, api, 'context.set', ['ready', true])
+    expect(pluginContextFacts('framed-probe')).toEqual({ 'plugin.ready': true })
+    teardownActivationFrameContext(ctx)
+    expect(pluginContextFacts('framed-probe')).toEqual({})
+    await expect(callActivationMethod(ctx, api, 'context.set', ['ready', true])).rejects.toThrow('torn down')
+    expect(pluginContextFacts('framed-probe')).toEqual({})
   })
 
   it('a framed command with no declared when clause stays always-enabled while alive', async () => {

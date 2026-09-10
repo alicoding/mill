@@ -25,6 +25,9 @@ describe('when clauses', () => {
     expect(evaluateWhen('neverDeclared', FACTS)).toBe(false)
     expect(evaluateWhen('true', FACTS)).toBe(true)
     expect(evaluateWhen('false', FACTS)).toBe(false)
+    expect(evaluateWhen('nil', { nil: null })).toBe(false)
+    expect(evaluateWhen('zero', { zero: 0 })).toBe(false)
+    expect(evaluateWhen('empty', { empty: [] })).toBe(false)
   })
 
   it('compares, negates, groups, and honours precedence over && before ||', () => {
@@ -41,6 +44,9 @@ describe('when clauses', () => {
     expect(evaluateWhen("'shape' in selectionKinds", FACTS)).toBe(true)
     expect(evaluateWhen("'card' in selectionKinds", FACTS)).toBe(false)
     expect(evaluateWhen("'card' in objectKind", FACTS)).toBe(false)
+    expect(evaluateWhen("'0' in values", { values: [0, false, null] })).toBe(true)
+    expect(evaluateWhen("'false' in values", { values: [0, false, null] })).toBe(true)
+    expect(evaluateWhen("'null' in values", { values: [0, false, null] })).toBe(true)
   })
 
   // The property a pattern over the expression cannot hold: a value

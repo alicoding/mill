@@ -24,6 +24,9 @@ import (
 type CommandContribution struct {
 	ID    string `json:"id"`
 	Label string `json:"label"`
+	// Enablement is the command's global declarative predicate. Menu
+	// item When expressions control only their own seats.
+	Enablement string `json:"enablement,omitempty"`
 	// Menu seats this command in the native menu bar (goal 0335): the
 	// host cross-references this declaration by id when the plugin
 	// actually registers the command, since the manifest carries no

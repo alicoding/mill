@@ -28,7 +28,7 @@ import { drainedPluginCommands } from '../plugins/pluginCommands'
 export function removePluginNow(id: string, name: string): void {
   SettingsService.RemovePlugin(id)
     .then((destination) => {
-      notifyPluginRemoved()
+      notifyPluginRemoved(id)
       pushNotice({
         level: 'success',
         text: `${i18n.t('views:settings.extensions.removed', { name })} ${i18n.t('views:settings.extensions.removedLocation', { path: destination })}`,

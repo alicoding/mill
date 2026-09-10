@@ -8,11 +8,24 @@
 // Combo keys are shared/keybinding.ts's `comboKey(mods, key)` strings,
 // the same vocabulary dispatchCommandForEvent matches against.
 let menuOwned: ReadonlySet<string> = new Set<string>()
+let menuOwnershipVersion = 0
+const menuOwnershipListeners = new Set<() => void>()
 
 export function setMenuOwnedCombos(combos: Iterable<string>): void {
   menuOwned = new Set(combos)
+  menuOwnershipVersion += 1
+  for (const listener of menuOwnershipListeners) listener()
 }
 
 export function isMenuOwnedCombo(combo: string): boolean {
   return menuOwned.has(combo)
+}
+
+export function subscribeMenuOwnership(listener: () => void): () => void {
+  menuOwnershipListeners.add(listener)
+  return () => menuOwnershipListeners.delete(listener)
+}
+
+export function menuOwnershipSnapshot(): number {
+  return menuOwnershipVersion
 }

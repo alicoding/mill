@@ -6,6 +6,7 @@ import { settingDeclsFromManifest, snapshotPluginSettings } from './pluginSettin
 import { buildPluginStorage } from './pluginStorage'
 import { settingsPluginStorageDoors } from './pluginStorageHostDoors'
 import { captureFramedExports, clearExports, setFramedExportCallHandler } from './extensionExports'
+import { clearPluginContextKeys } from './pluginContextKeys'
 
 // Sandboxed activation for a third-party plugin with no canvas object
 // (docs/goals/0375 S1b): main.js runs inside a hidden iframe instead of
@@ -72,8 +73,9 @@ export function isFramedActivation(builtin: boolean, manifest: Manifest): boolea
 export async function activateFramed(info: PluginInfo, millVersion: string, storageSnapshot: Record<string, string>): Promise<void> {
   const manifest = info.Manifest
   const pluginId = manifest.id
-  const api = buildPluginAPI(manifest, millVersion, storageSnapshot)
   teardownActivationFrame(pluginId)
+  clearPluginContextKeys(pluginId)
+  const api = buildPluginAPI(manifest, millVersion, storageSnapshot)
 
   const storage = buildPluginStorage(pluginId, storageSnapshot, settingsPluginStorageDoors(pluginId))
   const decodedStorage: Record<string, unknown> = {}

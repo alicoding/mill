@@ -56,6 +56,7 @@ export function PluginViewHost({ pluginId, viewId }: { pluginId: string; viewId:
         entry={view.entry}
         version={view.version}
         stateKey={`view:${viewId}:state`}
+        paletteAccess
         context={context}
         onSink={onSink}
         onPageMessage={(message) => view.onMessage?.(message)}
