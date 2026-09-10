@@ -113,22 +113,6 @@ func init() {
 		if err := json.Unmarshal(result.JSON, &decoded); err != nil {
 			return ctx, fmt.Errorf("process-ai-classify: parse structured result: %w", err)
 		}
-		// Fail-safe (node-standard item 6): the schema constrains the
-		// request, but doesn't guarantee every provider/model honors an
-		// enum perfectly -- a category outside the declared list is
-		// treated as an unevaluable/ambiguous result, not silently
-		// written through.
-		valid := false
-		for _, c := range categories {
-			if c == decoded.Category {
-				valid = true
-				break
-			}
-		}
-		if !valid {
-			return ctx, fmt.Errorf("process-ai-classify: provider returned category %q, not one of the declared categories", decoded.Category)
-		}
-
 		if ctx.Attributes == nil {
 			ctx.Attributes = map[string]any{}
 		}
