@@ -214,6 +214,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-workflow-yaml.sh
       - run: ./scripts/check-icon-routing-selftest.sh
+      - run: ./scripts/check-engineering-health-issue-results.test.sh
       # goal 0419 S1c: SHA-pinned Docker image, not `go install @<tag>`
       # (an unpinned network fetch at every run) -- rhysd/actionlint
       # ships no action.yml of its own (confirmed against the repo:

@@ -362,7 +362,8 @@ jobs:
               gh label create "$label" --repo "$REPO" --color B60205 --force
             done
 
-      - uses: JasonEtco/create-an-issue@1b14a70e4d8dc185e5cc76d3bec9eab20257b2c5 # v2.9.2
+      - id: create_breach_issue
+        uses: JasonEtco/create-an-issue@1b14a70e4d8dc185e5cc76d3bec9eab20257b2c5 # v2.9.2
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
@@ -377,28 +378,27 @@ jobs:
       # second, explicit call -- contract item 2's "Consecutive >= 2
       # adds the label escalate" and "opens or refreshes them" (staying
       # open, not silently going dark after one recovery cycle). The
-      # metric-key label is unique to exactly this budget's one issue,
-      # set at its original creation, so it finds the issue regardless
-      # of its current open/closed state without depending on the
-      # action's own outputs.
+      # action reports the issue it created or updated, so the immediate
+      # mutation keeps that identity instead of waiting for label search
+      # to discover the write.
       - name: Apply this breach's labels and reopen if recovery-closed it
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           MATRIX_FILE: ${{ matrix.file }}
+          ISSUE_NUMBER: ${{ steps.create_breach_issue.outputs.number }}
         run: |
           set -euo pipefail
-          key="${MATRIX_FILE%.md}"
+          number="$ISSUE_NUMBER"
+          if ! [[ "$number" =~ ^[1-9][0-9]*$ ]]; then
+            echo "engineering-health: create-an-issue returned invalid breach issue number: ${number:-<empty>}" >&2
+            exit 1
+          fi
           # Same `next`-terminated parse as the label-creation step above
           # -- see its comment for why sub()-then-test-$0 silently drops
           # every label after the first.
           labels=$(awk '/^labels:/{f=1;next} f && /^  - /{print substr($0,5); next} f{exit}' \
             "breaches/${MATRIX_FILE}" | paste -sd, -)
-          number=$(gh issue list --repo "$REPO" --label "$key" --state all --json number --jq '.[0].number // empty')
-          if [ -z "$number" ]; then
-            echo "engineering-health: no issue found for breach key $key" >&2
-            exit 1
-          fi
           gh issue edit "$number" --repo "$REPO" --add-label "$labels"
           state=$(gh issue view "$number" --repo "$REPO" --json state --jq .state)
           if [ "$state" = "CLOSED" ]; then
@@ -476,7 +476,8 @@ jobs:
             cat engineering-health.md
           } > issue-body.md
 
-      - uses: JasonEtco/create-an-issue@1b14a70e4d8dc185e5cc76d3bec9eab20257b2c5 # v2.9.2
+      - id: create_health_issue
+        uses: JasonEtco/create-an-issue@1b14a70e4d8dc185e5cc76d3bec9eab20257b2c5 # v2.9.2
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
@@ -485,11 +486,13 @@ jobs:
           search_existing: all
 
       - name: Append the JSON as a collapsed comment
+        env:
+          ISSUE_NUMBER: ${{ steps.create_health_issue.outputs.number }}
         run: |
           set -euo pipefail
-          issue_number=$(gh issue list --repo "$REPO" --label engineering-health --state open --json number --jq '.[0].number')
-          if [ -z "$issue_number" ] || [ "$issue_number" = "null" ]; then
-            echo "engineering-health: no open issue labelled engineering-health found to comment on" >&2
+          number="$ISSUE_NUMBER"
+          if ! [[ "$number" =~ ^[1-9][0-9]*$ ]]; then
+            echo "engineering-health: create-an-issue returned invalid health issue number: ${number:-<empty>}" >&2
             exit 1
           fi
           {
@@ -500,4 +503,4 @@ jobs:
             echo '```'
             echo "</details>"
           } > json-comment.md
-          gh issue comment "$issue_number" --repo "$REPO" --body-file json-comment.md
+          gh issue comment "$number" --repo "$REPO" --body-file json-comment.md
