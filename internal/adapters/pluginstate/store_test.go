@@ -16,9 +16,19 @@ import (
 	"github.com/alicoding/mill/internal/adapters/backup"
 )
 
+func newTestStore(t *testing.T, store *Store) *Store {
+	t.Helper()
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("Close: %v", err)
+		}
+	})
+	return store
+}
+
 func TestStoreMissingLoadDoesNotCreateState(t *testing.T) {
 	dir := t.TempDir()
-	store := New(dir)
+	store := newTestStore(t, New(dir))
 	_, revision, present, err := store.Load(context.Background())
 	if err != nil || present || revision != 0 {
 		t.Fatalf("Load() = (_, %d, %v, %v)", revision, present, err)
@@ -40,7 +50,7 @@ func TestStoreRecognizesPristineSQLiteAndInitializesIt(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	store := New(dir)
+	store := newTestStore(t, New(dir))
 	if _, _, present, err := store.Load(context.Background()); err != nil || present {
 		t.Fatalf("pristine Load present=%v err=%v", present, err)
 	}
@@ -54,7 +64,7 @@ func TestStoreRecognizesPristineSQLiteAndInitializesIt(t *testing.T) {
 
 func TestStoreConcurrentInitializationAndUpdatesLoseNothing(t *testing.T) {
 	dir := t.TempDir()
-	first, second := New(dir), New(dir)
+	first, second := newTestStore(t, New(dir)), newTestStore(t, New(dir))
 	var initializerCalls atomic.Int32
 	const writes = 20
 	var wg sync.WaitGroup
@@ -97,7 +107,7 @@ func TestStoreConcurrentInitializationAndUpdatesLoseNothing(t *testing.T) {
 }
 
 func TestStoreRollbackPreservesPriorPayload(t *testing.T) {
-	store := New(t.TempDir())
+	store := newTestStore(t, New(t.TempDir()))
 	if _, _, err := store.Update(context.Background(), func() ([]byte, error) { return []byte("before"), nil }, func(current []byte) ([]byte, error) { return current, nil }); err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +166,7 @@ func TestStoreUpdateRefusesIncompleteVersionedSchemaBeforeCallbacks(t *testing.T
 			}
 
 			initializerCalls, changeCalls := 0, 0
-			store := NewAt(path)
+			store := newTestStore(t, NewAt(path))
 			_, _, err = store.Update(context.Background(), func() ([]byte, error) {
 				initializerCalls++
 				return []byte("seed"), nil
@@ -173,7 +183,7 @@ func TestStoreUpdateRefusesIncompleteVersionedSchemaBeforeCallbacks(t *testing.T
 			if err := store.Close(); err != nil {
 				t.Fatal(err)
 			}
-			reader := NewAt(path)
+			reader := newTestStore(t, NewAt(path))
 			if _, _, _, err := reader.Load(context.Background()); err == nil {
 				t.Fatal("Load succeeded")
 			}
@@ -184,7 +194,7 @@ func TestStoreUpdateRefusesIncompleteVersionedSchemaBeforeCallbacks(t *testing.T
 			if err := backup.SnapshotSQLite(path, snapshotPath); err != nil {
 				t.Fatal(err)
 			}
-			snapshot := NewAt(snapshotPath)
+			snapshot := newTestStore(t, NewAt(snapshotPath))
 			if _, _, _, err := snapshot.Load(context.Background()); err == nil {
 				t.Fatal("detached snapshot validation succeeded")
 			}
@@ -242,7 +252,8 @@ func TestStoreRefusesUnknownAndCorruptDatabasesWithoutChangingBytes(t *testing.T
 			t.Fatal(err)
 		}
 		before, _ := os.ReadFile(Path(dir))
-		if _, _, _, err := New(dir).Load(context.Background()); err == nil || !strings.Contains(err.Error(), "schema 99") {
+		store := newTestStore(t, New(dir))
+		if _, _, _, err := store.Load(context.Background()); err == nil || !strings.Contains(err.Error(), "schema 99") {
 			t.Fatalf("Load error = %v", err)
 		}
 		after, _ := os.ReadFile(Path(dir))
@@ -255,7 +266,8 @@ func TestStoreRefusesUnknownAndCorruptDatabasesWithoutChangingBytes(t *testing.T
 		if err := os.WriteFile(Path(dir), []byte("not sqlite"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if _, _, _, err := New(dir).Load(context.Background()); err == nil {
+		store := newTestStore(t, New(dir))
+		if _, _, _, err := store.Load(context.Background()); err == nil {
 			t.Fatal("Load succeeded")
 		}
 		after, _ := os.ReadFile(Path(dir))
@@ -266,7 +278,7 @@ func TestStoreRefusesUnknownAndCorruptDatabasesWithoutChangingBytes(t *testing.T
 }
 
 func TestStoreCommitReadbackClassifiesIntendedPriorAndInterveningState(t *testing.T) {
-	store := New(t.TempDir())
+	store := newTestStore(t, New(t.TempDir()))
 	if _, _, err := store.Update(context.Background(), func() ([]byte, error) { return []byte("prior"), nil }, func(current []byte) ([]byte, error) { return current, nil }); err != nil {
 		t.Fatal(err)
 	}
@@ -286,7 +298,7 @@ func TestStoreCommitReadbackClassifiesIntendedPriorAndInterveningState(t *testin
 }
 
 func TestStoreCloseWaitsForOperationAndRefusesReopen(t *testing.T) {
-	store := New(t.TempDir())
+	store := newTestStore(t, New(t.TempDir()))
 	entered, release, updated := make(chan struct{}), make(chan struct{}), make(chan error, 1)
 	go func() {
 		_, _, err := store.Update(context.Background(), func() ([]byte, error) { return []byte("seed"), nil }, func(current []byte) ([]byte, error) {
@@ -345,7 +357,7 @@ func TestSQLiteDSNEscapesProfilesAndWindowsDrivePaths(t *testing.T) {
 
 func TestStoreSpecialCharacterProfileReopensAndSnapshots(t *testing.T) {
 	profile := filepath.Join(t.TempDir(), "Mill Profile #1% 雪")
-	store := New(profile)
+	store := newTestStore(t, New(profile))
 	payload := []byte(`{"source":"kept"}`)
 	if _, _, err := store.Update(context.Background(), func() ([]byte, error) { return payload, nil }, func(current []byte) ([]byte, error) { return current, nil }); err != nil {
 		t.Fatal(err)
@@ -353,7 +365,7 @@ func TestStoreSpecialCharacterProfileReopensAndSnapshots(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened := New(profile)
+	reopened := newTestStore(t, New(profile))
 	got, revision, present, err := reopened.Load(context.Background())
 	if err != nil || !present || revision != 1 || string(got) != string(payload) {
 		t.Fatalf("reopen = %q, %d, %v, %v", got, revision, present, err)
@@ -365,7 +377,7 @@ func TestStoreSpecialCharacterProfileReopensAndSnapshots(t *testing.T) {
 	if err := backup.SnapshotSQLite(Path(profile), snapshot); err != nil {
 		t.Fatal(err)
 	}
-	snapshotStore := NewAt(snapshot)
+	snapshotStore := newTestStore(t, NewAt(snapshot))
 	got, revision, present, err = snapshotStore.Load(context.Background())
 	if err != nil || !present || revision != 1 || string(got) != string(payload) {
 		t.Fatalf("snapshot = %q, %d, %v, %v", got, revision, present, err)

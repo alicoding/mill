@@ -1149,7 +1149,7 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - run: go test -tags server -v -count=1 -timeout=10m ./internal/services/pluginsvc ./internal/adapters/pluginstate ./internal/adapters/backup ./internal/services/backupsvc ./internal/adapters/settings
+      - run: go test -tags server -v -count=1 -timeout=10m ./internal/services/pluginsvc ./internal/adapters/pluginstate ./internal/adapters/backup ./internal/services/backupsvc ./internal/adapters/settings ./internal/adapters/procexec
 
   # Advisory, goal 0401 (Decision 3): sub-5-minute affected-only signal on
   # top of the correctness-first full `test-go` above, never a
