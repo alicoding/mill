@@ -65,9 +65,13 @@ func opSymbol(op string) string {
 // budget (StatusIcon "⚠️") -- front matter the workflow's create-an-issue
 // step consumes directly (contract item 1). A metric within budget
 // writes nothing. The title is quoted since "Platform health: <label>"
-// itself contains ": ", ambiguous in unquoted YAML. Consecutive >= 2
-// folds the "escalate" label in here, computed once in Go rather than a
-// second workflow-side label call.
+// itself contains ": ", ambiguous in unquoted YAML. `labels` is a YAML
+// block list, never a comma-joined string: the pinned create-an-issue
+// action passes the front matter's `labels` value to GitHub's create-issue
+// API verbatim, so a comma-joined string becomes ONE label whose name
+// contains a comma rather than several labels (goal 0413 S2b). Consecutive
+// >= 2 folds the "escalate" label in here, computed once in Go rather than
+// a second workflow-side label call.
 func WriteBreaches(report Report, dir string) error {
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("mkdir %s: %w", dir, err)
@@ -76,15 +80,18 @@ func WriteBreaches(report Report, dir string) error {
 		if m.StatusIcon() != "⚠️" {
 			continue
 		}
-		labels := "platform-health," + m.BudgetKey
+		labels := []string{"platform-health", m.BudgetKey}
 		if m.Consecutive >= 2 {
-			labels += ",escalate"
+			labels = append(labels, "escalate")
 		}
 
 		var b strings.Builder
 		fmt.Fprintf(&b, "---\n")
 		fmt.Fprintf(&b, "title: %q\n", "Platform health: "+m.Name)
-		fmt.Fprintf(&b, "labels: %s\n", labels)
+		fmt.Fprintf(&b, "labels:\n")
+		for _, l := range labels {
+			fmt.Fprintf(&b, "  - %s\n", l)
+		}
 		fmt.Fprintf(&b, "---\n\n")
 		fmt.Fprintf(&b, "- **Category:** %s\n", categoryTitle[m.Category])
 		fmt.Fprintf(&b, "- **Current (7d):** %s\n", m.Display7)
