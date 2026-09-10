@@ -3,7 +3,6 @@ package pluginsvc
 import (
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -145,7 +144,7 @@ func (p *PluginService) updateCandidateFor(info PluginInfo, rec InstallRecord) (
 		// no hash Mill can pin to, so it earns the unverified tier.
 		cand.Tier = TierUnverified
 	case rec.Source.Kind == "path":
-		version, err := p.folderManifestVersion(expandHome(rec.Source.Path))
+		version, err := p.folderManifestVersion(rec.Source.Path, rec.Origin)
 		if err != nil {
 			return cand, err.Error(), false
 		}
@@ -205,8 +204,15 @@ func (p *PluginService) latestReleaseTagAt(repo, rawURL string, origin SourceOri
 	return ParseLatestReleaseTag(raw)
 }
 
-func (p *PluginService) folderManifestVersion(dir string) (string, error) {
-	raw, err := p.readSourceFile(filepath.Join(dir, "manifest.json"))
+func (p *PluginService) folderManifestVersion(dir string, origin SourceOrigin) (string, error) {
+	if origin.Kind == "" {
+		source, err := canonicalSource(MarketplaceSource{Kind: "path", Locator: expandHome(dir)})
+		if err != nil {
+			return "", fmt.Errorf("the folder it was installed from could not be verified")
+		}
+		origin = source.Origin
+	}
+	raw, err := p.readSourceFile(origin, "manifest.json")
 	if err != nil {
 		return "", fmt.Errorf("the folder it was installed from has no manifest.json")
 	}
@@ -305,7 +311,21 @@ func (p *PluginService) installCandidate(cand UpdateCandidate) (InstallRecord, e
 		}
 		return p.finishInstall(stage, InstallRecord{Source: cand.Source, Tier: tier, Origin: cand.Origin, FinalArtifactURL: finalURL})
 	case cand.Source.Kind == "path":
-		return p.InstallFromLink(cand.Source.Path)
+		if cand.Origin.Kind == "" {
+			return p.InstallFromLink(cand.Source.Path)
+		}
+		if err := policyUpdateDiscoveryRefusal(cand.Origin); err != nil {
+			return InstallRecord{}, err
+		}
+		stage, cleanup, err := stageDir()
+		if err != nil {
+			return InstallRecord{}, err
+		}
+		defer cleanup()
+		if err := p.copySourceFolder(cand.Origin, ".", stage); err != nil {
+			return InstallRecord{}, err
+		}
+		return p.finishInstall(stage, InstallRecord{Source: cand.Source, Tier: TierDev, Origin: cand.Origin})
 	}
 	return InstallRecord{}, fmt.Errorf("%q has no source an update can come from", cand.ID)
 }

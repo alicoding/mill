@@ -311,9 +311,8 @@ func TestUpdateDiscoveryRefusesRestrictedUnknownAndBlockedOriginsBeforeIO(t *tes
 			Origin: SourceOrigin{Kind: "path", Locator: sourceDir}, Tier: TierDev,
 		})
 		reads := 0
-		svc.sourceRead = func(string) ([]byte, error) {
+		svc.sourceRead = func(string) {
 			reads++
-			return nil, fmt.Errorf("read should not run")
 		}
 		check, err := svc.CheckForUpdates()
 		if err != nil {
@@ -362,9 +361,8 @@ func TestUpdateDiscoveryAllowsRecordedFolderAndGitHubRedirect(t *testing.T) {
 			Origin: SourceOrigin{Kind: "path", Locator: sourceDir}, Tier: TierDev,
 		})
 		reads := 0
-		svc.sourceRead = func(name string) ([]byte, error) {
+		svc.sourceRead = func(string) {
 			reads++
-			return os.ReadFile(name) // #nosec G304 -- test-owned source path
 		}
 		check, err := svc.CheckForUpdates()
 		if err != nil || len(check.Candidates) != 1 || check.Candidates[0].Available != "2.0.0" {
@@ -410,9 +408,8 @@ func TestMarketplaceUpdateRefreshRefusesChangedPolicyBeforeSourceRead(t *testing
 	}
 	writePolicy(t, fmt.Sprintf(`{"version":2,"managedBy":"Org","sources":[{"kind":"path","locator":%q}]}`, t.TempDir()))
 	reads := 0
-	svc.sourceRead = func(string) ([]byte, error) {
+	svc.sourceRead = func(string) {
 		reads++
-		return nil, fmt.Errorf("read should not run")
 	}
 	check, err := svc.CheckForUpdates()
 	if err != nil {

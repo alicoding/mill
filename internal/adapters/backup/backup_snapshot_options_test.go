@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	settingsadapter "github.com/alicoding/mill/internal/adapters/settings"
 )
 
 func TestSnapshotUsesSettingsReaderAndParticipantBeforePublication(t *testing.T) {
@@ -58,6 +60,29 @@ func TestSnapshotParticipantFailureDoesNotPublishOrPrune(t *testing.T) {
 		if strings.HasPrefix(entry.Name(), ".incomplete-") {
 			t.Fatalf("unfinished attempt retained: %s", entry.Name())
 		}
+	}
+}
+
+func TestSnapshotDoesNotPublishAfterLiveSettingsSaveFailure(t *testing.T) {
+	dbPath := newTestDB(t)
+	settingsPath := filepath.Join(t.TempDir(), "settings.json")
+	store, err := settingsadapter.New(settingsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Set("bad", func() {}); err == nil {
+		t.Fatal("Set with a non-JSON value succeeded")
+	}
+	dir := t.TempDir()
+	if _, err := Snapshot(dbPath, settingsPath, "", dir, 3, SnapshotOptions{ReadSettings: store.Snapshot}); err == nil || !strings.Contains(err.Error(), "latest save failed") {
+		t.Fatalf("Snapshot after settings save failure = %v", err)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("failed snapshot published or retained paths: %v", entries)
 	}
 }
 

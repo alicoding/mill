@@ -244,9 +244,6 @@ func canonicalSource(src MarketplaceSource) (MarketplaceSource, error) {
 		if err != nil {
 			return MarketplaceSource{}, fmt.Errorf("resolve source folder: %w", err)
 		}
-		if resolved, err := filepath.EvalSymlinks(abs); err == nil {
-			abs = resolved
-		}
 		src.Locator = filepath.Clean(abs)
 	default:
 		return MarketplaceSource{}, fmt.Errorf("unknown source kind %q", src.Kind)

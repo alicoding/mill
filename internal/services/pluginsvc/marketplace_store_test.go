@@ -234,6 +234,10 @@ func TestInstallFromMarketplace_InstallsAPathEntryFromTheSourceFolder(t *testing
 	if _, err := svc.AddMarketplaceSource(writeFixtureMarketplace(t)); err != nil {
 		t.Fatal(err)
 	}
+	pv, err := svc.PreviewInstall("fixture", "fixture-notes")
+	if err != nil || pv.ID != "fixture-notes" || pv.Version != "1.0.0" {
+		t.Fatalf("PreviewInstall() = %+v, %v", pv, err)
+	}
 	rec, err := svc.InstallFromMarketplace("fixture", "fixture-notes")
 	if err != nil {
 		t.Fatalf("InstallFromMarketplace() = %v", err)

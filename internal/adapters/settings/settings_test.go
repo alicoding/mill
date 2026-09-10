@@ -1,9 +1,11 @@
 package settings
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -91,6 +93,57 @@ func TestSnapshotSerializesWithAutosave(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+}
+
+func TestSnapshotRefusesFailedAutosaveUntilSuccessfulRetry(t *testing.T) {
+	for _, existing := range []bool{false, true} {
+		name := "fresh"
+		if existing {
+			name = "existing"
+		}
+		t.Run(name, func(t *testing.T) {
+			filename := filepath.Join(t.TempDir(), "settings.json")
+			store, err := New(filename)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var before []byte
+			if existing {
+				if err := store.Set("key", "persisted"); err != nil {
+					t.Fatal(err)
+				}
+				before, err = os.ReadFile(filename) // #nosec G304 -- test-owned temporary settings path
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			if err := store.Set("key", func() {}); err == nil {
+				t.Fatal("Set with a non-JSON value succeeded")
+			}
+			if existing {
+				after, err := os.ReadFile(filename) // #nosec G304 -- test-owned temporary settings path
+				if err != nil || !bytes.Equal(after, before) {
+					t.Fatalf("failed save changed persisted bytes: before=%q after=%q err=%v", before, after, err)
+				}
+			}
+			if _, err := store.Snapshot(); err == nil || !strings.Contains(err.Error(), "latest save failed") {
+				t.Fatalf("Snapshot after failed Set = %v", err)
+			}
+
+			if err := store.Set("key", "recovered"); err != nil {
+				t.Fatalf("successful retry: %v", err)
+			}
+			raw, err := store.Snapshot()
+			if err != nil {
+				t.Fatal(err)
+			}
+			var object map[string]any
+			if err := json.Unmarshal(raw, &object); err != nil || object["key"] != "recovered" {
+				t.Fatalf("recovered Snapshot = %q, %v", raw, err)
+			}
+		})
+	}
 }
 
 func TestNew_FreshInstall_HasNoData(t *testing.T) {

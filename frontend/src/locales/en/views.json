@@ -817,7 +817,9 @@
     },
     "browse": {
       "subtitle": "Extensions your marketplaces offer that you have not installed.",
+      "catalogSubtitle": "Extensions offered by your sources.",
       "searchAria": "Search extensions to install",
+      "catalogSearchAria": "Search extensions",
       "loading": "Loading extensions",
       "readErrorHeading": "Extensions could not be loaded",
       "readErrorDescription": "Try loading your extension sources again.",

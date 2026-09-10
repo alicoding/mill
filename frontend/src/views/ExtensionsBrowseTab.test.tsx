@@ -34,7 +34,14 @@ vi.mock('@primer/react/experimental', () => {
 })
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
-vi.mock('../shared/ListToolbar', () => ({ ListToolbar: ({ query }: { query: string }) => <input data-testid="browse-query" value={query} readOnly /> }))
+vi.mock('../shared/ListToolbar', () => ({
+  ListToolbar: ({ query, count, searchAriaLabel }: { query: string; count?: unknown; searchAriaLabel: string }) => (
+    <div>
+      <input data-testid="browse-query" value={query} aria-label={searchAriaLabel} readOnly />
+      {count !== undefined && <span data-testid="browse-count">count</span>}
+    </div>
+  ),
+}))
 vi.mock('./ExtensionsKindChips', () => ({ ExtensionsKindChips: () => <div data-testid="kind-chips" /> }))
 vi.mock('./ExtensionsInstallDialog', () => ({ ExtensionsInstallDialog: () => <div data-testid="install-dialog" /> }))
 vi.mock('./ExtensionsSourcesDialog', () => ({
@@ -185,14 +192,55 @@ describe('ExtensionsBrowseTab states', () => {
 
   it('keeps usable blocked rows visible during partial source failure', async () => {
     vi.mocked(PluginService.BrowseMarketplaces).mockResolvedValueOnce(result(
-      [entry('blocked', { PolicyReason: 'Blocked by policy' })],
+      [entry('blocked', { PolicyReason: 'Blocked by policy', Version: '9.9.9' }), entry('permitted')],
       [source({ status: 'unavailable', errorCode: 'source-read-failed' })],
     ) as never)
     await render()
     await act(async () => {})
     expect(container.querySelector('[data-testid="extensions-browse-partial"]')).not.toBeNull()
-    expect(container.querySelector('[data-plugin-id="blocked"]')?.textContent).toContain('Blocked by policy')
+    const blocked = container.querySelector('[data-plugin-id="blocked"]')
+    expect(blocked?.textContent).toContain('Blocked by policy')
+    expect(blocked?.textContent).not.toContain('extensions.versionLabel')
+    expect(container.querySelector('[data-plugin-id="permitted"]')?.textContent).toContain('extensions.versionLabel')
     expect((container.querySelector('[data-testid="extensions-browse-install"]') as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('shows catalog rows neutrally until installed state recovers', async () => {
+    const entries = [entry('reported-installed', { Installed: true }), entry('reported-available')]
+    vi.mocked(PluginService.BrowseMarketplaces)
+      .mockResolvedValueOnce({ ...result(entries), InstalledStateReady: false, InstalledStateError: 'installed state unreadable' } as never)
+      .mockResolvedValueOnce(result(entries) as never)
+    await render()
+    await act(async () => {})
+
+    expect(container.querySelector('[data-plugin-id="reported-installed"]')).not.toBeNull()
+    expect(container.querySelector('[data-plugin-id="reported-available"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="browse-count"]')).toBeNull()
+    expect(container.textContent).toContain('extensions.browse.catalogSubtitle')
+    expect(container.textContent).not.toContain('extensions.browse.alreadyInstalledHeading')
+    expect((container.querySelector('[data-testid="browse-query"]') as HTMLInputElement).ariaLabel).toBe('extensions.browse.catalogSearchAria')
+    for (const button of container.querySelectorAll('[data-testid="extensions-browse-install"]')) {
+      expect((button as HTMLButtonElement).disabled).toBe(true)
+    }
+
+    await act(async () => useExtensionSourcesStore.setState((state) => ({ completionRevision: state.completionRevision + 1 })))
+    await act(async () => {})
+    expect(container.querySelector('[data-plugin-id="reported-installed"]')).toBeNull()
+    expect(container.querySelector('[data-plugin-id="reported-available"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="browse-count"]')).not.toBeNull()
+    expect(container.textContent).toContain('extensions.browse.subtitle')
+  })
+
+  it('shows only the installed-state warning and Sources when an unknown catalog is empty', async () => {
+    useExtensionSourcesStore.setState({ browseQuery: 'missing', browseKinds: ['tools'] })
+    vi.mocked(PluginService.BrowseMarketplaces).mockResolvedValueOnce({
+      ...result([]), InstalledStateReady: false, InstalledStateError: 'installed state unreadable',
+    } as never)
+    await render()
+    await act(async () => {})
+    expect(container.querySelector('[data-testid="extensions-browse-installed-unknown"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="extensions-sources-open"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="extensions-browse-empty-state"]')).toBeNull()
   })
 
   it('gives installed matches precedence over a search no-match', async () => {

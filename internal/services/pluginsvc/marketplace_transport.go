@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/alicoding/mill/internal/domain/usererror"
@@ -100,7 +101,7 @@ func (p *PluginService) fetchIndex(src MarketplaceSource) (MarketplaceIndex, err
 		return MarketplaceIndex{}, err
 	}
 	if src.Kind == "path" {
-		raw, err := p.readSourceFile(filepath.Join(expandHome(src.Locator), filepath.FromSlash(IndexFile)))
+		raw, err := p.readSourceFile(src.Origin, IndexFile)
 		if err != nil {
 			return MarketplaceIndex{}, fmt.Errorf("that folder has no %s file", IndexFile)
 		}
@@ -117,9 +118,84 @@ func (p *PluginService) fetchIndex(src MarketplaceSource) (MarketplaceIndex, err
 	return ParseIndex(raw)
 }
 
-func (p *PluginService) readSourceFile(path string) ([]byte, error) {
-	if p.sourceRead != nil {
-		return p.sourceRead(path)
+func pathAcquisitionRoot(origin SourceOrigin) (string, error) {
+	if origin.Kind != "path" || !filepath.IsAbs(origin.Locator) {
+		return "", fmt.Errorf("source folder identity is invalid")
 	}
-	return os.ReadFile(path) // #nosec G304 -- a source folder the user chose or an installed receipt recorded
+	st := LoadPolicy()
+	if !st.Present {
+		return filepath.Clean(origin.Locator), nil
+	}
+	if st.Error != "" {
+		return "", ErrPolicyUnreadable
+	}
+	if st.Policy.Version != PolicyVersion || st.Policy.Sources == nil {
+		return filepath.Clean(origin.Locator), nil
+	}
+	for _, rule := range st.Policy.Sources {
+		if rule.Kind == "path" && sourceRuleMatches(rule, origin) {
+			return filepath.Clean(rule.Locator), nil
+		}
+	}
+	return "", policyRefused(st.Policy.SourceRefusal())
+}
+
+func (p *PluginService) openSourceDirectory(origin SourceOrigin, relative string) (*os.Root, error) {
+	boundary, err := pathAcquisitionRoot(origin)
+	if err != nil {
+		return nil, err
+	}
+	if p.sourceRead != nil {
+		p.sourceRead(filepath.Join(origin.Locator, filepath.FromSlash(relative)))
+	}
+	root, err := os.OpenRoot(boundary)
+	if err != nil {
+		return nil, err
+	}
+	originRel, err := filepath.Rel(boundary, filepath.Clean(origin.Locator))
+	if err != nil || originRel == ".." || strings.HasPrefix(originRel, ".."+string(filepath.Separator)) {
+		_ = root.Close()
+		return nil, fmt.Errorf("source folder is outside its allowed root")
+	}
+	directory := filepath.Clean(filepath.Join(originRel, filepath.FromSlash(relative)))
+	if filepath.IsAbs(directory) || directory == ".." || strings.HasPrefix(directory, ".."+string(filepath.Separator)) {
+		_ = root.Close()
+		return nil, fmt.Errorf("source folder path is invalid")
+	}
+	nested, err := root.OpenRoot(directory)
+	_ = root.Close()
+	return nested, err
+}
+
+func (p *PluginService) readSourceFile(origin SourceOrigin, relative string) ([]byte, error) {
+	root, err := p.openSourceDirectory(origin, ".")
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
+	name := filepath.Clean(filepath.FromSlash(relative))
+	raw, err := root.ReadFile(name)
+	if err != nil {
+		return nil, err
+	}
+	return raw, nil
+}
+
+func (p *PluginService) copySourceFolder(origin SourceOrigin, relative, destination string) error {
+	root, err := p.openSourceDirectory(origin, relative)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = root.Close() }()
+	return copyPluginFolderFS(root.FS(), destination)
+}
+
+func (p *PluginService) sourceInstallChecks(origin SourceOrigin, relative string, manifest Manifest) ([]string, []string, error) {
+	root, err := p.openSourceDirectory(origin, relative)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = root.Close() }()
+	refusals, warnings := installChecksFS(root.FS(), manifest)
+	return refusals, warnings, nil
 }

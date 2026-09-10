@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -142,8 +143,7 @@ func validateMarketplaceSources(sources []MarketplaceSource) (map[string]Marketp
 		if _, exists := seen[source.Name]; exists {
 			return nil, fmt.Errorf("extension source state has duplicate source %q", source.Name)
 		}
-		canonical, err := canonicalSource(source)
-		if err != nil || canonical.Origin != source.Origin {
+		if !storedSourceIdentityValid(source) {
 			return nil, fmt.Errorf("extension source state has invalid identity for %q", source.Name)
 		}
 		if strings.TrimSpace(source.Incarnation) == "" {
@@ -157,6 +157,16 @@ func validateMarketplaceSources(sources []MarketplaceSource) (map[string]Marketp
 		seen[source.Name] = source
 	}
 	return seen, nil
+}
+
+func storedSourceIdentityValid(source MarketplaceSource) bool {
+	if source.Kind == "path" {
+		locator := strings.TrimSpace(source.Locator)
+		return source.Locator == locator && source.Ref == "" && filepath.IsAbs(locator) && filepath.Clean(locator) == locator &&
+			source.Origin == (SourceOrigin{Kind: "path", Locator: locator})
+	}
+	canonical, err := canonicalSource(source)
+	return err == nil && canonical.Origin == source.Origin
 }
 
 func validateMarketplaceIndexes(indexes map[string]marketplaceIndexCache, sources map[string]MarketplaceSource) error {

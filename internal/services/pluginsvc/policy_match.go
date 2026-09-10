@@ -214,15 +214,10 @@ func sourceRuleMatches(rule SourcePolicyRule, origin SourceOrigin) bool {
 	case "url":
 		return rule.Locator == origin.Locator
 	case "path":
-		resolvedRule, err := filepath.EvalSymlinks(rule.Locator)
-		if err != nil {
+		if !filepath.IsAbs(rule.Locator) || !filepath.IsAbs(origin.Locator) {
 			return false
 		}
-		resolvedOrigin, err := filepath.EvalSymlinks(origin.Locator)
-		if err != nil {
-			return false
-		}
-		rel, err := filepath.Rel(resolvedRule, resolvedOrigin)
+		rel, err := filepath.Rel(filepath.Clean(rule.Locator), filepath.Clean(origin.Locator))
 		return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 	default:
 		return false

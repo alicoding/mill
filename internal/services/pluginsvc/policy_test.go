@@ -104,23 +104,16 @@ func TestPolicyVersion2MatchesCanonicalOriginsExactly(t *testing.T) {
 	}
 }
 
-func TestPolicyVersion2PathRulesResolveSymlinkContainment(t *testing.T) {
+func TestPolicyVersion2PathRulesMatchStoredIdentityWithoutFilesystemReads(t *testing.T) {
 	allowed := t.TempDir()
 	inside := filepath.Join(allowed, "inside")
-	outside := t.TempDir()
-	if err := os.Mkdir(inside, 0o750); err != nil {
-		t.Fatal(err)
-	}
-	escape := filepath.Join(allowed, "escape")
-	if err := os.Symlink(outside, escape); err != nil {
-		t.Fatal(err)
-	}
 	policy := Policy{Version: PolicyVersion, Sources: []SourcePolicyRule{{Kind: "path", Locator: allowed}}}
 	if !policy.SourceOriginAllowed(SourceOrigin{Kind: "path", Locator: inside}) {
-		t.Fatal("contained path refused")
+		t.Fatal("missing contained path refused")
 	}
-	if policy.SourceOriginAllowed(SourceOrigin{Kind: "path", Locator: escape}) {
-		t.Fatal("symlink escape allowed")
+	outside := filepath.Join(filepath.Dir(allowed), "outside")
+	if policy.SourceOriginAllowed(SourceOrigin{Kind: "path", Locator: outside}) {
+		t.Fatal("outside identity allowed")
 	}
 }
 

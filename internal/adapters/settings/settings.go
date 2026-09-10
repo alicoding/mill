@@ -30,6 +30,7 @@ type FileStore struct {
 	store     *kvstore.KVStoreService
 	filename  string
 	persisted bool
+	saveErr   error
 }
 
 func (s *FileStore) Get(key string) any {
@@ -42,9 +43,11 @@ func (s *FileStore) Set(key string, value any) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.store.Set(key, value); err != nil {
+		s.saveErr = err
 		return err
 	}
 	s.persisted = true
+	s.saveErr = nil
 	return nil
 }
 
@@ -52,6 +55,9 @@ func (s *FileStore) Set(key string, value any) error {
 func (s *FileStore) Snapshot() ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.saveErr != nil {
+		return nil, fmt.Errorf("snapshot settings: latest save failed: %w", s.saveErr)
+	}
 	raw, err := os.ReadFile(s.filename) // #nosec G304 -- the adapter's configured settings path
 	if err != nil {
 		if os.IsNotExist(err) {

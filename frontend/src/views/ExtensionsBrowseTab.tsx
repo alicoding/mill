@@ -128,9 +128,10 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
 
   const entries = result.Entries ?? []
   const sources = result.Sources ?? []
-  const available = entries.filter((entry) => !entry.Installed)
+  const installedStateReady = result.InstalledStateReady
+  const available = installedStateReady ? entries.filter((entry) => !entry.Installed) : entries
   const allMatching = filterBrowseEntries(entries, query, kinds)
-  const installedMatches = result.InstalledStateReady ? allMatching.filter((entry) => entry.Installed) : []
+  const installedMatches = installedStateReady ? allMatching.filter((entry) => entry.Installed) : []
   const filtered = filterBrowseEntries(available, query, kinds)
   const externalSources = sources.filter((source) => !source.included)
   const partial = sources.some((source) => source.errorCode !== '' || (source.status !== '' && source.status !== 'current'))
@@ -138,13 +139,14 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
   const page = clampPage(state.page, pageCount)
   const rows = pageItems(filtered, page)
   const firstOnPage = (page - 1) * LIST_PAGE_SIZE + 1
-  const count = available.length === 0 ? undefined : listCountLabel({
+  const count = !installedStateReady || available.length === 0 ? undefined : listCountLabel({
     total: available.length,
     shown: filtered.length,
     ...(pageCount > 1 ? { from: firstOnPage, to: firstOnPage + rows.length - 1 } : {}),
   })
   const blank = (() => {
     if (filtered.length > 0) return null
+    if (!installedStateReady && entries.length === 0) return null
     if (installedMatches.length > 0) return {
       heading: t('extensions.browse.alreadyInstalledHeading'),
       description: t('extensions.browse.alreadyInstalledDescription'),
@@ -181,7 +183,9 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
     <>
       <Stack direction="vertical" gap="condensed" data-testid="extensions-browse">
         <Stack direction="horizontal" justify="space-between" align="center" gap="condensed">
-        <Text as="p" size="small" className={listStyles.muted}>{t('extensions.browse.subtitle')}</Text>
+        <Text as="p" size="small" className={listStyles.muted}>
+          {t(installedStateReady ? 'extensions.browse.subtitle' : 'extensions.browse.catalogSubtitle')}
+        </Text>
         <Button size="small" onClick={openSources} data-testid="extensions-sources-open">
           {t('extensions.sources.title')}
         </Button>
@@ -228,7 +232,7 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
       <ListToolbar
         query={query}
         onQueryChange={(next) => { setQuery(next); resetPage() }}
-        searchAriaLabel={t('extensions.browse.searchAria')}
+        searchAriaLabel={t(installedStateReady ? 'extensions.browse.searchAria' : 'extensions.browse.catalogSearchAria')}
         searchTestId="extensions-browse-search"
         inputRef={searchRef}
         count={count}
@@ -263,7 +267,7 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
                   </span>
                   <span className={styles.rowMeta}>
                     <Text size="small" className={listStyles.muted}>{entry.Marketplace}</Text>
-                    {entry.Version && <Text size="small" className={listStyles.muted}>{t('extensions.versionLabel', { version: entry.Version })}</Text>}
+                    {!entry.PolicyReason && entry.Version && <Text size="small" className={listStyles.muted}>{t('extensions.versionLabel', { version: entry.Version })}</Text>}
                     {badgeKey && <Label variant={tierVariant(entry.Tier)}>{t(badgeKey)}</Label>}
                     <Button
                       size="small"

@@ -193,9 +193,9 @@ type PluginService struct {
 	// install fetch goes through (marketplace_store.go), nil for the
 	// real client -- a test never reaches a host.
 	download func(url string, limit int64) ([]byte, error)
-	// sourceRead is the local counterpart used by marketplace and
-	// update discovery, nil for os.ReadFile.
-	sourceRead func(path string) ([]byte, error)
+	// sourceRead observes local acquisition attempts in tests; policy
+	// refusal happens before it and os.Root performs the acquisition.
+	sourceRead func(path string)
 	// integrations resolves a Configure Integration's declared
 	// operation for the live-view door (pluginservice_integration.go,
 	// pluginservice_guardedwrite.go), nil until OpenAudit's sibling

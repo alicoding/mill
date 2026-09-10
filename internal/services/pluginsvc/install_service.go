@@ -84,7 +84,8 @@ type InstallPreview struct {
 }
 
 // PreviewInstall answers the prompt's contents for a marketplace
-// entry. It reads only the cached index -- previewing never downloads.
+// entry. Folder sources are read through their confined acquisition
+// boundary; remote entries still use only the cached index.
 func (p *PluginService) PreviewInstall(marketplace, id string) (InstallPreview, error) {
 	idx, entry, err := p.findEntry(marketplace, id)
 	if err != nil {
@@ -95,19 +96,34 @@ func (p *PluginService) PreviewInstall(marketplace, id string) (InstallPreview, 
 		Description: entry.Description, Marketplace: idx.Name, Tier: entryTier(idx.Name, entry),
 		Kinds: entry.Kinds,
 	}
-	m, readable := p.previewManifest(idx, entry)
+	origin := SourceOrigin{Kind: "bundled"}
+	if idx.Name != ReservedMarketplaceName {
+		source, ok := p.sourceFor(idx.Name)
+		if !ok {
+			return InstallPreview{}, fmt.Errorf("%q is no longer a registered source", idx.Name)
+		}
+		origin = source.Origin
+		if err := policySourceRegistrationRefusal(idx.Name, source); err != nil {
+			pv.PolicyRefusal = err.Error()
+			pv.AlreadyInstalled = p.installedFolderExists(entry.ID)
+			return pv, nil
+		}
+	}
+	m, readable, err := p.previewManifest(idx, entry)
+	if err != nil {
+		return InstallPreview{}, err
+	}
 	if readable {
 		applyManifestToPreview(&pv, m, false)
 	} else {
 		m = Manifest{ID: entry.ID, Version: entry.Version}
 	}
-	if dir, ok := p.previewDir(idx, entry); ok {
-		_, pv.Warnings = InstallChecks(dir, m)
-	}
-	origin := SourceOrigin{Kind: "bundled"}
-	if idx.Name != ReservedMarketplaceName {
-		if source, ok := p.sourceFor(idx.Name); ok {
-			origin = source.Origin
+	if readable && idx.Name != ReservedMarketplaceName && entry.Source.Kind == "path" {
+		if source, ok := p.sourceFor(idx.Name); ok && source.Kind == "path" {
+			_, pv.Warnings, err = p.sourceInstallChecks(source.Origin, entry.Source.Path, m)
+			if err != nil {
+				return InstallPreview{}, err
+			}
 		}
 	}
 	if err := policyInstallRefusalOriginAt(m, pv.Tier, origin, idx.Name, "", ""); err != nil {
@@ -117,45 +133,32 @@ func (p *PluginService) PreviewInstall(marketplace, id string) (InstallPreview, 
 	return pv, nil
 }
 
-// previewDir answers the folder a preview's files can be read from
-// before any download: a folder source's own path. The bundled
-// examples live inside the binary and are checked as they install.
-func (p *PluginService) previewDir(idx MarketplaceIndex, entry MarketplaceEntry) (string, bool) {
-	if idx.Name == ReservedMarketplaceName || entry.Source.Kind != "path" {
-		return "", false
-	}
-	src, ok := p.sourceFor(idx.Name)
-	if !ok || src.Kind != "path" {
-		return "", false
-	}
-	return filepath.Join(expandHome(src.Locator), filepath.FromSlash(entry.Source.Path)), true
-}
-
 // previewManifest reads the manifest a preview describes, when it can
 // be read without a download: the bundled examples, and a folder
 // source already on disk. A remote archive's manifest is only known
 // after the download, so its preview stands on the index's own
 // declaration.
-func (p *PluginService) previewManifest(idx MarketplaceIndex, entry MarketplaceEntry) (Manifest, bool) {
+func (p *PluginService) previewManifest(idx MarketplaceIndex, entry MarketplaceEntry) (Manifest, bool, error) {
 	if idx.Name == ReservedMarketplaceName {
-		return p.exampleManifest(entry.ID)
+		m, ok := p.exampleManifest(entry.ID)
+		return m, ok, nil
 	}
 	if entry.Source.Kind != "path" {
-		return Manifest{}, false
+		return Manifest{}, false, nil
 	}
 	src, ok := p.sourceFor(idx.Name)
 	if !ok || src.Kind != "path" {
-		return Manifest{}, false
+		return Manifest{}, false, fmt.Errorf("%q is no longer a registered folder source", idx.Name)
 	}
-	raw, err := os.ReadFile(filepath.Join(expandHome(src.Locator), filepath.FromSlash(entry.Source.Path), "manifest.json")) // #nosec G304 -- a folder the user added as a source
+	raw, err := p.readSourceFile(src.Origin, filepath.Join(entry.Source.Path, "manifest.json"))
 	if err != nil {
-		return Manifest{}, false
+		return Manifest{}, false, fmt.Errorf("read %q from its source: %w", entry.ID, err)
 	}
 	var m Manifest
 	if err := json.Unmarshal(raw, &m); err != nil {
-		return Manifest{}, false
+		return Manifest{}, false, fmt.Errorf("%q has an unreadable manifest.json", entry.ID)
 	}
-	return m, true
+	return m, true, nil
 }
 
 // applyManifestToPreview fills pv with what m declares. builtin picks
@@ -266,7 +269,7 @@ func (p *PluginService) stageEntry(stage string, idx MarketplaceIndex, entry Mar
 		if !ok || src.Kind != "path" {
 			return "", "", fmt.Errorf("%q is only offered as a folder, and that source is not a folder", entry.ID)
 		}
-		return TierDev, "", CopyPluginFolder(filepath.Join(expandHome(src.Locator), filepath.FromSlash(entry.Source.Path)), stage)
+		return TierDev, "", p.copySourceFolder(src.Origin, entry.Source.Path, stage)
 	case "archive":
 		source, ok := p.sourceFor(idx.Name)
 		if !ok {
@@ -317,8 +320,8 @@ func (p *PluginService) stageLink(stage, raw string) (string, PluginSource, stri
 	if classifyErr != nil {
 		return "", PluginSource{}, "", classifyErr
 	}
-	if strings.HasPrefix(raw, "/") || strings.HasPrefix(raw, "~") {
-		return TierDev, PluginSource{Kind: "path", Path: raw}, "", CopyPluginFolder(expandHome(raw), stage)
+	if classified.Kind == "path" {
+		return TierDev, PluginSource{Kind: "path", Path: raw}, "", p.copySourceFolder(classified.Origin, ".", stage)
 	}
 	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
 		if owner, repo, ok := gitHubRemoteRepo(raw); ok {

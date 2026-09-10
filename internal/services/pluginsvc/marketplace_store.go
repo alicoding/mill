@@ -303,9 +303,6 @@ func (p *PluginService) browseRow(idx MarketplaceIndex, entry MarketplaceEntry, 
 		Tier:        tier,
 	}
 	manifest := Manifest{ID: entry.ID, Version: entry.Version}
-	if known, readable := p.previewManifest(idx, entry); readable {
-		manifest = known
-	}
 	if refusal := policyInstallRefusalOriginAt(manifest, tier, origin, idx.Name, "", ""); refusal != nil {
 		row.PolicyReason = refusal.Error()
 	}
