@@ -14,6 +14,7 @@
       {
         "kind": "bookmark",
         "pastesURLs": true,
+        "entry": "face.html",
         "example": {
           "title": "Bookmark example",
           "payload": { "url": "https://example.com/board-gallery" },

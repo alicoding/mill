@@ -12,7 +12,9 @@ type MillFrameEvent =
   | "settings:changed"
   | "contents:changed"
   | "ctx"
-  | "resize";
+  | "resize"
+  | "face:activate"
+  | "face:deactivate";
 ```
 
 The events Mill pushes into an entry page.
@@ -29,4 +31,7 @@ change: a capture's destination arrives here, and a canvas object's
 face receives `{ object: { ID, Kind, Payload, Size }, mirror? }` --
 `mirror` only for a file-backed kind, as `{ dataUrl, failed }`.
 `resize` carries the `{ width, height }` of the box the page is
-drawn in.
+drawn in. `face:activate`/`face:deactivate` tell a canvas object's
+own face when it has real input, the moment a page may want to
+autofocus a field or otherwise react; a page that never needs to may
+ignore both.

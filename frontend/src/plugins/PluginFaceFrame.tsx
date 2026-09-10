@@ -26,11 +26,18 @@ export type PluginFaceFrameProps = {
   mirrorVersion: number
   mirrorContent?: MirrorReadState
   onEditingChange?: (editing: boolean) => void
+  // editing (goal 0380 S2): the host's own read of this object's
+  // activation state, true only once the face itself has asked for it
+  // (through onEditingChange above, e.g. a double-click it detected)
+  // AND the object is still selected -- the round trip that lets a
+  // sandboxed page learn it just became editable, which nothing else
+  // tells it.
+  editing?: boolean
 }
 
 export function pluginFramedFaceComponent(pluginId: string, decl: CanvasObjectDecl, entry: string, version: string): ComponentType<PluginFaceFrameProps> {
   const fileSource = decl.source === 'file'
-  const Face = memo(function PluginFramedFace({ object, mirrorContent, onEditingChange }: PluginFaceFrameProps) {
+  const Face = memo(function PluginFramedFace({ object, mirrorContent, onEditingChange, editing }: PluginFaceFrameProps) {
     const editingRef = useRef(onEditingChange)
     editingRef.current = onEditingChange
     // The context is rebuilt on VALUE change only (payload and size as
@@ -65,6 +72,7 @@ export function pluginFramedFaceComponent(pluginId: string, decl: CanvasObjectDe
           paletteAccess
           context={context}
           face={face}
+          active={!!editing}
           onSink={onSink}
           testId={`plugin-face-frame-${decl.kind}`}
         />

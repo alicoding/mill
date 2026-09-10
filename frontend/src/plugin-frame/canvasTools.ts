@@ -1,5 +1,6 @@
 import type { CanvasDraft, CanvasMeasureResult, CanvasToolCtx, CanvasToolDecl, CanvasToolPointerEvent } from '../plugins/sdk/canvasTools'
 import { toolWireDescriptor } from '../plugins/canvasToolProtocol'
+import type { RegisterFaceDescriptor } from '../plugins/canvasToolProtocol'
 
 // The framed half of the canvas tool contract (docs/goals/0380): a
 // tool declares itself over the bridge, then Mill drives it through
@@ -15,7 +16,7 @@ import { toolWireDescriptor } from '../plugins/canvasToolProtocol'
 // the protocol-surface test can check it against the host's own
 // CANVAS_TOOL_DOORS instead of the two drifting apart.
 export const CANVAS_TOOL_CALLS = [
-    'register.tool',
+    'register.tool', 'register.face',
     'object.create', 'object.patch', 'object.commit', 'object.discard',
     'object.measure',
     'files.saveImageBytes',
@@ -26,6 +27,12 @@ export type FrameCall = (method: string, ...args: unknown[]) => Promise<unknown>
 
 export interface CanvasToolsFrameHalf {
     registerCanvasTool: (decl: CanvasToolDecl) => void
+    // registerCanvasObjectFace (docs/goals/0380 S2): a framed tool's own
+    // runtime naming the entry page its CREATED objects render their
+    // face at, for an objectKind its own manifest kind cannot carry
+    // (canvasToolProtocol.ts's RegisterFaceDescriptor header explains
+    // why the tool's kind and its objectKind can differ).
+    registerCanvasObjectFace: (descriptor: RegisterFaceDescriptor) => void
     measure: (markup: string, maxWidth: number) => Promise<CanvasMeasureResult>
     saveImageBytes: (base64: string, ext: string, title: string) => Promise<string>
     // onToolPointer routes one host->frame 'tool.pointer' event onto the
@@ -67,6 +74,9 @@ export function buildCanvasToolsFrameHalf(call: FrameCall, pluginId: string, cap
         registerCanvasTool: (decl: CanvasToolDecl) => {
             tools.set(decl.kind, decl)
             void call('register.tool', toolWireDescriptor(decl)).catch((err: unknown) => console.error(`plugin ${pluginId}: registerCanvasTool failed`, err))
+        },
+        registerCanvasObjectFace: (descriptor: RegisterFaceDescriptor) => {
+            void call('register.face', descriptor).catch((err: unknown) => console.error(`plugin ${pluginId}: registerCanvasObjectFace failed`, err))
         },
         measure: (markup: string, maxWidth: number) => call('object.measure', { markup, maxWidth }) as Promise<CanvasMeasureResult>,
         saveImageBytes: (base64: string, ext: string, title: string) => call('files.saveImageBytes', base64, ext, title) as Promise<string>,

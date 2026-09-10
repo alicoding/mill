@@ -357,14 +357,12 @@ func TestListPlugins_ValidatesContributedSettings(t *testing.T) {
 // document (docs/goals/0375 S1b) carries the "canvas-host" grant,
 // named honestly rather than taken silently. Since the framed canvas
 // API exists (docs/goals/0380) a kind draws through the bridge instead
-// and needs no grant only when it is BOTH declared a TOOL (registers
-// through the door that survives the bridge) AND names its own entry
-// page (its face needs nothing a frame cannot send) -- a tool with no
-// entry page still needs Mill's own document for its renderFace
-// function, and an entry page on a kind that is not a tool still
-// registers through registerCanvasObject, a same-DOM-only door. One
-// same-DOM kind is enough to need the grant, because the whole
-// extension shares one activation. A plugin with no canvas object
+// and needs no grant once it names its own entry page -- tool or not
+// (docs/goals/0380 S2): the face is what crosses the bridge, and an
+// entry page carries no function a postMessage cannot serialize. A
+// kind with no entry page still hands renderFace a live host Element
+// and needs Mill's own document for it. One same-DOM kind is enough to
+// need the grant, because the whole extension shares one activation. A plugin with no canvas object
 // carries no grant, and a built-in never does either.
 func TestListPlugins_CanvasObjectGrantsCanvasHost(t *testing.T) {
 	root := t.TempDir()
@@ -399,7 +397,7 @@ func TestListPlugins_CanvasObjectGrantsCanvasHost(t *testing.T) {
 	if got := byID["tool-no-entry"]; len(got.Grants) != 1 || got.Grants[0] != "canvas-host" {
 		t.Fatalf("tool-no-entry grants = %v, want [canvas-host]: its renderFace function cannot cross the bridge (mill-drawing's own shape)", got.Grants)
 	}
-	if got := byID["entry-no-tool"]; len(got.Grants) != 1 || got.Grants[0] != "canvas-host" {
-		t.Fatalf("entry-no-tool grants = %v, want [canvas-host]: registerCanvasObject itself never crosses framed", got.Grants)
+	if got := byID["entry-no-tool"]; len(got.Grants) != 0 {
+		t.Fatalf("entry-no-tool grants = %v, want none: its own entry page draws framed whether or not it is also a tool (docs/goals/0380 S2)", got.Grants)
 	}
 }
