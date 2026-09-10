@@ -5,7 +5,8 @@ import { seatCanvasTool } from './canvasToolAdapter'
 import { activeSession, buildFramedTool, commitErase, draftPlacementFor, endedSession, eraseAt, forgetFramedTools } from './canvasToolFramed'
 import { commitDraft, createDraft, discardDraft, dropDraftsFor, patchDraft } from './canvasDrafts'
 import { measureMarkup } from './canvasMeasure'
-import { CanvasProtocolError, parseErasePoint, parseObjectCommit, parseObjectCreate, parseObjectId, parseObjectMeasure, parseObjectPatch, parseRegisterTool, parseToolId } from './canvasToolProtocol'
+import { CanvasProtocolError, parseErasePoint, parseObjectCommit, parseObjectCreate, parseObjectId, parseObjectMeasure, parseObjectPatch, parseRegisterFace, parseRegisterTool, parseToolId } from './canvasToolProtocol'
+import { forgetCanvasObjectFaces, recordCanvasObjectFace, registeredCanvasObjectFaceEntry } from './canvasObjectFaceRegistry'
 
 // The host's routing table for a framed canvas tool's own doors
 // (docs/goals/0380 Decision 2), kept beside the other host-door
@@ -22,7 +23,7 @@ import { CanvasProtocolError, parseErasePoint, parseObjectCommit, parseObjectCre
 // method table and the frame runtime's own call surface are checked
 // against ONE source (plugin-frame/protocol.test.ts).
 export const CANVAS_TOOL_DOORS = [
-  'register.tool',
+  'register.tool', 'register.face',
   'object.create', 'object.patch', 'object.commit', 'object.discard',
   'object.measure',
   'files.saveImageBytes',
@@ -48,6 +49,20 @@ function requireErase(ctx: CanvasToolDoorContext): void {
   if (!(ctx.manifest.capabilities ?? []).includes('erase-board-items')) {
     throw new CanvasProtocolError('board.eraseAt', 'needs the "erase-board-items" capability')
   }
+}
+
+// Public through this host-door module for its adapter/tests; the map
+// itself lives in a dependency-free registry so plugin reload can clear
+// same-DOM registrations without importing this module graph.
+export { registeredCanvasObjectFaceEntry as framedObjectFaceEntry } from './canvasObjectFaceRegistry'
+
+function registerManifestObjectFace(ctx: CanvasToolDoorContext, descriptor: ReturnType<typeof parseRegisterFace>): void {
+  const declared = (ctx.manifest.contributes?.canvasObjects ?? [])
+    .find((face) => face.kind === descriptor.objectKind && face.entry === descriptor.entry)
+  if (!declared) {
+    throw new CanvasProtocolError('register.face', `must exactly match a canvasObjects kind and entry in plugin "${ctx.pluginId}"`)
+  }
+  recordCanvasObjectFace(ctx.pluginId, descriptor.objectKind, descriptor.entry)
 }
 
 // A door naming a tool that is not mid-gesture is refused: a draft
@@ -91,7 +106,17 @@ export async function callCanvasToolDoor(ctx: CanvasToolDoorContext, method: str
   switch (method) {
     case 'register.tool': {
       const descriptor = parseRegisterTool(first)
-      seatCanvasTool(ctx.pluginId, buildFramedTool(ctx.pluginId, ctx.manifest, descriptor, ctx.post, renderFace), descriptor.styleFields)
+      // The lookup stays on the tool's own manifest kind even when its
+      // existing objectKind alias names the persisted object. The
+      // registration cannot create that authority: register.face
+      // already required the exact manifest kind and entry.
+      const faceEntry = registeredCanvasObjectFaceEntry(ctx.pluginId, descriptor.kind)
+      seatCanvasTool(ctx.pluginId, buildFramedTool(ctx.pluginId, ctx.manifest, descriptor, ctx.post, renderFace, { entry: faceEntry }), descriptor.styleFields)
+      return true
+    }
+    case 'register.face': {
+      const descriptor = parseRegisterFace(first)
+      registerManifestObjectFace(ctx, descriptor)
       return true
     }
     case 'object.create': return doCreate(ctx, args)
@@ -110,8 +135,11 @@ export async function callCanvasToolDoor(ctx: CanvasToolDoorContext, method: str
 }
 
 // forgetCanvasTools is the teardown half: a plugin whose frame goes
-// away leaves no armed runtime and no half-drawn draft behind.
+// away leaves no armed runtime and no half-drawn draft behind, and its
+// own register.face declarations go with it -- a reactivation
+// re-declares them fresh rather than a stale mapping surviving reload.
 export function forgetCanvasTools(pluginId: string): void {
   forgetFramedTools(pluginId)
   dropDraftsFor(pluginId)
+  forgetCanvasObjectFaces(pluginId)
 }

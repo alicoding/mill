@@ -84,6 +84,14 @@ export interface AtlasNounContent {
     // reached for the canvas node themselves. A face with no in-place
     // editor never calls it.
     onEditingChange?: (editing: boolean) => void
+    // editing (goal 0380 S2), the reverse direction of onEditingChange
+    // above: the host's own resolved activation state, true only once
+    // this object is both selected AND has reported editing (whichever
+    // way it did so) -- a framed face has no other way to learn it, so
+    // this is what a face pushes into its page as `face:activate`/
+    // `face:deactivate`. A same-DOM face may ignore it; it already
+    // knows its own editor is open.
+    editing?: boolean
     // The page cursor (goal 0354): a Kind declaring `pager` below calls
     // this whenever its face knows where it is in a multi-page
     // artifact, handing back the action that moves it. Only the face

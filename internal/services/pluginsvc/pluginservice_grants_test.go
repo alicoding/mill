@@ -1,6 +1,30 @@
 package pluginsvc
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
+
+// mill-bookmark's own migration (docs/goals/0380 S2) is the concrete
+// proof NeedsCanvasHost's new rule is meant to cover: its one canvas
+// object names an entry page and declares no tool at all, which the
+// OLD rule (tool AND entry) would still have gated. Reads the real
+// shipped manifest rather than a synthetic fixture, so a future edit
+// to that file that drops `entry` fails HERE, not only in the trust
+// UI a person would have to notice by eye.
+func TestNeedsCanvasHost_MillBookmarkLeavesTheGrant(t *testing.T) {
+	raw, err := os.ReadFile("../../../examples/plugins/mill-bookmark/manifest.json") // #nosec G304 -- a fixed repo-relative path, never external input
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, problem := parseManifest(raw)
+	if problem != "" {
+		t.Fatal(problem)
+	}
+	if NeedsCanvasHost(manifest) {
+		t.Fatal("mill-bookmark still needs canvas-host: its bookmark kind should declare an entry page now")
+	}
+}
 
 // widenedFrom is the pure MV3-style re-consent rule (docs/goals/0375
 // S2): each element kind widens on its own, a narrowed or unchanged
