@@ -17,6 +17,6 @@ func ComputeDependencies(s Sources, now time.Time, b Budgets) []Metric {
 	return []Metric{
 		pointInTime("dependencies", "Open Dependabot PRs", count, has, fmtCount, nil),
 		pointInTime("dependencies", "Max Dependabot PR age", maxAge, has, fmtDays,
-			&budgetSpec{b.DependabotPRAgeDaysMax, "le", fmtDays(b.DependabotPRAgeDaysMax)}),
+			&budgetSpec{Key: "dependabot_pr_age_days_max", Value: b.DependabotPRAgeDaysMax, Op: "le", Display: fmtDays(b.DependabotPRAgeDaysMax), Class: b.ClassFor("dependabot_pr_age_days_max")}),
 	}
 }

@@ -165,13 +165,13 @@ func ComputeCode(s Sources, b Budgets) []Metric {
 
 	return []Metric{
 		pointInTime("code", "Files near LOC cap", float64(near), okNear, fmtCount,
-			&budgetSpec{b.FilesNearLOCCapMax, "le", fmtCount(b.FilesNearLOCCapMax)}),
+			&budgetSpec{Key: "files_near_loc_cap_max", Value: b.FilesNearLOCCapMax, Op: "le", Display: fmtCount(b.FilesNearLOCCapMax), Class: b.ClassFor("files_near_loc_cap_max")}),
 		pointInTime("code", "gocognit offenders", float64(cognit), okLint, fmtCount, nil),
 		pointInTime("code", "sonarjs offenders", float64(sonar), okLint, fmtCount, nil),
 		pointInTime("code", "Go coverage", goCov, okGoCov, fmtPct,
-			&budgetSpec{b.GoCoverageFloorPct, "ge", fmtPct(b.GoCoverageFloorPct)}),
+			&budgetSpec{Key: "go_coverage_floor_pct", Value: b.GoCoverageFloorPct, Op: "ge", Display: fmtPct(b.GoCoverageFloorPct), Class: b.ClassFor("go_coverage_floor_pct")}),
 		pointInTime("code", "Vitest coverage (lines)", vitestCov, okVitestCov, fmtPct,
-			&budgetSpec{b.VitestCoverageFloorPct, "ge", fmtPct(b.VitestCoverageFloorPct)}),
+			&budgetSpec{Key: "vitest_coverage_floor_pct", Value: b.VitestCoverageFloorPct, Op: "ge", Display: fmtPct(b.VitestCoverageFloorPct), Class: b.ClassFor("vitest_coverage_floor_pct")}),
 		pointInTime("code", "check-*.sh gate count", float64(checks), okChecks, fmtCount, nil),
 	}
 }

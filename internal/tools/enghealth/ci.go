@@ -28,10 +28,10 @@ func ComputeCI(s Sources, now time.Time, windowDays [2]int, b Budgets) []Metric 
 
 	return []Metric{
 		buildMetric("ci", "Merge-group wall time p50", wall50v7, okW50v7, wall50v28, okW50v28, fmtMinutes,
-			&budgetSpec{b.MergeGroupP50MinutesMax, "le", fmtMinutes(b.MergeGroupP50MinutesMax)}),
+			&budgetSpec{Key: "merge_group_p50_minutes_max", Value: b.MergeGroupP50MinutesMax, Op: "le", Display: fmtMinutes(b.MergeGroupP50MinutesMax), Class: b.ClassFor("merge_group_p50_minutes_max")}),
 		buildMetric("ci", "Merge-group wall time p90", wall90v7, okW90v7, wall90v28, okW90v28, fmtMinutes, nil),
 		buildMetric("ci", "Runner queue wait p50", queue50v7, okQ7, queue50v28, okQ28, fmtMinutes,
-			&budgetSpec{b.QueueWaitP50MinutesMax, "le", fmtMinutes(b.QueueWaitP50MinutesMax)}),
+			&budgetSpec{Key: "queue_wait_p50_minutes_max", Value: b.QueueWaitP50MinutesMax, Op: "le", Display: fmtMinutes(b.QueueWaitP50MinutesMax), Class: b.ClassFor("queue_wait_p50_minutes_max")}),
 		buildMetric("ci", "Jobs per run", jpr7, okJpr7, jpr28, okJpr28, fmtCount, nil),
 		buildMetric("ci", "macOS-job share", mac7, okMac7, mac28, okMac28, fmtPct, nil),
 	}

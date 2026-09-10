@@ -12,3 +12,18 @@ go_minors_behind_max: 1
 node_minors_behind_max: 1
 wails_betas_behind_max: 1
 playwright_minors_behind_max: 1
+classes:
+  lead_time_p50_hours_max: merge-capacity
+  merge_group_p50_minutes_max: merge-capacity
+  queue_wait_p50_minutes_max: merge-capacity
+  merge_group_failure_rate_pct_max: ci-flake-or-drift
+  retry_passed_rate_pct_max: flake
+  dependabot_pr_age_days_max: deps-dont-linger
+  open_goal_prs_max: wip-limit
+  files_near_loc_cap_max: missed-seam
+  go_coverage_floor_pct: coverage-ratchet
+  vitest_coverage_floor_pct: coverage-ratchet
+  go_minors_behind_max: deps-dont-linger
+  node_minors_behind_max: deps-dont-linger
+  wails_betas_behind_max: deps-dont-linger
+  playwright_minors_behind_max: deps-dont-linger
