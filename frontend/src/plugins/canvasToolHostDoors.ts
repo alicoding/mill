@@ -6,6 +6,7 @@ import { activeSession, buildFramedTool, commitErase, draftPlacementFor, endedSe
 import { commitDraft, createDraft, discardDraft, dropDraftsFor, patchDraft } from './canvasDrafts'
 import { measureMarkup } from './canvasMeasure'
 import { CanvasProtocolError, parseErasePoint, parseObjectCommit, parseObjectCreate, parseObjectId, parseObjectMeasure, parseObjectPatch, parseRegisterFace, parseRegisterTool, parseToolId } from './canvasToolProtocol'
+import { forgetCanvasObjectFaces, recordCanvasObjectFace, registeredCanvasObjectFaceEntry } from './canvasObjectFaceRegistry'
 
 // The host's routing table for a framed canvas tool's own doors
 // (docs/goals/0380 Decision 2), kept beside the other host-door
@@ -50,22 +51,18 @@ function requireErase(ctx: CanvasToolDoorContext): void {
   }
 }
 
-// framedObjectFaces holds register.face's own declarations (docs/goals/
-// 0380 S2): a framed tool's runtime, keyed by pluginId+objectKind --
-// the tool's OWN registration kind (buildThirdPartyNoun's lookup key)
-// may differ from what it CREATES, so the manifest's per-kind Entry
-// field alone cannot name a created objectKind's face. Read by a
-// future objectKind-content fallback once a real tool needs one; empty
-// today, since no bundled or example tool creates a differently-kinded
-// object yet.
-const framedObjectFaces = new Map<string, string>()
+// Public through this host-door module for its adapter/tests; the map
+// itself lives in a dependency-free registry so plugin reload can clear
+// same-DOM registrations without importing this module graph.
+export { registeredCanvasObjectFaceEntry as framedObjectFaceEntry } from './canvasObjectFaceRegistry'
 
-function framedObjectFaceKey(pluginId: string, objectKind: string): string {
-  return `${pluginId}::${objectKind}`
-}
-
-export function framedObjectFaceEntry(pluginId: string, objectKind: string): string | undefined {
-  return framedObjectFaces.get(framedObjectFaceKey(pluginId, objectKind))
+function registerManifestObjectFace(ctx: CanvasToolDoorContext, descriptor: ReturnType<typeof parseRegisterFace>): void {
+  const declared = (ctx.manifest.contributes?.canvasObjects ?? [])
+    .find((face) => face.kind === descriptor.objectKind && face.entry === descriptor.entry)
+  if (!declared) {
+    throw new CanvasProtocolError('register.face', `must exactly match a canvasObjects kind and entry in plugin "${ctx.pluginId}"`)
+  }
+  recordCanvasObjectFace(ctx.pluginId, descriptor.objectKind, descriptor.entry)
 }
 
 // A door naming a tool that is not mid-gesture is refused: a draft
@@ -109,12 +106,17 @@ export async function callCanvasToolDoor(ctx: CanvasToolDoorContext, method: str
   switch (method) {
     case 'register.tool': {
       const descriptor = parseRegisterTool(first)
-      seatCanvasTool(ctx.pluginId, buildFramedTool(ctx.pluginId, ctx.manifest, descriptor, ctx.post, renderFace), descriptor.styleFields)
+      // The lookup stays on the tool's own manifest kind even when its
+      // existing objectKind alias names the persisted object. The
+      // registration cannot create that authority: register.face
+      // already required the exact manifest kind and entry.
+      const faceEntry = registeredCanvasObjectFaceEntry(ctx.pluginId, descriptor.kind)
+      seatCanvasTool(ctx.pluginId, buildFramedTool(ctx.pluginId, ctx.manifest, descriptor, ctx.post, renderFace, { entry: faceEntry }), descriptor.styleFields)
       return true
     }
     case 'register.face': {
       const descriptor = parseRegisterFace(first)
-      framedObjectFaces.set(framedObjectFaceKey(ctx.pluginId, descriptor.objectKind), descriptor.entry)
+      registerManifestObjectFace(ctx, descriptor)
       return true
     }
     case 'object.create': return doCreate(ctx, args)
@@ -139,7 +141,5 @@ export async function callCanvasToolDoor(ctx: CanvasToolDoorContext, method: str
 export function forgetCanvasTools(pluginId: string): void {
   forgetFramedTools(pluginId)
   dropDraftsFor(pluginId)
-  for (const key of framedObjectFaces.keys()) {
-    if (key.startsWith(`${pluginId}::`)) framedObjectFaces.delete(key)
-  }
+  forgetCanvasObjectFaces(pluginId)
 }

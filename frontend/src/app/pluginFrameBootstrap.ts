@@ -1,6 +1,7 @@
 import { THEME_VARIABLES } from '../shared/appearanceThemes'
 import type { KeyCombo } from '../shared/keybinding'
 import type { PluginTheme } from '../plugins/sdk'
+import type { RegisterFaceDescriptor } from '../plugins/sdk/canvasTools'
 
 // What Mill injects into a plugin's own page before the page's own
 // markup runs (docs/goals/0349, docs/adr/0047): a <base> pointing at
@@ -125,6 +126,10 @@ export interface ActivationFrameInit {
   // than present-and-refusing -- the same shape a same-DOM gesture ctx
   // has always had.
   capabilities: string[]
+  // canvasFaces is derived by the host from this plugin's manifest.
+  // The activation runtime registers each exact pair before it runs
+  // main.js, so registerCanvasTool can resolve its framed face.
+  canvasFaces: RegisterFaceDescriptor[]
 }
 
 // MEASURE_SCRIPT_PATH is the off-board measuring stage's own script

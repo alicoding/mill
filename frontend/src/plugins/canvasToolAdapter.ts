@@ -324,9 +324,13 @@ function shortcutConflictError(key: string | undefined): string | null {
 // full registry shape -- the hostApi's registerCanvasObject body,
 // extracted whole so the API assembly stays a thin door. Throws with
 // the plugin's own id in the message so a broken plugin names itself.
-export function buildThirdPartyNoun(pluginId: string, manifest: Manifest, decl: CanvasObjectDecl): ThirdPartyNounShape {
+export function buildThirdPartyNoun(pluginId: string, manifest: Manifest, decl: CanvasObjectDecl, frameRegistration?: { entry?: string }): ThirdPartyNounShape {
 	const contributed = (manifest.contributes?.canvasObjects ?? []).find((c) => c.kind === decl.kind)
-	const frame = contributed?.entry ? { entry: contributed.entry, version: manifest.version } : undefined
+	// A framed activation supplies the entry only after register.face's
+	// exact manifest check. Same-DOM object registration keeps the
+	// existing manifest fallback (the bookmark path).
+	const faceEntry = frameRegistration ? frameRegistration.entry : contributed?.entry
+	const frame = faceEntry ? { entry: faceEntry, version: manifest.version } : undefined
 	const declError = canvasToolDeclError(decl, !!frame) ?? shortcutConflictError(decl.shortcutKey)
 	if (declError) throw new Error(`plugin ${pluginId}: ${declError}`)
 	const interaction = decl.interaction ?? 'arm-then-click'

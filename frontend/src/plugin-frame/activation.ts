@@ -3,7 +3,7 @@ import { buildFetchJSON } from '../plugins/pluginFetchJSON'
 import { formatPluginDate } from '../plugins/pluginDateFormat'
 import { buildPluginStorage, type PluginStorageDoors } from '../plugins/pluginStorage'
 import type { ContentQuery, LifecycleEventPayload, MillPluginAPI, PluginCaptureDecl, PluginCaptureHandle, PluginCommandDecl, PluginContextValue, PluginFetchResult, PluginNoticeInput, PluginViewDecl, PluginViewHandle } from '../plugins/sdk'
-import { CANVAS_TOOL_CALLS, buildCanvasToolsFrameHalf } from './canvasTools'
+import { CANVAS_TOOL_CALLS, buildCanvasToolsFrameHalf, registerManifestCanvasFaces } from './canvasTools'
 
 // A third-party plugin's own activation, run inside a hidden sandboxed
 // frame (goal 0375 S1b): main.js's activate(api) runs HERE, not in
@@ -56,7 +56,7 @@ export const ACTIVATION_CALL_METHODS = [
 
 ;(function () {
 	const initMeta = document.querySelector('meta[name="mill-frame-init"]')
-	let init: ActivationFrameInit = { pluginId: '', millVersion: '', version: '', settings: {}, storage: {}, exports: [], capabilities: [] }
+	let init: ActivationFrameInit = { pluginId: '', millVersion: '', version: '', settings: {}, storage: {}, exports: [], capabilities: [], canvasFaces: [] }
 	try {
 		if (initMeta) init = JSON.parse(initMeta.getAttribute('content') || '{}') as ActivationFrameInit
 	} catch (err) {
@@ -291,6 +291,7 @@ export const ACTIVATION_CALL_METHODS = [
 		// is the framed shape of the same contribution.
 		registerCanvasObject: notAvailable('registerCanvasObject'),
 		registerCanvasTool: canvasTools.registerCanvasTool,
+		registerCanvasObjectFace: canvasTools.registerCanvasObjectFace,
 		measure: canvasTools.measure,
 		registerCommand: (decl: PluginCommandDecl) => {
 			runHandlers.set(decl.id, decl.run)
@@ -349,7 +350,8 @@ export const ACTIVATION_CALL_METHODS = [
 	// location), never the document's <base>, so a relative reference
 	// here would resolve to the wrong folder entirely.
 	const url = new URL(`main.js?v=${encodeURIComponent(init.version || '')}`, document.baseURI).href
-	import(/* @vite-ignore */ url)
+	registerManifestCanvasFaces(canvasTools, init.canvasFaces || [])
+		.then(() => import(/* @vite-ignore */ url))
 		.then((mod: Record<string, unknown>) => {
 			const activate = resolveActivate(mod)
 			if (!activate) throw new Error('main.js exports no activate() function')

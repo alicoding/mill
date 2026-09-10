@@ -63,6 +63,7 @@
 - [PluginViewDecl](interfaces/PluginViewDecl.md)
 - [PluginViewHandle](interfaces/PluginViewHandle.md)
 - [PluginWriteResult](interfaces/PluginWriteResult.md)
+- [RegisterFaceDescriptor](interfaces/RegisterFaceDescriptor.md)
 - [SecretSourceContribution](interfaces/SecretSourceContribution.md)
 - [SecretSourceCtx](interfaces/SecretSourceCtx.md)
 - [SecretSourceDecl](interfaces/SecretSourceDecl.md)

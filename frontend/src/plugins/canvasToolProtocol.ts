@@ -1,4 +1,4 @@
-import type { CanvasPreviewDecl, CanvasPreviewKind, CanvasToolDecl, CanvasToolPhase, CanvasToolPoint } from './sdk/canvasTools'
+import type { CanvasPreviewDecl, CanvasPreviewKind, CanvasToolDecl, CanvasToolPhase, CanvasToolPoint, RegisterFaceDescriptor } from './sdk/canvasTools'
 import type { CanvasStyleFieldDecl } from './sdk/canvasObjects'
 
 // The wire contract between a framed tool and the host (docs/goals/
@@ -205,19 +205,10 @@ export function parseRegisterTool(value: unknown): CanvasToolDescriptor {
 
 // ---- register.face -----------------------------------------------------
 
-// RegisterFaceDescriptor is register.face's payload (docs/goals/0380
-// S2): a framed TOOL's own runtime naming the entry page its CREATED
-// objects render their face at, for an objectKind distinct from the
-// tool's own registration kind -- buildThirdPartyNoun's face lookup is
-// keyed by the tool's OWN kind slug, so a tool whose objectKind names a
-// different persisted Kind has no manifest field to declare that
-// kind's face at all. Carries no function, unlike renderFace: the
-// entry page itself, not this descriptor, draws the face.
-export interface RegisterFaceDescriptor {
-  objectKind: string
-  entry: string
-}
-
+// register.face carries the manifest-owned kind and entry page for a
+// framed tool's own face. The host checks both fields against the
+// manifest before this data reaches object-face resolution; unlike
+// renderFace, the descriptor carries no function across the bridge.
 export function parseRegisterFace(value: unknown): RegisterFaceDescriptor {
   const raw = obj(value, 'register.face')
   return { objectKind: slug(raw.objectKind, 'objectKind'), entry: str(raw.entry, 'entry') }
