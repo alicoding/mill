@@ -377,7 +377,7 @@ function UpdatesSection() {
         </Text>
       )}
 
-      <FormControl>
+      <FormControl id="automatic-updates">
         <Checkbox
           checked={autoCheck ?? false}
           disabled={autoCheck === null}
@@ -390,7 +390,7 @@ function UpdatesSection() {
         />
         <FormControl.Label>{t('settings.updates.autoCheckLabel')}</FormControl.Label>
         {automaticUpdatesCaption && (
-          <FormControl.Caption data-testid="automatic-updates-caption">
+          <FormControl.Caption id="automatic-updates-caption">
             {t(automaticUpdatesCaption)}
           </FormControl.Caption>
         )}

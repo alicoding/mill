@@ -388,7 +388,7 @@ describe('Updates renders the effective automatic-update policy', () => {
 
     await mount(<UpdatesSection />)
 
-    expect(container.querySelector('[data-testid="automatic-updates-caption"]')?.textContent).toBe(expected)
+    expect(container.querySelector('#automatic-updates-caption')?.textContent).toBe(expected)
   })
 
   it('keeps source-build origin and policy when the selected feed is beta', async () => {
@@ -399,7 +399,7 @@ describe('Updates renders the effective automatic-update policy', () => {
     await mount(<UpdatesSection />)
 
     expect(container.querySelector('[data-testid="build-origin"]')?.textContent).toBe('local build')
-    expect(container.querySelector('[data-testid="automatic-updates-caption"]')?.textContent)
+    expect(container.querySelector('#automatic-updates-caption')?.textContent)
       .toBe('Checks for updates on the schedule below. This local build does not download updates automatically.')
   })
 
@@ -409,13 +409,13 @@ describe('Updates renders the effective automatic-update policy', () => {
     await mount(<UpdatesSection />)
 
     expect(container.querySelector('[data-testid="build-origin"]')).toBeNull()
-    expect(container.querySelector('[data-testid="automatic-updates-caption"]')).toBeNull()
+    expect(container.querySelector('#automatic-updates-caption')).toBeNull()
 
     await act(async () => {
       useBuildInfoStore.getState().setBuildInfo(buildInfo('beta', false))
     })
     expect(container.querySelector('[data-testid="build-origin"]')?.textContent).toBe('beta build')
-    expect(container.querySelector('[data-testid="automatic-updates-caption"]')?.textContent)
+    expect(container.querySelector('#automatic-updates-caption')?.textContent)
       .toBe('Checks for updates on the schedule below and downloads available updates automatically.')
   })
 
@@ -430,7 +430,7 @@ describe('Updates renders the effective automatic-update policy', () => {
     await mount(<UpdatesSection />)
 
     expect((container.querySelector('[data-testid="auto-update-check"]') as HTMLInputElement).disabled).toBe(false)
-    expect(container.querySelector('[data-testid="automatic-updates-caption"]')).toBeNull()
+    expect(container.querySelector('#automatic-updates-caption')).toBeNull()
     expect(container.querySelector('[data-testid="update-check-interval-select"]')).toBeNull()
 
     await act(async () => {
@@ -438,7 +438,7 @@ describe('Updates renders the effective automatic-update policy', () => {
       await cadence.promise
     })
     expect(container.querySelector('[data-testid="update-check-interval-select"]')).not.toBeNull()
-    expect(container.querySelector('[data-testid="automatic-updates-caption"]')?.textContent)
+    expect(container.querySelector('#automatic-updates-caption')?.textContent)
       .toBe('Checks when you open Updates or check manually; this local build requires manual downloads.')
   })
 
@@ -468,7 +468,7 @@ describe('Updates renders the effective automatic-update policy', () => {
 
     expect(warning).toHaveBeenCalledWith('[background:buildInfo.getBuildInfo]', expect.any(Error))
     expect(container.querySelector('[data-testid="build-origin"]')).toBeNull()
-    expect(container.querySelector('[data-testid="automatic-updates-caption"]')).toBeNull()
+    expect(container.querySelector('#automatic-updates-caption')).toBeNull()
     warning.mockRestore()
   })
 })

@@ -204,24 +204,24 @@ test('Beta-channel build offers to download, dismissing the pill leaves the acti
     // only appears once it's on, defaulting to Hourly.
     const auto = page.getByTestId('auto-update-check')
     await expect(auto).not.toBeChecked()
-    await expect(page.getByTestId('automatic-updates-caption')).toHaveText(
+    await expect(auto).toHaveAccessibleDescription(
       'Checks when you open Updates or choose Check for updates. Downloads must be started manually.',
     )
     await expect(page.getByTestId('update-check-interval-select')).toHaveCount(0)
     await auto.check()
     await expect(page.getByTestId('update-check-interval-select')).toHaveValue('hourly')
-    await expect(page.getByTestId('automatic-updates-caption')).toHaveText(
+    await expect(auto).toHaveAccessibleDescription(
       'Checks for updates on the schedule below and downloads available updates automatically.',
     )
     await page.getByTestId('update-check-interval-select').selectOption('manual')
-    await expect(page.getByTestId('automatic-updates-caption')).toHaveText(
+    await expect(auto).toHaveAccessibleDescription(
       'Checks when you open Updates or check manually, then downloads available updates automatically.',
     )
     await page.reload()
     await openSettings(page, 'updates')
     await expect(page.getByTestId('auto-update-check')).toBeChecked()
     await expect(page.getByTestId('update-check-interval-select')).toHaveValue('manual')
-    await expect(page.getByTestId('automatic-updates-caption')).toHaveText(
+    await expect(page.getByTestId('auto-update-check')).toHaveAccessibleDescription(
       'Checks when you open Updates or check manually, then downloads available updates automatically.',
     )
 
@@ -310,11 +310,11 @@ test('Update-channel preference saves, explains the restart, and survives a relo
 
     const auto = page.getByTestId('auto-update-check')
     await auto.check()
-    await expect(page.getByTestId('automatic-updates-caption')).toHaveText(
+    await expect(auto).toHaveAccessibleDescription(
       'Checks for updates on the schedule below. This local build does not download updates automatically.',
     )
     await page.getByTestId('update-check-interval-select').selectOption('manual')
-    await expect(page.getByTestId('automatic-updates-caption')).toHaveText(
+    await expect(auto).toHaveAccessibleDescription(
       'Checks when you open Updates or check manually; this local build requires manual downloads.',
     )
 
@@ -324,7 +324,7 @@ test('Update-channel preference saves, explains the restart, and survives a relo
     await expect(page.getByTestId('build-origin')).toHaveText('local build')
     await expect(page.getByTestId('auto-update-check')).toBeChecked()
     await expect(page.getByTestId('update-check-interval-select')).toHaveValue('manual')
-    await expect(page.getByTestId('automatic-updates-caption')).toHaveText(
+    await expect(page.getByTestId('auto-update-check')).toHaveAccessibleDescription(
       'Checks when you open Updates or check manually; this local build requires manual downloads.',
     )
     await expect(page.getByTestId('proxy-mode-select')).toHaveValue('manual')
