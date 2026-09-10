@@ -10,14 +10,28 @@ work="$(mktemp -d "${TMPDIR:-/tmp}/mill-installed-process-selftest.XXXXXX")"
 fails=0
 owned_pids=""
 
+fixture_pid_matches() {
+  local pid="$1" executable
+  for executable in "$work/target/mill" "$work/unrelated/mill"; do
+    if /usr/sbin/lsof -p "$pid" -a -d txt -Fp -- "$executable" 2>/dev/null | grep -q "^p${pid}$"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 cleanup() {
   local pid
   for pid in $owned_pids; do
-    /bin/kill -TERM "$pid" 2>/dev/null || true
+    if fixture_pid_matches "$pid"; then
+      /bin/kill -TERM "$pid" 2>/dev/null || true
+    fi
   done
   sleep 0.1
   for pid in $owned_pids; do
-    /bin/kill -KILL "$pid" 2>/dev/null || true
+    if fixture_pid_matches "$pid"; then
+      /bin/kill -KILL "$pid" 2>/dev/null || true
+    fi
     wait "$pid" 2>/dev/null || true
   done
   rm -rf "$work"
@@ -116,6 +130,9 @@ fi
 # are all clean first-install/already-stopped cases.
 if ! "$stop_script" "$work/absent/mill"; then
   fail "absent: missing target should succeed"
+fi
+if (cd "$work" && "$stop_script" target/mill 2>"$work/relative.err"); then
+  fail "argument: a relative executable path should refuse"
 fi
 if "$stop_script" "$work/target" 2>"$work/nonregular.err"; then
   fail "non-regular: an existing directory should refuse"
