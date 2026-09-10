@@ -115,11 +115,43 @@ jobs:
               - '.claude/**'
               - 'LICENSE'
             icons:
+              - 'Taskfile.yml'
+              - 'auxwindows.go'
+              - 'main.go'
               - 'build/appicon.png'
               - 'build/appicon.icon/**'
-              - 'build/branding/**'
+              - 'build/branding/mill-mark.svg'
+              - 'build/tray-template.png'
               - 'build/Taskfile.yml'
+              - 'build/config.yml'
+              - 'build/darwin/Assets.car'
+              - 'build/darwin/icons.icns'
+              - 'build/darwin/Info.plist'
+              - 'build/darwin/Info.dev.plist'
+              - 'build/darwin/Taskfile.yml'
+              - 'build/darwin/dmg-background.png'
+              - 'build/darwin/dmg-file-icon.icns'
+              - 'build/darwin/dmg-file-icon.png'
+              - 'build/ios/Assets.xcassets'
+              - 'build/ios/icon.png'
+              - 'build/ios/Info.plist'
+              - 'build/ios/Taskfile.yml'
+              - 'build/linux/desktop'
+              - 'build/linux/nfpm/nfpm.yaml'
+              - 'build/linux/Taskfile.yml'
+              - 'build/windows/icon.ico'
+              - 'build/windows/msix/template.xml'
+              - 'build/windows/nsis/project.nsi'
+              - 'build/windows/Taskfile.yml'
+              - 'examples/browser-extension/icons/**'
+              - 'examples/browser-extension/manifest.json'
+              - 'frontend/index.html'
+              - 'frontend/public/icons/**'
+              - 'frontend/public/manifest.webmanifest'
+              - 'frontend/public/mill.svg'
+              - 'frontend/src/app/millicon.png'
               - 'internal/iconassets/**'
+              - 'scripts/check-icon-routing-selftest.sh'
               - 'scripts/check-modern-icon-assets.sh'
               - 'scripts/check-modern-icon-mode-selftest.sh'
               - 'scripts/detect-modern-apple-icons.sh'
@@ -181,6 +213,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-workflow-yaml.sh
+      - run: ./scripts/check-icon-routing-selftest.sh
       # goal 0419 S1c: SHA-pinned Docker image, not `go install @<tag>`
       # (an unpinned network fetch at every run) -- rhysd/actionlint
       # ships no action.yml of its own (confirmed against the repo:
