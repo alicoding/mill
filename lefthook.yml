@@ -257,6 +257,11 @@ pre-commit:
       # bounded-wait exit code and --acquire/--release reentrancy.
       glob: "{scripts/with-install-lock.sh,scripts/check-install-lock-selftest.sh,Taskfile.yml}"
       run: ./scripts/check-install-lock-selftest.sh
+    - name: installed-process-selftest
+      # Install replacement is allowed only after every process executing the
+      # installed binary exits; a same-basename process at another path stays.
+      glob: "{scripts/stop-installed-app.sh,scripts/check-installed-process-selftest.sh,Taskfile.yml}"
+      run: ./scripts/check-installed-process-selftest.sh
     - name: review-report-selftest
       # Fixture-tests the pre-PR review gate itself (goal 0383) --
       # mirrors hook-command-guard's own probe-on-touch shape; the live
