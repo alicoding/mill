@@ -1,6 +1,7 @@
 package pluginsvc
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -70,6 +71,10 @@ func TestParseIndex_RefusesAnUnknownSourceKind(t *testing.T) {
 }
 
 func TestClassifySource_ReadsEachShapeTheFieldAccepts(t *testing.T) {
+	nativeAbsolute, err := filepath.Abs("/Users/someone/store")
+	if err != nil {
+		t.Fatal(err)
+	}
 	cases := []struct {
 		in      string
 		kind    string
@@ -81,7 +86,7 @@ func TestClassifySource_ReadsEachShapeTheFieldAccepts(t *testing.T) {
 		{"https://example.test/.mill/marketplace.json", "url", "https://example.test/.mill/marketplace.json", ""},
 		{"https://github.com/acme/store.git", "github", "acme/store", ""},
 		{"git@github.com:acme/store.git", "github", "acme/store", ""},
-		{"/Users/someone/store", "path", "/Users/someone/store", ""},
+		{"/Users/someone/store", "path", nativeAbsolute, ""},
 	}
 	for _, c := range cases {
 		got, err := ClassifySource(c.in)
@@ -92,6 +97,21 @@ func TestClassifySource_ReadsEachShapeTheFieldAccepts(t *testing.T) {
 		if got.Kind != c.kind || got.Locator != c.locator || got.Ref != c.ref {
 			t.Errorf("ClassifySource(%q) = %+v, want kind %q locator %q ref %q", c.in, got, c.kind, c.locator, c.ref)
 		}
+	}
+}
+
+func TestClassifySource_AcceptsAHostNativeAbsoluteFolder(t *testing.T) {
+	root := t.TempDir()
+	got, err := ClassifySource(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := filepath.Abs(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Kind != "path" || got.Locator != want {
+		t.Fatalf("ClassifySource(%q) = %+v, want path %q", root, got, want)
 	}
 }
 

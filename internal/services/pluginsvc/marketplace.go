@@ -318,7 +318,7 @@ func ClassifySource(input string) (MarketplaceSource, error) {
 	if raw == "" {
 		return MarketplaceSource{}, fmt.Errorf("enter a repo, an address, or a folder")
 	}
-	if strings.HasPrefix(raw, "/") || strings.HasPrefix(raw, "~") {
+	if isFilesystemSourceInput(raw) {
 		return canonicalSource(MarketplaceSource{Kind: "path", Locator: raw})
 	}
 	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
@@ -335,6 +335,10 @@ func ClassifySource(input string) (MarketplaceSource, error) {
 		return canonicalSource(MarketplaceSource{Kind: "github", Locator: repo, Ref: ref})
 	}
 	return MarketplaceSource{}, fmt.Errorf("that is not a repo, an address, or a folder")
+}
+
+func isFilesystemSourceInput(raw string) bool {
+	return filepath.IsAbs(raw) || strings.HasPrefix(raw, "/") || strings.HasPrefix(raw, "~")
 }
 
 // IndexURL answers where a source's index is fetched from. A github

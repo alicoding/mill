@@ -105,10 +105,20 @@ func newStoreService(t *testing.T, ids ...string) (*PluginService, string) {
 	t.Helper()
 	dir := t.TempDir()
 	svc := New(dir, nil, "")
+	closeTestPluginState(t, svc)
 	if len(ids) > 0 {
 		svc.SetExampleMarketplace(exampleFS(ids...))
 	}
 	return svc, dir
+}
+
+func closeTestPluginState(t *testing.T, svc *PluginService) {
+	t.Helper()
+	t.Cleanup(func() {
+		if err := svc.CloseState(); err != nil {
+			t.Errorf("CloseState: %v", err)
+		}
+	})
 }
 
 // Browse is never empty on a fresh install: the extensions the binary
