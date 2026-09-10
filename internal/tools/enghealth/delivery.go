@@ -36,11 +36,11 @@ func ComputeDelivery(s Sources, now time.Time, windowDays [2]int, b Budgets) []M
 
 	return []Metric{
 		buildMetric("delivery", "PR lead time p50", p50v7, ok50v7, p50v28, ok50v28, fmtHours,
-			&budgetSpec{b.LeadTimeP50HoursMax, "le", fmtHours(b.LeadTimeP50HoursMax)}),
+			&budgetSpec{Key: "lead_time_p50_hours_max", Value: b.LeadTimeP50HoursMax, Op: "le", Display: fmtHours(b.LeadTimeP50HoursMax), Class: b.ClassFor("lead_time_p50_hours_max")}),
 		buildMetric("delivery", "PR lead time p90", p90v7, ok90v7, p90v28, ok90v28, fmtHours, nil),
 		buildMetric("delivery", "Merges/week", perWeek7, true, perWeek28, true, fmtCount, nil),
 		buildMetric("delivery", "Merge-group failure rate", failRate7, okFail7, failRate28, okFail28, fmtPct,
-			&budgetSpec{b.MergeGroupFailureRatePct, "le", fmtPct(b.MergeGroupFailureRatePct)}),
+			&budgetSpec{Key: "merge_group_failure_rate_pct_max", Value: b.MergeGroupFailureRatePct, Op: "le", Display: fmtPct(b.MergeGroupFailureRatePct), Class: b.ClassFor("merge_group_failure_rate_pct_max")}),
 		buildMetric("delivery", "Time-to-green on main p50", ttg50v7, okTtg7, ttg50v28, okTtg28, fmtMinutes, nil),
 	}
 }

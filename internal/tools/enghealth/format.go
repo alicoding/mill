@@ -12,11 +12,16 @@ func fmtLag(unit string) func(float64) string {
 }
 
 // budgetSpec is a metric's threshold: HasBudget is implied by a non-nil
-// *budgetSpec passed to buildMetric.
+// *budgetSpec passed to buildMetric. Key is the budget's own YAML key in
+// engineering-budgets.yml (also the breach file/issue-label suffix,
+// goal 0413 S2 contract item 1); Class is that key's row in Budgets'
+// Classes table.
 type budgetSpec struct {
+	Key     string
 	Value   float64
 	Op      string // "le" (breach when above) or "ge" (breach when below)
 	Display string
+	Class   string
 }
 
 // buildMetric assembles one report row from two independently-optional
@@ -43,6 +48,8 @@ func buildMetric(category, name string, val7 float64, has7 bool, val28 float64, 
 		m.Budget = budget.Value
 		m.BudgetOp = budget.Op
 		m.BudgetDisplay = budget.Display
+		m.BudgetKey = budget.Key
+		m.Class = budget.Class
 	}
 	return m
 }
