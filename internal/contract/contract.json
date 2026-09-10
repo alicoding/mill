@@ -2668,7 +2668,7 @@
       "ID": "process-ai-extract-structured",
       "Kind": "process",
       "Label": "Extract fields with AI",
-      "Description": "Sends a prompt plus the payload to a configured AI provider, requests a structured response, and writes each declared output field into this workflow's Attributes by the same key. Every declared field is required; one the provider omits is written empty rather than dropped.",
+      "Description": "Sends a prompt plus the payload to a configured AI provider, requests a structured response, and writes each declared output field into this workflow's Attributes by the same key. Every declared field is required; a response that does not match the requested schema fails the step.",
       "ConfigFields": [
         {
           "Key": "aiproviderId",
@@ -5457,7 +5457,7 @@
       "ID": "process-ai-extract-structured",
       "Kind": "process",
       "Label": "Extract fields with AI",
-      "Description": "Sends a prompt plus the payload to a configured AI provider, requests a structured response, and writes each declared output field into this workflow's Attributes by the same key. Every declared field is required; one the provider omits is written empty rather than dropped.",
+      "Description": "Sends a prompt plus the payload to a configured AI provider, requests a structured response, and writes each declared output field into this workflow's Attributes by the same key. Every declared field is required; a response that does not match the requested schema fails the step.",
       "ConfigFields": [
         {
           "Key": "aiproviderId",
