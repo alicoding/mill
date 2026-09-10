@@ -50,6 +50,10 @@ brief carries more, not less, than an Opus one would need.
   first, do not dispatch.
 - **Model**: Sonnet unless the brief carries a one-sentence Opus
   justification; never Fable; at most one Opus builder live.
+- **Sized to ≤3 contract items.** A fourth item is the next slice, not
+  a fourth bullet in this one — a 4+ item brief is the size class that
+  hit the turn cap with zero commits (goal 0414 S4); the three-item
+  briefs landed in one run.
 
 ## Dispatch shape
 

@@ -77,6 +77,23 @@ no_worktree() {
 }
 probe 0 "no matching worktree passes (exit 0)" no_worktree
 
+# builder.md's templated worktree path and the hook's default glob
+# must name the same prefix, or a builder's real worktree is invisible
+# to this hook (goal 0414 S4; #880 built under mill-worktrees/ instead,
+# which the mill-wt-* glob never scans).
+builder_md="$(cd "$(dirname "$hook")/.." && pwd)/.claude/agents/builder.md"
+builder_prefix="$(grep -o 'mill-wt-<goal>-<slice>' "$builder_md" | head -1 | sed 's/<.*//')"
+hook_prefix="$(grep -o 'mill-wt-\*' "$hook" | head -1 | sed 's/\*//')"
+if [ -z "$builder_prefix" ] || [ -z "$hook_prefix" ]; then
+  echo "FAIL: could not extract a worktree path prefix from builder.md or the hook" >&2
+  fails=$((fails + 1))
+elif [ "$builder_prefix" != "$hook_prefix" ]; then
+  echo "FAIL: builder.md prefix '$builder_prefix' disagrees with hook glob prefix '$hook_prefix'" >&2
+  fails=$((fails + 1))
+else
+  echo "hook-subagent-stop-selftest: builder.md/hook worktree prefix agree ($hook_prefix)"
+fi
+
 if [ "$fails" -ne 0 ]; then
   echo "hook-subagent-stop-selftest: $fails probe(s) failed" >&2
   exit 1

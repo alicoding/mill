@@ -20,7 +20,7 @@ No `paths` frontmatter — every goal, every language.
   about the CLASS.**
 - **One strike makes a class.** A CI/review finding is fixed as its
   CLASS in the same PR — the gate/rule plus a sweep of instances —
-  or carries the number of a goal filed the same day.
+  or a same-day goal number.
 - No SPEC.md `OPEN` dependency silently resolved by starting.
 
 ## Definition of Ready, part 2 — the integration-surfaces triage
@@ -79,11 +79,11 @@ same-day or move OUT with a register entry naming the path back.
 - WIP limit: ≤6 open goal PRs before a new dispatch.
 - A builder owns its PR through merge; the orchestrator dispatches and
   verifies.
-- Budgets are per-dispatch (`maxTurns`, token ceiling), cumulative
-  across resumes at ≤2 per brief; one bounded wait per turn; closeouts
-  batch per tick.
+- Budgets are per-dispatch (`maxTurns`, tokens), cumulative across
+  resumes (≤2/brief); one bounded wait/turn; closeouts batch per tick.
 - Every finished agent's tokens append to `docs/goals/AGENT-LEDGER.md`
   (git-ignored).
+- A brief carries ≤3 contract items; a 4th is the next slice.
 
 ## Tech debt and deferrals
 A BACKLOG.md entry needs the same DoR/DoD as any goal — never a bare

@@ -17,8 +17,11 @@ not answer is reported, never decided by you.
 
 - Your own worktree, created from `origin/main` before any other write:
   `cd /Users/ali/code/mill && git fetch origin && git worktree add
-  <path> -b <branch> origin/main`. Never edit the main checkout or any
-  worktree another agent owns -- check `git worktree list` if unsure.
+  /Users/ali/code/mill-wt-<goal>-<slice> -b
+  goal/<id>-<slice>-<slug> origin/main`. `codex/` branches and
+  `/Users/ali/code/mill-worktrees/**` belong to the owner, never a
+  builder. Never edit the main checkout or any worktree another agent
+  owns -- check `git worktree list` if unsure.
   Explicit `cd` in every Bash call; `cd` does not persist between calls.
 - Scratch files (screenshots, commit logs, intermediate JSON) go under
   `/Users/ali/code/mill-scratchpad/<goal>/`, never inside the worktree
@@ -81,19 +84,27 @@ remainder becomes a new slice with its own brief and ceiling.
 A prompt-level "commit as soon as it's clean" rule does not survive
 120 turns of context — four builders hit their turn cap with ZERO
 commits on 1–3 hours of work even carrying that instruction verbatim,
-each costing a land-only resume. The rule lives here instead:
+each costing a land-only resume. The rule lives here, in this block,
+not in any hook watching for it:
 
 (a) The first commit on the goal branch happens the moment `go build
     ./...` and `tsc --noEmit` (whichever apply) are clean — a `wip:`
     commit message is fine, the queue squashes it.
 (b) A commit follows every green gate and every finished sub-task (a
     file family, a test file).
-(c) At turn ~80 you MUST commit whatever is clean and write a
-    one-line "checkpoint at turn 80: <what is left>" into your scratch
-    dir.
-(d) A builder never ends a turn — cap, budget, or report — with a
+(c) A WIP checkpoint commit happens every ~30 turns after that,
+    whether or not a gate just went green, with a one-line "checkpoint
+    at turn N: <what is left>" note into your scratch dir.
+(d) At turn ~90 the pre-check pushes the branch — before anything
+    else, including further edits — so a turn-cap stop never strands
+    unpushed work.
+(e) A builder never ends a turn — cap, budget, or report — with a
     dirty worktree on a goal branch; dirty state is committed as
     `wip:` first.
+
+`scripts/hook-subagent-stop.sh` is the last net for a stop it can
+observe, not the source of this rule — it fires only on a
+SubagentStop event, never on a harness turn-cap stop.
 
 ## Execution discipline
 
