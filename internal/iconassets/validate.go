@@ -147,6 +147,21 @@ func validateIconComposer(root string) error {
 	if len(assets) != 1 || assets[0].Name() != "mill-mark.svg" {
 		return fmt.Errorf("icon Composer assets must contain only mill-mark.svg")
 	}
+	canonicalPath := filepath.Join(root, markSource)
+	composerPath := filepath.Join(root, "build/appicon.icon/Assets/mill-mark.svg")
+	// #nosec G304 -- both paths are fixed repository-owned identity sources.
+	canonical, err := os.ReadFile(canonicalPath)
+	if err != nil {
+		return err
+	}
+	// #nosec G304 -- both paths are fixed repository-owned identity sources.
+	composer, err := os.ReadFile(composerPath)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(canonical, composer) {
+		return fmt.Errorf("%s differs from canonical %s", composerPath, canonicalPath)
+	}
 	path := filepath.Join(root, "build/appicon.icon/icon.json")
 	// #nosec G304 -- path is the fixed repository-owned Icon Composer manifest.
 	data, err := os.ReadFile(path)

@@ -35,6 +35,16 @@ type renderTarget struct {
 	svg  string
 }
 
+type runOptions struct {
+	check         bool
+	checkPackaged bool
+	checkIOS      bool
+}
+
+func (o runOptions) validationOnly() bool {
+	return o.check || o.checkPackaged || o.checkIOS
+}
+
 func main() {
 	check := flag.Bool("check", false, "validate committed source assets without regenerating")
 	checkPackaged := flag.Bool("check-packaged", false, "also validate Wails platform outputs")
@@ -42,20 +52,29 @@ func main() {
 	flag.Parse()
 
 	root, err := repositoryRoot()
-	if err == nil && !*check {
-		err = generate(root)
-	}
 	if err == nil {
-		err = validateAssets(root, *checkPackaged)
-	}
-	if err == nil && *checkIOS {
-		err = validateIOSGenerator(root)
+		err = run(root, runOptions{check: *check, checkPackaged: *checkPackaged, checkIOS: *checkIOS})
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "icon-assets:", err)
 		os.Exit(1)
 	}
 	fmt.Println("icon-assets: ok")
+}
+
+func run(root string, options runOptions) error {
+	if !options.validationOnly() {
+		if err := generate(root); err != nil {
+			return err
+		}
+	}
+	if err := validateAssets(root, options.checkPackaged); err != nil {
+		return err
+	}
+	if options.checkIOS {
+		return validateIOSGenerator(root)
+	}
+	return nil
 }
 
 func repositoryRoot() (string, error) {

@@ -33,6 +33,10 @@ if ! command -v wails3 >/dev/null 2>&1; then
   echo "modern-icon-assets: wails3 is unavailable" >&2
   exit 1
 fi
+if ! command -v task >/dev/null 2>&1; then
+  echo "modern-icon-assets: task is unavailable" >&2
+  exit 1
+fi
 
 {
   printf '%s\n' "$xcode_version"
@@ -48,27 +52,31 @@ shasum -a 256 \
   build/branding/mill-mark.svg \
   > "$evidence_dir/input-hashes.txt"
 
-rm -f build/darwin/Assets.car build/darwin/icons.icns build/windows/icon.ico
-(
-  cd build
-  wails3 generate icons \
-    -input appicon.png \
-    -macfilename darwin/icons.icns \
-    -windowsfilename windows/icon.ico \
-    -iconcomposerinput appicon.icon \
-    -macassetdir darwin
-)
+task common:generate:icons MODERN_APPLE_ICONS=true
 
 if [ ! -s build/darwin/Assets.car ]; then
   echo "modern-icon-assets: Wails returned without a newly generated Assets.car" >&2
   exit 1
 fi
+first_catalog_hash="$(shasum -a 256 build/darwin/Assets.car | awk '{print $1}')"
+rm -f build/darwin/Assets.car
+task common:generate:icons MODERN_APPLE_ICONS=true
+if [ ! -s build/darwin/Assets.car ]; then
+  echo "modern-icon-assets: deleting Assets.car did not force Task regeneration" >&2
+  exit 1
+fi
+second_catalog_hash="$(shasum -a 256 build/darwin/Assets.car | awk '{print $1}')"
+{
+  printf 'before-delete: %s\n' "$first_catalog_hash"
+  printf 'after-regeneration: %s\n' "$second_catalog_hash"
+} > "$evidence_dir/catalog-freshness.txt"
 assetutil --validate-file build/darwin/Assets.car
 assetutil --info build/darwin/Assets.car > "$evidence_dir/assets-metadata.json"
 go run ./internal/iconassets -check-packaged
 
 cp build/darwin/Assets.car "$evidence_dir/Assets.car"
 cp build/darwin/icons.icns "$evidence_dir/icons.icns"
+cp build/windows/icon.ico "$evidence_dir/icon.ico"
 mkdir -p "$evidence_dir/icon-renditions.iconset"
 iconutil -c iconset build/darwin/icons.icns -o "$evidence_dir/icon-renditions.iconset"
 shasum -a 256 build/darwin/Assets.car build/darwin/icons.icns build/windows/icon.ico \
