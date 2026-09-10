@@ -21,6 +21,33 @@ import { waitForViewportStable } from './fixtures/animation'
 
 const OFFSET = 150
 
+// A real framed activation caller for register.face: tool+entry makes
+// this plugin take the hidden activation-frame path, where Mill must
+// register the manifest face before the plugin's activate() registers
+// its tool. Without that ordering, registerCanvasTool cannot seat the
+// noun and the RPC-created object below has no framed face to mount.
+const FRAMED_TOOL_FACE = {
+	id: 'framed-tool-face',
+	manifest: {
+		name: 'Framed tool face',
+		contributes: { canvasObjects: [{ kind: 'framed-tool-face', tool: true, entry: 'face.html' }] },
+	},
+	main: `export function activate(api) {
+	api.registerCanvasTool({
+		kind: 'framed-tool-face',
+		label: 'Framed tool face',
+		icon: 'circle',
+		source: 'board-local',
+		editRoute: 'none',
+		onPointer: () => {},
+	})
+}
+`,
+	files: {
+		'face.html': '<!doctype html><html><body><p data-testid="framed-tool-face-content">Registered before activation</p></body></html>',
+	},
+}
+
 function bookmarkNode(page: import('@playwright/test').Page) {
 	return page.locator('[data-testid="atlas-board-object"][data-object-kind="bookmark"]')
 }
@@ -137,6 +164,24 @@ test('dragging a bookmark object\'s resize handle grows it live', async () => {
 		await dragResizeHandle(page, handle, 120, 80)
 
 		await expect.poll(async () => (await node.boundingBox())?.width ?? 0).toBeGreaterThan(before.width + 80)
+	} finally {
+		await close()
+	}
+})
+
+test('a framed tool activation registers its manifest face before user activate runs', async () => {
+	const { page, close } = await launchWithPlugins(OFFSET + 2, { extraPlugins: [FRAMED_TOOL_FACE] })
+	try {
+		await gotoAppReady(page)
+		await createBoardObjectViaRPC(page, 'framed-tool-face', {}, { X: 0, Y: 480 }, ATLAS_DEFAULT_SPACE_ID)
+		await openBoard(page)
+
+		const node = page.locator('[data-testid="atlas-board-object"][data-object-kind="framed-tool-face"]')
+		await expect(node).toBeVisible()
+		const frame = node.locator('iframe[data-testid="plugin-face-frame-framed-tool-face"]')
+		await expect(frame).toBeVisible()
+		await expect(frame).toHaveAttribute('sandbox', 'allow-scripts allow-forms')
+		await expect(page.frameLocator('iframe[data-testid="plugin-face-frame-framed-tool-face"]').getByTestId('framed-tool-face-content')).toHaveText('Registered before activation')
 	} finally {
 		await close()
 	}

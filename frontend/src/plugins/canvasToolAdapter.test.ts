@@ -38,6 +38,28 @@ describe('canvasToolDeclError', () => {
   })
 })
 
+describe('framed face resolution', () => {
+  const faceless = { ...base, renderFace: undefined }
+
+  it('uses an accepted frame registration as the object face', () => {
+    const noun = buildThirdPartyNoun('p', { id: 'p', name: 'P', version: '1' } as never, faceless, { entry: 'face.html' })
+    expect(noun.content?.Component).toBeDefined()
+    expect(noun.content?.input).toBe('interactive')
+  })
+
+  it('keeps an existing objectKind alias while resolving the face from the tool manifest kind', () => {
+    const noun = buildThirdPartyNoun('p', { id: 'p', name: 'P', version: '1' } as never, { ...faceless, objectKind: 'placed-thing' }, { entry: 'face.html' })
+    expect(noun.boardObjectKind).toBe('placed-thing')
+    expect(noun.content?.Component).toBeDefined()
+  })
+
+  it('keeps the manifest entry fallback for same-DOM object registration', () => {
+    const manifest = { id: 'p', name: 'P', version: '1', contributes: { canvasObjects: [{ kind: 'thing', entry: 'face.html' }] } } as never
+    const noun = buildThirdPartyNoun('p', manifest, faceless)
+    expect(noun.content?.Component).toBeDefined()
+  })
+})
+
 describe('adaptStyleFields', () => {
   it('fills the panel plumbing: kind-derived testids, verbatim group labels, real interpolated width labels', () => {
     const fields = adaptStyleFields('scribble', 'Scribble', [

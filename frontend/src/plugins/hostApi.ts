@@ -9,7 +9,7 @@ import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { collectPluginCommand } from './pluginCommands'
 import { buildThirdPartyNoun, seatCanvasTool } from './canvasToolAdapter'
-import { registerLocalCanvasTool } from './canvasToolLocal'
+import { registerLocalCanvasObjectFace, registerLocalCanvasTool } from './canvasToolLocal'
 import { measureMarkup } from './canvasMeasure'
 import { parseObjectMeasure } from './canvasToolProtocol'
 import { settingDeclsFromManifest } from './pluginSettings'
@@ -284,6 +284,7 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 			seatCanvasTool(pluginId, buildThirdPartyNoun(pluginId, manifest, decl), decl.styleFields ?? [])
 		},
 		registerCanvasTool: (decl: CanvasToolDecl) => registerLocalCanvasTool(pluginId, manifest, decl),
+		registerCanvasObjectFace: (descriptor) => registerLocalCanvasObjectFace(pluginId, manifest, descriptor),
 		measure: (markup: string, maxWidth: number) => measureMarkup(pluginId, parseObjectMeasure({ markup, maxWidth })),
 		// A plugin view (goal 0290): declared in the manifest, registered
 		// here with its render, opened by a registry command. The store is

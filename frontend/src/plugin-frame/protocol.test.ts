@@ -6,12 +6,13 @@
 // <script src> would -- it needs `document`/`window` to read its own
 // (absent) mount data and reply with an activation-error over
 // postMessage, harmlessly, since nothing here is listening.
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ACTIVATION_ONLY_METHODS, SIMPLE_DOORS } from '../app/pluginActivationBridge'
 import { FRAME_METHODS } from '../app/pluginFrameBridge'
 import { CANVAS_TOOL_DOORS } from '../plugins/canvasToolHostDoors'
 import { ACTIVATION_CALL_METHODS } from './activation'
-import { CANVAS_TOOL_CALLS } from './canvasTools'
+import { buildCanvasToolsFrameHalf, CANVAS_TOOL_CALLS, registerManifestCanvasFaces } from './canvasTools'
+import type { CanvasToolDecl } from '../plugins/sdk/canvasTools'
 
 // The protocol-surface parity this file replaces the byte-parity test
 // with (goal 0396's Found: "the reviewer had to pin drift with a
@@ -37,5 +38,26 @@ describe('plugin-frame protocol surface', () => {
 
   it("the canvas-tool half names the same doors on both sides -- the tool contract cannot drift from what the host routes", () => {
     expect(new Set<string>(CANVAS_TOOL_CALLS)).toEqual(new Set<string>(CANVAS_TOOL_DOORS))
+  })
+
+  it('awaits manifest face registration before user activation can register its tool', async () => {
+    const calls: string[] = []
+    let acceptFace = () => {}
+    const call = vi.fn((method: string) => {
+      calls.push(method)
+      if (method === 'register.face') return new Promise<unknown>((resolve) => { acceptFace = () => resolve(true) })
+      return Promise.resolve(true)
+    })
+    const canvasTools = buildCanvasToolsFrameHalf(call, 'probe', [])
+    const activation = registerManifestCanvasFaces(canvasTools, [{ objectKind: 'probe', entry: 'face.html' }])
+      .then(() => canvasTools.registerCanvasTool({
+        kind: 'probe', label: 'Probe', icon: 'circle', source: 'board-local', editRoute: 'none',
+        onPointer: () => {},
+      } as CanvasToolDecl))
+
+    expect(calls).toEqual(['register.face'])
+    acceptFace()
+    await activation
+    expect(calls).toEqual(['register.face', 'register.tool'])
   })
 })

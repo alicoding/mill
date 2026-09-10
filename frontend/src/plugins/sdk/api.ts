@@ -4,7 +4,7 @@
 // plugin's code to reach outside its own module.
 
 import type { CanvasObjectDecl } from './canvasObjects'
-import type { CanvasMeasureResult, CanvasToolDecl } from './canvasTools'
+import type { CanvasMeasureResult, CanvasToolDecl, RegisterFaceDescriptor } from './canvasTools'
 import type { GuardedActionEvaluation, GuardedActionResult } from './guardedAction'
 import type { PluginCommandDecl } from './commands'
 import type { PluginContextAPI } from './context'
@@ -24,6 +24,10 @@ export interface MillPluginAPI {
    * event and draws the tool's live preview from the draft's own data,
    * so the tool needs no access to the board itself. */
   registerCanvasTool: (decl: CanvasToolDecl) => void
+  /** Registers the manifest entry page for one framed canvas-object
+   * kind. Mill rejects any kind or entry absent from this plugin's
+   * manifest. */
+  registerCanvasObjectFace: (descriptor: RegisterFaceDescriptor) => Promise<void>
   /** Measures markup off the board at real pixel size, for a face
    * whose own layout depends on how big its content turned out. */
   measure: (markup: string, maxWidth: number) => Promise<CanvasMeasureResult>
