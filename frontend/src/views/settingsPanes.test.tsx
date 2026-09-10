@@ -9,6 +9,8 @@ import common from '../locales/en/common.json'
 import { SETTINGS } from '../shared/settingsRegistry'
 import { SETTINGS_GROUPS, type SettingsGroupID } from '../shared/settingsGroups'
 
+;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
 // The registry/pane walk (goal 0412 S1): every SettingsRow the eight
 // Settings panes render must carry a `data-setting-id` the registry
 // knows (no GHOST row), and every registry entry belonging to a
@@ -366,6 +368,12 @@ function buildInfo(BuildChannel: string, LocalBuild: boolean) {
   return { Revision: 'test', Modified: false, Server: false, BuiltAt: 1, BuildChannel, LocalBuild }
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => { resolve = done })
+  return { promise, resolve }
+}
+
 describe('Updates renders the effective automatic-update policy', () => {
   it.each([
     [false, 'hourly', true, 'Checks when you open Updates or choose Check for updates. Downloads must be started manually.'],
@@ -409,6 +417,45 @@ describe('Updates renders the effective automatic-update policy', () => {
     expect(container.querySelector('[data-testid="build-origin"]')?.textContent).toBe('beta build')
     expect(container.querySelector('[data-testid="automatic-updates-caption"]')?.textContent)
       .toBe('Checks for updates on the schedule below and downloads available updates automatically.')
+  })
+
+  it('omits scheduled claims until a deferred persisted cadence resolves', async () => {
+    const cadence = deferred<string>()
+    useBuildInfoStore.setState({ isDesktop: true, buildInfo: buildInfo('source', true) })
+    vi.mocked(SettingsService.AutoUpdateCheck).mockResolvedValueOnce(true)
+    vi.mocked(SettingsService.UpdateCheckInterval).mockReturnValueOnce(
+      cadence.promise as ReturnType<typeof SettingsService.UpdateCheckInterval>,
+    )
+
+    await mount(<UpdatesSection />)
+
+    expect((container.querySelector('[data-testid="auto-update-check"]') as HTMLInputElement).disabled).toBe(false)
+    expect(container.querySelector('[data-testid="automatic-updates-caption"]')).toBeNull()
+    expect(container.querySelector('[data-testid="update-check-interval-select"]')).toBeNull()
+
+    await act(async () => {
+      cadence.resolve('manual')
+      await cadence.promise
+    })
+    expect(container.querySelector('[data-testid="update-check-interval-select"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="automatic-updates-caption"]')?.textContent)
+      .toBe('Checks when you open Updates or check manually; this local build requires manual downloads.')
+  })
+
+  it('disables the automatic-update control until its initial value resolves', async () => {
+    const autoCheck = deferred<boolean>()
+    vi.mocked(SettingsService.AutoUpdateCheck).mockReturnValueOnce(
+      autoCheck.promise as ReturnType<typeof SettingsService.AutoUpdateCheck>,
+    )
+
+    await mount(<UpdatesSection />)
+
+    expect((container.querySelector('[data-testid="auto-update-check"]') as HTMLInputElement).disabled).toBe(true)
+    await act(async () => {
+      autoCheck.resolve(false)
+      await autoCheck.promise
+    })
+    expect((container.querySelector('[data-testid="auto-update-check"]') as HTMLInputElement).disabled).toBe(false)
   })
 
   it('keeps metadata unknown after the existing background error path records a failed fetch', async () => {

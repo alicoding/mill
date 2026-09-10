@@ -10,12 +10,12 @@ export function buildOriginKey(buildInfo: BuildInfo | null): string | null {
 
 export function automaticUpdatesCaptionKey(
   autoCheck: boolean | null,
-  checkInterval: string,
+  checkInterval: string | null,
   buildInfo: BuildInfo | null,
 ): string | null {
   if (autoCheck === null) return null
   if (!autoCheck) return 'settings.updates.autoUpdateOffCaption'
-  if (buildInfo === null) return null
+  if (buildInfo === null || checkInterval === null) return null
 
   const scheduled = checkInterval !== 'manual'
   if (buildInfo.LocalBuild) {

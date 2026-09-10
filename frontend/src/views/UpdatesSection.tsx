@@ -195,7 +195,7 @@ function UpdatesSection() {
   const [channelPref, setChannelPref] = useState('')
   const [channelSaved, setChannelSaved] = useState(false)
   const [autoCheck, setAutoCheck] = useState<boolean | null>(null)
-  const [checkInterval, setCheckInterval] = useState('hourly')
+  const [checkInterval, setCheckInterval] = useState<string | null>(null)
   // The persistent record of CheckForUpdates' most recent run (manual
   // button, an explicit Settings check, or the background loop),
   // independent of `state` above -- the answer to "is checking
@@ -380,6 +380,7 @@ function UpdatesSection() {
       <FormControl>
         <Checkbox
           checked={autoCheck ?? false}
+          disabled={autoCheck === null}
           onChange={(e) => {
             const on = e.target.checked
             setAutoCheck(on)
@@ -394,7 +395,7 @@ function UpdatesSection() {
           </FormControl.Caption>
         )}
       </FormControl>
-      {autoCheck === true && (
+      {autoCheck === true && checkInterval !== null && (
         <FormControl>
           <FormControl.Label>{t('settings.updates.checkIntervalLabel')}</FormControl.Label>
           <Select
