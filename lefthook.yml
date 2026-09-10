@@ -343,6 +343,13 @@ pre-commit:
       # settings; same --tests=false / --allow-parallel-runners
       # reasoning as gocognit-new just above.
       run: GOLANGCI_LINT_CACHE="$PWD/.task/golangci-cache" golangci-lint run . ./internal/... --build-tags=server --enable-only depguard --new-from-merge-base=origin/main --tests=false --allow-parallel-runners
+    - name: script-tests
+      # goal 0413 S2 rider: the first entry in this group -- a shell
+      # script that needs proving beyond exit-code review gets a sibling
+      # scripts/<name>.test.sh, globbed alongside the script itself so
+      # editing either re-runs it.
+      glob: "scripts/{check-go-coverage.sh,*.test.sh}"
+      run: for t in scripts/*.test.sh; do bash "$t"; done
     - name: go-test
       glob: "*.go"
       # Root package (`.`) included alongside ./internal/... -- the

@@ -1,11 +1,16 @@
-# Weekly engineering-health report (goal 0413 S1): gathers PR/CI/test/
-# lint/coverage/currency data via `gh api`, golangci-lint, eslint and the
-# real toolchain registries, computes every metric in
-# internal/tools/enghealth (Go, tested -- NOT a bash reimplementation of
-# the math), and keeps ONE perpetually-updated "Engineering health" issue
-# current. Reporting only: a budget breach marks status "warning" in the
-# table, it never fails this job (S2 makes a breach open its own tracking
-# issue).
+# Weekly engineering-health report (goal 0413 S1) plus breach-becomes-work
+# (goal 0413 S2): gathers PR/CI/test/lint/coverage/currency data via
+# `gh api`, golangci-lint, eslint and the real toolchain registries,
+# computes every metric in internal/tools/enghealth (Go, tested -- NOT a
+# bash reimplementation of the math), and keeps ONE perpetually-updated
+# "Engineering health" issue current. Reporting only: a budget breach
+# marks status "warning" in the table, it never fails this job -- instead
+# it opens or refreshes its own tracking issue (labelled platform-health
+# plus the budget's own key), closed with a comment once the metric is
+# back within budget, escalated on a second consecutive breach. No new
+# GitHub Action for the breach loop: the same sha-pinned create-an-issue
+# action runs once per breach file via a dynamic matrix job, everything
+# else is `gh` CLI already used elsewhere in this file.
 name: Engineering health
 
 on:
@@ -37,6 +42,9 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
       WINDOW_DAYS: ${{ github.event.inputs.window_days || '28' }}
+    outputs:
+      breach_files: ${{ steps.breaches.outputs.files }}
+      breach_keys: ${{ steps.breaches.outputs.keys }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -240,14 +248,44 @@ jobs:
             '{go: {pinned: $gop, latest: $gol}, node: {pinned: $nop, latest: $nol}, wails: {pinned: $wap, latest: $wal}, playwright: {pinned: $pwp, latest: $pwl}}' \
             > enghealth-data/currency.json
 
+      # --- previous run's report, for Consecutive-breach tracking --------
+      # Absent on a first run (no previous success yet) -- WriteBreaches'
+      # own Consecutive math treats a missing/malformed --previous file
+      # as "no data", starting at 1 (goal 0413 S2 contract item 1).
+      - name: Gather the previous run's engineering-health.json
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/previous
+          prev_id=$(gh run list --repo "$REPO" --workflow "Engineering health" \
+            --status success --json databaseId --limit 1 --jq '.[0].databaseId // empty')
+          if [ -n "$prev_id" ]; then
+            gh run download "$prev_id" --repo "$REPO" -n engineering-health-report -D /tmp/previous 2>/dev/null || true
+          fi
+
+      - name: Ensure the platform-health/escalate labels exist
+        run: |
+          set -euo pipefail
+          gh label create platform-health --repo "$REPO" --color B60205 \
+            --description "A breached engineering budget, refreshed weekly (goal 0413 S2)" --force
+          gh label create escalate --repo "$REPO" --color B60205 \
+            --description "The same engineering budget breached two Mondays running" --force
+
       # --- compute + render -------------------------------------------------
       - name: Compute the report
         run: |
+          set -euo pipefail
+          previous_flag=""
+          if [ -f /tmp/previous/engineering-health.json ]; then
+            previous_flag="--previous /tmp/previous/engineering-health.json"
+          fi
+          # shellcheck disable=SC2086
           go run ./internal/tools/enghealth \
             --window 7,28 \
             --budgets .github/engineering-budgets.yml \
             --out engineering-health.json \
-            --md engineering-health.md
+            --md engineering-health.md \
+            --breaches breaches \
+            $previous_flag
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -257,7 +295,115 @@ jobs:
             engineering-health.md
           retention-days: 90
 
-      # --- the one perpetually-updated issue --------------------------------
+      - name: List this run's breach files
+        id: breaches
+        run: |
+          set -euo pipefail
+          if [ -d breaches ] && [ -n "$(find breaches -maxdepth 1 -name '*.md' -print -quit)" ]; then
+            files=$(find breaches -maxdepth 1 -name '*.md' -exec basename {} \; | sort | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            keys=$(find breaches -maxdepth 1 -name '*.md' -exec basename {} .md \; | sort | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          else
+            files='[]'
+            keys='[]'
+          fi
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+          echo "keys=$keys" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: steps.breaches.outputs.files != '[]'
+        with:
+          name: engineering-health-breaches
+          path: breaches
+          retention-days: 90
+
+  # One create-an-issue call per breach file (contract item 2's "loop"):
+  # a dynamic matrix is the only way to invoke a `uses:` step a variable
+  # number of times, so this job exists purely to fan out that loop --
+  # the breach markdown itself (title/labels/body, escalate label
+  # included) is entirely Go's own output, nothing computed here.
+  breach-issues:
+    needs: engineering-health
+    if: needs.engineering-health.outputs.breach_files != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        file: ${{ fromJson(needs.engineering-health.outputs.breach_files) }}
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: engineering-health-breaches
+          path: breaches
+      - uses: JasonEtco/create-an-issue@1b14a70e4d8dc185e5cc76d3bec9eab20257b2c5 # v2.9.2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          filename: breaches/${{ matrix.file }}
+          update_existing: true
+          search_existing: all
+
+  # A budget back within budget: close its issue (contract item 2). Reads
+  # the current readings straight out of this run's own JSON artifact
+  # rather than re-computing anything.
+  close-recovered:
+    needs: engineering-health
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      BREACH_KEYS: ${{ needs.engineering-health.outputs.breach_keys }}
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: engineering-health-report
+          path: report
+      - name: Close any platform-health issue outside this run's breach set
+        run: |
+          set -euo pipefail
+          today=$(date -u +%Y-%m-%d)
+          gh issue list --repo "$REPO" --label platform-health --state open --json number,labels \
+            --jq '.[] | [.number, ([.labels[].name] | map(select(. != "platform-health" and . != "escalate")) | first // "")] | @tsv' \
+          | while IFS=$'\t' read -r number key; do
+              [ -z "$key" ] && continue
+              if echo "$BREACH_KEYS" | jq -e --arg k "$key" 'index($k) != null' >/dev/null 2>&1; then
+                continue
+              fi
+              reading=$(jq -r --arg k "$key" '.metrics[] | select(.budgetKey==$k) | .display7' report/engineering-health.json)
+              budget=$(jq -r --arg k "$key" '.metrics[] | select(.budgetKey==$k) | .budgetDisplay' report/engineering-health.json)
+              if [ -n "$reading" ] && [ "$reading" != "null" ]; then
+                gh issue comment "$number" --repo "$REPO" --body "Back within budget on ${today}: ${reading} vs ${budget}."
+              fi
+              gh issue close "$number" --repo "$REPO"
+            done
+
+  # The one perpetually-updated "Engineering health" issue, last: its
+  # Breaches section (contract item 2) names real issue numbers, so it
+  # waits on breach-issues to have created/refreshed them first.
+  health-issue:
+    needs: [engineering-health, breach-issues]
+    if: always() && needs.engineering-health.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: engineering-health-report
+          path: .
+
+      - name: Fill in real issue numbers for the Breaches section
+        run: |
+          set -euo pipefail
+          content=$(cat engineering-health.md)
+          while IFS=$'\t' read -r number title; do
+            content=${content//"- ${title}"/"- #${number} ${title}"}
+          done < <(gh issue list --repo "$REPO" --label platform-health --state open --json number,title --jq '.[] | [.number, .title] | @tsv')
+          printf '%s\n' "$content" > engineering-health.md
+
       - name: Build the issue body (front matter + the rendered table)
         run: |
           {
