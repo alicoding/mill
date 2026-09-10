@@ -10,6 +10,7 @@ import { armToolFromMorePanel } from './fixtures/atlasTray'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { clickBoardPoint, dragBetween } from './fixtures/atlasBoard'
 import { openExtensionDetail, openExtensionDetailTab, openExtensions, pluginRow } from './fixtures/settingsNav'
+import { bookmarkFace, bookmarkNodes, selectBookmark } from './fixtures/bookmarkFace'
 
 // The runtime plugin platform, proven against a REAL out-of-tree
 // plugin (docs/goals/0249): the server boots with MILL_PLUGINS_DIR
@@ -38,22 +39,25 @@ test('a dropped plugin folder yields a working canvas object: tray entry, placem
 		const bb = await board.boundingBox()
 		if (!bb) throw new Error('board has no bounding box')
 		await board.click({ position: { x: spot.x - bb.x + 10, y: spot.y - bb.y + 10 } })
-		const face = page.locator('[data-testid="plugin-face-bookmark"]')
-		await expect(face).toBeVisible()
+		const node = bookmarkNodes(page)
+		await expect(node).toBeVisible()
+		// The face draws in its own sandboxed frame (goal 0380 S2).
+		const face = bookmarkFace(node)
+		await expect(face.getByTestId('bookmark-title')).toBeVisible()
 
 		// The face's URL field writes through the host's content-plane
 		// door; the plugin derives the title from the committed value.
-		await face.locator('[data-testid="bookmark-url-input"]').fill('example.com/docs') // fill: a form control; per-keystroke typing drops characters under CI load (goal 0296)
-		await face.locator('[data-testid="bookmark-url-input"]').press('Enter')
-		await expect(face.locator('[data-testid="bookmark-url-input"]')).toHaveValue('example.com/docs')
-		await expect(face.locator('span').nth(1)).toHaveText('example.com')
+		await face.getByTestId('bookmark-url-input').fill('example.com/docs') // fill: a form control; per-keystroke typing drops characters under CI load (goal 0296)
+		await face.getByTestId('bookmark-url-input').press('Enter')
+		await expect(face.getByTestId('bookmark-url-input')).toHaveValue('example.com/docs')
+		await expect(face.getByTestId('bookmark-title')).toHaveText('example.com')
 
 		// The object is REAL content-plane data: it survives a reload
 		// and renders through the plugin again.
 		await page.reload()
 		await page.getByRole('link', { name: 'Atlas' }).click()
-		await expect(page.locator('[data-testid="plugin-face-bookmark"]')).toBeVisible()
-		await expect(page.locator('[data-testid="bookmark-url-input"]')).toHaveValue('example.com/docs')
+		await expect(bookmarkNodes(page)).toBeVisible()
+		await expect(bookmarkFace(bookmarkNodes(page)).getByTestId('bookmark-url-input')).toHaveValue('example.com/docs')
 	} finally {
 		await close()
 	}
@@ -71,19 +75,26 @@ test('a guarded action parks for the human, renders in Review, and the approve/d
 		const bb = await board.boundingBox()
 		if (!bb) throw new Error('board has no bounding box')
 		await board.click({ position: { x: spot.x - bb.x + 10, y: spot.y - bb.y + 10 } })
-		const face = page.locator('[data-testid="plugin-face-bookmark"]')
-		await expect(face).toBeVisible()
-		await face.locator('[data-testid="bookmark-url-input"]').fill('example.com') // fill: a form control; per-keystroke typing drops characters under CI load (goal 0296)
-		await face.locator('[data-testid="bookmark-url-input"]').press('Enter')
+		const node = bookmarkNodes(page)
+		await expect(node).toBeVisible()
+		// The face draws in its own sandboxed frame (goal 0380 S2); a
+		// real click on it (the Open button below) needs the object
+		// selected first, or the click shield -- still up on a
+		// freshly-placed, not-yet-selected object -- takes it instead.
+		await selectBookmark(node)
+		const face = bookmarkFace(node)
+		await expect(face.getByTestId('bookmark-title')).toBeVisible()
+		await face.getByTestId('bookmark-url-input').fill('example.com') // fill: a form control; per-keystroke typing drops characters under CI load (goal 0296)
+		await face.getByTestId('bookmark-url-input').press('Enter')
 		// The commit re-renders the face (payload change); wait for the
 		// derived title so the Open click below hits the CURRENT
 		// elements, not the doomed pre-commit ones a slower runner can
 		// still be swapping out.
-		await expect(face.locator('span').nth(1)).toHaveText('example.com')
+		await expect(face.getByTestId('bookmark-title')).toHaveText('example.com')
 
 		// Open asks the guardrail; ClassExternal's ask-by-default parks.
-		await face.locator('[data-testid="bookmark-open"]').click()
-		await expect(face.locator('[data-testid="bookmark-status"]')).toHaveText('Asking…')
+		await face.getByTestId('bookmark-open').click()
+		await expect(face.getByTestId('bookmark-status')).toHaveText('Asking…')
 
 		// The park is visible and actionable in Review -- approved from a
 		// SECOND tab, so the asking face stays mounted and receives the
@@ -176,10 +187,11 @@ test('a URL pasted from another app lands as the claiming plugin object, not a n
 
 		// The whole claims chain fires: manifest scan -> wiring's
 		// enablement filter -> the Go recognizer -> a bookmark object
-		// rendered by the plugin's own face, carrying the pasted URL.
-		const face = page.locator('[data-testid="plugin-face-bookmark"]')
-		await expect(face).toBeVisible()
-		await expect(face.locator('[data-testid="bookmark-url-input"]')).toHaveValue('https://example.com/some/page')
+		// rendered by the plugin's own face (its own sandboxed frame,
+		// goal 0380 S2), carrying the pasted URL.
+		const node = bookmarkNodes(page)
+		await expect(node).toBeVisible()
+		await expect(bookmarkFace(node).getByTestId('bookmark-url-input')).toHaveValue('https://example.com/some/page')
 
 		// And it landed as the claimed object, never the note fallback.
 		await expect(page.locator('[data-testid="atlas-sticky-note"]')).toHaveCount(0)

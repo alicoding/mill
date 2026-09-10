@@ -9,6 +9,7 @@ import { expect, test } from '@playwright/test'
 import { launchWithPlugins } from './fixtures/runtimePlugins'
 import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { openExtensions } from './fixtures/settingsNav'
+import { bookmarkFace, bookmarkNodes } from './fixtures/bookmarkFace'
 
 async function pasteLink(page: import('@playwright/test').Page, url: string) {
 	const board = page.getByTestId('atlas-board')
@@ -32,10 +33,11 @@ test('a link two plugins claim lands as the first claimant, and the toast re-typ
 
 		// Id order decides with no preference: mill-bookmark before
 		// mill-clipper, so the bookmark lands -- the same result the
-		// single-claimant spec pins.
-		const bookmark = page.locator('[data-testid="plugin-face-bookmark"]')
+		// single-claimant spec pins. The face draws in its own sandboxed
+		// frame now (goal 0380 S2).
+		const bookmark = bookmarkNodes(page)
 		await expect(bookmark).toBeVisible()
-		await expect(bookmark.locator('[data-testid="bookmark-url-input"]')).toHaveValue('https://example.com/some/page')
+		await expect(bookmarkFace(bookmark).getByTestId('bookmark-url-input')).toHaveValue('https://example.com/some/page')
 
 		// The toast names what landed and offers the alternative by its
 		// tool label.
@@ -77,7 +79,7 @@ test('Settings > Extensions chooses which claimant pasted links become', async (
 		const clip = page.locator('[data-testid="plugin-face-clip"]')
 		await expect(clip).toBeVisible()
 		await expect(clip.locator('[data-testid="clip-url-input"]')).toHaveValue('https://example.com/other')
-		await expect(page.locator('[data-testid="plugin-face-bookmark"]')).toHaveCount(0)
+		await expect(bookmarkNodes(page)).toHaveCount(0)
 		// The offer now points the other way.
 		await expect(page.getByTestId('atlas-quiet-toast-action')).toHaveText('Paste as Bookmark instead')
 
