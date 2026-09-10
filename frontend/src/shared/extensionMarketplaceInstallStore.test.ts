@@ -140,6 +140,45 @@ describe('marketplace install commands', () => {
     expect(useExtensionMarketplaceInstallStore.getState().preview).toBeNull()
   })
 
+  it('suppresses a retired preview rejection at the command error boundary', async () => {
+    const pending = deferred<InstallPreview>()
+    vi.mocked(PluginService.PreviewInstall).mockReturnValueOnce(pending.promise as never)
+    const opening = runCommand('extension.browse.previewInstall', ctx)
+    expect(await runCommand('extension.browse.cancelInstall')).toBe(true)
+    pending.reject(new Error('retired preview failed'))
+    expect(await opening).toBe(true)
+    expect(useExtensionMarketplaceInstallStore.getState().target).toBeNull()
+    expect(noticeMocks.pushNotice).not.toHaveBeenCalled()
+  })
+
+  it('does not let an older rejection erase or report over a newer preview', async () => {
+    const first = deferred<InstallPreview>()
+    const second = deferred<InstallPreview>()
+    vi.mocked(PluginService.PreviewInstall)
+      .mockReturnValueOnce(first.promise as never)
+      .mockReturnValueOnce(second.promise as never)
+    const firstOpening = runCommand('extension.browse.previewInstall', ctx)
+    await runCommand('extension.browse.cancelInstall')
+    const secondOpening = runCommand('extension.browse.previewInstall', ctx)
+
+    first.reject(new Error('old preview failed'))
+    expect(await firstOpening).toBe(true)
+    expect(useExtensionMarketplaceInstallStore.getState().phase).toBe('previewing')
+    expect(useExtensionMarketplaceInstallStore.getState().target?.pluginId).toBe('plugin')
+    expect(noticeMocks.pushNotice).not.toHaveBeenCalled()
+
+    second.resolve(preview({ Version: '2.0.0' }))
+    expect(await secondOpening).toBe(true)
+    expect(useExtensionMarketplaceInstallStore.getState().preview?.Version).toBe('2.0.0')
+  })
+
+  it('reports the current preview rejection through the command error boundary', async () => {
+    vi.mocked(PluginService.PreviewInstall).mockRejectedValueOnce(new Error('current preview failed') as never)
+    expect(await runCommand('extension.browse.previewInstall', ctx)).toBe(false)
+    expect(useExtensionMarketplaceInstallStore.getState().target).toBeNull()
+    expect(noticeMocks.pushNotice).toHaveBeenCalledOnce()
+  })
+
   it('keeps preview and policy refusal visible without installing', async () => {
     vi.mocked(PluginService.PreviewInstall).mockResolvedValueOnce(preview({ PolicyRefusal: 'blocked by policy' }) as never)
     expect(await runCommand('extension.browse.previewInstall', ctx)).toBe(true)

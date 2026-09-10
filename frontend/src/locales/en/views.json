@@ -806,6 +806,8 @@
     },
     "install": {
       "title": "Install {{name}}?",
+      "loadingTitle": "Review extension installation",
+      "loadingBody": "Loading installation details for {{name}}…",
       "unreviewedTitle": "Install unreviewed code?",
       "unreviewedBody": "Nothing has checked what this extension does. It can read what you allow it to and change your boards.",
       "acknowledge": "I understand it runs unreviewed code",

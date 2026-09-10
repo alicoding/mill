@@ -1,4 +1,4 @@
-import { chromium, expect, test, type Browser, type Page } from '@playwright/test'
+import { chromium, expect, test, type Browser, type Page, type Request, type Route } from '@playwright/test'
 import { applyCpuThrottle } from './fixtures/throttle'
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -24,6 +24,41 @@ let browser: Browser
 let page: Page
 let dir: string
 
+// Mirrors the generated PluginService.PreviewInstall binding so unrelated
+// background RPCs keep flowing while this one controlled response is held.
+const PREVIEW_INSTALL_METHOD_ID = 611162871
+
+function isFixturePreviewInstall(request: Request): boolean {
+	if (!request.url().endsWith('/wails/runtime')) return false
+	try {
+		const body = JSON.parse(request.postData() ?? '{}') as { args?: { methodID?: number; args?: unknown[] } }
+		return body.args?.methodID === PREVIEW_INSTALL_METHOD_ID &&
+			body.args.args?.[0] === 'fixture' && body.args.args[1] === 'fixture-notes'
+	} catch {
+		return false
+	}
+}
+
+async function holdNextPreviewInstall(targetPage: Page) {
+	let release!: () => void
+	const released = new Promise<void>((resolve) => { release = resolve })
+	let held = false
+	const handler = async (route: Route) => {
+		if (held || !isFixturePreviewInstall(route.request())) {
+			await route.continue()
+			return
+		}
+		held = true
+		await released
+		await route.continue()
+	}
+	await targetPage.route('**/wails/runtime', handler)
+	return {
+		release,
+		stop: () => targetPage.unroute('**/wails/runtime', handler),
+	}
+}
+
 test.beforeAll(async () => {
 	dir = mkdtempSync(path.join(tmpdir(), 'mill-extensions-store-'))
 	const pluginsDir = path.join(dir, 'plugins')
@@ -37,7 +72,12 @@ test.beforeAll(async () => {
 		extraEnv: { MILL_PLUGINS_DIR: pluginsDir },
 	})
 	browser = await chromium.launch()
-	const context = await browser.newContext({ baseURL: `http://127.0.0.1:${EXTENSIONS_STORE_SERVER_BASE_PORT}` })
+	const context = await browser.newContext({
+		baseURL: `http://127.0.0.1:${EXTENSIONS_STORE_SERVER_BASE_PORT}`,
+		// The cancellation regression deliberately holds one Wails fetch;
+		// a controlling service worker would bypass Playwright's route.
+		serviceWorkers: 'block',
+	})
 	page = await context.newPage()
 	await applyCpuThrottle(page)
 })
@@ -97,6 +137,50 @@ test('A folder marketplace is added from Sources and its entries appear in Brows
 	const entry = page.locator('[data-testid="extensions-browse-row"][data-plugin-id="fixture-notes"]')
 	await expect(entry).toBeVisible()
 	await expect(entry).toContainText('fixture')
+})
+
+test('A pending install preview can be cancelled without stale details reopening', async () => {
+	await gotoAppReady(page)
+	await openExtensions(page, 'browse')
+	const entry = page.locator('[data-testid="extensions-browse-row"][data-plugin-id="fixture-notes"]')
+	const loading = page.getByRole('dialog', { name: 'Review extension installation' })
+
+	const cancelledByButton = await holdNextPreviewInstall(page)
+	try {
+		const firstRequest = page.waitForRequest(isFixturePreviewInstall)
+		await entry.getByTestId('extensions-browse-install').click()
+		await expect(loading).toContainText('Loading installation details for Fixture notes…')
+		await expect(loading.getByRole('status')).toBeVisible()
+		await expect(loading.getByRole('button', { name: 'Cancel', exact: true })).toBeEnabled()
+		await expect(loading.getByRole('button', { name: 'Install', exact: true })).toHaveCount(0)
+		const heldFirstRequest = await firstRequest
+		await loading.getByRole('button', { name: 'Cancel', exact: true }).click()
+		await expect(loading).toHaveCount(0)
+		const firstResponse = page.waitForResponse((response) => response.request() === heldFirstRequest)
+		cancelledByButton.release()
+		await firstResponse
+		await expect(page.getByTestId('extensions-install-dialog')).toHaveCount(0)
+	} finally {
+		cancelledByButton.release()
+		await cancelledByButton.stop()
+	}
+
+	const cancelledByEscape = await holdNextPreviewInstall(page)
+	try {
+		const secondRequest = page.waitForRequest(isFixturePreviewInstall)
+		await entry.getByTestId('extensions-browse-install').click()
+		await expect(loading).toBeVisible()
+		const heldSecondRequest = await secondRequest
+		await page.keyboard.press('Escape')
+		await expect(loading).toHaveCount(0)
+		const secondResponse = page.waitForResponse((response) => response.request() === heldSecondRequest)
+		cancelledByEscape.release()
+		await secondResponse
+		await expect(page.getByTestId('extensions-install-dialog')).toHaveCount(0)
+	} finally {
+		cancelledByEscape.release()
+		await cancelledByEscape.stop()
+	}
 })
 
 // The permission list is the point of the prompt: what an extension can

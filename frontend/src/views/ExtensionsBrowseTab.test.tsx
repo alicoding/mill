@@ -15,6 +15,15 @@ vi.mock('@primer/react', () => {
   const Stack = ({ children, ...props }: Props) => <div {...strip(props)}>{children}</div>
   const Text = ({ children, ...props }: Props) => <span {...strip(props)}>{children}</span>
   const Button = ({ children, ...props }: Props) => <button {...strip(props)}>{children}</button>
+  const Dialog = ({ children, title, footerButtons, ...props }: Props) => (
+    <div role="dialog" {...strip(props)}>
+      <h2>{title as ReactNode}</h2>
+      {children}
+      {(footerButtons as { content: ReactNode; disabled?: boolean }[]).map((button) => (
+        <button key={String(button.content)} disabled={button.disabled}>{button.content}</button>
+      ))}
+    </div>
+  )
   const Label = ({ children, ...props }: Props) => <span {...strip(props)}>{children}</span>
   const Spinner = (props: Props) => <span {...strip(props)}>spinner</span>
   const Pagination = () => <div data-testid="pagination" />
@@ -22,7 +31,7 @@ vi.mock('@primer/react', () => {
   const Banner = Object.assign(({ title, description, primaryAction, ...props }: Props) => (
     <div {...strip(props)}><strong>{title as ReactNode}</strong><span>{description as ReactNode}</span>{primaryAction as ReactNode}</div>
   ), { PrimaryAction: BannerPrimaryAction })
-  return { Banner, Button, Label, Pagination, Spinner, Stack, Text }
+  return { Banner, Button, Dialog, Label, Pagination, Spinner, Stack, Text }
 })
 
 vi.mock('@primer/react/experimental', () => {
@@ -286,5 +295,27 @@ describe('ExtensionsBrowseTab states', () => {
     await act(async () => {})
     expect(container.textContent).toContain('extensions.browse.noCategoriesHeading')
     expect(container.textContent).not.toContain('extensions.browse.noMatchesHeading')
+  })
+
+  it('renders the Primer loading dialog with one enabled Cancel action', async () => {
+    vi.mocked(PluginService.BrowseMarketplaces).mockResolvedValueOnce(result([entry('plugin')], [source()]) as never)
+    await render()
+    await act(async () => {})
+    await act(async () => useExtensionMarketplaceInstallStore.setState({
+      target: {
+        marketplace: 'source', pluginId: 'plugin', name: 'Plugin', sourceIncarnation: 'one', ownerToken: 1,
+      },
+      preview: null,
+      phase: 'previewing',
+    }))
+
+    const dialog = document.body.querySelector('[role="dialog"]')
+    expect(dialog?.textContent).toContain('extensions.install.loadingTitle')
+    expect(dialog?.textContent).toContain('extensions.install.loadingBody')
+    expect(dialog?.querySelector('[data-testid="extensions-install-loading"]')).not.toBeNull()
+    expect(dialog?.querySelector('[data-testid="install-dialog"]')).toBeNull()
+    const buttons = [...dialog!.querySelectorAll('button')]
+    expect(buttons.map((button) => button.textContent)).toEqual(['extensions.install.cancel'])
+    expect(buttons[0]?.disabled).toBe(false)
   })
 })

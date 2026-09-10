@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Banner, Button, Label, Pagination, Spinner, Stack, Text } from '@primer/react'
+import { Banner, Button, Dialog, Label, Pagination, Spinner, Stack, Text } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { PackageIcon } from '@primer/octicons-react'
 import { ListToolbar } from '../shared/ListToolbar'
@@ -267,6 +267,23 @@ export function ExtensionsBrowseTab({ sourcesRequest }: {
 
       </Stack>
       {sourcesOpen && <ExtensionsSourcesDialog onClose={() => setSourcesOpen(false)} />}
+      {phase === 'previewing' && target && (
+        <Dialog
+          title={t('extensions.install.loadingTitle')}
+          onClose={() => { void runCommand('extension.browse.cancelInstall') }}
+          footerButtons={[{
+            content: t('extensions.install.cancel'),
+            onClick: () => { void runCommand('extension.browse.cancelInstall') },
+            autoFocus: true,
+            disabled: !marketplaceCommandEnabled('extension.browse.cancelInstall', target.marketplace, target.pluginId),
+          }]}
+        >
+          <Stack direction="horizontal" gap="condensed" align="center" role="status" data-testid="extensions-install-loading">
+            <Spinner size="small" />
+            <Text size="small">{t('extensions.install.loadingBody', { name: target.name })}</Text>
+          </Stack>
+        </Dialog>
+      )}
       {preview && target && (
         <ExtensionsInstallDialog
           preview={preview}

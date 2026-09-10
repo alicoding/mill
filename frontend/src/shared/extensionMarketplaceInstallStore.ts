@@ -115,7 +115,8 @@ export const useExtensionMarketplaceInstallStore = create<MarketplaceInstallStat
       if (get().requestRevision !== request) return
       set({ preview, phase: 'idle' })
     } catch (error) {
-      if (get().requestRevision === request) set(cleared)
+      if (get().requestRevision !== request) return
+      set(cleared)
       throw error
     }
   },
