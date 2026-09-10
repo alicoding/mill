@@ -18,9 +18,13 @@ import (
 )
 
 const (
-	rendererName    = "rsvg-convert"
-	rendererVersion = "2.62.3"
-	markSource      = "build/branding/mill-mark.svg"
+	rendererName               = "rsvg-convert"
+	rendererVersion            = "2.62.3"
+	markSource                 = "build/branding/mill-mark.svg"
+	markViewBoxSize            = 100.0
+	iconComposerCanvasSize     = 1024.0
+	iconComposerMarkProportion = 0.72
+	iconComposerScale          = iconComposerMarkProportion * iconComposerCanvasSize / markViewBoxSize
 )
 
 type markDocument struct {
@@ -255,7 +259,8 @@ var iconComposerJSON = func() string {
 				"image-name": "mill-mark.svg",
 				"name":       "mill-mark",
 				"position": map[string]any{
-					"scale":                 0.72,
+					// Icon Composer scales the imported 100-unit SVG within its 1024-unit canvas.
+					"scale":                 iconComposerScale,
 					"translation-in-points": []float64{0, 0},
 				},
 			}},

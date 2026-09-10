@@ -180,7 +180,8 @@ func validateIconComposer(root string) error {
 				ImageName string `json:"image-name"`
 				Name      string `json:"name"`
 				Position  struct {
-					Scale float64 `json:"scale"`
+					Scale       float64   `json:"scale"`
+					Translation []float64 `json:"translation-in-points"`
 				} `json:"position"`
 			} `json:"layers"`
 		} `json:"groups"`
@@ -195,7 +196,8 @@ func validateIconComposer(root string) error {
 		return fmt.Errorf("%s must contain one foreground layer", path)
 	}
 	layer := doc.Groups[0].Layers[0]
-	if layer.ImageName != "mill-mark.svg" || layer.Name != "mill-mark" || layer.Position.Scale != 0.72 {
+	centered := len(layer.Position.Translation) == 2 && layer.Position.Translation[0] == 0 && layer.Position.Translation[1] == 0
+	if layer.ImageName != "mill-mark.svg" || layer.Name != "mill-mark" || layer.Position.Scale != iconComposerScale || !centered {
 		return fmt.Errorf("%s foreground = %+v", path, layer)
 	}
 	return nil
