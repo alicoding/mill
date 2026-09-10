@@ -52,7 +52,8 @@ const shutdownTimeout = 5 * time.Second
 // post-app.Run() sequence needs, in order, logging (never failing
 // loudly) on each step's own error -- a step's failure must never
 // block the rest, since the process is exiting either way.
-func RunShutdown(logger *slog.Logger, executionService *executionsvc.ExecutionService, backupService *backupsvc.BackupService, millMCPService *mcpsvc.MillMCPService, mcpAuditService *mcpauditsvc.MCPAuditService, atlasService *atlassvc.AtlasService, secretService *secretsvc.SecretService, bridgeService *bridgesvc.BridgeService, auditService *auditsvc.AuditService) {
+func RunShutdown(logger *slog.Logger, executionService *executionsvc.ExecutionService, backupService *backupsvc.BackupService, millMCPService *mcpsvc.MillMCPService, mcpAuditService *mcpauditsvc.MCPAuditService, atlasService *atlassvc.AtlasService, secretService *secretsvc.SecretService, bridgeService *bridgesvc.BridgeService, auditService *auditsvc.AuditService, configureService *configuresvc.ConfigureService) {
+	configuresvc.StopAIProviderChecks(configureService)
 	// Flush any in-flight step checkpoints before the process actually
 	// exits.
 	if err := executionService.Shutdown(shutdownTimeout); err != nil {

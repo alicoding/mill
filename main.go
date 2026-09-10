@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 
 	"log"
@@ -16,6 +17,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/launchatlogin"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/adapters/windowing"
+	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/alicoding/mill/internal/pluginscaffold"
 	"github.com/alicoding/mill/internal/services/agentloopsvc"
@@ -184,6 +186,19 @@ func main() {
 		logger.Error("migrate legacy MCP pending writes", "error", err)
 	}
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
+	configuresvc.SetAIProviderCheckAuthorizer(configureService, func(ctx context.Context, request configuresvc.ProviderCheckPermissionRequest) (aiprovider.PermissionResult, error) {
+		decision, err := guardrailService.RequestGuardedAction(ctx, guardrailsvc.GuardedAction{
+			Kind:        "provider-inspect",
+			Attributes:  map[string]string{"provider_id": request.ProviderID, "check_id": request.CheckID, "endpoint": request.Endpoint},
+			Description: "Check this AI provider's metadata endpoint.",
+			Source:      request.Actor,
+		})
+		result := aiprovider.PermissionResult{Status: aiprovider.PermissionDenied, Source: string(decision.Effect), RuleID: decision.RuleID, RuleLabel: decision.RuleLabel}
+		if decision.Approved {
+			result.Status = aiprovider.PermissionAllowed
+		}
+		return result, err
+	})
 	pluginService := wiring.NewPluginService(settingsPath, guardrailService, millChannel, millUpdateVersion, backupsvc.SQLiteDBPath(executionDatabaseURL), logger)
 	pluginService.SetExampleMarketplace(examplePluginsFS)
 	// docs/goals/0240 S1: the coding loop's Confirm-screen preview --
@@ -474,7 +489,7 @@ func main() {
 	// Run the application. This blocks until the application has been exited.
 	err = app.Run()
 
-	wiring.RunShutdown(logger, executionService, backupService, millMCPService, mcpAuditService, atlasService, secretService, bridgeService, auditService)
+	wiring.RunShutdown(logger, executionService, backupService, millMCPService, mcpAuditService, atlasService, secretService, bridgeService, auditService, configureService)
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {

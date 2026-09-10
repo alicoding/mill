@@ -27,6 +27,7 @@ func TestBuiltInToolNames_ListsEveryRegisteredTool(t *testing.T) {
 		"export_workflow", "import_workflow", "atlas_read_diagram", "list_plugins",
 		"atlas_sheet_read_range", "atlas_sheet_edit_cells", "list_append_row",
 		"secrets_list_references",
+		"get_ai_provider_availability", "start_ai_provider_check", "cancel_ai_provider_check",
 	} {
 		if !seen[want] {
 			t.Errorf("missing %q in %v", want, names)
