@@ -2539,7 +2539,7 @@ Extracts one element (by CSS selector) out of the payload's HTML, dropping every
 
 ### Extract fields with AI
 
-Sends a prompt plus the payload to a configured AI provider, requests a structured response, and writes each declared output field into this workflow's Attributes by the same key. Every declared field is required; one the provider omits is written empty rather than dropped.
+Sends a prompt plus the payload to a configured AI provider, requests a structured response, and writes each declared output field into this workflow's Attributes by the same key. Every declared field is required; a response that does not match the requested schema fails the step.
 
 - Takes: text — Produces: its input, unchanged
 - Effect: external — parks for approval by default

@@ -93,24 +93,27 @@ func buildExtractSchema(fields []aiExtractOutputField) ([]byte, error) {
 // float64, a JSON bool into bool, etc, exactly what
 // internal/adapters/aiclient.Result.JSON contains for a schema-forced
 // response) -- so this copies them through directly rather than
-// re-stringifying and re-coercing. A field missing from the response
-// (a provider that didn't fully honor the schema) falls back to
-// zeroForOutputType (decisionoutcome.go), the same permissive "still
-// appears, zero-valued" contract decision-outcome's own outputs give.
+// re-stringifying and re-coercing. Every declared field is checked
+// before Attributes changes, so a malformed result cannot partially
+// update the run state.
 func applyExtractedFields(resultJSON []byte, fields []aiExtractOutputField, ctx *ExecContext) error {
 	var decoded map[string]any
 	if err := json.Unmarshal(resultJSON, &decoded); err != nil {
 		return fmt.Errorf("parse structured result: %w", err)
 	}
+	values := make(map[string]any, len(fields))
+	for _, f := range fields {
+		value, ok := decoded[f.Key]
+		if !ok {
+			return fmt.Errorf("structured result is missing required field %q", f.Key)
+		}
+		values[f.Key] = value
+	}
 	if ctx.Attributes == nil {
 		ctx.Attributes = map[string]any{}
 	}
 	for _, f := range fields {
-		if v, ok := decoded[f.Key]; ok {
-			ctx.Attributes[f.Key] = v
-		} else {
-			ctx.Attributes[f.Key] = zeroForOutputType(f.Type)
-		}
+		ctx.Attributes[f.Key] = values[f.Key]
 	}
 	return nil
 }
@@ -125,7 +128,7 @@ func init() {
 		Produces:     PayloadProduce{Passthrough: true},
 		Output:       "unchanged payload; the extracted typed result is written into the named Attributes below",
 		Label:        "Extract fields with AI",
-		Description:  "Sends a prompt plus the payload to a configured AI provider, requests a structured response, and writes each declared output field into this workflow's Attributes by the same key. Every declared field is required; one the provider omits is written empty rather than dropped.",
+		Description:  "Sends a prompt plus the payload to a configured AI provider, requests a structured response, and writes each declared output field into this workflow's Attributes by the same key. Every declared field is required; a response that does not match the requested schema fails the step.",
 		ConfigFields: []ConfigField{
 			{
 				Key: aiProviderIDConfigKey, Label: "AI provider",

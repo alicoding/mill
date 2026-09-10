@@ -78,17 +78,41 @@ type Result struct {
 	JSON []byte
 }
 
-// Complete dispatches req to the adapter matching req.Kind. The single
-// port both ai-completion, ai-extract-structured, and ai-classify call
-// through (docs/goals/0031-ai-node-family.md's own "one port, two
-// adapters" design).
+// Complete dispatches req to the adapter matching req.Kind. A requested
+// schema is compiled before dispatch and the adapter's structured result
+// is validated before it is returned. The single port both ai-completion,
+// ai-extract-structured, and ai-classify call through
+// (docs/goals/0031-ai-node-family.md's own "one port, two adapters"
+// design).
 func Complete(req Request) (Result, error) {
+	var validator *structuredResultValidator
+	if req.Schema != nil {
+		var err error
+		validator, err = compileStructuredResultValidator(req.Schema.Schema)
+		if err != nil {
+			return Result{}, err
+		}
+	}
+
+	var (
+		result Result
+		err    error
+	)
 	switch req.Kind {
 	case KindOpenAICompat:
-		return completeOpenAICompat(req)
+		result, err = completeOpenAICompat(req)
 	case KindAnthropic:
-		return completeAnthropic(req)
+		result, err = completeAnthropic(req)
 	default:
 		return Result{}, fmt.Errorf("aiclient: unknown provider kind %q", req.Kind)
 	}
+	if err != nil {
+		return Result{}, err
+	}
+	if validator != nil {
+		if err := validator.validate(result.JSON); err != nil {
+			return Result{}, err
+		}
+	}
+	return result, nil
 }
