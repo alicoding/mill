@@ -8,6 +8,7 @@
 package configuresvc
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -164,7 +165,16 @@ type ConfigureService struct {
 	// pluginRefs is pluginsvc's own entityRef-setting reference index
 	// (docs/goals/0400) -- wired late via WirePluginReferenceLookup, the
 	// same nil-means-off discipline boardRefs above follows.
-	pluginRefs func(entityKind, id string) []reference.PluginRef
+	pluginRefs              func(entityKind, id string) []reference.PluginRef
+	availabilityMu          sync.Mutex
+	availabilityReports     map[string]aiprovider.Report
+	availabilityWorkers     map[string]providerCheckWorker
+	availabilityGenerations map[string]uint64
+	availabilitySecretEpoch uint64
+	availabilityMachineID   string
+	availabilitySessionID   string
+	availabilityClosed      bool
+	providerCheckAuthorizer func(context.Context, ProviderCheckPermissionRequest) (aiprovider.PermissionResult, error)
 }
 
 // WireBoardReferenceLookup injects atlassvc's ObjectsReferencing.
@@ -238,6 +248,7 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	// asks about presence often, and only this choke point keeps the
 	// cache truthful.
 	c := &ConfigureService{store: store, composition: comp, credentials: credentials}
+	c.initAIProviderAvailability()
 	c.secretResolver = func(id string, _ secretaudit.AccessContext) (string, error) {
 		return "", fmt.Errorf("no vault secret resolver registered (yet) for id %q", id)
 	}

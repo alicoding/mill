@@ -7,6 +7,7 @@ export {
 };
 
 export type {
+    AIProviderAvailabilityChanged,
     ClientCertificateMatch,
     ListUsage,
     ParsedXlsxFile,

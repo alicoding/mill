@@ -128,6 +128,7 @@ type SecretService struct {
 	watchMu          sync.Mutex
 	sourceWatches    map[string]*filewatch.Binding
 	sourceDebouncers map[string]*time.Timer
+	sourceChangeHook func(string)
 	// trashMu guards lastTrashSweep (secretservice_trash.go, goal
 	// 0406) -- read/written from both the poll goroutine (every
 	// trashSweepInterval) and OnUnlock's own hook, which runs on

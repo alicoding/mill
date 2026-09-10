@@ -16,10 +16,15 @@ service construction + wiring); each service is its own
 bounded-context package named `<ctx>svc` — the `svc` suffix exists to
 prevent package-name collisions with `internal/domain/*` and
 `internal/adapters/*`, so never alias-import to work around a name.
-Cross-service wiring methods called from `main.go` are exported but
-marked `//wails:ignore` so they never become frontend RPCs (see
-`ExecutionService.WireChildWorkflowRunner`,
-`SettingsService.SetMCPService`). Shared cross-service helpers live in
+Internal cross-service wiring for a registered Wails service uses package
+functions, not exported receiver methods. In Wails v3 beta.18,
+`//wails:ignore` suppresses generated bindings only; runtime reflection
+still exposes exported receiver methods except `ServiceName`,
+`ServiceStartup`, `ServiceShutdown` and `ServeHTTP`. Never treat that
+annotation as an RPC access boundary. When changing a registered service's
+internal/public boundary, test absence and presence through the actual
+`application.NewBindings` registration, not generated files alone.
+Shared cross-service helpers live in
 `internal/services/seeding` (slug IDs, seed tombstones) and
 `internal/services/servicetest` (test fakes) — a helper used by only
 one package stays in that package. Where one package's execution needs
