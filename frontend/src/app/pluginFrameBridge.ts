@@ -1,4 +1,7 @@
 import { runCommand } from '../shared/commands'
+import { resolveCommandForCombo } from '../shared/commandDispatch'
+import type { KeyCombo } from '../shared/keybinding'
+import { useAppStore } from '../shared/store'
 import type { MillPluginAPI } from '../plugins/sdk'
 import type { GuardedActionResult } from '../plugins/sdk/guardedAction'
 import { callExportedMethod, toWireDescriptor } from '../plugins/extensionExports'
@@ -180,12 +183,49 @@ export interface FrameBridgeOptions {
   capture?: CaptureControls
   face?: FaceControls
   guardedWrite?: GuardedWriteControls
+  /** Allows only the source-checked palette shortcut adapter. */
+  paletteAccess?: boolean
   /** Called with what the page sent through its postMessage door. */
   onPageMessage?: (payload: unknown) => void
   /** Called with the value the page's setState persisted. */
   onState?: (state: unknown) => void
   /** Called once the page's bootstrap has announced itself. */
   onReady?: () => void
+}
+
+function framePaletteCombo(value: unknown): KeyCombo | null {
+  if (!value || typeof value !== 'object') return null
+  const candidate = value as { mods?: unknown; key?: unknown }
+  if (!Array.isArray(candidate.mods) || typeof candidate.key !== 'string' || candidate.key === '') return null
+  const allowed = new Set(['cmd', 'ctrl', 'shift', 'option'])
+  if (!candidate.mods.every((mod) => typeof mod === 'string' && allowed.has(mod))) return null
+  if (new Set(candidate.mods).size !== candidate.mods.length) return null
+  return { mods: [...candidate.mods] as string[], key: candidate.key }
+}
+
+function frameIsHidden(frame: HTMLIFrameElement): boolean {
+  for (let node: HTMLElement | null = frame; node; node = node.parentElement) {
+    if (node.hidden) return true
+    const style = window.getComputedStyle(node)
+    if (style.display === 'none' || style.visibility === 'hidden') return true
+  }
+  return false
+}
+
+// A frame message is only a request to re-check current host truth. It
+// acts when this exact live frame owns focus and the current resolver
+// still gives the combo to palette.open; no other command is reachable.
+export function handleFramePaletteShortcut(options: FrameBridgeOptions, payload: unknown): boolean {
+  const { frame } = options
+  if (!options.paletteAccess || !frame.isConnected || frameIsHidden(frame)) return false
+  if (document.activeElement !== frame) return false
+  const combo = framePaletteCombo(payload)
+  if (!combo) return false
+  const state = useAppStore.getState()
+  const resolved = resolveCommandForCombo(combo, state.keybindingOverrides, state.view.kind)
+  if (resolved?.command.id !== 'palette.open') return false
+  void runCommand('palette.open', resolved.context)
+  return true
 }
 
 // handleFrameMessage is the whole routing decision, kept free of the
@@ -201,6 +241,7 @@ export function handleFrameMessage(options: FrameBridgeOptions, event: Pick<Mess
   if (data.kind === 'ready') { options.onReady?.(); return }
   if (data.kind === 'message') { options.onPageMessage?.(data.payload); return }
   if (data.kind === 'state') { options.onState?.(data.payload); return }
+  if (data.kind === 'palette-shortcut') { handleFramePaletteShortcut(options, data.payload); return }
   if (data.kind !== 'call' || typeof data.id !== 'number') return
   const id = data.id
   void callFrameMethod(api, String(data.method), data.args ?? [], options.capture, options.face, options.guardedWrite)

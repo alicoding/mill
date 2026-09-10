@@ -34,6 +34,20 @@ export const usePluginContextKeyStore = create<PluginContextKeyState>()((set) =>
   }),
 }))
 
+// Every API created during one activation captures the same opaque
+// epoch. Clearing advances only this plugin's epoch, so retained API
+// handles from the retired activation can never restore its facts.
+const contextEpochs = new Map<string, symbol>()
+
+function currentContextEpoch(pluginId: string): symbol {
+  let epoch = contextEpochs.get(pluginId)
+  if (!epoch) {
+    epoch = Symbol(pluginId)
+    contextEpochs.set(pluginId, epoch)
+  }
+  return epoch
+}
+
 function isWhenValue(value: unknown): value is WhenValue {
   const scalar = (candidate: unknown) => candidate === null || typeof candidate === 'string' || typeof candidate === 'boolean' || (typeof candidate === 'number' && Number.isFinite(candidate))
   return scalar(value) || (Array.isArray(value) && value.every(scalar))
@@ -56,9 +70,23 @@ export function setPluginContextKey(pluginId: string, key: string, value: unknow
   usePluginContextKeyStore.getState().setKey(pluginId, key, Array.isArray(value) ? [...value] : value)
 }
 
+// pluginContextWriter is captured when the host builds a plugin API.
+// Multiple handles built before teardown share the live epoch; every
+// handle retained after teardown refuses further writes.
+export function pluginContextWriter(pluginId: string): (key: string, value: unknown) => void {
+  const epoch = currentContextEpoch(pluginId)
+  return (key, value) => {
+    if (contextEpochs.get(pluginId) !== epoch) {
+      throw new Error(`plugin ${pluginId}: context.set belongs to a retired activation`)
+    }
+    setPluginContextKey(pluginId, key, value)
+  }
+}
+
 // Runtime context belongs to one activation. Unload and replacement remove
 // only that plugin's facts; stored settings and every other plugin stay put.
 export function clearPluginContextKeys(pluginId: string): void {
+  contextEpochs.set(pluginId, Symbol(pluginId))
   usePluginContextKeyStore.getState().clearPlugin(pluginId)
 }
 

@@ -2,6 +2,8 @@ import { formatPluginDate } from '../plugins/pluginDateFormat'
 import type { FrameEvent, FrameReply } from '../app/pluginFrameBridge'
 import type { FrameInit } from '../app/pluginFrameBootstrap'
 import type { MillFrameApi, MillFrameEvent } from '../plugins/sdk'
+import type { KeyCombo } from '../shared/keybinding'
+import { paletteShortcutForEvent } from './paletteShortcut'
 
 // window.acquireMillApi/acquireVsCodeApi (goal 0349, goal 0396): this
 // file is the only place either is ever ASSIGNED, but a page it is
@@ -40,7 +42,7 @@ interface BootstrapFrameInit extends FrameInit {
 
 ;(function () {
 	const initMeta = document.querySelector('meta[name="mill-frame-init"]')
-	let init: BootstrapFrameInit = { theme: { mode: 'light', scheme: 'light' }, state: undefined, context: {} }
+	let init: BootstrapFrameInit = { theme: { mode: 'light', scheme: 'light' }, state: undefined, context: {}, paletteBindings: [] }
 	try {
 		if (initMeta) init = JSON.parse(initMeta.getAttribute('content') || '{}') as BootstrapFrameInit
 	} catch (err) {
@@ -53,6 +55,7 @@ interface BootstrapFrameInit extends FrameInit {
 	let seq = 0
 	let theme = init.theme || { mode: 'light', scheme: 'light' }
 	let context: Record<string, unknown> = init.context || {}
+	let paletteBindings: KeyCombo[] = init.paletteBindings || []
 	let state: unknown = init.state
 	let vsCodeAcquired = false
 
@@ -87,6 +90,7 @@ interface BootstrapFrameInit extends FrameInit {
 	function onHostEvent(data: FrameEvent): void {
 		if (data.event === 'theme:changed') applyTheme(data.payload as FrameInit['theme'], data.tokens)
 		if (data.event === 'ctx') context = data.payload as Record<string, unknown>
+		if (data.event === 'palette-bindings') paletteBindings = Array.isArray(data.payload) ? data.payload as KeyCombo[] : []
 		const handlers = (eventHandlers.get(data.event) || []).slice()
 		for (const handler of handlers) handler(data.payload)
 	}
@@ -108,6 +112,13 @@ interface BootstrapFrameInit extends FrameInit {
 			const handlers = messageHandlers.slice()
 			for (const handler of handlers) handler(data.payload)
 		} else if (data.id !== undefined) onReply(data as unknown as FrameReply)
+	})
+
+	window.addEventListener('keydown', (event) => {
+		const combo = paletteShortcutForEvent(event, paletteBindings)
+		if (!combo) return
+		event.preventDefault()
+		send({ kind: 'palette-shortcut', payload: combo })
 	})
 
 	function postMessage(message: unknown): void { send({ kind: 'message', payload: message }) }

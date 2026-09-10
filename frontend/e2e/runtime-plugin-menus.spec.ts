@@ -103,7 +103,7 @@ pluginTest('the Request tester\'s "Send again" title action is absent before the
     await reviewPage2.goto('/')
     await reviewPage2.getByRole('link', { name: 'Review' }).click()
     const parked2 = reviewPage2.locator('[data-testid="review-guarded-action-item"]')
-    await page.getByRole('link', { name: 'Atlas' }).focus()
+    await baseExpect(frame.getByTestId('tester-send')).toBeFocused()
     await runFromPalette(page, 'Send again')
     await baseExpect(parked2).toHaveCount(1)
     await reviewPage2.close()

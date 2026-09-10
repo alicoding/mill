@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clearPluginContextKeys, mergePluginContext, pluginContextFacts, setPluginContextKey } from './pluginContextKeys'
+import { clearPluginContextKeys, mergePluginContext, pluginContextFacts, pluginContextWriter, setPluginContextKey } from './pluginContextKeys'
 import { useExtensionEnablementStore } from '../shared/extensionEnablementStore'
 import { notifyPluginRemoved } from '../shared/pluginRemoveSignal'
 
@@ -69,13 +69,30 @@ describe('setPluginContextKey / pluginContextFacts', () => {
   })
 
   it('clears runtime facts when a plugin is disabled or removed', () => {
-    setPluginContextKey('probe-disabled', 'ready', true)
-    setPluginContextKey('probe-removed', 'ready', true)
+    const disabledWriter = pluginContextWriter('probe-disabled')
+    const removedWriter = pluginContextWriter('probe-removed')
+    const unrelatedWriter = pluginContextWriter('probe-unrelated')
+    disabledWriter('ready', true)
+    removedWriter('ready', true)
+    unrelatedWriter('ready', true)
     useExtensionEnablementStore.getState().setDisabledExtensionIds(['probe-disabled'])
     notifyPluginRemoved('probe-removed')
     expect(pluginContextFacts('probe-disabled')).toEqual({})
     expect(pluginContextFacts('probe-removed')).toEqual({})
+    expect(() => disabledWriter('late', true)).toThrow(/retired activation/)
+    expect(() => removedWriter('late', true)).toThrow(/retired activation/)
+    unrelatedWriter('stillLive', true)
+    expect(pluginContextFacts('probe-unrelated')).toEqual({ 'plugin.ready': true, 'plugin.stillLive': true })
     useExtensionEnablementStore.getState().setDisabledExtensionIds([])
+  })
+
+  it('retires an old writer even when clear happens before its first write', () => {
+    const oldWriter = pluginContextWriter('probe-clear-before-write')
+    clearPluginContextKeys('probe-clear-before-write')
+    expect(() => oldWriter('late', true)).toThrow(/retired activation/)
+    const freshWriter = pluginContextWriter('probe-clear-before-write')
+    freshWriter('ready', true)
+    expect(pluginContextFacts('probe-clear-before-write')).toEqual({ 'plugin.ready': true })
   })
 })
 

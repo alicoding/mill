@@ -49,6 +49,7 @@ export function PluginBoardPane({ pluginId, viewId, spaceCardId }: { pluginId: s
         entry={view.entry}
         version={view.version}
         stateKey={`view:${viewId}:state`}
+        paletteAccess
         context={context}
         onSink={onSink}
         onPageMessage={(message) => view.onMessage?.(message)}
@@ -58,4 +59,3 @@ export function PluginBoardPane({ pluginId, viewId, spaceCardId }: { pluginId: s
   }
   return <div ref={ref} data-testid={`plugin-view-${pluginId}-${viewId}`} style={{ height: '100%', overflow: 'auto' }} {...pluginThemeAttrs(theme)} />
 }
-

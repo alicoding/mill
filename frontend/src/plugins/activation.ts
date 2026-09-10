@@ -73,9 +73,9 @@ export function isFramedActivation(builtin: boolean, manifest: Manifest): boolea
 export async function activateFramed(info: PluginInfo, millVersion: string, storageSnapshot: Record<string, string>): Promise<void> {
   const manifest = info.Manifest
   const pluginId = manifest.id
+  teardownActivationFrame(pluginId)
   clearPluginContextKeys(pluginId)
   const api = buildPluginAPI(manifest, millVersion, storageSnapshot)
-  teardownActivationFrame(pluginId)
 
   const storage = buildPluginStorage(pluginId, storageSnapshot, settingsPluginStorageDoors(pluginId))
   const decodedStorage: Record<string, unknown> = {}

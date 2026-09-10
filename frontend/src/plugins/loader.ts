@@ -204,7 +204,6 @@ export function collectReloadCommand(info: PluginInfo): void {
 // Split out of loadPlugins() so the per-plugin branch reads as one
 // step, not nested inside the scan loop's own state machine.
 async function activateOne(info: PluginInfo, millVersion: string, storageSnapshot: Record<string, string>): Promise<void> {
-	clearPluginContextKeys(info.Manifest.id)
 	if (isFramedActivation(!!info.Builtin, info.Manifest)) {
 		// A framed plugin's export capture happens inside activateFramed
 		// itself, at its own activation-done message -- the returned
@@ -212,6 +211,7 @@ async function activateOne(info: PluginInfo, millVersion: string, storageSnapsho
 		await activateFramed(info, millVersion, storageSnapshot)
 		return
 	}
+	clearPluginContextKeys(info.Manifest.id)
 	const url = `/plugins/${info.Manifest.id}/main.js?v=${encodeURIComponent(info.Manifest.version)}`
 	const mod = (await import(/* @vite-ignore */ url)) as PluginModule
 	const activate = resolveActivate(mod)

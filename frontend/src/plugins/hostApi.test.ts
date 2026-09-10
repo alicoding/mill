@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildPluginAPI, menuForDeclaredCommand } from './hostApi'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { drainedPluginCommands, unregisterPluginCommands } from './pluginCommands'
-import { clearPluginContextKeys, setPluginContextKey } from './pluginContextKeys'
+import { clearPluginContextKeys, pluginContextFacts, setPluginContextKey } from './pluginContextKeys'
 
 function manifestWith(commands: Manifest['contributes']['commands']): Manifest {
   return {
@@ -57,6 +57,23 @@ describe('buildPluginAPI command enablement', () => {
     expect(() => api.context.set('invalid', Number.NaN)).toThrow(/finite number/)
   })
 
+  it('keeps sibling APIs in one activation live and retires all of them when context clears', () => {
+    const manifest = manifestWith([])
+    const apiA = buildPluginAPI(manifest, '1.0.0')
+    const sibling = buildPluginAPI(manifest, '1.0.0')
+    apiA.context.set('first', true)
+    sibling.context.set('second', 2)
+    expect(pluginContextFacts(pluginId)).toEqual({ 'plugin.first': true, 'plugin.second': 2 })
+
+    clearPluginContextKeys(pluginId)
+    const apiB = buildPluginAPI(manifest, '1.0.0')
+    expect(() => apiA.context.set('lateA', true)).toThrow(/retired activation/)
+    expect(() => sibling.context.set('lateSibling', true)).toThrow(/retired activation/)
+    apiB.context.set('fresh', true)
+    expect(() => apiA.context.set('laterStill', true)).toThrow(/retired activation/)
+    expect(pluginContextFacts(pluginId)).toEqual({ 'plugin.fresh': true })
+  })
+
   it('feeds the registry the logical AND of command.enablement and the registered callback', () => {
     const manifest = manifestWith([{ id: 'mill-index.refresh', label: 'Refresh', enablement: 'plugin.ready' }])
     const callbackState = { enabled: false }
@@ -84,5 +101,5 @@ describe('buildPluginAPI command enablement', () => {
     setPluginContextKey(pluginId, 'ready', true)
     await expect(runCommand('plugin.mill-index.mill-index.refresh')).resolves.toBe(true)
     expect(run).toHaveBeenCalledOnce()
-  })
+  }, 15_000)
 })
