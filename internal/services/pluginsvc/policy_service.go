@@ -79,6 +79,9 @@ func (p *PluginService) applyPolicy(info *PluginInfo) {
 		PublisherKeyID: signedByKey(info.Dir, info.ContentHash, st.Policy.publisherKeys()),
 		Origin:         record.Origin,
 		OriginVerified: hasRecord && record.Origin.Kind != "",
+		Marketplace:    record.Marketplace,
+		SourceLocator:  recordedSourceLocator(record),
+		SourceVerified: hasRecord,
 	})
 }
 
@@ -112,7 +115,10 @@ func policyInstallRefusalAt(m Manifest, tier, marketplace, locator, dir, hash st
 	if dir != "" {
 		keyID = signedByKey(dir, hash, st.Policy.publisherKeys())
 	}
-	reason := st.Policy.Refusal(PolicySubject{ID: m.ID, Version: m.Version, Tier: tier, Capabilities: m.Capabilities, PublisherKeyID: keyID})
+	reason := st.Policy.Refusal(PolicySubject{
+		ID: m.ID, Version: m.Version, Tier: tier, Capabilities: m.Capabilities, PublisherKeyID: keyID,
+		Marketplace: marketplace, SourceLocator: locator, SourceVerified: true,
+	})
 	if reason == "" {
 		return nil
 	}
@@ -127,7 +133,8 @@ func policyInstallRefusalOriginAt(m Manifest, tier string, origin SourceOrigin, 
 	if st.Error != "" {
 		return ErrPolicyUnreadable
 	}
-	if st.Policy.Version == PolicyVersionLegacy && !st.Policy.SourceAllowed(marketplace, origin.Locator) {
+	locator := sourceOriginLocator(origin)
+	if st.Policy.Version == PolicyVersionLegacy && !st.Policy.SourceAllowed(marketplace, locator) {
 		return policyRefused(st.Policy.SourceRefusal())
 	}
 	if st.Policy.Version == PolicyVersion && !st.Policy.SourceOriginAllowed(origin) {
@@ -137,7 +144,10 @@ func policyInstallRefusalOriginAt(m Manifest, tier string, origin SourceOrigin, 
 	if dir != "" {
 		keyID = signedByKey(dir, hash, st.Policy.publisherKeys())
 	}
-	reason := st.Policy.Refusal(PolicySubject{ID: m.ID, Version: m.Version, Tier: tier, Capabilities: m.Capabilities, PublisherKeyID: keyID, Origin: origin, OriginVerified: true})
+	reason := st.Policy.Refusal(PolicySubject{
+		ID: m.ID, Version: m.Version, Tier: tier, Capabilities: m.Capabilities, PublisherKeyID: keyID,
+		Origin: origin, OriginVerified: true, Marketplace: marketplace, SourceLocator: locator, SourceVerified: true,
+	})
 	if reason != "" {
 		return policyRefused(reason)
 	}
@@ -216,7 +226,7 @@ func policyRequestRefusal(origin SourceOrigin, rawURL string, artifact bool) err
 	return nil
 }
 
-func policyUpdateDiscoveryRefusal(origin SourceOrigin) error {
+func policyUpdateDiscoveryRefusal(origin SourceOrigin, marketplace string, source PluginSource) error {
 	st := LoadPolicy()
 	if !st.Present {
 		return nil
@@ -228,10 +238,14 @@ func policyUpdateDiscoveryRefusal(origin SourceOrigin) error {
 		if len(st.Policy.AllowedSources) == 0 {
 			return nil
 		}
-		if origin.Kind == "" {
+		locator := sourceOriginLocator(origin)
+		if locator == "" {
+			locator = installSourceLocator(source)
+		}
+		if marketplace == "" && locator == "" {
 			return policyRefused("Source could not be verified. Reinstall this extension from an allowed source.")
 		}
-		if st.Policy.SourceAllowed("", origin.Locator) {
+		if st.Policy.SourceAllowed(marketplace, locator) {
 			return nil
 		}
 		return policyRefused(st.Policy.SourceRefusal())
@@ -246,6 +260,20 @@ func policyUpdateDiscoveryRefusal(origin SourceOrigin) error {
 		return policyRefused(st.Policy.SourceRefusal())
 	}
 	return nil
+}
+
+func sourceOriginLocator(origin SourceOrigin) string {
+	if origin.Kind == "theme-file" {
+		return "theme-file"
+	}
+	return origin.Locator
+}
+
+func recordedSourceLocator(record InstallRecord) string {
+	if locator := sourceOriginLocator(record.Origin); locator != "" {
+		return locator
+	}
+	return installSourceLocator(record.Source)
 }
 
 // PolicyRefusedCode is the error code every policy refusal carries;

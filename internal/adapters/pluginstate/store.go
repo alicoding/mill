@@ -22,7 +22,13 @@ import (
 const (
 	FileName      = ".plugin-state.sqlite"
 	schemaVersion = 1
+	catalogSchema = "CREATE TABLE catalog_state(singleton INTEGER PRIMARY KEY CHECK(singleton=1), revision INTEGER NOT NULL, payload BLOB NOT NULL)"
 )
+
+type schemaQueryer interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
 
 // Initializer supplies a validated payload when no catalog row exists.
 type Initializer func() ([]byte, error)
@@ -235,6 +241,10 @@ func validateSchema(ctx context.Context, db *sql.DB) (bool, error) {
 	if err := validateIntegrity(ctx, db); err != nil {
 		return false, err
 	}
+	return validateSchemaObjects(ctx, db)
+}
+
+func validateSchemaObjects(ctx context.Context, db schemaQueryer) (bool, error) {
 	var version int
 	if err := db.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return false, fmt.Errorf("read extension source schema: %w", err)
@@ -260,9 +270,9 @@ func validateIntegrity(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-func validatePristineSchema(ctx context.Context, db *sql.DB) (bool, error) {
+func validatePristineSchema(ctx context.Context, db schemaQueryer) (bool, error) {
 	var count int
-	if err := db.QueryRowContext(ctx, "SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").Scan(&count); err != nil {
+	if err := db.QueryRowContext(ctx, "SELECT count(*) FROM sqlite_schema").Scan(&count); err != nil {
 		return false, fmt.Errorf("inspect extension source schema: %w", err)
 	}
 	if count != 0 {
@@ -271,62 +281,59 @@ func validatePristineSchema(ctx context.Context, db *sql.DB) (bool, error) {
 	return true, nil
 }
 
-func validateCatalogSchema(ctx context.Context, db *sql.DB) error {
-	rows, err := db.QueryContext(ctx, "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+func validateCatalogSchema(ctx context.Context, db schemaQueryer) error {
+	rows, err := db.QueryContext(ctx, "SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY type, name")
 	if err != nil {
 		return fmt.Errorf("inspect extension source schema: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
-	var tables []string
+	type schemaObject struct {
+		typeName string
+		name     string
+		table    string
+		sql      sql.NullString
+	}
+	var objects []schemaObject
 	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
+		var object schemaObject
+		if err := rows.Scan(&object.typeName, &object.name, &object.table, &object.sql); err != nil {
 			return fmt.Errorf("inspect extension source schema: %w", err)
 		}
-		tables = append(tables, name)
+		objects = append(objects, object)
 	}
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("inspect extension source schema: %w", err)
 	}
-	if len(tables) != 1 || tables[0] != "catalog_state" {
-		return fmt.Errorf("extension source database schema has unexpected tables: %v", tables)
+	if len(objects) != 1 {
+		return fmt.Errorf("extension source database schema has unexpected objects: %v", objects)
 	}
-	var definition string
-	if err := db.QueryRowContext(ctx, "SELECT sql FROM sqlite_master WHERE type='table' AND name='catalog_state'").Scan(&definition); err != nil {
-		return errors.New("extension source database schema is incomplete")
-	}
-	normalized := strings.ReplaceAll(strings.ToLower(definition), " ", "")
-	if !strings.Contains(normalized, "singletonintegerprimarykeycheck(singleton=1)") ||
-		!strings.Contains(normalized, "revisionintegernotnull") ||
-		!strings.Contains(normalized, "payloadblobnotnull") {
+	object := objects[0]
+	if object.typeName != "table" || object.name != "catalog_state" || object.table != "catalog_state" ||
+		!object.sql.Valid || object.sql.String != catalogSchema {
 		return errors.New("extension source database schema is incompatible")
 	}
 	return nil
 }
 
 func ensureSchema(ctx context.Context, tx *sql.Tx) error {
-	var version int
-	if err := tx.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
-		return fmt.Errorf("read extension source schema: %w", err)
+	pristine, err := validateSchemaObjects(ctx, tx)
+	if err != nil {
+		return err
 	}
-	if version == 0 {
-		var count int
-		if err := tx.QueryRowContext(ctx, "SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").Scan(&count); err != nil {
-			return fmt.Errorf("inspect extension source schema: %w", err)
-		}
-		if count != 0 {
-			return errors.New("extension source database has an unrecognized unversioned schema")
-		}
-		if _, err := tx.ExecContext(ctx, "CREATE TABLE catalog_state(singleton INTEGER PRIMARY KEY CHECK(singleton=1), revision INTEGER NOT NULL, payload BLOB NOT NULL)"); err != nil {
+	if pristine {
+		if _, err := tx.ExecContext(ctx, catalogSchema); err != nil {
 			return fmt.Errorf("create extension source schema: %w", err)
 		}
 		if _, err := tx.ExecContext(ctx, "PRAGMA user_version = 1"); err != nil {
 			return fmt.Errorf("version extension source schema: %w", err)
 		}
-		return nil
-	}
-	if version != schemaVersion {
-		return fmt.Errorf("extension source database schema %d is not supported", version)
+		pristine, err = validateSchemaObjects(ctx, tx)
+		if err != nil {
+			return err
+		}
+		if pristine {
+			return errors.New("extension source database schema initialization did not complete")
+		}
 	}
 	return nil
 }

@@ -329,6 +329,17 @@ describe('Command.enabled (goal 0222 S1)', () => {
     useExtensionSourcesStore.setState({ error: '', loading: false, mutation: null, load: originalLoad })
   })
 
+  it('extension.refreshSources follows current source readiness and mutation state', () => {
+    const command = findCommand('extension.refreshSources')
+    useExtensionSourcesStore.setState({ ready: false, mutation: null })
+    expect(command?.enabled?.()).toBe(false)
+    useExtensionSourcesStore.setState({ ready: true })
+    expect(command?.enabled?.()).toBe(true)
+    useExtensionSourcesStore.setState({ mutation: 'refresh' })
+    expect(command?.enabled?.()).toBe(false)
+    useExtensionSourcesStore.setState({ ready: false, mutation: null })
+  })
+
   it('workflow.publish is enabled only for a SAVED workflow editor tab (kind workflow-edit), never a not-yet-saved workflow-new one', () => {
     useAppStore.getState().setView({ kind: 'composition' })
     useAppStore.getState().closeAllWorkTabs()

@@ -9,6 +9,10 @@ import common from '../locales/en/common.json'
 import { SETTINGS } from '../shared/settingsRegistry'
 import { SETTINGS_GROUPS, type SettingsGroupID } from '../shared/settingsGroups'
 
+const downloadMocks = vi.hoisted(() => ({ downloadBlob: vi.fn() }))
+
+vi.mock('../shared/downloadBlob', () => downloadMocks)
+
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 // The registry/pane walk (goal 0412 S1): every SettingsRow the eight
@@ -173,6 +177,7 @@ vi.mock('../shared/bindings', async () => {
     BackupService: {
       GetBackupStatus: resolved({ available: true, dir: '/tmp/mill-backups', hasBackup: false, lastBackupAt: '' }),
       LatestVaultBackupTime: resolved({ Present: false }),
+      ExportEverything: resolved('UEsDBA=='),
     },
   }
 })
@@ -216,7 +221,7 @@ const { useVaultStatusStore } = await import('../shared/vaultStatusStore')
 const { refreshBuildInfo, useBuildInfoStore } = await import('../shared/buildInfoStore')
 const { getAppearance, setAppearance } = await import('../shared/appearance')
 const { PluginService } = await import('../../bindings/github.com/alicoding/mill/internal/services/pluginsvc')
-const { SettingsService } = await import('../shared/bindings')
+const { BackupService, SettingsService } = await import('../shared/bindings')
 
 const SettingsGeneralPane = (await import('./SettingsGeneralPane')).default
 const AppearanceSection = (await import('./AppearanceSection')).default
@@ -239,6 +244,7 @@ beforeEach(() => {
   vi.mocked(SettingsService.UpdateChannel).mockResolvedValue('source')
   vi.mocked(SettingsService.AutoUpdateCheck).mockResolvedValue(false)
   vi.mocked(SettingsService.UpdateCheckInterval).mockResolvedValue('hourly')
+  downloadMocks.downloadBlob.mockResolvedValue(undefined)
 })
 
 afterEach(() => {
@@ -348,6 +354,22 @@ describe('Settings panes render exactly their registry entries (goal 0412 S1)', 
     await mount(<DataStewardshipSection />)
     expect(renderedSettingIds()).toEqual([])
     expect(registryIdsFor('backups')).toEqual([])
+  })
+
+  it('Backups: Export everything stays busy until the native save completes', async () => {
+    const archive = deferred<string>()
+    const save = deferred<void>()
+    vi.mocked(BackupService.ExportEverything).mockReturnValueOnce(archive.promise as ReturnType<typeof BackupService.ExportEverything>)
+    downloadMocks.downloadBlob.mockReturnValueOnce(save.promise)
+    await mount(<DataStewardshipSection />)
+    const button = container.querySelector<HTMLButtonElement>('[data-testid="export-everything"]')
+    if (!button) throw new Error('Export everything button missing')
+    await act(async () => button.click())
+    expect(button.disabled).toBe(true)
+    await act(async () => archive.resolve('UEsDBA=='))
+    expect(button.disabled).toBe(true)
+    await act(async () => save.resolve())
+    expect(button.disabled).toBe(false)
   })
 
   it('Updates: no SettingsRow renders -- the registry has no updates entries either', async () => {

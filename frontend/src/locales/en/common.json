@@ -501,6 +501,7 @@
       "copy": "Copy output",
       "find": "Find in output",
       "toggleWrap": "Wrap output lines",
+      "save": "Save output",
       "openFull": "Open output in full"
     },
     "extension": {
@@ -518,7 +519,10 @@
       },
       "browse": {
         "retry": "Retry loading extensions",
-        "clearFilters": "Clear extension filters"
+        "clearFilters": "Clear extension filters",
+        "previewInstall": "Review extension installation",
+        "confirmInstall": "Install extension",
+        "cancelInstall": "Cancel extension installation"
       },
       "update": "Update",
       "checkUpdates": "Check for updates",

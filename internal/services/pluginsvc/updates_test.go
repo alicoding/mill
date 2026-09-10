@@ -275,14 +275,23 @@ func TestCheckForUpdates_UnreachableSourceIsNamedNotHidden(t *testing.T) {
 }
 
 func TestUpdateDiscoveryRefusesRestrictedUnknownAndBlockedOriginsBeforeIO(t *testing.T) {
-	for name, policy := range map[string]string{
-		"legacy v1": `{"version":1,"managedBy":"Org","allowedSources":["acme/notes"]}`,
-		"version 2": `{"version":2,"managedBy":"Org","sources":[{"kind":"github","locator":"acme/notes","artifactOrigins":["https://api.github.com"]}]}`,
+	for name, fixture := range map[string]struct {
+		policy string
+		record InstallRecord
+	}{
+		"legacy v1": {
+			policy: `{"version":1,"managedBy":"Org","allowedSources":["acme/notes"]}`,
+			record: InstallRecord{},
+		},
+		"version 2": {
+			policy: `{"version":2,"managedBy":"Org","sources":[{"kind":"github","locator":"acme/notes","artifactOrigins":["https://api.github.com"]}]}`,
+			record: InstallRecord{Source: PluginSource{Kind: "github", Repo: "acme/notes"}},
+		},
 	} {
-		t.Run(name+" unknown origin", func(t *testing.T) {
-			writePolicy(t, policy)
+		t.Run(name+" insufficient receipt evidence", func(t *testing.T) {
+			writePolicy(t, fixture.policy)
 			svc, _ := newStoreService(t)
-			writeInstalledUpdateFixture(t, svc, InstallRecord{Source: PluginSource{Kind: "github", Repo: "acme/notes"}})
+			writeInstalledUpdateFixture(t, svc, fixture.record)
 			requests := 0
 			svc.SetDownloader(func(string, int64) ([]byte, error) {
 				requests++
@@ -345,6 +354,51 @@ func TestUpdateDiscoveryKeepsUnrestrictedV1LegacyReceiptCompatibility(t *testing
 	}
 	if requests != 1 {
 		t.Fatalf("requests = %d, want one", requests)
+	}
+}
+
+func TestUpdateDiscoveryUsesExplicitLegacyReceiptSource(t *testing.T) {
+	writePolicy(t, `{"version":1,"managedBy":"Org","allowedSources":["acme/notes"]}`)
+	svc, _ := newStoreService(t)
+	writeInstalledUpdateFixture(t, svc, InstallRecord{Source: PluginSource{Kind: "github", Repo: "acme/notes"}})
+	requests := 0
+	svc.SetDownloader(func(string, int64) ([]byte, error) {
+		requests++
+		return []byte(`{"tag_name":"v2.0.0"}`), nil
+	})
+	check, err := svc.CheckForUpdates()
+	if err != nil || len(check.Candidates) != 1 {
+		t.Fatalf("check = %+v, %v", check, err)
+	}
+	if requests != 1 {
+		t.Fatalf("requests = %d, want one", requests)
+	}
+}
+
+func TestApplyRepositoryUpdateRechecksPolicyBeforeNetwork(t *testing.T) {
+	writePolicy(t, `{"version":2,"managedBy":"Org","sources":[{"kind":"github","locator":"other/repo"}]}`)
+	svc, _ := newStoreService(t)
+	writeInstalledUpdateFixture(t, svc, InstallRecord{
+		Source: PluginSource{Kind: "github", Repo: "acme/notes"},
+		Origin: SourceOrigin{Kind: "github", Locator: "acme/notes"},
+	})
+	_, err := svc.mutateState(func(st *marketplaceState) error {
+		st.Updates.Candidates = []UpdateCandidate{{
+			ID: "fixture", Available: "2.0.0", Source: PluginSource{Kind: "github", Repo: "acme/notes"},
+			Origin: SourceOrigin{Kind: "github", Locator: "acme/notes"},
+		}}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	requests := 0
+	svc.SetDownloader(func(string, int64) ([]byte, error) { requests++; return nil, nil })
+	if _, err := svc.UpdatePlugin("fixture"); err == nil {
+		t.Fatal("policy-changing update succeeded")
+	}
+	if requests != 0 {
+		t.Fatalf("network requests = %d, want zero", requests)
 	}
 }
 

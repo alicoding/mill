@@ -42,7 +42,9 @@ vi.mock('@primer/react', async () => {
   return { ActionList, Button, Dialog, FormControl, Spinner, Stack, Text, TextInput }
 })
 
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
+vi.mock('react-i18next', () => ({ useTranslation: () => ({
+  t: (key: string, options?: { ref?: string }) => options?.ref ? `${key}:${options.ref}` : key,
+}) }))
 
 const commandMocks = vi.hoisted(() => ({ findCommand: vi.fn(), runCommand: vi.fn() }))
 const noticeMocks = vi.hoisted(() => ({ pushNotice: vi.fn() }))
@@ -104,6 +106,9 @@ beforeEach(() => {
         const state = useExtensionSourcesStore.getState()
         return state.error !== '' && !state.loading && state.mutation === null
       },
+    }
+    if (id === 'extension.refreshSources') return {
+      enabled: () => useExtensionSourcesStore.getState().ready && useExtensionSourcesStore.getState().mutation === null,
     }
     return undefined
   })
@@ -256,5 +261,40 @@ describe('ExtensionsSourcesDialog', () => {
 
     await act(async () => recovery.resolve([source('recovered', 'two')]))
     expect(container.querySelector('[data-source-name="recovered"]')).not.toBeNull()
+  })
+
+  it('shows canonical refs separately and translates source errors before diagnostics', async () => {
+    vi.mocked(PluginService.PluginPolicy).mockResolvedValueOnce(policy as never)
+    vi.mocked(PluginService.ListMarketplaceSources).mockResolvedValueOnce([
+      source('origin-ref', 'one', { owner: 'Owner', locator: 'owner/repo', ref: 'fallback', origin: { kind: 'github', locator: 'owner/repo', ref: 'v2' } }),
+      source('fallback-ref', 'two', { ref: 'release', origin: { kind: 'github', locator: 'owner/repo', ref: '' } }),
+      source('unpinned', 'three'),
+      source('unavailable', 'four', { errorCode: 'source-unavailable', errorDetail: 'connection reset' }),
+      source('blocked', 'five', { errorCode: 'source-blocked' }),
+      source('changed', 'six', { errorCode: 'source-identity-changed' }),
+      source('unknown', 'seven', { errorCode: 'new-error-code' }),
+      source('healthy', 'eight', { errorDetail: 'diagnostic only' }),
+    ] as never)
+    await render()
+    await act(async () => {})
+
+    expect(container.querySelector('[data-source-name="origin-ref"]')?.textContent).toContain('extensions.sources.ref:v2')
+    expect(container.querySelector('[data-source-name="origin-ref"]')?.textContent).not.toContain('fallback')
+    expect(container.querySelector('[data-source-name="fallback-ref"]')?.textContent).toContain('extensions.sources.ref:release')
+    expect(container.querySelector('[data-source-name="unpinned"]')?.textContent).not.toContain('extensions.sources.ref:')
+    expect(container.querySelector('[data-source-name="unavailable"]')?.textContent).toContain('extensions.sources.unavailableconnection reset')
+    expect(container.querySelector('[data-source-name="blocked"]')?.textContent).toContain('extensions.sources.blocked')
+    expect(container.querySelector('[data-source-name="changed"]')?.textContent).toContain('extensions.sources.identityChanged')
+    expect(container.querySelector('[data-source-name="unknown"]')?.textContent).toContain('extensions.sources.failed')
+    expect(container.querySelector('[data-source-name="healthy"]')?.textContent).not.toContain('extensions.sources.failed')
+  })
+
+  it('uses the Refresh command predicate as the button authority', async () => {
+    vi.mocked(PluginService.PluginPolicy).mockResolvedValueOnce(policy as never)
+    vi.mocked(PluginService.ListMarketplaceSources).mockResolvedValueOnce([] as never)
+    commandMocks.findCommand.mockImplementation((id: string) => id === 'extension.refreshSources' ? { enabled: () => false } : undefined)
+    await render()
+    await act(async () => {})
+    expect((container.querySelector('[data-testid="extensions-sources-refresh"]') as HTMLButtonElement).disabled).toBe(true)
   })
 })

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -107,6 +108,124 @@ func TestStoreRollbackPreservesPriorPayload(t *testing.T) {
 	if err != nil || !present || revision != 1 || string(payload) != "before" {
 		t.Fatalf("Load = %q, %d, %v, %v", payload, revision, present, err)
 	}
+}
+
+func TestStoreUpdateRefusesIncompleteVersionedSchemaBeforeCallbacks(t *testing.T) {
+	tests := map[string][]string{
+		"additional table": {
+			catalogSchema,
+			"CREATE TABLE unexpected(value TEXT)",
+		},
+		"altered catalog table": {
+			"CREATE TABLE catalog_state(singleton INTEGER PRIMARY KEY CHECK(singleton=1), revision INTEGER NOT NULL, payload BLOB NOT NULL, extra TEXT)",
+		},
+		"additional view": {
+			catalogSchema,
+			"CREATE VIEW catalog_view AS SELECT revision FROM catalog_state",
+		},
+		"additional index": {
+			catalogSchema,
+			"CREATE INDEX catalog_revision ON catalog_state(revision)",
+		},
+		"additional trigger": {
+			catalogSchema,
+			"CREATE TRIGGER catalog_write AFTER UPDATE ON catalog_state BEGIN SELECT RAISE(ABORT, 'trigger fired'); END",
+		},
+	}
+	for name, definitions := range tests {
+		t.Run(name, func(t *testing.T) {
+			path := Path(t.TempDir())
+			db, err := sql.Open("sqlite", sqliteDSN(path))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, definition := range definitions {
+				if _, err := db.ExecContext(context.Background(), definition); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := db.ExecContext(context.Background(), "PRAGMA user_version=1"); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := db.ExecContext(context.Background(), "INSERT INTO catalog_state(singleton, revision, payload) VALUES(1, 7, ?)", []byte("before")); err != nil {
+				t.Fatal(err)
+			}
+			before := schemaState(t, db)
+			if err := db.Close(); err != nil {
+				t.Fatal(err)
+			}
+
+			initializerCalls, changeCalls := 0, 0
+			store := NewAt(path)
+			_, _, err = store.Update(context.Background(), func() ([]byte, error) {
+				initializerCalls++
+				return []byte("seed"), nil
+			}, func([]byte) ([]byte, error) {
+				changeCalls++
+				return []byte("after"), nil
+			})
+			if err == nil {
+				t.Fatal("Update succeeded")
+			}
+			if initializerCalls != 0 || changeCalls != 0 {
+				t.Fatalf("callbacks = initializer %d, change %d", initializerCalls, changeCalls)
+			}
+			if err := store.Close(); err != nil {
+				t.Fatal(err)
+			}
+			reader := NewAt(path)
+			if _, _, _, err := reader.Load(context.Background()); err == nil {
+				t.Fatal("Load succeeded")
+			}
+			if err := reader.Close(); err != nil {
+				t.Fatal(err)
+			}
+			snapshotPath := filepath.Join(t.TempDir(), "catalog.sqlite")
+			if err := backup.SnapshotSQLite(path, snapshotPath); err != nil {
+				t.Fatal(err)
+			}
+			snapshot := NewAt(snapshotPath)
+			if _, _, _, err := snapshot.Load(context.Background()); err == nil {
+				t.Fatal("detached snapshot validation succeeded")
+			}
+			if err := snapshot.Close(); err != nil {
+				t.Fatal(err)
+			}
+
+			db, err = sql.Open("sqlite", sqliteDSN(path))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = db.Close() }()
+			if after := schemaState(t, db); after != before {
+				t.Fatalf("database changed\nbefore: %s\nafter:  %s", before, after)
+			}
+		})
+	}
+}
+
+func schemaState(t *testing.T, db *sql.DB) string {
+	t.Helper()
+	rows, err := db.QueryContext(context.Background(), "SELECT type, name, tbl_name, coalesce(sql, '') FROM sqlite_schema ORDER BY type, name")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	var state strings.Builder
+	for rows.Next() {
+		var objectType, name, table, definition string
+		if err := rows.Scan(&objectType, &name, &table, &definition); err != nil {
+			t.Fatal(err)
+		}
+		fmt.Fprintf(&state, "%s|%s|%s|%s\n", objectType, name, table, definition)
+	}
+	var revision int
+	var payload []byte
+	if err := db.QueryRowContext(context.Background(), "SELECT revision, payload FROM catalog_state WHERE singleton=1").Scan(&revision, &payload); err != nil {
+		t.Fatal(err)
+	}
+	fmt.Fprintf(&state, "row|%d|%s", revision, payload)
+	return state.String()
 }
 
 func TestStoreRefusesUnknownAndCorruptDatabasesWithoutChangingBytes(t *testing.T) {

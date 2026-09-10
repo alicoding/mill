@@ -336,43 +336,82 @@ func declaredHash(e MarketplaceEntry) string {
 	return e.Source.SHA256
 }
 
-// findEntry resolves one marketplace entry by marketplace and plugin
-// id, over the cached indexes and the bundled examples alike.
-func (p *PluginService) findEntry(marketplace, id string) (MarketplaceIndex, MarketplaceEntry, error) {
+type marketplaceEntryResolution struct {
+	Index  MarketplaceIndex
+	Entry  MarketplaceEntry
+	Source MarketplaceSource
+}
+
+// resolveMarketplaceEntry captures an entry and its source identity from one
+// accepted catalog read. Installation keeps this value through acquisition so
+// a later source with the same display name cannot relabel the staged bytes.
+func (p *PluginService) resolveMarketplaceEntry(marketplace, id string) (marketplaceEntryResolution, error) {
+	if marketplace == ReservedMarketplaceName {
+		idx, err := p.exampleIndexChecked()
+		if err != nil {
+			return marketplaceEntryResolution{}, err
+		}
+		entry, ok := marketplaceEntryIn(idx, id)
+		if !ok {
+			return marketplaceEntryResolution{}, fmt.Errorf("%q is no longer offered by %q", id, marketplace)
+		}
+		return marketplaceEntryResolution{
+			Index:  idx,
+			Entry:  entry,
+			Source: MarketplaceSource{Name: ReservedMarketplaceName, Kind: "bundled", Origin: SourceOrigin{Kind: "bundled"}, Incarnation: "bundled", Included: true},
+		}, nil
+	}
+
 	st, err := p.readState()
 	if err != nil {
-		return MarketplaceIndex{}, MarketplaceEntry{}, err
+		return marketplaceEntryResolution{}, err
 	}
-	bundled, err := p.exampleIndexChecked()
-	if err != nil {
-		return MarketplaceIndex{}, MarketplaceEntry{}, err
+	source, foundSource := marketplaceSourceIn(st.Sources, marketplace)
+	if !foundSource {
+		return marketplaceEntryResolution{}, fmt.Errorf("%q is no longer a registered source", marketplace)
 	}
-	for _, idx := range append([]MarketplaceIndex{bundled}, indexList(st)...) {
-		if idx.Name != marketplace {
-			continue
+	cache, ok := st.Indexes[marketplace]
+	if !ok {
+		return marketplaceEntryResolution{}, fmt.Errorf("%q is no longer offered by %q", id, marketplace)
+	}
+	entry, ok := marketplaceEntryIn(cache.Index, id)
+	if !ok {
+		return marketplaceEntryResolution{}, fmt.Errorf("%q is no longer offered by %q", id, marketplace)
+	}
+	return marketplaceEntryResolution{Index: cache.Index, Entry: entry, Source: source}, nil
+}
+
+func marketplaceSourceIn(sources []MarketplaceSource, name string) (MarketplaceSource, bool) {
+	for _, source := range sources {
+		if source.Name == name {
+			return source, true
 		}
-		for _, e := range idx.Plugins {
-			if e.ID == id {
-				return idx, e, nil
-			}
+	}
+	return MarketplaceSource{}, false
+}
+
+func marketplaceEntryIn(index MarketplaceIndex, id string) (MarketplaceEntry, bool) {
+	for _, entry := range index.Plugins {
+		if entry.ID == id {
+			return entry, true
 		}
 	}
-	return MarketplaceIndex{}, MarketplaceEntry{}, fmt.Errorf("%q is no longer offered by %q", id, marketplace)
+	return MarketplaceEntry{}, false
 }
 
 // sourceFor answers the source a marketplace was added from, so a
 // path-kind entry resolves against the folder the index lives in.
-func (p *PluginService) sourceFor(marketplace string) (MarketplaceSource, bool) {
+func (p *PluginService) sourceFor(marketplace string) (MarketplaceSource, bool, error) {
 	st, err := p.readState()
 	if err != nil {
-		return MarketplaceSource{}, false
+		return MarketplaceSource{}, false, err
 	}
 	for _, s := range st.Sources {
 		if s.Name == marketplace {
-			return s, true
+			return s, true, nil
 		}
 	}
-	return MarketplaceSource{}, false
+	return MarketplaceSource{}, false, nil
 }
 
 // SetDownloader replaces the user-initiated download seam.

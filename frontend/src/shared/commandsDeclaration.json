@@ -1352,12 +1352,36 @@
     "needs": "marketplaceSourceInput"
   },
   {
+    "id": "extension.browse.cancelInstall",
+    "label": "Cancel extension installation",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "extension.browse.clearFilters",
     "label": "Clear extension filters",
     "binding": null,
     "surface": null,
     "enabled": true,
     "needs": null
+  },
+  {
+    "id": "extension.browse.confirmInstall",
+    "label": "Install extension",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "marketplaceEntry"
+  },
+  {
+    "id": "extension.browse.previewInstall",
+    "label": "Review extension installation",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "marketplaceEntry"
   },
   {
     "id": "extension.browse.retry",
@@ -1724,6 +1748,14 @@
   {
     "id": "output.openFull",
     "label": "Open output in full",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "output.save",
+    "label": "Save output",
     "binding": null,
     "surface": null,
     "enabled": true,

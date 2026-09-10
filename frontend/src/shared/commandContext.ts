@@ -25,6 +25,7 @@ export type CommandContext =
   | { kind: 'run'; runId: string; workflowId?: string; nodeId?: string; values?: Record<string, string> }
   | { kind: 'entry'; entryId: string; pinned?: boolean }
   | { kind: 'marketplaceSourceInput'; locator: string }
+  | { kind: 'marketplaceEntry'; marketplace: string; pluginId: string }
   | { kind: 'card'; cardId: string }
   // The List grid's live selection (goal 0349 S4): which rows the
   // row-marker checkboxes hold, which column header is selected, and
@@ -126,6 +127,10 @@ export function entryContext(ctx: CommandContext | undefined): { entryId: string
 
 export function marketplaceSourceInputContext(ctx: CommandContext | undefined): { locator: string } | null {
   return ctx?.kind === 'marketplaceSourceInput' ? { locator: ctx.locator } : null
+}
+
+export function marketplaceEntryContext(ctx: CommandContext | undefined): { marketplace: string; pluginId: string } | null {
+  return ctx?.kind === 'marketplaceEntry' ? { marketplace: ctx.marketplace, pluginId: ctx.pluginId } : null
 }
 
 export function listGridContext(ctx: CommandContext | undefined): { listID: string; rowIDs: string[]; columnKey?: string; text?: string } | null {

@@ -231,7 +231,8 @@ func TestRemoveMarketplaceSource_DropsItsEntriesFromBrowse(t *testing.T) {
 
 func TestInstallFromMarketplace_InstallsAPathEntryFromTheSourceFolder(t *testing.T) {
 	svc, dir := newStoreService(t)
-	if _, err := svc.AddMarketplaceSource(writeFixtureMarketplace(t)); err != nil {
+	source, err := svc.AddMarketplaceSource(writeFixtureMarketplace(t))
+	if err != nil {
 		t.Fatal(err)
 	}
 	pv, err := svc.PreviewInstall("fixture", "fixture-notes")
@@ -244,6 +245,9 @@ func TestInstallFromMarketplace_InstallsAPathEntryFromTheSourceFolder(t *testing
 	}
 	if rec.Tier != TierDev {
 		t.Errorf("tier = %q, want %q for a folder source", rec.Tier, TierDev)
+	}
+	if rec.Origin != source.Origin {
+		t.Errorf("receipt origin = %+v, want captured %+v", rec.Origin, source.Origin)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "fixture-notes", "main.js")); err != nil {
 		t.Fatalf("the plugin did not land on disk: %v", err)

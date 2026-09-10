@@ -87,29 +87,25 @@ type InstallPreview struct {
 // entry. Folder sources are read through their confined acquisition
 // boundary; remote entries still use only the cached index.
 func (p *PluginService) PreviewInstall(marketplace, id string) (InstallPreview, error) {
-	idx, entry, err := p.findEntry(marketplace, id)
+	resolved, err := p.resolveMarketplaceEntry(marketplace, id)
 	if err != nil {
 		return InstallPreview{}, err
 	}
+	idx, entry, source := resolved.Index, resolved.Entry, resolved.Source
 	pv := InstallPreview{
 		ID: entry.ID, Name: entry.Name, Version: entry.Version, Author: entry.Author,
 		Description: entry.Description, Marketplace: idx.Name, Tier: entryTier(idx.Name, entry),
 		Kinds: entry.Kinds,
 	}
-	origin := SourceOrigin{Kind: "bundled"}
+	origin := source.Origin
 	if idx.Name != ReservedMarketplaceName {
-		source, ok := p.sourceFor(idx.Name)
-		if !ok {
-			return InstallPreview{}, fmt.Errorf("%q is no longer a registered source", idx.Name)
-		}
-		origin = source.Origin
 		if err := policySourceRegistrationRefusal(idx.Name, source); err != nil {
 			pv.PolicyRefusal = err.Error()
 			pv.AlreadyInstalled = p.installedFolderExists(entry.ID)
 			return pv, nil
 		}
 	}
-	m, readable, err := p.previewManifest(idx, entry)
+	m, readable, err := p.previewManifest(resolved)
 	if err != nil {
 		return InstallPreview{}, err
 	}
@@ -119,11 +115,9 @@ func (p *PluginService) PreviewInstall(marketplace, id string) (InstallPreview, 
 		m = Manifest{ID: entry.ID, Version: entry.Version}
 	}
 	if readable && idx.Name != ReservedMarketplaceName && entry.Source.Kind == "path" {
-		if source, ok := p.sourceFor(idx.Name); ok && source.Kind == "path" {
-			_, pv.Warnings, err = p.sourceInstallChecks(source.Origin, entry.Source.Path, m)
-			if err != nil {
-				return InstallPreview{}, err
-			}
+		_, pv.Warnings, err = p.sourceInstallChecks(source.Origin, entry.Source.Path, m)
+		if err != nil {
+			return InstallPreview{}, err
 		}
 	}
 	if err := policyInstallRefusalOriginAt(m, pv.Tier, origin, idx.Name, "", ""); err != nil {
@@ -138,7 +132,8 @@ func (p *PluginService) PreviewInstall(marketplace, id string) (InstallPreview, 
 // source already on disk. A remote archive's manifest is only known
 // after the download, so its preview stands on the index's own
 // declaration.
-func (p *PluginService) previewManifest(idx MarketplaceIndex, entry MarketplaceEntry) (Manifest, bool, error) {
+func (p *PluginService) previewManifest(resolved marketplaceEntryResolution) (Manifest, bool, error) {
+	idx, entry, src := resolved.Index, resolved.Entry, resolved.Source
 	if idx.Name == ReservedMarketplaceName {
 		m, ok := p.exampleManifest(entry.ID)
 		return m, ok, nil
@@ -146,8 +141,7 @@ func (p *PluginService) previewManifest(idx MarketplaceIndex, entry MarketplaceE
 	if entry.Source.Kind != "path" {
 		return Manifest{}, false, nil
 	}
-	src, ok := p.sourceFor(idx.Name)
-	if !ok || src.Kind != "path" {
+	if src.Kind != "path" {
 		return Manifest{}, false, fmt.Errorf("%q is no longer a registered folder source", idx.Name)
 	}
 	raw, err := p.readSourceFile(src.Origin, filepath.Join(entry.Source.Path, "manifest.json"))
@@ -227,7 +221,7 @@ func (p *PluginService) installedFolderExists(id string) bool {
 
 // InstallFromMarketplace installs one index entry.
 func (p *PluginService) InstallFromMarketplace(marketplace, id string) (InstallRecord, error) {
-	idx, entry, err := p.findEntry(marketplace, id)
+	resolved, err := p.resolveMarketplaceEntry(marketplace, id)
 	if err != nil {
 		return InstallRecord{}, err
 	}
@@ -236,51 +230,38 @@ func (p *PluginService) InstallFromMarketplace(marketplace, id string) (InstallR
 		return InstallRecord{}, err
 	}
 	defer cleanup()
-	tier, finalURL, err := p.stageEntry(stage, idx, entry)
+	tier, finalURL, err := p.stageEntry(stage, resolved)
 	if err != nil {
 		return InstallRecord{}, err
 	}
-	origin := SourceOrigin{Kind: "bundled"}
-	if marketplace != ReservedMarketplaceName {
-		source, ok := p.sourceFor(marketplace)
-		if !ok {
-			return InstallRecord{}, fmt.Errorf("%q is no longer a registered source", marketplace)
-		}
-		origin = source.Origin
-	}
-	record := InstallRecord{Source: entry.Source, Marketplace: idx.Name, Tier: tier, Origin: origin, FinalArtifactURL: finalURL}
-	return p.finishInstall(stage, record)
+	record := InstallRecord{Source: resolved.Entry.Source, Marketplace: resolved.Index.Name, Tier: tier, Origin: resolved.Source.Origin, FinalArtifactURL: finalURL}
+	return p.finishMarketplaceInstall(stage, record, resolved.Source)
 }
 
 // stageEntry puts one index entry's files in the staging folder and
 // answers the tier that earned. Mill's own bundled index is its own
 // case: those files come out of the binary, so nothing is fetched and
 // nothing needs checking.
-func (p *PluginService) stageEntry(stage string, idx MarketplaceIndex, entry MarketplaceEntry) (string, string, error) {
+func (p *PluginService) stageEntry(stage string, resolved marketplaceEntryResolution) (string, string, error) {
+	idx, entry, source := resolved.Index, resolved.Entry, resolved.Source
 	if idx.Name == ReservedMarketplaceName {
 		if !p.hasExample(entry.ID) {
 			return "", "", fmt.Errorf("%q is not one of the extensions this Mill ships", entry.ID)
 		}
 		return TierVerified, "", CopyEmbeddedPlugin(p.examples, embeddedPluginPath(exampleMarketplaceRoot, entry.ID), stage)
 	}
+	if err := policySourceRegistrationRefusal(idx.Name, source); err != nil {
+		return "", "", err
+	}
 	switch entry.Source.Kind {
 	case "path":
-		src, ok := p.sourceFor(idx.Name)
-		if !ok || src.Kind != "path" {
+		if source.Kind != "path" {
 			return "", "", fmt.Errorf("%q is only offered as a folder, and that source is not a folder", entry.ID)
 		}
-		return TierDev, "", p.copySourceFolder(src.Origin, entry.Source.Path, stage)
+		return TierDev, "", p.copySourceFolder(source.Origin, entry.Source.Path, stage)
 	case "archive":
-		source, ok := p.sourceFor(idx.Name)
-		if !ok {
-			return "", "", fmt.Errorf("%q is no longer a registered source", idx.Name)
-		}
 		return p.stageArchive(stage, entry.Source.URL, declaredHash(entry), source.Origin)
 	case "github":
-		source, ok := p.sourceFor(idx.Name)
-		if !ok {
-			return "", "", fmt.Errorf("%q is no longer a registered source", idx.Name)
-		}
 		return p.stageRepo(stage, entry.Source.Repo, firstNonEmpty(entry.Source.Ref, entry.Source.SHA), entry.ID, entry.Version, declaredHash(entry), source.Origin)
 	}
 	return "", "", fmt.Errorf("unknown source kind %q", entry.Source.Kind)

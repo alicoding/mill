@@ -28,6 +28,9 @@ type PolicySubject struct {
 	Builtin        bool
 	Origin         SourceOrigin
 	OriginVerified bool
+	Marketplace    string
+	SourceLocator  string
+	SourceVerified bool
 }
 
 // capabilityDeeds names each capability the way a refusal sentence
@@ -54,6 +57,14 @@ func (p Policy) Refusal(s PolicySubject) string {
 	if p.Version == PolicyVersion && p.Sources != nil {
 		if !s.OriginVerified || !p.SourceOriginAllowed(s.Origin) {
 			return "Source could not be verified. Reinstall this extension from an allowed source."
+		}
+	}
+	if p.Version == PolicyVersionLegacy && len(p.AllowedSources) > 0 {
+		if !s.SourceVerified {
+			return "Source could not be verified. Reinstall this extension from an allowed source."
+		}
+		if !p.SourceAllowed(s.Marketplace, s.SourceLocator) {
+			return p.SourceRefusal()
 		}
 	}
 	if reason := p.tierRefusal(s); reason != "" {

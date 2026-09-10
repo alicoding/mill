@@ -73,10 +73,12 @@ export function ExtensionsSourcesDialog({ onClose }: { onClose: () => void }) {
     : undefined
   const removeCommand = findCommand('extension.source.remove')
   const retryCommand = findCommand('extension.sources.retry')
+  const refreshCommand = findCommand('extension.refreshSources')
   const addContext: CommandContext = { kind: 'marketplaceSourceInput', locator: input }
   const addCommand = findCommand('extension.addSource')
   const addEnabled = addCommand !== undefined && (addCommand.enabled?.(addContext) ?? true)
   const retryEnabled = retryCommand !== undefined && (retryCommand.enabled?.() ?? true)
+  const refreshEnabled = refreshCommand !== undefined && (refreshCommand.enabled?.() ?? true)
   const removeConfirm = removeContext ? removeCommand?.confirm?.(removeContext) : null
 
   return (
@@ -88,7 +90,7 @@ export function ExtensionsSourcesDialog({ onClose }: { onClose: () => void }) {
             <Button
               size="small"
               leadingVisual={SyncIcon}
-              disabled={mutation !== null || !ready}
+              disabled={!refreshEnabled}
               onClick={() => { void runCommand('extension.refreshSources') }}
               data-testid="extensions-sources-refresh"
             >
@@ -125,16 +127,31 @@ export function ExtensionsSourcesDialog({ onClose }: { onClose: () => void }) {
                 const refreshLabel = source.lastSuccessAt
                   ? (refreshed ? t('extensions.sources.lastRefreshed', { time: refreshed }) : t('extensions.sources.refreshTimeUnknown'))
                   : (source.status === 'never-fetched' ? t('extensions.sources.neverRefreshed') : t('extensions.sources.refreshTimeUnknown'))
-                const reason = source.errorDetail || (source.errorCode === 'source-identity-changed' ? t('extensions.sources.identityChanged') : '')
+                const sourceRef = source.origin?.ref || source.ref
+                const sourceError = (() => {
+                  switch (source.errorCode) {
+                    case 'source-unavailable': return t('extensions.sources.unavailable')
+                    case 'source-blocked': return t('extensions.sources.blocked')
+                    case 'source-identity-changed': return t('extensions.sources.identityChanged')
+                    default: return source.errorCode ? t('extensions.sources.failed') : ''
+                  }
+                })()
                 return (
                   <ActionList.Item key={`${source.name}/${source.incarnation}`} data-testid="extensions-source-row" data-source-name={source.name}>
                     <Text weight="semibold">{source.name}</Text>
                     <ActionList.Description variant="block">
-                      <Text as="p" size="small" style={{ margin: 0 }}>
-                        {source.included ? t('extensions.sources.included') : [source.owner, source.locator].filter(Boolean).join(' · ')}
-                      </Text>
+                      {source.included ? (
+                        <Text as="p" size="small" style={{ margin: 0 }}>{t('extensions.sources.included')}</Text>
+                      ) : (
+                        <>
+                          {source.owner && <Text as="p" size="small" style={{ margin: 0 }}>{source.owner}</Text>}
+                          <Text as="p" size="small" style={{ margin: 0 }}>{source.locator}</Text>
+                          {sourceRef && <Text as="p" size="small" style={{ margin: 0 }}>{t('extensions.sources.ref', { ref: sourceRef })}</Text>}
+                        </>
+                      )}
                       <Text as="p" size="small" style={{ margin: 0 }}>{refreshLabel}</Text>
-                      {reason && <Text as="p" size="small" style={{ margin: 0 }}>{reason}</Text>}
+                      {sourceError && <Text as="p" size="small" className={listStyles.error} style={{ margin: 0 }}>{sourceError}</Text>}
+                      {source.errorDetail && <Text as="p" size="small" className={listStyles.muted} style={{ margin: 0 }}>{source.errorDetail}</Text>}
                     </ActionList.Description>
                     {!source.included && (
                       <ActionList.TrailingAction

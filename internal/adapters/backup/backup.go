@@ -172,7 +172,7 @@ func writeSettingsSnapshot(settingsPath, assembly string, read func() ([]byte, e
 
 func writeParticipants(assembly string, participants []Participant) error {
 	for _, participant := range participants {
-		if participant.Name == "" || participant.Name == "." || filepath.Base(participant.Name) != participant.Name || participant.Write == nil {
+		if participant.Name == "" || participant.Name == "." || participant.Name == ".." || filepath.Base(participant.Name) != participant.Name || participant.Write == nil {
 			return fmt.Errorf("backup: invalid snapshot participant %q", participant.Name)
 		}
 		destination := filepath.Join(assembly, participant.Name)

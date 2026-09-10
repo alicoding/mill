@@ -1,6 +1,6 @@
 import i18n from 'i18next'
 import type { Command } from './commands'
-import { entityContext, marketplaceSourceInputContext } from './commandContext'
+import { entityContext, marketplaceEntryContext, marketplaceSourceInputContext } from './commandContext'
 import { useAppStore } from './store'
 import { useUISignalStore } from './uiSignalStore'
 import { SettingsService } from './bindings'
@@ -15,6 +15,12 @@ import { appTranslate, messageFor } from './userError'
 import { checkForUpdatesWithNotice, updateAllWithNotice, updateCandidateFor, useExtensionUpdatesStore } from './extensionUpdatesStore'
 import { useExtensionSourcesStore } from './extensionSourcesStore'
 import { usePluginPolicyStore } from './pluginPolicyStore'
+import {
+  marketplaceCancelEnabled,
+  marketplaceConfirmEnabled,
+  marketplacePreviewEnabled,
+  useExtensionMarketplaceInstallStore,
+} from './extensionMarketplaceInstallStore'
 
 // The Extensions surface's own commands (docs/goals/0349). The page
 // itself is one nav command; every ROW action is a command taking the
@@ -207,6 +213,38 @@ export const EXTENSIONS_COMMANDS: Command[] = [
       return state.browseQuery !== '' || state.browseKinds.length > 0
     },
     run: () => useExtensionSourcesStore.getState().clearBrowseFilters(),
+  },
+  {
+    id: 'extension.browse.previewInstall',
+    label: 'commands.extension.browse.previewInstall',
+    defaultBinding: null,
+    needs: 'marketplaceEntry',
+    paletteHidden: true,
+    enabled: marketplacePreviewEnabled,
+    run: (ctx) => {
+      if (!marketplaceEntryContext(ctx)) return
+      return useExtensionMarketplaceInstallStore.getState().previewInstall(ctx!)
+    },
+  },
+  {
+    id: 'extension.browse.confirmInstall',
+    label: 'commands.extension.browse.confirmInstall',
+    defaultBinding: null,
+    needs: 'marketplaceEntry',
+    paletteHidden: true,
+    enabled: marketplaceConfirmEnabled,
+    run: (ctx) => {
+      if (!marketplaceEntryContext(ctx)) return
+      return useExtensionMarketplaceInstallStore.getState().confirmInstall(ctx!)
+    },
+  },
+  {
+    id: 'extension.browse.cancelInstall',
+    label: 'commands.extension.browse.cancelInstall',
+    defaultBinding: null,
+    paletteHidden: true,
+    enabled: marketplaceCancelEnabled,
+    run: () => useExtensionMarketplaceInstallStore.getState().cancelInstall(),
   },
   {
     id: 'extensions.importTheme',

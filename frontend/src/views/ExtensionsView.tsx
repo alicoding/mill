@@ -96,7 +96,7 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
       </SegmentedControl>
 
       {tab === 'installed' && <ExtensionsSection />}
-      {tab === 'browse' && <ExtensionsBrowseTab sourcesRequest={sourcesRequest} onInstalled={onInstalled} />}
+      {tab === 'browse' && <ExtensionsBrowseTab sourcesRequest={sourcesRequest} />}
       {tab === 'updates' && <ExtensionsUpdatesTab />}
       <ExtensionsUpdateDialogHost />
       {importOpen && <ThemeImportDialog onClose={() => setImportOpen(false)} onImported={() => { setImportOpen(false); onInstalled() }} />}

@@ -118,22 +118,21 @@ func (p *PluginService) updateCandidateFor(info PluginInfo, rec InstallRecord) (
 		Source:      rec.Source,
 		Origin:      rec.Origin,
 	}
-	if err := policyUpdateDiscoveryRefusal(rec.Origin); err != nil {
+	if err := policyUpdateDiscoveryRefusal(rec.Origin, rec.Marketplace, rec.Source); err != nil {
 		return cand, err.Error(), false
 	}
 	var problem string
 	switch {
 	case rec.Marketplace != "":
-		source, ok := p.sourceFor(rec.Marketplace)
-		if !ok || (rec.Origin.Kind != "" && source.Origin != rec.Origin) {
-			return cand, "Source could not be verified. Reinstall this extension from an allowed source.", false
-		}
-		idx, entry, err := p.findEntry(rec.Marketplace, info.Manifest.ID)
+		resolved, err := p.resolveMarketplaceEntry(rec.Marketplace, info.Manifest.ID)
 		if err != nil {
 			return cand, err.Error(), false
 		}
-		cand.Available = entry.Version
-		cand.Tier = entryTier(idx.Name, entry)
+		if rec.Origin.Kind != "" && resolved.Source.Origin != rec.Origin {
+			return cand, "Source could not be verified. Reinstall this extension from an allowed source.", false
+		}
+		cand.Available = resolved.Entry.Version
+		cand.Tier = entryTier(resolved.Index.Name, resolved.Entry)
 	case rec.Source.Kind == "github":
 		tag, err := p.latestReleaseTag(rec.Source.Repo, rec.Origin)
 		if err != nil {
@@ -300,6 +299,9 @@ func (p *PluginService) installCandidate(cand UpdateCandidate) (InstallRecord, e
 	case cand.Marketplace != "":
 		return p.InstallFromMarketplace(cand.Marketplace, cand.ID)
 	case cand.Source.Kind == "github":
+		if err := policyUpdateDiscoveryRefusal(cand.Origin, cand.Marketplace, cand.Source); err != nil {
+			return InstallRecord{}, err
+		}
 		stage, cleanup, err := stageDir()
 		if err != nil {
 			return InstallRecord{}, err
@@ -314,7 +316,7 @@ func (p *PluginService) installCandidate(cand UpdateCandidate) (InstallRecord, e
 		if cand.Origin.Kind == "" {
 			return p.InstallFromLink(cand.Source.Path)
 		}
-		if err := policyUpdateDiscoveryRefusal(cand.Origin); err != nil {
+		if err := policyUpdateDiscoveryRefusal(cand.Origin, cand.Marketplace, cand.Source); err != nil {
 			return InstallRecord{}, err
 		}
 		stage, cleanup, err := stageDir()

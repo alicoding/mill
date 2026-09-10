@@ -3,16 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { Banner, Button, Label, Pagination, Spinner, Stack, Text } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { PackageIcon } from '@primer/octicons-react'
-import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
-import type { BrowseEntry, InstallPreview } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { ListToolbar } from '../shared/ListToolbar'
 import { LIST_PAGE_SIZE, clampPage, listCountLabel, pageCountFor, pageItems } from '../shared/listStandard'
 import { useListState } from '../shared/useListState'
-import { pushNotice } from '../shared/noticeStore'
-import { appTranslate, messageFor, userErrorFrom } from '../shared/userError'
-import { notifyPluginRemoved } from '../shared/pluginRemoveSignal'
-import { runCommand } from '../shared/commands'
+import { appTranslate, messageFor } from '../shared/userError'
+import { findCommand, runCommand } from '../shared/commands'
+import type { CommandContext } from '../shared/commandContext'
 import { useExtensionSourcesStore } from '../shared/extensionSourcesStore'
+import { useExtensionMarketplaceInstallStore } from '../shared/extensionMarketplaceInstallStore'
 import { useUISignalStore } from '../shared/uiSignalStore'
 import { usePluginPolicy } from '../shared/pluginPolicyStore'
 import { filterBrowseEntries } from './extensionsBrowseFilter'
@@ -23,9 +21,8 @@ import { tierLabelKey, tierVariant } from './extensionTrust'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './ExtensionsSection.module.css'
 
-export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
+export function ExtensionsBrowseTab({ sourcesRequest }: {
   sourcesRequest: number
-  onInstalled: () => void
 }) {
   const { t } = useTranslation('views')
   const result = useExtensionSourcesStore((state) => state.browse)
@@ -37,17 +34,20 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
   const load = useExtensionSourcesStore((state) => state.loadBrowse)
   const setQuery = useExtensionSourcesStore((state) => state.setBrowseQuery)
   const setKinds = useExtensionSourcesStore((state) => state.setBrowseKinds)
-  const policy = usePluginPolicy()
+  usePluginPolicy()
   const [sourcesOpen, setSourcesOpen] = useState(false)
   const consumeSourcesRequest = useUISignalStore((state) => state.consumeExtensionSourcesRequest)
-  const [preview, setPreview] = useState<InstallPreview | null>(null)
-  const [pending, setPending] = useState<BrowseEntry | null>(null)
-  const [refusal, setRefusal] = useState('')
-  const [busy, setBusy] = useState(false)
+  const install = useExtensionMarketplaceInstallStore()
+  const { preview, target, phase, refusal, acknowledged, setAcknowledged, mountOwner, retireOwner } = install
   const searchRef = useRef<HTMLInputElement>(null)
   const { state, setPage, resetPage } = useListState('extensions-browse')
 
   useEffect(() => { void load() }, [completionRevision, load])
+
+  useEffect(() => {
+    const ownerToken = mountOwner()
+    return () => retireOwner(ownerToken)
+  }, [mountOwner, retireOwner])
 
   useEffect(() => {
     if (sourcesRequest > 0) {
@@ -62,38 +62,6 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
       resetPage()
       requestAnimationFrame(() => searchRef.current?.focus())
     }
-  }
-
-  const startInstall = (entry: BrowseEntry) => {
-    setBusy(true)
-    PluginService.PreviewInstall(entry.Marketplace, entry.ID)
-      .then((nextPreview) => {
-        setPending(entry)
-        setRefusal('')
-        setPreview(nextPreview)
-      })
-      .catch((reason) => pushNotice({ level: 'error', text: messageFor(reason, appTranslate) }))
-      .finally(() => setBusy(false))
-  }
-
-  const confirmInstall = () => {
-    if (!pending) return
-    setBusy(true)
-    PluginService.InstallFromMarketplace(pending.Marketplace, pending.ID)
-      .then(() => {
-        pushNotice({ level: 'success', text: t('extensions.install.done', { name: pending.Name || pending.ID }) })
-        setPending(null)
-        setPreview(null)
-        void load()
-        notifyPluginRemoved()
-        onInstalled()
-      })
-      .catch((reason) => {
-        const { code } = userErrorFrom(reason)
-        if (code === 'plugin-policy-refused' || code === 'plugin-install-refused') setRefusal(messageFor(reason, appTranslate))
-        else pushNotice({ level: 'error', text: messageFor(reason, appTranslate) })
-      })
-      .finally(() => setBusy(false))
   }
 
   if (result === null && (loading || error === '')) {
@@ -255,7 +223,9 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
         <ul className={styles.rows} aria-label={t('extensions.tabs.browse')}>
           {rows.map((entry) => {
             const badgeKey = tierLabelKey(entry.Tier)
-            const installDisabled = busy || !result.InstalledStateReady || policy === null || policy.Error !== '' || entry.PolicyReason !== ''
+            const context: CommandContext = { kind: 'marketplaceEntry', marketplace: entry.Marketplace, pluginId: entry.ID }
+            const previewCommand = findCommand('extension.browse.previewInstall')
+            const installEnabled = previewCommand !== undefined && (previewCommand.enabled?.(context) ?? true)
             return (
               <li key={`${entry.Marketplace}/${entry.ID}`} data-testid="extensions-browse-row" data-plugin-id={entry.ID}>
                 <div className={styles.row}>
@@ -272,8 +242,8 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
                     <Button
                       size="small"
                       variant="primary"
-                      disabled={installDisabled}
-                      onClick={() => startInstall(entry)}
+                      disabled={!installEnabled}
+                      onClick={() => { void runCommand('extension.browse.previewInstall', context) }}
                       data-testid="extensions-browse-install"
                       aria-label={t('extensions.browse.installAria', { name: entry.Name || entry.ID })}
                     >
@@ -297,15 +267,27 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
 
       </Stack>
       {sourcesOpen && <ExtensionsSourcesDialog onClose={() => setSourcesOpen(false)} />}
-      {preview && (
+      {preview && target && (
         <ExtensionsInstallDialog
           preview={preview}
-          busy={busy}
+          busy={phase !== 'idle'}
           refusal={refusal}
-          onCancel={() => { setPreview(null); setPending(null); setRefusal('') }}
-          onInstall={confirmInstall}
+          onCancel={() => { void runCommand('extension.browse.cancelInstall') }}
+          onInstall={() => { void runCommand('extension.browse.confirmInstall', { kind: 'marketplaceEntry', marketplace: target.marketplace, pluginId: target.pluginId }) }}
+          actionState={{
+            acknowledged,
+            onAcknowledgedChange: setAcknowledged,
+            confirmEnabled: marketplaceCommandEnabled('extension.browse.confirmInstall', target.marketplace, target.pluginId),
+            cancelEnabled: marketplaceCommandEnabled('extension.browse.cancelInstall', target.marketplace, target.pluginId),
+          }}
         />
       )}
     </>
   )
+}
+
+function marketplaceCommandEnabled(id: string, marketplace: string, pluginId: string): boolean {
+  const command = findCommand(id)
+  const context: CommandContext = { kind: 'marketplaceEntry', marketplace, pluginId }
+  return command !== undefined && (command.enabled?.(context) ?? true)
 }

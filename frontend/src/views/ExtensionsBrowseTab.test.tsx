@@ -49,7 +49,17 @@ vi.mock('./ExtensionsSourcesDialog', () => ({
     <div data-testid="sources-dialog"><input data-testid="source-draft" /><button onClick={onClose}>close</button></div>
   ),
 }))
-vi.mock('../shared/commands', () => ({ runCommand: vi.fn(() => Promise.resolve(true)) }))
+vi.mock('../shared/commands', () => ({
+  findCommand: vi.fn((id: string) => id === 'extension.browse.previewInstall' ? {
+    enabled: (ctx?: { marketplace?: string; pluginId?: string }) => {
+      const sources = useExtensionSourcesStore.getState()
+      const currentPolicy = usePluginPolicyStore.getState().policy
+      const row = sources.browse?.Entries?.find((entry) => entry.Marketplace === ctx?.marketplace && entry.ID === ctx.pluginId)
+      return Boolean(sources.browse?.InstalledStateReady && !sources.browseLoading && !sources.browseError && currentPolicy && !currentPolicy.Error && row && !row.Installed && !row.PolicyReason)
+    },
+  } : { enabled: () => true }),
+  runCommand: vi.fn(() => Promise.resolve(true)),
+}))
 vi.mock('../shared/noticeStore', () => ({ pushNotice: vi.fn() }))
 vi.mock('../shared/userError', () => ({ appTranslate: vi.fn(), messageFor: (error: unknown) => String(error), userErrorFrom: () => ({ code: '' }) }))
 vi.mock('../shared/pluginRemoveSignal', () => ({ notifyPluginRemoved: vi.fn() }))
@@ -60,6 +70,7 @@ vi.mock('../../bindings/github.com/alicoding/mill/internal/services/pluginsvc', 
 const { PluginService } = await import('../../bindings/github.com/alicoding/mill/internal/services/pluginsvc')
 const { runCommand } = await import('../shared/commands')
 const { useExtensionSourcesStore } = await import('../shared/extensionSourcesStore')
+const { useExtensionMarketplaceInstallStore } = await import('../shared/extensionMarketplaceInstallStore')
 const { usePluginPolicyStore } = await import('../shared/pluginPolicyStore')
 const { useUISignalStore } = await import('../shared/uiSignalStore')
 const { ExtensionsBrowseTab } = await import('./ExtensionsBrowseTab')
@@ -107,6 +118,10 @@ beforeEach(() => {
     browseReadRevision: 0, browseQuery: '', browseKinds: [],
   })
   useUISignalStore.setState({ extensionSourcesRequest: 0, extensionInstalledRequest: 0 })
+  useExtensionMarketplaceInstallStore.setState({
+    target: null, preview: null, phase: 'idle', refusal: '', acknowledged: false,
+    requestRevision: 0, ownerToken: null, nextOwnerToken: 0,
+  })
 })
 
 afterEach(async () => {
@@ -115,7 +130,7 @@ afterEach(async () => {
 })
 
 async function render(sourcesRequest = 0) {
-  await act(async () => root.render(<ExtensionsBrowseTab sourcesRequest={sourcesRequest} onInstalled={vi.fn()} />))
+  await act(async () => root.render(<ExtensionsBrowseTab sourcesRequest={sourcesRequest} />))
 }
 
 describe('ExtensionsBrowseTab states', () => {

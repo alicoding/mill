@@ -128,24 +128,25 @@ func (p *PluginService) ImportTheme(encoded, basename, displayName, family strin
 	if family != "light" && family != "dark" {
 		return ThemeImportResult{}, usererror.New("theme-import-family-required", "Choose a light or dark appearance.")
 	}
-	if err := policySourceRefusal("", "theme-file"); err != nil {
-		return ThemeImportResult{}, err
-	}
 	id := "imported-theme-" + family + "-" + preview.SourceSHA256[:24]
 	if p.installedFolderExists(id) {
 		return ThemeImportResult{}, usererror.New("theme-import-duplicate", "This theme is already imported. Remove it from Extensions before importing it again.")
 	}
-	stage, cleanup, err := stageDir()
-	if err != nil {
-		return ThemeImportResult{}, err
-	}
-	defer cleanup()
 	manifest := Manifest{
 		ID: id, Name: name, Version: "1.0.0",
 		Description: "Imported color theme", Icon: "icon.png", Contributes: ManifestContributes{
 			Themes: []ThemeContribution{{ID: "theme", Label: name, Family: family, File: "theme.css"}},
 		},
 	}
+	themeOrigin := SourceOrigin{Kind: "theme-file"}
+	if err := policyInstallRefusalOriginAt(manifest, TierDev, themeOrigin, "", "", ""); err != nil {
+		return ThemeImportResult{}, err
+	}
+	stage, cleanup, err := stageDir()
+	if err != nil {
+		return ThemeImportResult{}, err
+	}
+	defer cleanup()
 	metadata := ThemeImportMetadata{
 		SourceName: preview.SourceName, SourceSHA256: preview.SourceSHA256,
 		MapperVersion: themeMapperVersion, SourceTheme: preview.sourceTheme,
@@ -155,7 +156,7 @@ func (p *PluginService) ImportTheme(encoded, basename, displayName, family strin
 	if err := writeThemeImportStage(stage, manifest, metadata, raw, css); err != nil {
 		return ThemeImportResult{}, err
 	}
-	_, err = p.finishThemeInstall(stage, InstallRecord{Source: PluginSource{Kind: "theme-file", Name: preview.SourceName}, Tier: TierDev})
+	_, err = p.finishThemeInstall(stage, InstallRecord{Source: PluginSource{Kind: "theme-file", Name: preview.SourceName}, Origin: themeOrigin, Tier: TierDev})
 	if err != nil {
 		return ThemeImportResult{}, err
 	}

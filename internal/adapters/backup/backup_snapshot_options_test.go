@@ -63,6 +63,40 @@ func TestSnapshotParticipantFailureDoesNotPublishOrPrune(t *testing.T) {
 	}
 }
 
+func TestSnapshotRejectsParticipantTraversalBeforeWriting(t *testing.T) {
+	for _, name := range []string{"", ".", "..", "nested/name", filepath.Join("nested", "name")} {
+		t.Run(strings.ReplaceAll(name, string(filepath.Separator), "_"), func(t *testing.T) {
+			root := t.TempDir()
+			backupDir := filepath.Join(root, "backups")
+			parentMarker := filepath.Join(root, "parent-marker")
+			if err := os.WriteFile(parentMarker, []byte("unchanged"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			calls := 0
+			_, err := Snapshot(newTestDB(t), "", "", backupDir, 3, SnapshotOptions{
+				Participants: []Participant{{Name: name, Write: func(destination string) error {
+					calls++
+					return os.WriteFile(filepath.Join(destination, "parent-marker"), []byte("changed"), 0o600)
+				}}},
+			})
+			if err == nil || !strings.Contains(err.Error(), "invalid snapshot participant") {
+				t.Fatalf("Snapshot participant %q error = %v", name, err)
+			}
+			if calls != 0 {
+				t.Fatalf("participant %q callback calls = %d", name, calls)
+			}
+			marker, readErr := os.ReadFile(parentMarker) // #nosec G304 -- test-owned temporary path
+			if readErr != nil || string(marker) != "unchanged" {
+				t.Fatalf("parent marker = %q, %v", marker, readErr)
+			}
+			completed, listErr := backupDirNames(backupDir)
+			if listErr != nil || len(completed) != 0 {
+				t.Fatalf("completed snapshots = %v, %v", completed, listErr)
+			}
+		})
+	}
+}
+
 func TestSnapshotDoesNotPublishAfterLiveSettingsSaveFailure(t *testing.T) {
 	dbPath := newTestDB(t)
 	settingsPath := filepath.Join(t.TempDir(), "settings.json")
