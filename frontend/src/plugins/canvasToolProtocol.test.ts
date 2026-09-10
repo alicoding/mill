@@ -6,6 +6,7 @@ import {
   parseObjectCreate,
   parseObjectMeasure,
   parseObjectPatch,
+  parseRegisterFace,
   parseRegisterTool,
   parseToolPointer,
   toolWireDescriptor,
@@ -65,6 +66,19 @@ describe('register.tool', () => {
     const wire = toolWireDescriptor(decl)
     expect('onPointer' in wire).toBe(false)
     expect(parseRegisterTool(wire).kind).toBe('pencil')
+  })
+})
+
+describe('register.face', () => {
+  it('accepts a slug objectKind and an entry file', () => {
+    const parsed = parseRegisterFace({ objectKind: 'bookmark', entry: 'face.html' })
+    expect(parsed).toEqual({ objectKind: 'bookmark', entry: 'face.html' })
+  })
+
+  it('refuses a non-slug objectKind and a missing entry by name', () => {
+    expect(fieldOf(() => parseRegisterFace({ objectKind: 'Bookmark', entry: 'face.html' }))).toBe('objectKind')
+    expect(fieldOf(() => parseRegisterFace({ objectKind: 'bookmark' }))).toBe('entry')
+    expect(fieldOf(() => parseRegisterFace('bookmark'))).toBe('register.face')
   })
 })
 

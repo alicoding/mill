@@ -1,5 +1,5 @@
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
-import type { CanvasDraft, CanvasToolCtx, CanvasToolDecl, CanvasToolPointerEvent } from './sdk/canvasTools'
+import type { CanvasDraft, CanvasToolCtx, CanvasToolDecl, CanvasToolPointerEvent, RegisterFaceDescriptor } from './sdk/canvasTools'
 import { seatCanvasTool } from './canvasToolAdapter'
 import { buildFramedTool } from './canvasToolFramed'
 import { callCanvasToolDoor, type CanvasToolDoorContext } from './canvasToolHostDoors'
@@ -49,4 +49,11 @@ export function registerLocalCanvasTool(pluginId: string, manifest: Manifest, de
     },
   }
   seatCanvasTool(pluginId, buildFramedTool(pluginId, manifest, descriptor, door.post, decl.renderFace), descriptor.styleFields)
+}
+
+// Same-DOM activation exposes the same manifest-bound registration
+// shape as framed activation. The shared host door performs the exact
+// kind+entry check before it records anything.
+export function registerLocalCanvasObjectFace(pluginId: string, manifest: Manifest, descriptor: RegisterFaceDescriptor): Promise<void> {
+  return callCanvasToolDoor({ pluginId, manifest, post: () => {} }, 'register.face', [descriptor]).then(() => undefined)
 }

@@ -49,6 +49,11 @@ test('the installed list wears the toolbar and collapses Built in once real plug
     // The search box narrows the installed list by name/description.
     await page.getByTestId('inventory-search').fill('bookmark')
     await expect(page.getByTestId('extensions-plugin-row')).toHaveCount(1) // count: fixture-owned -- one installed example matches "bookmark".
+
+    // mill-bookmark's face draws in its own entry page now (goal 0380
+    // S2), so it carries no "canvas-host" grant -- the row shows no
+    // "Draws in Mill's window" badge for it, unlike a same-DOM face.
+    await expect(pluginRow(page, 'mill-bookmark').getByTestId('extensions-row-canvas-host')).toHaveCount(0)
   } finally {
     await close()
   }

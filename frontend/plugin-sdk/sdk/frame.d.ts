@@ -13,8 +13,11 @@ import type { PluginTheme } from './theme';
  * face receives `{ object: { ID, Kind, Payload, Size }, mirror? }` --
  * `mirror` only for a file-backed kind, as `{ dataUrl, failed }`.
  * `resize` carries the `{ width, height }` of the box the page is
- * drawn in. */
-export type MillFrameEvent = 'theme:changed' | 'settings:changed' | 'contents:changed' | 'ctx' | 'resize';
+ * drawn in. `face:activate`/`face:deactivate` tell a canvas object's
+ * own face when it has real input, the moment a page may want to
+ * autofocus a field or otherwise react; a page that never needs to may
+ * ignore both. */
+export type MillFrameEvent = 'theme:changed' | 'settings:changed' | 'contents:changed' | 'ctx' | 'resize' | 'face:activate' | 'face:deactivate';
 /** What `window.acquireMillApi()` answers inside an entry page.
  *
  * The page runs sandboxed with no same-origin access, under a policy

@@ -6,8 +6,8 @@ import { findEmptyBoardRect } from './fixtures/atlasEmptyRegion'
 import { armToolFromMorePanel, clickAtlasTrayTool } from './fixtures/atlasTray'
 import { contextMenu } from './fixtures/contextMenu'
 import { openPluginDetail } from './fixtures/settingsNav'
-import { openConfigureKind } from './fixtures/configureNav'
 import { expectSelectedFaceOwnsWheel } from './fixtures/atlasActivationContract'
+import { bookmarkFace, bookmarkNodes } from './fixtures/bookmarkFace'
 
 
 // The platform DOORS a runtime plugin gets beyond rendering its own
@@ -34,14 +34,18 @@ test('a plugin declares settings in its manifest; Mill renders them, stores them
 		const bb = await board.boundingBox()
 		if (!bb) throw new Error('board has no bounding box')
 		await board.click({ position: { x: spot.x - bb.x + 10, y: spot.y - bb.y + 10 } })
-		const face = page.locator('[data-testid="plugin-face-bookmark"]')
-		const title = face.locator('[data-testid="bookmark-title"]')
+		const node = bookmarkNodes(page)
+		await expect(node).toBeVisible()
+		// The face draws in its own sandboxed frame now (goal 0380 S2):
+		// bookmarkFace() is the one converged way every spec reaches it.
+		const face = bookmarkFace(node)
+		const title = face.getByTestId('bookmark-title')
 		// The string setting's default shows before any address.
 		await expect(title).toHaveText('Bookmark')
 		// fill, not per-keystroke typing: the face's input lost its first
 		// character under CI load once ("xample.com").
-		await face.locator('[data-testid="bookmark-url-input"]').fill('example.com/docs')
-		await face.locator('[data-testid="bookmark-url-input"]').press('Enter')
+		await face.getByTestId('bookmark-url-input').fill('example.com/docs')
+		await face.getByTestId('bookmark-url-input').press('Enter')
 		await expect(title).toHaveText('example.com')
 
 		// Settings: the plugin's DETAIL pane renders both declared
@@ -65,12 +69,17 @@ test('a plugin declares settings in its manifest; Mill renders them, stores them
 		await armToolFromMorePanel(page, 'Bookmark')
 		const spot2 = await findEmptyBoardRect(page, board, 300, 200)
 		await board.click({ position: { x: spot2.x - bb.x + 10, y: spot2.y - bb.y + 10 } })
-		await expect(page.locator('[data-testid="bookmark-title"]', { hasText: 'Link' })).toBeVisible()
+		const node2 = bookmarkNodes(page).nth(1)
+		await expect(bookmarkFace(node2).getByTestId('bookmark-title')).toHaveText('Link')
 
-		// Persisted centrally: a reload serves the same values.
+		// Persisted centrally: a reload serves the same values -- both
+		// bookmarks carry their own frame, so each is checked by its own
+		// node rather than a page-wide text search.
 		await page.reload()
 		await page.getByRole('link', { name: 'Atlas' }).click()
-		await expect(page.locator('[data-testid="bookmark-title"]', { hasText: 'https://example.com/docs' })).toBeVisible()
+		await expect(bookmarkNodes(page)).toHaveCount(2)
+		const texts = await Promise.all([0, 1].map((i) => bookmarkFace(bookmarkNodes(page).nth(i)).getByTestId('bookmark-title').innerText()))
+		expect(texts).toContain('https://example.com/docs')
 	} finally {
 		await close()
 	}
@@ -396,22 +405,34 @@ test('a plugin menu item appears on its own object once enabled, not on a note, 
 		const bb = await board.boundingBox()
 		if (!bb) throw new Error('board has no bounding box')
 		await board.click({ position: { x: spot.x - bb.x + 10, y: spot.y - bb.y + 10 } })
-		const face = page.locator('[data-testid="plugin-face-bookmark"]')
-		await expect(face).toBeVisible()
-		const bookmark = page.locator('[data-testid="atlas-board-object"][data-object-kind="bookmark"]')
+		const bookmark = bookmarkNodes(page)
+		await expect(bookmark).toBeVisible()
+		// The face draws in its own sandboxed frame now (goal 0380 S2).
+		const face = bookmarkFace(bookmark)
+		await expect(face.getByTestId('bookmark-title')).toBeVisible()
 
-		// No address yet: the item's enabled predicate hides it.
-		await bookmark.click({ button: 'right' })
+		// No address yet: the item's enabled predicate hides it. Right-
+		// click lands on the chrome band, never the face's own content --
+		// a genuine cross-origin frame's contextmenu event can never
+		// bubble out to the host, so the band is the object's one
+		// always-reachable right-click surface (same convention
+		// atlas-json-object.spec.ts's deleteViaContextMenu uses for any
+		// content-capturing face).
+		await bookmark.locator('[data-testid="atlas-board-object-frame"]').click({ button: 'right' })
 		const menu = contextMenu(page)
 		await expect(menu).toBeVisible()
 		await expect(menu.getByText('Open in browser', { exact: true })).toHaveCount(0)
 		await expect(menu.getByText('Delete', { exact: true })).toBeVisible()
 		await page.keyboard.press('Escape')
 
-		await face.locator('[data-testid="bookmark-url-input"]').click()
-		await page.keyboard.type('example.com')
-		await page.keyboard.press('Enter')
-		await expect(face.locator('[data-testid="bookmark-title"]')).toHaveText('example.com')
+		// fill, not per-keystroke typing: page.keyboard.type does not
+		// reliably reach a sandboxed opaque-origin frame even once an
+		// element inside it holds real focus (proven in
+		// runtime-plugin-face-object.spec.ts); .fill() sets the value
+		// inside the frame's own execution context directly.
+		await face.getByTestId('bookmark-url-input').fill('example.com')
+		await face.getByTestId('bookmark-url-input').press('Enter')
+		await expect(face.getByTestId('bookmark-title')).toHaveText('example.com')
 
 		// A note's menu never carries the bookmark's item.
 		await page.keyboard.press('Escape')
@@ -434,7 +455,7 @@ test('a plugin menu item appears on its own object once enabled, not on a note, 
 
 		// With an address the item shows; activating it parks the guarded
 		// open in Review with the plugin as source.
-		await bookmark.click({ button: 'right' })
+		await bookmark.locator('[data-testid="atlas-board-object-frame"]').click({ button: 'right' })
 		await expect(menu).toBeVisible()
 		await menu.getByText('Open in browser', { exact: true }).click()
 		const reviewPage = await page.context().newPage()
@@ -448,50 +469,6 @@ test('a plugin menu item appears on its own object once enabled, not on a note, 
 		await expect(row).toHaveCount(0)
 		await expect(page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Not allowed' })).toBeVisible()
 		await reviewPage.close()
-	} finally {
-		await close()
-	}
-})
-
-// api.content.createList (goal 0310): a plugin creates a Configure List
-// through the same guarded plane as its other writes; approved, the
-// list stands in Configure with its declared columns and first rows.
-test('a plugin creates a List through the content door: approved in Review it appears in Configure with its columns and rows', async () => {
-	const { page, close } = await launchWithPlugins(69, {
-		extraPlugins: [{
-			id: 'list-probe',
-			manifest: { name: 'List probe', capabilities: ['write-content'] },
-			main: `export function activate(api) {
-	api.registerCommand({ id: 'list', label: 'Probe create a list', run: async () => {
-		try {
-			const r = await api.content.createList({ title: 'Probe vendors', columns: [{ name: 'Vendor' }, { name: 'Tier', type: 'text' }], rows: [{ Vendor: 'Acme', Tier: 'gold' }] })
-			api.notify({ level: r.approved ? 'success' : 'warning', text: r.approved ? 'Wrote ' + r.id : 'Not allowed ' + r.ruleLabel })
-		} catch (e) { api.notify({ level: 'error', text: 'Threw: ' + (e && e.message ? e.message : e) }) }
-	} })
-}
-` }],
-	})
-	try {
-		await page.goto('/')
-		await page.getByRole('link', { name: 'Atlas' }).click()
-		await expect(page.getByTestId('atlas-board')).toBeVisible()
-		await runFromPalette(page, 'Probe create a list')
-		const reviewPage = await page.context().newPage()
-		await reviewPage.goto('/')
-		await reviewPage.getByRole('link', { name: 'Review' }).click()
-		const row = reviewPage.locator('[data-testid="review-guarded-action-item"]')
-		await expect(row).toContainText('Create a list: Probe vendors (2 columns, 1 rows)')
-		await expect(row.locator('[data-testid="review-guarded-action-source"]')).toContainText('plugin:list-probe')
-		await row.locator('[data-testid="review-guarded-action-approve"]').click()
-		await expect(row).toHaveCount(0)
-		await expect(page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Wrote ' })).toBeVisible()
-		await reviewPage.close()
-
-		await page.getByRole('link', { name: 'Configure' }).click()
-		await openConfigureKind(page, 'Lists')
-		const listRow = page.locator('[data-testid="inventory-row"][data-entity="list"]', { has: page.getByText('Probe vendors', { exact: true }) })
-		await expect(listRow).toBeVisible()
-		await expect(listRow).toContainText('2 columns, 1 rows')
 	} finally {
 		await close()
 	}

@@ -1,4 +1,11 @@
 import type { CanvasEditRoute, CanvasObjectFaceCtx, CanvasStyleFieldDecl } from './canvasObjects';
+/** One manifest-owned framed face registration. The host accepts this
+ * only when both fields exactly match this plugin's canvasObjects
+ * contribution; it cannot grant a new kind or entry page at runtime. */
+export interface RegisterFaceDescriptor {
+    objectKind: string;
+    entry: string;
+}
 /** The shapes Mill can draw for a tool's live preview, from the
  * in-progress object's own data. Geometry is board coordinates, so a
  * preview stays pinned to the board while it is being drawn. */

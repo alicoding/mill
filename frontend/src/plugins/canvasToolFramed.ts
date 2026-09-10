@@ -294,9 +294,9 @@ function framedGesture(runtime: FramedToolRuntime, sticky: boolean): AtlasToolGe
 // buildFramedTool is registerCanvasTool's host side: one descriptor in,
 // one registry noun out, with the declared preview taking the overlay
 // slot a same-DOM tool's renderPreview would have taken.
-export function buildFramedTool(pluginId: string, manifest: Manifest, descriptor: CanvasToolDescriptor, post: (event: string, payload: unknown) => void, renderFace?: CanvasObjectDecl['renderFace']): ThirdPartyNounShape {
+export function buildFramedTool(pluginId: string, manifest: Manifest, descriptor: CanvasToolDescriptor, post: (event: string, payload: unknown) => void, renderFace?: CanvasObjectDecl['renderFace'], frameRegistration?: { entry?: string }): ThirdPartyNounShape {
   const runtime: FramedToolRuntime = { pluginId, descriptor, post, session: null, lastSession: null }
-  const noun = buildThirdPartyNoun(pluginId, manifest, declFromDescriptor(descriptor, renderFace))
+  const noun = buildThirdPartyNoun(pluginId, manifest, declFromDescriptor(descriptor, renderFace), frameRegistration)
   runtimes.set(runtimeKey(pluginId, descriptor.kind), runtime)
   const gesture = framedGesture(runtime, noun.sticky)
   if (!descriptor.preview) return { ...noun, gesture }
