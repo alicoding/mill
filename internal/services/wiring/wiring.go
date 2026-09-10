@@ -48,8 +48,8 @@ import (
 // hang the process exit indefinitely.
 const shutdownTimeout = 5 * time.Second
 
-// RunShutdown runs every best-effort teardown step main.go's own
-// post-app.Run() sequence needs, in order, logging (never failing
+// RunShutdown runs every best-effort teardown step main.go's native
+// shutdown callback needs, in order, logging (never failing
 // loudly) on each step's own error -- a step's failure must never
 // block the rest, since the process is exiting either way.
 func RunShutdown(logger *slog.Logger, executionService *executionsvc.ExecutionService, backupService *backupsvc.BackupService, millMCPService *mcpsvc.MillMCPService, pluginService *pluginsvc.PluginService, mcpAuditService *mcpauditsvc.MCPAuditService, atlasService *atlassvc.AtlasService, secretService *secretsvc.SecretService, bridgeService *bridgesvc.BridgeService, auditService *auditsvc.AuditService, configureService *configuresvc.ConfigureService) {

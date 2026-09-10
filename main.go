@@ -477,10 +477,11 @@ func main() {
 		}
 	}()
 
-	// Run the application. This blocks until the application has been exited.
-	err = app.Run()
-
-	wiring.RunShutdown(logger, executionService, backupService, millMCPService, pluginService, mcpAuditService, atlasService, secretService, bridgeService, auditService, configureService)
+	// Register teardown with Wails' native lifecycle before Run. The adapter
+	// also invokes the same exactly-once owner if Run returns or startup fails.
+	err = windowing.RunWithShutdown(app, func() {
+		wiring.RunShutdown(logger, executionService, backupService, millMCPService, pluginService, mcpAuditService, atlasService, secretService, bridgeService, auditService, configureService)
+	})
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {
