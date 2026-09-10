@@ -350,7 +350,12 @@ jobs:
           MATRIX_FILE: ${{ matrix.file }}
         run: |
           set -euo pipefail
-          awk '/^labels:/{f=1;next} f && /^  - /{sub(/^  - /,""); print} f && !/^  - /{exit}' \
+          # `next` (not `sub()` followed by a separate exit pattern) --
+          # sub() rewrites $0 in place, so a later pattern in the same
+          # rule set would test the ALREADY-STRIPPED line, matching the
+          # "not a list item" exit clause on every item and printing only
+          # the first label (caught in review, goal 0413 S2b).
+          awk '/^labels:/{f=1;next} f && /^  - /{print substr($0,5); next} f{exit}' \
             "breaches/${MATRIX_FILE}" \
           | while IFS= read -r label; do
               [ -z "$label" ] && continue
@@ -384,7 +389,10 @@ jobs:
         run: |
           set -euo pipefail
           key="${MATRIX_FILE%.md}"
-          labels=$(awk '/^labels:/{f=1;next} f && /^  - /{sub(/^  - /,""); print} f && !/^  - /{exit}' \
+          # Same `next`-terminated parse as the label-creation step above
+          # -- see its comment for why sub()-then-test-$0 silently drops
+          # every label after the first.
+          labels=$(awk '/^labels:/{f=1;next} f && /^  - /{print substr($0,5); next} f{exit}' \
             "breaches/${MATRIX_FILE}" | paste -sd, -)
           number=$(gh issue list --repo "$REPO" --label "$key" --state all --json number --jq '.[0].number // empty')
           if [ -z "$number" ]; then
