@@ -277,13 +277,22 @@ tasks:
     summary: Generate iOS Xcode project structure and assets
     sources:
       - build/config.yml
-      - build/appicon.png
+      - build/ios/icon.png
     generates:
       - build/ios/xcode/main/main.m
       - build/ios/xcode/main/Assets.xcassets/**/*
-      - build/ios/xcode/project.pbxproj
+      - build/ios/xcode/main.xcodeproj/project.pbxproj
     cmds:
-      - wails3 ios xcode:gen -outdir build/ios/xcode -config build/config.yml
+      - |
+        ROOT_DIR="$(pwd)"
+        STAGING_DIR="$(mktemp -d "${TMPDIR:-/tmp}/mill-ios-icon.XXXXXX")"
+        trap 'rm -rf "$STAGING_DIR"' EXIT
+        mkdir -p "$STAGING_DIR/build"
+        cp "$ROOT_DIR/build/ios/icon.png" "$STAGING_DIR/build/appicon.png"
+        cd "$STAGING_DIR"
+        wails3 ios xcode:gen \
+          -outdir "$ROOT_DIR/build/ios/xcode" \
+          -config "$ROOT_DIR/build/config.yml"
 
   run:
     summary: Run the application in iOS Simulator

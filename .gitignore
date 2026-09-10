@@ -10,11 +10,14 @@ frontend/node_modules
 frontend/test-results
 frontend/playwright-report
 frontend/blob-report
+build/darwin/Assets.car
 build/linux/appimage/build
 build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
 # Mobile generated (per-machine; overlays hold absolute paths)
 build/ios/xcode/overlay.json
 build/ios/xcode/gen/
+build/ios/xcode/main/
+build/ios/xcode/main.xcodeproj/
 build/android/overlay.json
 build/android/gen/
 # Playwright MCP tool debug artifacts (console logs, page snapshots)

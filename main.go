@@ -79,7 +79,10 @@ var browserExtensionFS embed.FS
 var examplePluginsFS embed.FS
 
 //go:embed build/appicon.png
-var trayIconPNG []byte
+var appIconPNG []byte
+
+//go:embed build/tray-template.png
+var trayTemplateIconPNG []byte
 
 // main initializes the application, creates the window, and wires every
 // bounded-context service together.
