@@ -55,6 +55,19 @@ export interface BuildInfo {
      * tell "rebuilt after this save" from "still running the old one."
      */
     "BuiltAt": number;
+
+    /**
+     * BuildChannel is the raw channel stamp compiled into this binary.
+     * It describes the running build's origin independently of the
+     * update-feed preference, which can point a source build at beta.
+     */
+    "BuildChannel": string;
+
+    /**
+     * LocalBuild is the same source-build predicate that prevents the
+     * automatic updater from replacing a locally built verification app.
+     */
+    "LocalBuild": boolean;
 }
 
 /**

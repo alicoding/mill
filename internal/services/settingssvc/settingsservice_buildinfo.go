@@ -48,6 +48,13 @@ type BuildInfo struct {
 	// internal/**/*.go (vite's dev-only middleware, vite.config.ts) to
 	// tell "rebuilt after this save" from "still running the old one."
 	BuiltAt int64
+	// BuildChannel is the raw channel stamp compiled into this binary.
+	// It describes the running build's origin independently of the
+	// update-feed preference, which can point a source build at beta.
+	BuildChannel string
+	// LocalBuild is the same source-build predicate that prevents the
+	// automatic updater from replacing a locally built verification app.
+	LocalBuild bool
 }
 
 // readBuildInfo delegates to internal/adapters/buildinfo -- the same
@@ -66,6 +73,20 @@ func readBuildInfo() BuildInfo {
 		Server:   info.Server,
 		BuiltAt:  info.BuiltAt,
 	}
+}
+
+// GetBuildInfo reports which commit this running instance was actually
+// built from (settingsservice_buildinfo.go) -- surfaced in the footer
+// so a stale, still-running process (e.g. a desktop app left open
+// across a whole session's worth of commits) is visible at a glance
+// instead of only discoverable by comparing two instances side by side.
+func (s *SettingsService) GetBuildInfo() BuildInfo {
+	info := readBuildInfo()
+	s.mu.Lock()
+	info.BuildChannel = s.buildChannel
+	info.LocalBuild = localBuildForChannel(s.buildChannel)
+	s.mu.Unlock()
+	return info
 }
 
 // ExportContract returns the root contract document (goal 0052 item 6):

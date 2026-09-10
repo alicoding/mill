@@ -37,6 +37,43 @@ func TestReadBuildInfo_BuiltAtIsThisProcessesOwnExecutableMtime(t *testing.T) {
 	}
 }
 
+func TestGetBuildInfo_ReportsRawBuildOriginAndSharedLocalBuildPolicy(t *testing.T) {
+	tests := []struct {
+		name         string
+		buildChannel string
+		channelPref  string
+		wantLocal    bool
+	}{
+		{name: "unset", buildChannel: "", wantLocal: false},
+		{name: "source", buildChannel: "source", wantLocal: true},
+		{name: "other local stamp", buildChannel: "development", wantLocal: true},
+		{name: "beta", buildChannel: "beta", wantLocal: false},
+		{name: "release", buildChannel: "release", wantLocal: false},
+		{name: "source with beta feed preference", buildChannel: "source", channelPref: "beta", wantLocal: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := newTestSettingsService(t)
+			s.SetBuildChannel(tt.buildChannel)
+			if tt.channelPref != "" {
+				s.SetUpdateChannel(tt.channelPref)
+			}
+
+			got := s.GetBuildInfo()
+			if got.BuildChannel != tt.buildChannel {
+				t.Errorf("BuildChannel = %q, want raw stamp %q", got.BuildChannel, tt.buildChannel)
+			}
+			if got.LocalBuild != tt.wantLocal {
+				t.Errorf("LocalBuild = %v, want %v", got.LocalBuild, tt.wantLocal)
+			}
+			if got.LocalBuild != s.isLocalBuild() {
+				t.Error("GetBuildInfo LocalBuild diverges from the automatic-update guard")
+			}
+		})
+	}
+}
+
 // TestExportContract_NilMCPServiceErrors: before SetMCPService is
 // called (construction order in main.go always calls it, but the
 // nil-check is what makes that ordering safe rather than assumed),

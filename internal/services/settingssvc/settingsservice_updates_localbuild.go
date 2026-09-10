@@ -35,5 +35,9 @@ func (s *SettingsService) SetBuildChannel(channel string) {
 func (s *SettingsService) isLocalBuild() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.buildChannel != "" && s.buildChannel != "release" && s.buildChannel != "beta"
+	return localBuildForChannel(s.buildChannel)
+}
+
+func localBuildForChannel(channel string) bool {
+	return channel != "" && channel != "release" && channel != "beta"
 }

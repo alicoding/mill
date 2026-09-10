@@ -18,6 +18,8 @@ const RELEASES_URL = 'https://github.com/alicoding/mill/releases'
 import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
 import { background } from '../shared/background'
+import { useBuildInfoStore } from '../shared/buildInfoStore'
+import { automaticUpdatesCaptionKey, buildOriginKey } from './updatesDisplay'
 
 // Keeps a rendered error to one humane line (goal 0127's rider: GitHub's
 // own HTML error page, base64 image included, once rendered whole here)
@@ -173,6 +175,7 @@ function applyUpdateNotice(
 
 function UpdatesSection() {
   const { t } = useTranslation('views')
+  const buildInfo = useBuildInfoStore((s) => s.buildInfo)
   const [appVersion, setAppVersion] = useState('')
   const [channel, setChannel] = useState<Channel>('')
   const [updateResult, setUpdateResult] = useState<UpdateResult | null>(null)
@@ -191,8 +194,8 @@ function UpdatesSection() {
   const [proxyNote, setProxyNote] = useState('')
   const [channelPref, setChannelPref] = useState('')
   const [channelSaved, setChannelSaved] = useState(false)
-  const [autoCheck, setAutoCheck] = useState(false)
-  const [checkInterval, setCheckInterval] = useState('hourly')
+  const [autoCheck, setAutoCheck] = useState<boolean | null>(null)
+  const [checkInterval, setCheckInterval] = useState<string | null>(null)
   // The persistent record of CheckForUpdates' most recent run (manual
   // button, an explicit Settings check, or the background loop),
   // independent of `state` above -- the answer to "is checking
@@ -281,13 +284,9 @@ function UpdatesSection() {
     void background(SettingsService.SetUpdateCheckInterval(value), 'updates.setUpdateCheckInterval')
   }
 
-  const channelLabel =
-    channel === 'release'
-      ? t('settings.updates.channelRelease')
-      : channel === 'beta'
-        ? t('settings.updates.channelBeta')
-        : t('settings.updates.channelSource')
   const canInstall = installableChannels.includes(channel)
+  const originKey = buildOriginKey(buildInfo)
+  const automaticUpdatesCaption = automaticUpdatesCaptionKey(autoCheck, checkInterval, buildInfo)
 
   // Reuses the same relative-time phrase every "last updated"/"N ago"
   // caption in the app already renders (shared/inventorySort.ts) rather
@@ -306,7 +305,8 @@ function UpdatesSection() {
     <Stack gap="condensed">
       <Stack direction="horizontal" gap="condensed" align="center" justify="space-between">
         <Text size="small" className={styles.muted} data-testid="current-app-version">
-          {t('settings.updates.currentVersion', { version: appVersion })} · {channelLabel} ·{' '}
+          {t('settings.updates.currentVersion', { version: appVersion })}
+          {originKey && <> · <span data-testid="build-origin">{t(originKey)}</span></>} ·{' '}
           {lastCheckAt ? t('settings.updates.statusCheckedAgo', { time: lastCheckRelative }) : t('settings.updates.statusNeverChecked')}
         </Text>
         <PrimerLink
@@ -377,9 +377,10 @@ function UpdatesSection() {
         </Text>
       )}
 
-      <FormControl>
+      <FormControl id="automatic-updates">
         <Checkbox
-          checked={autoCheck}
+          checked={autoCheck ?? false}
+          disabled={autoCheck === null}
           onChange={(e) => {
             const on = e.target.checked
             setAutoCheck(on)
@@ -388,9 +389,13 @@ function UpdatesSection() {
           data-testid="auto-update-check"
         />
         <FormControl.Label>{t('settings.updates.autoCheckLabel')}</FormControl.Label>
-        <FormControl.Caption>{t('settings.updates.autoCheckCaption')}</FormControl.Caption>
+        {automaticUpdatesCaption && (
+          <FormControl.Caption id="automatic-updates-caption">
+            {t(automaticUpdatesCaption)}
+          </FormControl.Caption>
+        )}
       </FormControl>
-      {autoCheck && (
+      {autoCheck === true && checkInterval !== null && (
         <FormControl>
           <FormControl.Label>{t('settings.updates.checkIntervalLabel')}</FormControl.Label>
           <Select
