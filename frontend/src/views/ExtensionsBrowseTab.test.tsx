@@ -205,6 +205,18 @@ describe('ExtensionsBrowseTab states', () => {
     expect((container.querySelector('[data-testid="extensions-browse-install"]') as HTMLButtonElement).disabled).toBe(true)
   })
 
+  it('does not invent a partial failure from the sparse bundled source response', async () => {
+    const bundled = {
+      name: 'mill', owner: 'Mill', kind: 'bundled', locator: '', ref: '', addedAt: '',
+      origin: { kind: 'bundled' }, incarnation: 'bundled', generation: 0, status: 'current', included: true,
+    } as MarketplaceSource
+    vi.mocked(PluginService.BrowseMarketplaces).mockResolvedValueOnce(result([entry('bundled')], [bundled]) as never)
+    await render()
+    await act(async () => {})
+
+    expect(container.querySelector('[data-testid="extensions-browse-partial"]')).toBeNull()
+  })
+
   it('shows catalog rows neutrally until installed state recovers', async () => {
     const entries = [entry('reported-installed', { Installed: true }), entry('reported-available')]
     vi.mocked(PluginService.BrowseMarketplaces)

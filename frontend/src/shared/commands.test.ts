@@ -10,6 +10,7 @@ import { useVaultStatusStore } from './vaultStatusStore'
 import { useNoticeStore } from './noticeStore'
 import { comboKey } from './keybinding'
 import { setMenuOwnedCombos } from './menuOwnership'
+import { useExtensionSourcesStore } from './extensionSourcesStore'
 
 // docs/goals/BACKLOG.md Standing #6 (⌘?/⌘/ palette aliases): a
 // Command's optional extraBindings (shared/commands.ts) must dispatch
@@ -305,6 +306,27 @@ describe('Command.enabled (goal 0222 S1)', () => {
     useUpdateNoticeStore.getState().setUpdateNoticeState(UpdateState.UpdateStateIdle)
     expect(findCommand('update.downloadAndInstall')?.enabled?.()).toBe(false)
     expect(findCommand('update.relaunch')?.enabled?.()).toBe(false)
+  })
+
+  it('extension.sources.retry is local-only, hidden, and enabled only for an idle failed read', async () => {
+    const originalLoad = useExtensionSourcesStore.getState().load
+    const load = vi.fn(() => Promise.resolve(true))
+    const command = findCommand('extension.sources.retry')
+    expect(command?.paletteHidden).toBe(true)
+    expect(command?.defaultBinding).toBeNull()
+
+    useExtensionSourcesStore.setState({ error: '', loading: false, mutation: null, load })
+    expect(command?.enabled?.()).toBe(false)
+    useExtensionSourcesStore.setState({ error: 'catalog unreadable', loading: true })
+    expect(command?.enabled?.()).toBe(false)
+    useExtensionSourcesStore.setState({ loading: false, mutation: 'refresh' })
+    expect(command?.enabled?.()).toBe(false)
+    useExtensionSourcesStore.setState({ mutation: null })
+    expect(command?.enabled?.()).toBe(true)
+    await expect(runCommand('extension.sources.retry')).resolves.toBe(true)
+    expect(load).toHaveBeenCalledOnce()
+
+    useExtensionSourcesStore.setState({ error: '', loading: false, mutation: null, load: originalLoad })
   })
 
   it('workflow.publish is enabled only for a SAVED workflow editor tab (kind workflow-edit), never a not-yet-saved workflow-new one', () => {

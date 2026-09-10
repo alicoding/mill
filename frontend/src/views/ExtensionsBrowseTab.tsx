@@ -134,7 +134,7 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
   const installedMatches = installedStateReady ? allMatching.filter((entry) => entry.Installed) : []
   const filtered = filterBrowseEntries(available, query, kinds)
   const externalSources = sources.filter((source) => !source.included)
-  const partial = sources.some((source) => source.errorCode !== '' || (source.status !== '' && source.status !== 'current'))
+  const partial = sources.some((source) => Boolean(source.errorCode) || (Boolean(source.status) && source.status !== 'current'))
   const pageCount = pageCountFor(filtered.length)
   const page = clampPage(state.page, pageCount)
   const rows = pageItems(filtered, page)

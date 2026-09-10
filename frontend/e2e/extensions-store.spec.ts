@@ -70,6 +70,7 @@ test('Browse offers the extensions Mill ships, before any source is added', asyn
 	await expect(page.getByTestId('extensions-browse')).toBeVisible()
 	const rows = page.getByTestId('extensions-browse-row')
 	await expect(rows.first()).toBeVisible()
+	await expect(page.getByTestId('extensions-browse-partial')).toHaveCount(0)
 	// Everything the binary carries is offered as "mill", verified --
 	// it installs out of the binary, so nothing has to be fetched.
 	await expect(rows.first()).toContainText('mill')

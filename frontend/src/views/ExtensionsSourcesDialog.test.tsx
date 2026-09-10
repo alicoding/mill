@@ -99,9 +99,18 @@ beforeEach(() => {
     if (id === 'extension.source.remove') return {
       confirm: () => ({ title: 'remove title', body: 'remove body', confirmLabel: 'remove source' }),
     }
+    if (id === 'extension.sources.retry') return {
+      enabled: () => {
+        const state = useExtensionSourcesStore.getState()
+        return state.error !== '' && !state.loading && state.mutation === null
+      },
+    }
     return undefined
   })
-  commandMocks.runCommand.mockResolvedValue(true)
+  commandMocks.runCommand.mockImplementation(async (id: string) => {
+    if (id === 'extension.sources.retry') return useExtensionSourcesStore.getState().load()
+    return true
+  })
 })
 
 afterEach(async () => {
@@ -216,7 +225,36 @@ describe('ExtensionsSourcesDialog', () => {
 
     const retry = [...container.querySelectorAll('button')].find((button) => button.textContent === 'extensions.sources.retry')
     await act(async () => retry?.click())
+    expect(commandMocks.runCommand).toHaveBeenCalledWith('extension.sources.retry')
     expect(container.querySelector('[data-source-name="recovered"]')).not.toBeNull()
     expect(container.querySelector('[data-testid="extensions-sources-read-error"]')).toBeNull()
+  })
+
+  it('disables every mutation and Retry while the current reread is pending', async () => {
+    const reread = deferred<MarketplaceSource[]>()
+    vi.mocked(PluginService.PluginPolicy).mockResolvedValueOnce(policy as never)
+    vi.mocked(PluginService.ListMarketplaceSources)
+      .mockResolvedValueOnce([source('accepted', 'one')] as never)
+      .mockReturnValueOnce(reread.promise as never)
+    await render()
+    await act(async () => {})
+    await typeInput('/another/source')
+
+    await act(async () => useExtensionSourcesStore.setState((state) => ({ completionRevision: state.completionRevision + 1 })))
+    expect(container.querySelector('[data-source-name="accepted"]')).not.toBeNull()
+    expect((container.querySelector('[data-testid="extensions-source-add"]') as HTMLButtonElement).disabled).toBe(true)
+    expect((container.querySelector('[data-testid="extensions-sources-refresh"]') as HTMLButtonElement).disabled).toBe(true)
+    expect(container.querySelector('button[aria-label="extensions.sources.removeAria"]')?.getAttribute('aria-disabled')).toBe('true')
+
+    await act(async () => reread.reject(new Error('source catalog unreadable')))
+    const retry = [...container.querySelectorAll('button')].find((button) => button.textContent === 'extensions.sources.retry') as HTMLButtonElement
+    const recovery = deferred<MarketplaceSource[]>()
+    vi.mocked(PluginService.ListMarketplaceSources).mockReturnValueOnce(recovery.promise as never)
+    await act(async () => retry.click())
+    expect(retry.disabled).toBe(true)
+    expect(container.querySelector('[data-source-name="accepted"]')).not.toBeNull()
+
+    await act(async () => recovery.resolve([source('recovered', 'two')]))
+    expect(container.querySelector('[data-source-name="recovered"]')).not.toBeNull()
   })
 })

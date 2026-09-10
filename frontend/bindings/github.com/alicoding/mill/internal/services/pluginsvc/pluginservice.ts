@@ -260,7 +260,8 @@ export function PluginsDir(): $CancellablePromise<string> {
 
 /**
  * PreviewInstall answers the prompt's contents for a marketplace
- * entry. It reads only the cached index -- previewing never downloads.
+ * entry. Folder sources are read through their confined acquisition
+ * boundary; remote entries still use only the cached index.
  */
 export function PreviewInstall(marketplace: string, id: string): $CancellablePromise<$models.InstallPreview> {
     return $Call.ByID(611162871, marketplace, id);

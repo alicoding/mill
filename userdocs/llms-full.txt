@@ -3071,6 +3071,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `extension.remove` | Remove | — | Global | Acts on the selected entity |
 | `extension.reveal` | Reveal folder | — | Global | Acts on the selected entity |
 | `extension.source.remove` | Remove source | — | Global | Acts on the selected entity |
+| `extension.sources.retry` | Retry sources | — | Global | Conditional — available only in a matching state |
 | `extension.update` | Update | — | Global | Acts on the selected entity |
 | `extensions.checkUpdates` | Extensions: check for updates | — | Global | Always available |
 | `extensions.exportAudit` | Export plugin audit | — | Global | Always available |

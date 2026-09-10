@@ -72,9 +72,11 @@ export function ExtensionsSourcesDialog({ onClose }: { onClose: () => void }) {
     ? entityRowContext(MARKETPLACE_SOURCE_ENTITY, pendingRemove.name)
     : undefined
   const removeCommand = findCommand('extension.source.remove')
+  const retryCommand = findCommand('extension.sources.retry')
   const addContext: CommandContext = { kind: 'marketplaceSourceInput', locator: input }
   const addCommand = findCommand('extension.addSource')
   const addEnabled = addCommand !== undefined && (addCommand.enabled?.(addContext) ?? true)
+  const retryEnabled = retryCommand !== undefined && (retryCommand.enabled?.() ?? true)
   const removeConfirm = removeContext ? removeCommand?.confirm?.(removeContext) : null
 
   return (
@@ -100,12 +102,14 @@ export function ExtensionsSourcesDialog({ onClose }: { onClose: () => void }) {
               <Text size="small">{t('extensions.sources.loading')}</Text>
             </Stack>
           )}
-          {!loading && !ready && error && (
+          {!ready && error && (
             <Stack direction="vertical" gap="condensed" data-testid="extensions-sources-read-error">
               <Text size="small" className={listStyles.error}>{t('extensions.sources.readError')}</Text>
               <Text size="small" className={listStyles.muted}>{messageFor(error, appTranslate)}</Text>
               <div>
-                <Button size="small" onClick={() => { void load() }}>{t('extensions.sources.retry')}</Button>
+                <Button size="small" disabled={!retryEnabled} onClick={() => { void runCommand('extension.sources.retry') }}>
+                  {t('extensions.sources.retry')}
+                </Button>
               </div>
             </Stack>
           )}

@@ -1424,6 +1424,14 @@
     "needs": "entity"
   },
   {
+    "id": "extension.sources.retry",
+    "label": "Retry sources",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "extension.update",
     "label": "Update",
     "binding": null,

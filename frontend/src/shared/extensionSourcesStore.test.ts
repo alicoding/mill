@@ -79,6 +79,29 @@ describe('extensionSourcesStore', () => {
     expect(useExtensionSourcesStore.getState().browseError).toBe('')
   })
 
+  it('revokes readiness during a reread until the latest response succeeds', async () => {
+    useExtensionSourcesStore.setState({ sources: [source('accepted', 'one')], ready: true })
+    const older = deferred<MarketplaceSource[]>()
+    const newer = deferred<MarketplaceSource[]>()
+    vi.mocked(PluginService.ListMarketplaceSources)
+      .mockReturnValueOnce(older.promise as never)
+      .mockReturnValueOnce(newer.promise as never)
+
+    const olderRead = useExtensionSourcesStore.getState().load()
+    expect(useExtensionSourcesStore.getState()).toMatchObject({ ready: false, loading: true })
+    expect(useExtensionSourcesStore.getState().sources[0].name).toBe('accepted')
+    const newerRead = useExtensionSourcesStore.getState().load()
+    older.resolve([source('stale', 'old')])
+    await olderRead
+    expect(useExtensionSourcesStore.getState()).toMatchObject({ ready: false, loading: true })
+    expect(useExtensionSourcesStore.getState().sources[0].name).toBe('accepted')
+
+    newer.resolve([source('recovered', 'new')])
+    await newerRead
+    expect(useExtensionSourcesStore.getState()).toMatchObject({ ready: true, loading: false })
+    expect(useExtensionSourcesStore.getState().sources[0].name).toBe('recovered')
+  })
+
   it('shares mutation exclusion and releases it after success or failure', async () => {
     const pendingAdd = deferred<MarketplaceSource>()
     vi.mocked(PluginService.AddMarketplaceSource).mockReturnValueOnce(pendingAdd.promise as never)

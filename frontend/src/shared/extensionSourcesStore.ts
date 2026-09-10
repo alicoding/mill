@@ -48,7 +48,7 @@ export const useExtensionSourcesStore = create<ExtensionSourcesState>()((set, ge
   browseKinds: [],
   load: async () => {
     const request = get().readRevision + 1
-    set({ readRevision: request, loading: true })
+    set({ readRevision: request, ready: false, loading: true })
     try {
       const sources = await PluginService.ListMarketplaceSources()
       if (get().readRevision !== request) return false

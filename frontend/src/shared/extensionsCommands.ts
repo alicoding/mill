@@ -187,6 +187,17 @@ export const EXTENSIONS_COMMANDS: Command[] = [
     run: () => useExtensionSourcesStore.getState().loadBrowse(),
   },
   {
+    id: 'extension.sources.retry',
+    label: 'commands.extension.sources.retry',
+    defaultBinding: null,
+    paletteHidden: true,
+    enabled: () => {
+      const state = useExtensionSourcesStore.getState()
+      return state.error !== '' && !state.loading && state.mutation === null
+    },
+    run: () => useExtensionSourcesStore.getState().load(),
+  },
+  {
     id: 'extension.browse.clearFilters',
     label: 'commands.extension.browse.clearFilters',
     defaultBinding: null,

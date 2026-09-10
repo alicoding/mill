@@ -513,6 +513,9 @@
       "source": {
         "remove": "Remove source"
       },
+      "sources": {
+        "retry": "Retry sources"
+      },
       "browse": {
         "retry": "Retry loading extensions",
         "clearFilters": "Clear extension filters"
