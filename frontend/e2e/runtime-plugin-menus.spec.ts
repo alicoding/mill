@@ -1,4 +1,6 @@
 import { expect as baseExpect, test as pluginTest } from '@playwright/test'
+import { createServer } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { test, expect } from './fixtures/server'
 import { dragBetween } from './fixtures/atlasBoard'
 import { clickAtlasTrayTool } from './fixtures/atlasTray'
@@ -46,7 +48,16 @@ test('right-clicking a mill-drawing object shows its declared editor/context ite
   await expect(shapes).toHaveCount(0)
 })
 
-pluginTest('the Request tester tab shows a "Send again" title action that re-sends the current request', async () => {
+// goal 0349 S2c: the title action's honest enablement is a declared
+// when clause (contributes.menus["view/title"][0].when ==
+// "plugin.hasResult"), so it is ABSENT until tester.js's own send
+// handler contributes that context key -- not merely disabled, since
+// this plugin activates in its own sandboxed frame and had no other
+// way to answer Command.enabled truthfully before S2c.
+pluginTest('the Request tester\'s "Send again" title action is absent before the first send, present after, and re-sends the current request', async () => {
+  const http = createServer((_req, res) => { res.setHeader('Content-Type', 'application/json'); res.end('{"pong":true}') })
+  await new Promise<void>((resolve) => http.listen(0, '127.0.0.1', resolve))
+  const port = (http.address() as AddressInfo).port
   const { page, close } = await launchWithPlugins(82)
   try {
     await page.goto('/')
@@ -55,14 +66,13 @@ pluginTest('the Request tester tab shows a "Send again" title action that re-sen
     await runFromPalette(page, 'Request tester')
 
     const actions = page.getByTestId('work-tab-title-actions-mill-request-tester-tester')
-    await baseExpect(actions).toBeVisible()
-    const sendAgain = actions.getByRole('button', { name: 'Send again' })
-    await baseExpect(sendAgain).toBeVisible()
+    await baseExpect(actions).toHaveCount(0)
 
     const frame = page.frameLocator('[data-testid="plugin-view-mill-request-tester-tester"]')
-    await frame.getByTestId('tester-url').fill('http://127.0.0.1:1/unreachable') // port-literal: a deliberately unreachable address proving the re-send path, never a spawned server port
+    await frame.getByTestId('tester-url').fill(`http://127.0.0.1:${port}/ping`)
     await frame.getByTestId('tester-send').click()
     await baseExpect(frame.getByTestId('tester-status')).toContainText('needs your approval')
+    await baseExpect(actions).toHaveCount(0)
 
     const reviewPage = await page.context().newPage()
     await applyCpuThrottle(reviewPage)
@@ -70,16 +80,30 @@ pluginTest('the Request tester tab shows a "Send again" title action that re-sen
     await reviewPage.getByRole('link', { name: 'Review' }).click()
     const parked = reviewPage.locator('[data-testid="review-guarded-action-item"]')
     await baseExpect(parked).toHaveCount(1)
+    await parked.locator('[data-testid="review-guarded-action-approve"]').click()
+    await baseExpect(parked).toHaveCount(0)
+    await reviewPage.close()
+
+    await baseExpect(frame.getByTestId('tester-status')).toContainText('200')
+    await baseExpect(actions).toBeVisible()
+    const sendAgain = actions.getByRole('button', { name: 'Send again' })
+    await baseExpect(sendAgain).toBeVisible()
 
     // The observable effect (goal 0349 S2b amendment): clicking the
     // title action posts into the frame, which re-clicks Send with the
     // same fields -- a second parked approval is proof the frame
     // received the message and acted on it, not just that the button
     // exists.
+    const reviewPage2 = await page.context().newPage()
+    await applyCpuThrottle(reviewPage2)
+    await reviewPage2.goto('/')
+    await reviewPage2.getByRole('link', { name: 'Review' }).click()
+    const parked2 = reviewPage2.locator('[data-testid="review-guarded-action-item"]')
     await sendAgain.click()
-    await baseExpect(parked).toHaveCount(2)
-    await reviewPage.close()
+    await baseExpect(parked2).toHaveCount(1)
+    await reviewPage2.close()
   } finally {
     await close()
+    await new Promise<void>((resolve) => http.close(() => resolve()))
   }
 })

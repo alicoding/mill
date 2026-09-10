@@ -7,6 +7,9 @@ import type { MillPluginAPI } from '../plugins/sdk'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { callExportedMethod, toWireDescriptor } from '../plugins/extensionExports'
 import { CANVAS_TOOL_DOORS, callCanvasToolDoor, forgetCanvasTools } from '../plugins/canvasToolHostDoors'
+import { resolveMenus } from '../plugins/pluginMenus'
+import { evaluateWhen } from '../plugins/whenClause'
+import { factsNow } from '../plugins/pluginMenuFacts'
 
 // The host half of a third-party plugin's activation frame (docs/
 // goals/0375 S1b): the same envelope pluginFrameBridge.ts's entry-page
@@ -47,6 +50,7 @@ function callSimpleDoor(api: MillPluginAPI, method: string, args: unknown[]): Pr
     case 'convert.htmlToMarkdown': return api.convert.htmlToMarkdown(String(first))
     case 'convert.markdownToHtml': return api.convert.markdownToHtml(String(first))
     case 'requestGuardedAction': return api.requestGuardedAction(String(first), second as Record<string, string>, String(third))
+    case 'context.set': { api.context.set(String(first), second as Parameters<MillPluginAPI['context']['set']>[1]); return undefined }
     default: return undefined
   }
 }
@@ -58,7 +62,7 @@ function callSimpleDoor(api: MillPluginAPI, method: string, args: unknown[]): Pr
 export const SIMPLE_DOORS = new Set<string>([
   'notify', 'storage.set', 'storage.delete', 'query', 'kinds', 'open', 'fetch',
   'content.createNote', 'content.createCard', 'content.updateCard', 'content.appendListRow', 'content.createList', 'content.setCardFields',
-  'files.list', 'convert.htmlToMarkdown', 'convert.markdownToHtml', 'requestGuardedAction',
+  'files.list', 'convert.htmlToMarkdown', 'convert.markdownToHtml', 'requestGuardedAction', 'context.set',
 ])
 
 // ACTIVATION_ONLY_METHODS is every door callActivationMethod answers
@@ -171,18 +175,30 @@ export function sendExtensionCall(ctx: ActivationFrameContext, method: string, a
   })
 }
 
+// whenForCommand answers the `when` clause the manifest's own
+// contributes.menus declared for this command id, from whichever seat
+// named it first in id order -- a declared item's `when` is the one
+// honest predicate a framed command can carry (goal 0349 S2c Decision
+// 3), since the plugin's own code cannot answer synchronously across
+// the frame boundary the way registerFramedCommand's caller needs.
+function whenForCommand(manifest: ActivationFrameContext['manifest'], commandId: string): string | undefined {
+  const { seated } = resolveMenus(manifest.contributes?.menus)
+  return seated.find((item) => item.command === commandId)?.when
+}
+
 // registerFramedCommand seats a registry command whose run() and
 // enabled() both answer the activation frame's own truth: run() awaits
-// the frame's registered handler, and enabled() is exactly the
-// frame's aliveness -- a plugin's own predicate cannot cross the
-// boundary synchronously, so aliveness is the one honest signal a
-// framed command's enablement can carry.
+// the frame's registered handler; enabled() is the frame's aliveness
+// AND, when the manifest declared a `when` for this command, that
+// clause evaluated against factsNow -- the SAME `when` a seat already
+// gates its own visibility with, never a second predicate language.
 function registerFramedCommand(ctx: ActivationFrameContext, api: MillPluginAPI, descriptor: { id: string; label: string }): void {
+  const when = whenForCommand(ctx.manifest, descriptor.id)
   api.registerCommand({
     id: descriptor.id,
     label: descriptor.label,
     run: () => sendCommandRun(ctx, descriptor.id, []),
-    enabled: () => ctx.alive,
+    enabled: () => ctx.alive && (when ? evaluateWhen(when, factsNow(ctx.pluginId)) : true),
   })
 }
 

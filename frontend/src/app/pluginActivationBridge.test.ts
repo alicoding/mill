@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { attachActivationBridge, callActivationMethod, createActivationFrameContext, sendExtensionCall, teardownActivationFrameContext } from './pluginActivationBridge'
 import { collectPluginCapture, getPluginCapture, setPluginCaptureSink, unregisterPluginCaptures } from '../plugins/pluginCaptures'
 import { collectPluginView, getPluginView, setPluginViewSink, unregisterPluginViews } from '../plugins/pluginViews'
+import { setPluginContextKey } from '../plugins/pluginContextKeys'
 import type { MillPluginAPI } from '../plugins/sdk'
 
 // The manifest a framed context now carries (docs/goals/0380): the
@@ -33,6 +34,7 @@ function fakeApi(overrides: Partial<MillPluginAPI> = {}): MillPluginAPI {
     registerCapture: vi.fn(() => ({ postMessage: vi.fn() })),
     requestGuardedAction: vi.fn(async () => ({ approved: true, effect: '', ruleLabel: '', performed: true })),
     settings: { get: vi.fn(() => 'value'), onChange: vi.fn() },
+    context: { set: vi.fn() },
     notify: vi.fn(() => () => {}),
     storage: { get: vi.fn(), set: vi.fn(async () => {}), delete: vi.fn(async () => {}), keys: vi.fn(() => []) },
     query: vi.fn(async () => []),
@@ -58,6 +60,14 @@ describe('callActivationMethod', () => {
     const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     await expect(callActivationMethod(ctx, api, 'kinds', [])).resolves.toEqual([])
     expect(api.kinds).toHaveBeenCalled()
+  })
+
+  it('routes context.set onto the plugin api (goal 0349 S2c)', async () => {
+    const api = fakeApi()
+    const { frame } = fakeFrame()
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
+    await callActivationMethod(ctx, api, 'context.set', ['hasResult', true])
+    expect(api.context.set).toHaveBeenCalledWith('hasResult', true)
   })
 
   it('routes convert.markdownToHtml onto the plugin api, the activation bridge\'s one new door', async () => {
@@ -105,6 +115,36 @@ describe('callActivationMethod', () => {
     teardownActivationFrameContext(ctx)
     expect(decl.enabled()).toBe(false)
     await expect(pending).rejects.toThrow('torn down')
+  })
+
+  // A declared item's `when` is the one honest predicate a framed
+  // command can carry (goal 0349 S2c Decision 3): the manifest below
+  // seats 'sendAgain' on view/title with when: "plugin.hasResult", so
+  // enabled() answers false until the plugin's own context key (set
+  // the same way api.context.set writes it, host-side) turns true.
+  const WHEN_GATED_MANIFEST = {
+    id: 'when-probe', name: 'When probe', version: '1.0.0', description: '', author: '', minMillVersion: '', icon: '', capabilities: [], dependencies: [], exports: [],
+    contributes: { menus: { 'view/title': [{ command: 'sendAgain', when: 'plugin.hasResult', group: '' }] } },
+  } as unknown as Manifest
+
+  it("a framed command's enabled() honours the when clause its own manifest declared for it", async () => {
+    const api = fakeApi()
+    const { frame } = fakeFrame()
+    const ctx = createActivationFrameContext(frame, 'when-probe', [], WHEN_GATED_MANIFEST)
+    await callActivationMethod(ctx, api, 'register.command', [{ id: 'sendAgain', label: 'Send again' }])
+    const decl = (api.registerCommand as ReturnType<typeof vi.fn>).mock.calls[0][0] as { enabled: () => boolean }
+    expect(decl.enabled()).toBe(false)
+    setPluginContextKey('when-probe', 'hasResult', true)
+    expect(decl.enabled()).toBe(true)
+  })
+
+  it('a framed command with no declared when clause stays always-enabled while alive', async () => {
+    const api = fakeApi()
+    const { frame } = fakeFrame()
+    const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
+    await callActivationMethod(ctx, api, 'register.command', [{ id: 'go', label: 'Go' }])
+    const decl = (api.registerCommand as ReturnType<typeof vi.fn>).mock.calls[0][0] as { enabled: () => boolean }
+    expect(decl.enabled()).toBe(true)
   })
 
   it('register.view seats onMessage only when the frame declared one, and forwards a page message as an event', async () => {

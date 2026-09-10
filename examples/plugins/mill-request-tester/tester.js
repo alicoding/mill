@@ -85,6 +85,12 @@ sendEl.addEventListener('click', async () => {
 		statusEl.textContent = r.status + ' · ' + Object.keys(r.headers).length + ' headers'
 		renderResponse(r.body)
 		await remember({ method: chosen, url: target, body: bodyEl.value, status: r.status, at: Date.now() })
+		// The view/title seat's own worked example (goal 0349 S2c): once a
+		// send has a result to replay, "Send again" declares
+		// when: "plugin.hasResult" in the manifest, so this is the one
+		// call that turns the title action on for the rest of the tab's
+		// life.
+		void mill.call('context.set', 'hasResult', true)
 	} catch (err) {
 		statusEl.textContent = String(err && err.message ? err.message : err)
 	}
