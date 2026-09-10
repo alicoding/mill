@@ -4660,9 +4660,15 @@ Settings' rebinding list, and the Quick Panel for anything opting into
 
 `frontend/src/shared/commands.test.ts` covers the dispatch contract
 generically; add a case there if your command's `enabled` predicate has
-real branches worth pinning. `commandsDeclaration.json` regenerates via
-`go generate ./internal/docsgen` — run it and commit the result so
-"Commands" picks up the new row.
+real branches worth pinning. From the repository root, regenerate the
+TypeScript registry declaration first, then the user docs that consume it:
+
+```sh
+npm --prefix frontend run docs:commands
+go generate ./internal/docsgen
+```
+
+Inspect and commit both generated outputs so "Commands" picks up the new row.
 
 ---
 

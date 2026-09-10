@@ -12,7 +12,9 @@ const strip = (props: Props) => {
   return next
 }
 
-vi.mock('@primer/react', () => {
+vi.mock('@primer/react', async () => {
+  const React = await vi.importActual<typeof import('react')>('react')
+  const ListSemantics = React.createContext(false)
   const Dialog = ({ title, onClose, footerButtons = [], children, ...props }: Props & { onClose: () => void; footerButtons?: FooterButton[] }) => (
     <div role={String(props.role ?? 'dialog')}><h2>{title as ReactNode}</h2><button data-testid="dialog-close" onClick={onClose}>close</button>{children}
       {footerButtons.map((button, index) => <button key={index} onClick={button.onClick}>{button.content}</button>)}
@@ -26,10 +28,17 @@ vi.mock('@primer/react', () => {
   const Label = ({ children }: Props) => <label>{children}</label>
   const Caption = ({ children }: Props) => <span>{children}</span>
   const FormControl = Object.assign(({ children }: Props) => <div>{children}</div>, { Label, Caption })
-  const Item = ({ children, ...props }: Props) => <div {...strip(props)}>{children}</div>
+  const Item = ({ children, ...props }: Props) => {
+    const Component = React.useContext(ListSemantics) ? 'div' : 'button'
+    return <Component {...strip(props)}>{children}</Component>
+  }
   const Description = ({ children }: Props) => <div>{children}</div>
   const TrailingAction = ({ label, onClick, ...props }: Props) => <button aria-label={String(label)} onClick={onClick as never} {...strip(props)} />
-  const ActionList = Object.assign(({ children, ...props }: Props) => <div {...strip(props)}>{children}</div>, { Item, Description, TrailingAction })
+  const ActionList = Object.assign(({ children, role, ...props }: Props) => (
+    <ListSemantics.Provider value={role === 'list'}>
+      <div role={role as never} {...strip(props)}>{children}</div>
+    </ListSemantics.Provider>
+  ), { Item, Description, TrailingAction })
   return { ActionList, Button, Dialog, FormControl, Spinner, Stack, Text, TextInput }
 })
 
@@ -51,8 +60,9 @@ const { ExtensionsSourcesDialog } = await import('./ExtensionsSourcesDialog')
 
 function deferred<T>() {
   let resolve!: (value: T) => void
-  const promise = new Promise<T>((yes) => { resolve = yes })
-  return { promise, resolve }
+  let reject!: (error: unknown) => void
+  const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no })
+  return { promise, resolve, reject }
 }
 
 const policy: PolicyView = {
@@ -113,6 +123,22 @@ async function typeInput(value: string) {
 }
 
 describe('ExtensionsSourcesDialog', () => {
+  it('distinguishes an initial read failure from a successful empty catalog', async () => {
+    vi.mocked(PluginService.PluginPolicy).mockResolvedValueOnce(policy as never)
+    vi.mocked(PluginService.ListMarketplaceSources)
+      .mockRejectedValueOnce(new Error('catalog unavailable'))
+      .mockResolvedValueOnce([] as never)
+    await render()
+    await act(async () => {})
+    expect(container.querySelector('[data-testid="extensions-sources-read-error"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="extensions-sources-empty"]')).toBeNull()
+
+    const retry = [...container.querySelectorAll('button')].find((button) => button.textContent === 'extensions.sources.retry')
+    await act(async () => retry?.click())
+    expect(container.querySelector('[data-testid="extensions-sources-read-error"]')).toBeNull()
+    expect(container.querySelector('[data-testid="extensions-sources-empty"]')).not.toBeNull()
+  })
+
   it('keeps Add disabled until policy is readable and distinguishes migrated refresh times', async () => {
     const policyRead = deferred<PolicyView>()
     vi.mocked(PluginService.PluginPolicy).mockReturnValueOnce(policyRead.promise as never)
@@ -158,10 +184,39 @@ describe('ExtensionsSourcesDialog', () => {
     await render()
     await act(async () => {})
     expect(container.querySelectorAll('button[aria-label="extensions.sources.removeAria"]')).toHaveLength(1)
-    await act(async () => (container.querySelector('button[aria-label="extensions.sources.removeAria"]') as HTMLButtonElement).click())
+    const remove = container.querySelector('button[aria-label="extensions.sources.removeAria"]') as HTMLButtonElement
+    expect(remove.parentElement?.closest('button')).toBeNull()
+    await act(async () => remove.click())
     const cancel = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Cancel')
     await act(async () => cancel?.click())
     expect(commandMocks.runCommand).not.toHaveBeenCalled()
     expect(container.textContent).not.toContain('remove title')
+  })
+
+  it('keeps accepted rows inspectable but disables mutations after a failed reread', async () => {
+    vi.mocked(PluginService.PluginPolicy).mockResolvedValueOnce(policy as never)
+    vi.mocked(PluginService.ListMarketplaceSources)
+      .mockResolvedValueOnce([source('accepted', 'one')] as never)
+      .mockRejectedValueOnce(new Error('source catalog unreadable'))
+      .mockResolvedValueOnce([source('recovered', 'two')] as never)
+    await render()
+    await act(async () => {})
+
+    await act(async () => useExtensionSourcesStore.setState((state) => ({ completionRevision: state.completionRevision + 1 })))
+    await act(async () => {})
+    expect(container.querySelector('[data-source-name="accepted"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="extensions-sources-read-error"]')).not.toBeNull()
+    expect(container.textContent).toContain('source catalog unreadable')
+    await typeInput('/another/source')
+    expect((container.querySelector('[data-testid="extensions-source-add"]') as HTMLButtonElement).disabled).toBe(true)
+    const remove = container.querySelector('button[aria-label="extensions.sources.removeAria"]') as HTMLButtonElement
+    expect(remove.getAttribute('aria-disabled')).toBe('true')
+    await act(async () => remove.click())
+    expect(container.textContent).not.toContain('remove title')
+
+    const retry = [...container.querySelectorAll('button')].find((button) => button.textContent === 'extensions.sources.retry')
+    await act(async () => retry?.click())
+    expect(container.querySelector('[data-source-name="recovered"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="extensions-sources-read-error"]')).toBeNull()
   })
 })

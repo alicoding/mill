@@ -3,7 +3,6 @@ package pluginsvc
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -120,6 +119,9 @@ func (p *PluginService) updateCandidateFor(info PluginInfo, rec InstallRecord) (
 		Source:      rec.Source,
 		Origin:      rec.Origin,
 	}
+	if err := policyUpdateDiscoveryRefusal(rec.Origin); err != nil {
+		return cand, err.Error(), false
+	}
 	var problem string
 	switch {
 	case rec.Marketplace != "":
@@ -134,7 +136,7 @@ func (p *PluginService) updateCandidateFor(info PluginInfo, rec InstallRecord) (
 		cand.Available = entry.Version
 		cand.Tier = entryTier(idx.Name, entry)
 	case rec.Source.Kind == "github":
-		tag, err := p.latestReleaseTag(rec.Source.Repo)
+		tag, err := p.latestReleaseTag(rec.Source.Repo, rec.Origin)
 		if err != nil {
 			return cand, err.Error(), false
 		}
@@ -143,7 +145,7 @@ func (p *PluginService) updateCandidateFor(info PluginInfo, rec InstallRecord) (
 		// no hash Mill can pin to, so it earns the unverified tier.
 		cand.Tier = TierUnverified
 	case rec.Source.Kind == "path":
-		version, err := folderManifestVersion(expandHome(rec.Source.Path))
+		version, err := p.folderManifestVersion(expandHome(rec.Source.Path))
 		if err != nil {
 			return cand, err.Error(), false
 		}
@@ -188,19 +190,23 @@ func ParseLatestReleaseTag(raw []byte) (string, error) {
 	return strings.TrimSpace(body.TagName), nil
 }
 
-func (p *PluginService) latestReleaseTag(repo string) (string, error) {
+func (p *PluginService) latestReleaseTag(repo string, origin SourceOrigin) (string, error) {
+	return p.latestReleaseTagAt(repo, LatestReleaseURL(repo), origin)
+}
+
+func (p *PluginService) latestReleaseTagAt(repo, rawURL string, origin SourceOrigin) (string, error) {
 	if !repoPattern.MatchString(repo) {
 		return "", fmt.Errorf("the install receipt names no repository")
 	}
-	raw, err := p.httpGetBytes(LatestReleaseURL(repo), maxIndexBytes)
+	raw, _, err := p.httpGetBytesForOrigin(rawURL, maxIndexBytes, origin, true)
 	if err != nil {
 		return "", err
 	}
 	return ParseLatestReleaseTag(raw)
 }
 
-func folderManifestVersion(dir string) (string, error) {
-	raw, err := os.ReadFile(filepath.Join(dir, "manifest.json")) // #nosec G304 -- the folder this extension was installed from, recorded in its own receipt
+func (p *PluginService) folderManifestVersion(dir string) (string, error) {
+	raw, err := p.readSourceFile(filepath.Join(dir, "manifest.json"))
 	if err != nil {
 		return "", fmt.Errorf("the folder it was installed from has no manifest.json")
 	}
@@ -293,7 +299,7 @@ func (p *PluginService) installCandidate(cand UpdateCandidate) (InstallRecord, e
 			return InstallRecord{}, err
 		}
 		defer cleanup()
-		tier, finalURL, err := p.stageRepo(stage, cand.Source.Repo, cand.Source.Ref, cand.ID, cand.Available, "")
+		tier, finalURL, err := p.stageRepo(stage, cand.Source.Repo, cand.Source.Ref, cand.ID, cand.Available, "", cand.Origin)
 		if err != nil {
 			return InstallRecord{}, err
 		}

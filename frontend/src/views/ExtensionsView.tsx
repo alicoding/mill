@@ -34,6 +34,7 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
   const [tab, setTab] = useState<ExtensionsTab>(tabFrom(initialTab))
   const sourcesRequest = useUISignalStore((s) => s.extensionSourcesRequest)
   const installedRequest = useUISignalStore((s) => s.extensionInstalledRequest)
+  const consumeInstalledRequest = useUISignalStore((s) => s.consumeExtensionInstalledRequest)
   const importRequest = useUISignalStore((s) => s.extensionThemeImportRequest)
   const consumeImportRequest = useUISignalStore((s) => s.consumeExtensionThemeImport)
   const [importOpen, setImportOpen] = useState(false)
@@ -45,20 +46,15 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
   }, [consumeImportRequest, importRequest])
   // A palette "marketplace sources" ask lands on Browse, where the
   // dialog lives.
-  const [seenSources, setSeenSources] = useState(sourcesRequest)
   useEffect(() => {
-    if (sourcesRequest !== seenSources) {
-      setSeenSources(sourcesRequest)
-      setTab('browse')
-    }
-  }, [sourcesRequest, seenSources])
-  const [seenInstalled, setSeenInstalled] = useState(installedRequest)
+    if (sourcesRequest > 0) setTab('browse')
+  }, [sourcesRequest])
   useEffect(() => {
-    if (installedRequest !== seenInstalled) {
-      setSeenInstalled(installedRequest)
+    if (installedRequest > 0) {
       setTab('installed')
+      consumeInstalledRequest(installedRequest)
     }
-  }, [installedRequest, seenInstalled])
+  }, [consumeInstalledRequest, installedRequest])
 
   // An install changes what the Installed tab shows; the same signal
   // a removal raises re-reads it.

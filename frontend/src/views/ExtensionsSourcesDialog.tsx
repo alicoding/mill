@@ -114,8 +114,8 @@ export function ExtensionsSourcesDialog({ onClose }: { onClose: () => void }) {
               {t('extensions.sources.empty')}
             </Text>
           )}
-          {ready && sources.length > 0 && (
-            <ActionList aria-label={t('extensions.sources.title')} data-testid="extensions-sources-list">
+          {sources.length > 0 && (
+            <ActionList role="list" aria-label={t('extensions.sources.title')} data-testid="extensions-sources-list">
               {sources.map((source) => {
                 const refreshed = source.lastSuccessAt ? formatUpdated(source.lastSuccessAt) : ''
                 const refreshLabel = source.lastSuccessAt
@@ -137,10 +137,10 @@ export function ExtensionsSourcesDialog({ onClose }: { onClose: () => void }) {
                         as="button"
                         icon={TrashIcon}
                         label={t('extensions.sources.removeAria', { name: source.name })}
-                        aria-disabled={mutation !== null}
+                        aria-disabled={mutation !== null || !ready}
                         onClick={(event: React.MouseEvent) => {
                           event.stopPropagation()
-                          if (mutation === null) askToRemove(source)
+                          if (mutation === null && ready) askToRemove(source)
                         }}
                       />
                     )}

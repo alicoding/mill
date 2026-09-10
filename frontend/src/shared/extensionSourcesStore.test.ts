@@ -108,4 +108,19 @@ describe('extensionSourcesStore', () => {
     expect(useExtensionSourcesStore.getState().browseQuery).toBe('draft')
     expect(useExtensionSourcesStore.getState().browseKinds).toEqual(['tools'])
   })
+
+  it('retains an accepted Browse result across a failed reload and replaces it on Retry', async () => {
+    vi.mocked(PluginService.BrowseMarketplaces)
+      .mockResolvedValueOnce(browse('accepted') as never)
+      .mockRejectedValueOnce(new Error('catalog unreadable'))
+      .mockResolvedValueOnce(browse('recovered') as never)
+    await expect(useExtensionSourcesStore.getState().loadBrowse()).resolves.toBe(true)
+    await expect(useExtensionSourcesStore.getState().loadBrowse()).resolves.toBe(false)
+    expect(useExtensionSourcesStore.getState().browse?.Entries?.[0].ID).toBe('accepted')
+    expect(useExtensionSourcesStore.getState().browseError).toContain('catalog unreadable')
+
+    await expect(useExtensionSourcesStore.getState().loadBrowse()).resolves.toBe(true)
+    expect(useExtensionSourcesStore.getState().browse?.Entries?.[0].ID).toBe('recovered')
+    expect(useExtensionSourcesStore.getState().browseError).toBe('')
+  })
 })

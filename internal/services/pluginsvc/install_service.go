@@ -2,8 +2,10 @@ package pluginsvc
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -365,6 +367,10 @@ func (p *PluginService) stageRepo(stage, repo, ref, id, version, declared string
 		tier, finalURL, err := p.stageArchive(stage, assetURL, declared, origins...)
 		if err == nil {
 			return tier, finalURL, nil
+		}
+		var statusErr *httpStatusError
+		if strings.TrimSpace(declared) != "" || !errors.As(err, &statusErr) || statusErr.status != http.StatusNotFound {
+			return "", "", err
 		}
 	}
 	_, finalURL, err := p.stageArchive(stage, BranchArchiveURL(repo, ref), "", origins...)

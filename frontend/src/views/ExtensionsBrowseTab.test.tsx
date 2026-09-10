@@ -54,6 +54,7 @@ const { PluginService } = await import('../../bindings/github.com/alicoding/mill
 const { runCommand } = await import('../shared/commands')
 const { useExtensionSourcesStore } = await import('../shared/extensionSourcesStore')
 const { usePluginPolicyStore } = await import('../shared/pluginPolicyStore')
+const { useUISignalStore } = await import('../shared/uiSignalStore')
 const { ExtensionsBrowseTab } = await import('./ExtensionsBrowseTab')
 
 function deferred<T>() {
@@ -98,6 +99,7 @@ beforeEach(() => {
     confirmedIncarnation: '', readRevision: 0, browse: null, browseLoading: false, browseError: '',
     browseReadRevision: 0, browseQuery: '', browseKinds: [],
   })
+  useUISignalStore.setState({ extensionSourcesRequest: 0, extensionInstalledRequest: 0 })
 })
 
 afterEach(async () => {
@@ -110,8 +112,43 @@ async function render(sourcesRequest = 0) {
 }
 
 describe('ExtensionsBrowseTab states', () => {
+  it('opens Sources when a command request predates the Browse mount', async () => {
+    vi.mocked(PluginService.BrowseMarketplaces).mockResolvedValue(result([]) as never)
+    await act(async () => useUISignalStore.getState().requestExtensionSources())
+    await render(useUISignalStore.getState().extensionSourcesRequest)
+    expect(container.querySelector('[data-testid="sources-dialog"]')).not.toBeNull()
+    expect(useUISignalStore.getState().extensionSourcesRequest).toBe(0)
+
+    await act(async () => (container.querySelector('[data-testid="sources-dialog"] button') as HTMLButtonElement).click())
+    await act(async () => root.render(<></>))
+    await render(useUISignalStore.getState().extensionSourcesRequest)
+    expect(container.querySelector('[data-testid="sources-dialog"]')).toBeNull()
+
+    await act(async () => useUISignalStore.getState().requestExtensionSources())
+    await render(useUISignalStore.getState().extensionSourcesRequest)
+    expect(container.querySelector('[data-testid="sources-dialog"]')).not.toBeNull()
+  })
+
+  it('keeps a newer Sources request and preserves an open draft across repeated requests', async () => {
+    vi.mocked(PluginService.BrowseMarketplaces).mockResolvedValue(result([]) as never)
+    await act(async () => useUISignalStore.getState().requestExtensionSources())
+    const firstRequest = useUISignalStore.getState().extensionSourcesRequest
+    await act(async () => {
+      useUISignalStore.getState().requestExtensionSources()
+      useUISignalStore.getState().consumeExtensionSourcesRequest(firstRequest)
+    })
+    expect(useUISignalStore.getState().extensionSourcesRequest).toBe(firstRequest + 1)
+
+    await render(useUISignalStore.getState().extensionSourcesRequest)
+    const input = container.querySelector('[data-testid="source-draft"]') as HTMLInputElement
+    input.value = 'draft source'
+    await act(async () => useUISignalStore.getState().requestExtensionSources())
+    await render(useUISignalStore.getState().extensionSourcesRequest)
+    expect((container.querySelector('[data-testid="source-draft"]') as HTMLInputElement).value).toBe('draft source')
+  })
+
   it('keeps an open Sources draft mounted when a successful Browse reload fails', async () => {
-    vi.mocked(PluginService.BrowseMarketplaces).mockResolvedValueOnce(result([]) as never)
+    vi.mocked(PluginService.BrowseMarketplaces).mockResolvedValueOnce(result([entry('accepted')]) as never)
     await render()
     await act(async () => {})
     await render(1)
@@ -121,9 +158,14 @@ describe('ExtensionsBrowseTab states', () => {
     const reload = deferred<BrowseResult>()
     vi.mocked(PluginService.BrowseMarketplaces).mockReturnValueOnce(reload.promise as never)
     await act(async () => useExtensionSourcesStore.setState((state) => ({ completionRevision: state.completionRevision + 1 })))
+    expect(container.querySelector('[data-testid="extensions-browse-reloading"]')).not.toBeNull()
+    expect(container.querySelector('[data-plugin-id="accepted"]')).not.toBeNull()
     await act(async () => reload.reject(new Error('catalog unreadable')))
 
     expect(container.querySelector('[data-testid="extensions-browse-read-error"]')).not.toBeNull()
+    expect(container.querySelector('[data-plugin-id="accepted"]')).not.toBeNull()
+    expect(container.textContent).toContain('catalog unreadable')
+    expect(container.textContent).toContain('extensions.browse.retry')
     expect((container.querySelector('[data-testid="source-draft"]') as HTMLInputElement).value).toBe('draft source')
     await act(async () => (container.querySelector('[data-testid="sources-dialog"] button') as HTMLButtonElement).click())
     expect(container.querySelector('[data-testid="sources-dialog"]')).toBeNull()

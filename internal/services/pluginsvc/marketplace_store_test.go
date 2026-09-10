@@ -1,13 +1,92 @@
 package pluginsvc
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"testing/fstest"
 )
+
+func TestReadHTTPResponsePreservesStatus(t *testing.T) {
+	resp := &http.Response{StatusCode: http.StatusNotFound, Body: io.NopCloser(strings.NewReader("missing"))}
+	_, err := readHTTPResponse(resp, maxIndexBytes)
+	var statusErr *httpStatusError
+	if !errors.As(err, &statusErr) || statusErr.status != http.StatusNotFound {
+		t.Fatalf("error = %v, want typed 404", err)
+	}
+}
+
+func TestStageRepoFallsBackOnlyForAnUnpinnedMissingReleaseAsset(t *testing.T) {
+	archive := zipOf(t, map[string]string{
+		"fixture/manifest.json": `{"id":"fixture","name":"Fixture","version":"1.0.0"}`,
+		"fixture/main.js":       "export function activate() {}",
+	})
+	terminal := []struct {
+		name     string
+		declared string
+		answer   func() ([]byte, error)
+	}{
+		{name: "pinned missing asset", declared: SHA256Hex(archive), answer: func() ([]byte, error) { return nil, &httpStatusError{status: http.StatusNotFound} }},
+		{name: "authentication", answer: func() ([]byte, error) { return nil, &httpStatusError{status: http.StatusUnauthorized} }},
+		{name: "network", answer: func() ([]byte, error) { return nil, os.ErrDeadlineExceeded }},
+		{name: "digest", declared: strings.Repeat("0", 64), answer: func() ([]byte, error) { return archive, nil }},
+		{name: "archive", answer: func() ([]byte, error) { return []byte("not a zip"), nil }},
+	}
+	for _, tc := range terminal {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, _ := newStoreService(t)
+			requests := 0
+			svc.SetDownloader(func(string, int64) ([]byte, error) {
+				requests++
+				return tc.answer()
+			})
+			if _, _, err := svc.stageRepo(t.TempDir(), "acme/fixture", "main", "fixture", "1.0.0", tc.declared); err == nil {
+				t.Fatal("stageRepo succeeded")
+			}
+			if requests != 1 {
+				t.Fatalf("requests = %d, want only the release asset request", requests)
+			}
+		})
+	}
+
+	t.Run("policy", func(t *testing.T) {
+		writePolicy(t, `{"version":2,"managedBy":"Org","sources":[{"kind":"github","locator":"other/repo","artifactOrigins":["https://github.com"]}]}`)
+		svc, _ := newStoreService(t)
+		requests := 0
+		svc.SetDownloader(func(string, int64) ([]byte, error) {
+			requests++
+			return archive, nil
+		})
+		if _, _, err := svc.stageRepo(t.TempDir(), "acme/fixture", "main", "fixture", "1.0.0", "", SourceOrigin{Kind: "github", Locator: "acme/fixture"}); err == nil {
+			t.Fatal("stageRepo succeeded")
+		}
+		if requests != 0 {
+			t.Fatalf("requests = %d, want policy refusal before IO", requests)
+		}
+	})
+
+	svc, _ := newStoreService(t)
+	requests := []string{}
+	svc.SetDownloader(func(rawURL string, _ int64) ([]byte, error) {
+		requests = append(requests, rawURL)
+		if len(requests) == 1 {
+			return nil, &httpStatusError{status: http.StatusNotFound}
+		}
+		return archive, nil
+	})
+	tier, _, err := svc.stageRepo(t.TempDir(), "acme/fixture", "main", "fixture", "1.0.0", "")
+	if err != nil || tier != TierUnverified {
+		t.Fatalf("fallback = tier %q, error %v", tier, err)
+	}
+	if len(requests) != 2 || requests[1] != BranchArchiveURL("acme/fixture", "main") {
+		t.Fatalf("requests = %v, want release asset then branch archive", requests)
+	}
+}
 
 // exampleFS mirrors main.go's own embed layout, so the bundled
 // marketplace is exercised through the same root the binary uses.
@@ -183,6 +262,45 @@ func TestInstallFromMarketplace_RefusesAnArchiveThatDoesNotMatchItsHash(t *testi
 	}
 	if _, statErr := os.Stat(filepath.Join(dir, "fixture-notes")); statErr == nil {
 		t.Fatal("the refused download was written anyway")
+	}
+}
+
+func TestInstallFromMarketplace_PinnedRepoRefusalPreservesInstalledPackageAndReceipt(t *testing.T) {
+	svc, dir := newStoreService(t)
+	installed := filepath.Join(dir, "fixture-notes")
+	writePlugin(t, dir, "fixture-notes", `{"id":"fixture-notes","name":"Notes","version":"0.9.0"}`, nil)
+	wantRecord := InstallRecord{Source: PluginSource{Kind: "github", Repo: "acme/notes"}, Version: "0.9.0", Tier: TierUnverified}
+	if err := WriteInstallRecord(installed, wantRecord); err != nil {
+		t.Fatal(err)
+	}
+	manifestBefore, err := os.ReadFile(filepath.Join(installed, "manifest.json")) // #nosec G304 -- test-owned install path
+	if err != nil {
+		t.Fatal(err)
+	}
+	receiptBefore, err := os.ReadFile(filepath.Join(installed, InstallRecordFile)) // #nosec G304 -- test-owned install path
+	if err != nil {
+		t.Fatal(err)
+	}
+	archive := zipOf(t, map[string]string{
+		"fixture-notes/manifest.json": `{"id":"fixture-notes","name":"Notes","version":"1.0.0"}`,
+		"fixture-notes/main.js":       "export function activate() {}",
+	})
+	requests := 0
+	svc.SetDownloader(func(string, int64) ([]byte, error) {
+		requests++
+		return archive, nil
+	})
+	writeSourceIndex(t, svc, `{"name":"fixture","plugins":[{"id":"fixture-notes","name":"Notes","version":"1.0.0","sha256":"0000000000000000000000000000000000000000000000000000000000000000","source":{"kind":"github","repo":"acme/notes"}}]}`)
+	if _, err := svc.InstallFromMarketplace("fixture", "fixture-notes"); err == nil {
+		t.Fatal("pinned mismatch installed")
+	}
+	manifestAfter, _ := os.ReadFile(filepath.Join(installed, "manifest.json"))  // #nosec G304 -- test-owned install path
+	receiptAfter, _ := os.ReadFile(filepath.Join(installed, InstallRecordFile)) // #nosec G304 -- test-owned install path
+	if string(manifestAfter) != string(manifestBefore) || string(receiptAfter) != string(receiptBefore) {
+		t.Fatal("refusal changed the installed package or receipt")
+	}
+	if requests != 1 {
+		t.Fatalf("requests = %d, want no branch fallback", requests)
 	}
 }
 

@@ -13,6 +13,7 @@ import { appTranslate, messageFor, userErrorFrom } from '../shared/userError'
 import { notifyPluginRemoved } from '../shared/pluginRemoveSignal'
 import { runCommand } from '../shared/commands'
 import { useExtensionSourcesStore } from '../shared/extensionSourcesStore'
+import { useUISignalStore } from '../shared/uiSignalStore'
 import { usePluginPolicy } from '../shared/pluginPolicyStore'
 import { filterBrowseEntries } from './extensionsBrowseFilter'
 import { ExtensionsInstallDialog } from './ExtensionsInstallDialog'
@@ -38,6 +39,7 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
   const setKinds = useExtensionSourcesStore((state) => state.setBrowseKinds)
   const policy = usePluginPolicy()
   const [sourcesOpen, setSourcesOpen] = useState(false)
+  const consumeSourcesRequest = useUISignalStore((state) => state.consumeExtensionSourcesRequest)
   const [preview, setPreview] = useState<InstallPreview | null>(null)
   const [pending, setPending] = useState<BrowseEntry | null>(null)
   const [refusal, setRefusal] = useState('')
@@ -47,13 +49,12 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
 
   useEffect(() => { void load() }, [completionRevision, load])
 
-  const [seenRequest, setSeenRequest] = useState(sourcesRequest)
   useEffect(() => {
-    if (sourcesRequest !== seenRequest) {
-      setSeenRequest(sourcesRequest)
+    if (sourcesRequest > 0) {
       setSourcesOpen(true)
+      consumeSourcesRequest(sourcesRequest)
     }
-  }, [sourcesRequest, seenRequest])
+  }, [consumeSourcesRequest, sourcesRequest])
 
   const openSources = () => { void runCommand('extensions.sources') }
   const clearFilters = async () => {
@@ -185,6 +186,26 @@ export function ExtensionsBrowseTab({ sourcesRequest, onInstalled }: {
           {t('extensions.sources.title')}
         </Button>
       </Stack>
+
+      {loading && (
+        <Stack direction="horizontal" gap="condensed" align="center" data-testid="extensions-browse-reloading">
+          <Spinner size="small" />
+          <Text size="small">{t('extensions.browse.loading')}</Text>
+        </Stack>
+      )}
+
+      {error && (
+        <Banner
+          variant="critical"
+          title={t('extensions.browse.readErrorHeading')}
+          description={<Stack direction="vertical" gap="condensed">
+            <Text size="small">{t('extensions.browse.readErrorDescription')}</Text>
+            <Text size="small">{messageFor(error, appTranslate)}</Text>
+          </Stack>}
+          primaryAction={<Banner.PrimaryAction onClick={() => { void runCommand('extension.browse.retry') }}>{t('extensions.browse.retry')}</Banner.PrimaryAction>}
+          data-testid="extensions-browse-read-error"
+        />
+      )}
 
       {partial && (
         <Banner

@@ -216,6 +216,38 @@ func policyRequestRefusal(origin SourceOrigin, rawURL string, artifact bool) err
 	return nil
 }
 
+func policyUpdateDiscoveryRefusal(origin SourceOrigin) error {
+	st := LoadPolicy()
+	if !st.Present {
+		return nil
+	}
+	if st.Error != "" {
+		return ErrPolicyUnreadable
+	}
+	if st.Policy.Version == PolicyVersionLegacy {
+		if len(st.Policy.AllowedSources) == 0 {
+			return nil
+		}
+		if origin.Kind == "" {
+			return policyRefused("Source could not be verified. Reinstall this extension from an allowed source.")
+		}
+		if st.Policy.SourceAllowed("", origin.Locator) {
+			return nil
+		}
+		return policyRefused(st.Policy.SourceRefusal())
+	}
+	if st.Policy.Sources == nil {
+		return nil
+	}
+	if origin.Kind == "" {
+		return policyRefused("Source could not be verified. Reinstall this extension from an allowed source.")
+	}
+	if !st.Policy.SourceOriginAllowed(origin) {
+		return policyRefused(st.Policy.SourceRefusal())
+	}
+	return nil
+}
+
 // PolicyRefusedCode is the error code every policy refusal carries;
 // the install prompt keys its headline on it and shows the sentence.
 const PolicyRefusedCode = "plugin-policy-refused"

@@ -3,11 +3,37 @@ package pluginsvc
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func writeInstalledUpdateFixture(t *testing.T, svc *PluginService, rec InstallRecord) {
+	t.Helper()
+	id := "fixture"
+	plugin := filepath.Join(svc.dir, id)
+	if err := os.MkdirAll(plugin, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	for rel, body := range map[string]string{
+		"manifest.json": fmt.Sprintf(`{"id":%q,"name":"Fixture","version":"1.0.0"}`, id),
+		"main.js":       "export function activate() {}",
+	} {
+		if err := os.WriteFile(filepath.Join(plugin, rel), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rec.Version = "1.0.0"
+	if rec.Tier == "" {
+		rec.Tier = TierUnverified
+	}
+	if err := WriteInstallRecord(plugin, rec); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestNewerVersion_TableOfComparisons(t *testing.T) {
 	cases := []struct {
@@ -168,6 +194,8 @@ func TestCheckForUpdates_MarketplaceEntryOffersOnlyANewerVersion(t *testing.T) {
 // declared a hash.
 func TestCheckForUpdates_RepositoryReleaseIsFetchedByAssetName(t *testing.T) {
 	svc, dir := newStoreService(t)
+	origin := SourceOrigin{Kind: "github", Locator: "acme/notes"}
+	writePolicy(t, `{"version":2,"managedBy":"Org","sources":[{"kind":"github","locator":"acme/notes","artifactOrigins":["https://api.github.com","https://github.com"]}]}`)
 	plugin := filepath.Join(dir, "acme-notes")
 	if err := os.MkdirAll(plugin, 0o750); err != nil {
 		t.Fatal(err)
@@ -180,7 +208,7 @@ func TestCheckForUpdates_RepositoryReleaseIsFetchedByAssetName(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := WriteInstallRecord(plugin, InstallRecord{Source: PluginSource{Kind: "github", Repo: "acme/notes"}, Version: "1.0.0", Tier: TierUnverified}); err != nil {
+	if err := WriteInstallRecord(plugin, InstallRecord{Source: PluginSource{Kind: "github", Repo: "acme/notes"}, Origin: origin, Version: "1.0.0", Tier: TierUnverified}); err != nil {
 		t.Fatal(err)
 	}
 	asset := zipOf(t, map[string]string{
@@ -243,6 +271,158 @@ func TestCheckForUpdates_UnreachableSourceIsNamedNotHidden(t *testing.T) {
 	}
 	if len(check.Candidates) != 0 || len(check.Problems) != 1 || !strings.HasPrefix(check.Problems[0], "acme-notes: ") {
 		t.Fatalf("check = %+v", check)
+	}
+}
+
+func TestUpdateDiscoveryRefusesRestrictedUnknownAndBlockedOriginsBeforeIO(t *testing.T) {
+	for name, policy := range map[string]string{
+		"legacy v1": `{"version":1,"managedBy":"Org","allowedSources":["acme/notes"]}`,
+		"version 2": `{"version":2,"managedBy":"Org","sources":[{"kind":"github","locator":"acme/notes","artifactOrigins":["https://api.github.com"]}]}`,
+	} {
+		t.Run(name+" unknown origin", func(t *testing.T) {
+			writePolicy(t, policy)
+			svc, _ := newStoreService(t)
+			writeInstalledUpdateFixture(t, svc, InstallRecord{Source: PluginSource{Kind: "github", Repo: "acme/notes"}})
+			requests := 0
+			svc.SetDownloader(func(string, int64) ([]byte, error) {
+				requests++
+				return []byte(`{"tag_name":"v2.0.0"}`), nil
+			})
+			check, err := svc.CheckForUpdates()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if requests != 0 {
+				t.Fatalf("requests = %d, want zero", requests)
+			}
+			if len(check.Problems) != 1 || !strings.Contains(check.Problems[0], "Source could not be verified") {
+				t.Fatalf("problems = %v", check.Problems)
+			}
+		})
+	}
+
+	t.Run("blocked known folder origin", func(t *testing.T) {
+		sourceDir := t.TempDir()
+		allowedDir := t.TempDir()
+		writePolicy(t, fmt.Sprintf(`{"version":2,"managedBy":"Org","sources":[{"kind":"path","locator":%q}]}`, allowedDir))
+		svc, _ := newStoreService(t)
+		writeInstalledUpdateFixture(t, svc, InstallRecord{
+			Source: PluginSource{Kind: "path", Path: sourceDir},
+			Origin: SourceOrigin{Kind: "path", Locator: sourceDir}, Tier: TierDev,
+		})
+		reads := 0
+		svc.sourceRead = func(string) ([]byte, error) {
+			reads++
+			return nil, fmt.Errorf("read should not run")
+		}
+		check, err := svc.CheckForUpdates()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if reads != 0 {
+			t.Fatalf("source reads = %d, want zero", reads)
+		}
+		if len(check.Problems) != 1 || !strings.Contains(check.Problems[0], "does not allow this extension source") {
+			t.Fatalf("problems = %v", check.Problems)
+		}
+	})
+}
+
+func TestUpdateDiscoveryKeepsUnrestrictedV1LegacyReceiptCompatibility(t *testing.T) {
+	writePolicy(t, `{"version":1,"managedBy":"Org"}`)
+	svc, _ := newStoreService(t)
+	writeInstalledUpdateFixture(t, svc, InstallRecord{Source: PluginSource{Kind: "github", Repo: "acme/notes"}})
+	requests := 0
+	svc.SetDownloader(func(rawURL string, _ int64) ([]byte, error) {
+		requests++
+		if rawURL != LatestReleaseURL("acme/notes") {
+			t.Fatalf("unexpected URL %q", rawURL)
+		}
+		return []byte(`{"tag_name":"v2.0.0"}`), nil
+	})
+	check, err := svc.CheckForUpdates()
+	if err != nil || len(check.Candidates) != 1 {
+		t.Fatalf("check = %+v, %v", check, err)
+	}
+	if requests != 1 {
+		t.Fatalf("requests = %d, want one", requests)
+	}
+}
+
+func TestUpdateDiscoveryAllowsRecordedFolderAndGitHubRedirect(t *testing.T) {
+	t.Run("folder", func(t *testing.T) {
+		sourceDir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(sourceDir, "manifest.json"), []byte(`{"version":"2.0.0"}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		writePolicy(t, fmt.Sprintf(`{"version":2,"managedBy":"Org","sources":[{"kind":"path","locator":%q}]}`, sourceDir))
+		svc, _ := newStoreService(t)
+		writeInstalledUpdateFixture(t, svc, InstallRecord{
+			Source: PluginSource{Kind: "path", Path: sourceDir},
+			Origin: SourceOrigin{Kind: "path", Locator: sourceDir}, Tier: TierDev,
+		})
+		reads := 0
+		svc.sourceRead = func(name string) ([]byte, error) {
+			reads++
+			return os.ReadFile(name) // #nosec G304 -- test-owned source path
+		}
+		check, err := svc.CheckForUpdates()
+		if err != nil || len(check.Candidates) != 1 || check.Candidates[0].Available != "2.0.0" {
+			t.Fatalf("check = %+v, %v", check, err)
+		}
+		if reads != 1 {
+			t.Fatalf("source reads = %d, want one", reads)
+		}
+	})
+
+	t.Run("github redirect", func(t *testing.T) {
+		finalRequests := 0
+		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			if request.URL.Path == "/start" {
+				http.Redirect(writer, request, "/final", http.StatusFound)
+				return
+			}
+			finalRequests++
+			_, _ = writer.Write([]byte(`{"tag_name":"v2.0.0"}`))
+		}))
+		defer server.Close()
+		writePolicy(t, fmt.Sprintf(`{"version":2,"managedBy":"Org","sources":[{"kind":"github","locator":"acme/notes","artifactOrigins":[%q]}]}`, server.URL))
+		svc, _ := newStoreService(t)
+		tag, err := svc.latestReleaseTagAt("acme/notes", server.URL+"/start", SourceOrigin{Kind: "github", Locator: "acme/notes"})
+		if err != nil || tag != "v2.0.0" {
+			t.Fatalf("tag = %q, %v", tag, err)
+		}
+		if finalRequests != 1 {
+			t.Fatalf("final requests = %d, want one", finalRequests)
+		}
+	})
+}
+
+func TestMarketplaceUpdateRefreshRefusesChangedPolicyBeforeSourceRead(t *testing.T) {
+	svc, _ := newStoreService(t)
+	market := t.TempDir()
+	writeFolderMarketplace(t, market, "1.0.0")
+	if _, err := svc.AddMarketplaceSource(market); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.InstallFromMarketplace("fx", "fx-notes"); err != nil {
+		t.Fatal(err)
+	}
+	writePolicy(t, fmt.Sprintf(`{"version":2,"managedBy":"Org","sources":[{"kind":"path","locator":%q}]}`, t.TempDir()))
+	reads := 0
+	svc.sourceRead = func(string) ([]byte, error) {
+		reads++
+		return nil, fmt.Errorf("read should not run")
+	}
+	check, err := svc.CheckForUpdates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reads != 0 {
+		t.Fatalf("source reads = %d, want zero", reads)
+	}
+	if joined := strings.Join(check.Problems, "\n"); !strings.Contains(joined, "does not allow this extension source") {
+		t.Fatalf("problems = %v", check.Problems)
 	}
 }
 

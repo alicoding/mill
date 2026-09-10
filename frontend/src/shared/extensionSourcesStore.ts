@@ -70,7 +70,7 @@ export const useExtensionSourcesStore = create<ExtensionSourcesState>()((set, ge
       return true
     } catch (error) {
       if (get().browseReadRevision !== request) return false
-      set({ browse: null, browseLoading: false, browseError: String(error) })
+      set({ browseLoading: false, browseError: String(error) })
       return false
     }
   },
