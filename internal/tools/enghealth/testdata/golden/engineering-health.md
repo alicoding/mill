@@ -2,6 +2,14 @@
 
 Generated 2026-09-09T07:00:00Z UTC. Trailing 7 and 28 days.
 
+## Breaches
+
+- Platform health: Merge-group failure rate
+- Platform health: Retry-passed rate
+- Platform health: Go coverage
+- Platform health: Max Dependabot PR age
+- Platform health: Playwright
+
 ## Delivery
 
 | Metric | 7d | 28d | Budget | Trend | Status |

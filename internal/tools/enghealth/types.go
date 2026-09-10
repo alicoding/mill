@@ -2,8 +2,10 @@
 // 0413 S1): delivery, CI, test, code, platform, dependency, machinery and
 // currency metrics against budgets, for the trailing 7 and 28 days. It is
 // invoked by .github/workflows/engineering-health.yml, never a service --
-// reporting only, no budget breach fails the run (S2 makes a breach open
-// its own tracking issue).
+// reporting only, no budget breach fails the run. Each breach instead
+// opens or refreshes its own tracking issue, carrying the class its
+// budget maps to and a Consecutive count chained through each week's own
+// report JSON (goal 0413 S2).
 package main
 
 import "math"
@@ -30,6 +32,15 @@ type Metric struct {
 	Budget        float64 `json:"budget,omitempty"`
 	BudgetOp      string  `json:"budgetOp,omitempty"` // "le" or "ge"
 	BudgetDisplay string  `json:"budgetDisplay,omitempty"`
+	BudgetKey     string  `json:"budgetKey,omitempty"` // the budget's own engineering-budgets.yml key
+	Class         string  `json:"class,omitempty"`     // BudgetKey's row in Budgets.Classes
+
+	// Consecutive counts how many runs in a row (including this one)
+	// this metric has breached its budget -- chained through each
+	// week's own report JSON via --previous, since that JSON is the
+	// only history this tool keeps (goal 0413 S2 contract item 1). Only
+	// meaningful (and only ever set) on a currently-breaching metric.
+	Consecutive int `json:"consecutive,omitempty"`
 }
 
 // TrendArrow compares the 7-day reading against the 28-day reading of the

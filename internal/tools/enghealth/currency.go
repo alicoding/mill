@@ -15,12 +15,12 @@ func ComputeCurrency(s Sources, b Budgets) []Metric {
 
 	return []Metric{
 		pointInTime("currency", "Go toolchain", float64(goLag), okGo, fmtLag("minors"),
-			&budgetSpec{b.GoMinorsBehindMax, "le", fmtLag("minors")(b.GoMinorsBehindMax)}),
+			&budgetSpec{Key: "go_minors_behind_max", Value: b.GoMinorsBehindMax, Op: "le", Display: fmtLag("minors")(b.GoMinorsBehindMax), Class: b.ClassFor("go_minors_behind_max")}),
 		pointInTime("currency", "Node", float64(nodeLag), okNode, fmtLag("minors"),
-			&budgetSpec{b.NodeMinorsBehindMax, "le", fmtLag("minors")(b.NodeMinorsBehindMax)}),
+			&budgetSpec{Key: "node_minors_behind_max", Value: b.NodeMinorsBehindMax, Op: "le", Display: fmtLag("minors")(b.NodeMinorsBehindMax), Class: b.ClassFor("node_minors_behind_max")}),
 		pointInTime("currency", "Wails", float64(wailsLag), okWails, fmtLag("betas"),
-			&budgetSpec{b.WailsBetasBehindMax, "le", fmtLag("betas")(b.WailsBetasBehindMax)}),
+			&budgetSpec{Key: "wails_betas_behind_max", Value: b.WailsBetasBehindMax, Op: "le", Display: fmtLag("betas")(b.WailsBetasBehindMax), Class: b.ClassFor("wails_betas_behind_max")}),
 		pointInTime("currency", "Playwright", float64(pwLag), okPw, fmtLag("minors"),
-			&budgetSpec{b.PlaywrightMinorsBehindMax, "le", fmtLag("minors")(b.PlaywrightMinorsBehindMax)}),
+			&budgetSpec{Key: "playwright_minors_behind_max", Value: b.PlaywrightMinorsBehindMax, Op: "le", Display: fmtLag("minors")(b.PlaywrightMinorsBehindMax), Class: b.ClassFor("playwright_minors_behind_max")}),
 	}
 }
