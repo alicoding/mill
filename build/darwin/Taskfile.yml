@@ -181,22 +181,15 @@ tasks:
         fi
       - cp "{{.BIN_DIR}}/{{.APP_NAME}}" "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/MacOS"
       - cp build/darwin/Info.plist "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents"
-      # Stamps the bundle's own About-panel version with the SAME value
-      # the binary reports (goal 0335): MILL_VERSION for a real release
-      # (release.yml computes it from the pushed tag), else
-      # MILL_UPDATE_VERSION for a beta (already the ldflags value
-      # above's own source, ci.yml's beta job) -- unset for a plain
-      # local `task package`, which leaves the committed plist default
-      # untouched rather than writing a version nobody asked for.
-      # PlistBuddy is macOS-only, guarded the same way codesign below
-      # already is for a cross-compiled darwin bundle built from a
-      # non-mac host.
+      # Keep the native About panel on the binary's effective version:
+      # release, then beta, then build/config.yml's local fallback. The
+      # adapter updates a temporary plist and replaces this generated
+      # copy only after both version keys succeed.
       - |
-        V="${MILL_VERSION:-${MILL_UPDATE_VERSION:-}}"
-        if [ -n "$V" ] && [ "{{OS}}" = "darwin" ]; then
-          PLIST="{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Info.plist"
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $V" "$PLIST"
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $V" "$PLIST"
+        if [ "{{OS}}" = "darwin" ]; then
+          go run ./internal/tools/macosbundleversion build/config.yml "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Info.plist"
+        else
+          echo "Skipping macOS bundle version stamp (PlistBuddy is unavailable on {{OS}})."
         fi
       - task: '{{if eq OS "darwin"}}codesign:identity{{else}}codesign:skip{{end}}'
 
@@ -268,6 +261,12 @@ tasks:
         fi
       - cp "{{.BIN_DIR}}/{{.APP_NAME}}" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS"
       - cp "build/darwin/Info.dev.plist" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Info.plist"
+      - |
+        if [ "{{OS}}" = "darwin" ]; then
+          go run ./internal/tools/macosbundleversion build/config.yml "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Info.plist"
+        else
+          echo "Skipping macOS bundle version stamp (PlistBuddy is unavailable on {{OS}})."
+        fi
       - codesign --force --deep --sign - "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
       - '"{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS/{{.APP_NAME}}"'
 

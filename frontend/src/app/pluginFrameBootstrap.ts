@@ -1,4 +1,5 @@
 import { THEME_VARIABLES } from '../shared/appearanceThemes'
+import type { KeyCombo } from '../shared/keybinding'
 import type { PluginTheme } from '../plugins/sdk'
 
 // What Mill injects into a plugin's own page before the page's own
@@ -29,6 +30,7 @@ export interface FrameInit {
   theme: PluginTheme
   state: unknown
   context: Record<string, unknown>
+  paletteBindings: KeyCombo[]
 }
 
 

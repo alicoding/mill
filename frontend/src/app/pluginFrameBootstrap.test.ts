@@ -8,7 +8,7 @@ import { buildFrameSrcdoc, millTokenCss } from './pluginFrameBootstrap'
 const BASE = 'http://mill.test/plugins/mill-index/'
 const BOOTSTRAP = 'http://mill.test/plugin-frame/bootstrap.js'
 
-const init = { theme: { mode: 'light' as const, scheme: 'light' as const }, state: undefined, context: {} }
+const init = { theme: { mode: 'light' as const, scheme: 'light' as const }, state: undefined, context: {}, paletteBindings: [] }
 
 describe('buildFrameSrcdoc', () => {
   it('prepends the base, the policy, the tokens and the bootstrap inside the page head', () => {
@@ -21,6 +21,8 @@ describe('buildFrameSrcdoc', () => {
     // document inherits Mill's own policy, which forbids inline script.
     expect(doc).toContain(`<script src="${BOOTSTRAP}" crossorigin="anonymous"></script>`)
     expect(doc).toContain('<meta name="mill-frame-init"')
+    const parsed = new DOMParser().parseFromString(doc, 'text/html')
+    expect(JSON.parse(parsed.querySelector('meta[name="mill-frame-init"]')?.getAttribute('content') ?? '{}')).toMatchObject({ paletteBindings: [] })
     // Injected before the page's own head content, so the policy covers
     // everything the page brings.
     expect(doc.indexOf('Content-Security-Policy')).toBeLessThan(doc.indexOf('<title>x</title>'))

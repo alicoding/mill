@@ -12,7 +12,7 @@ func ComputeMachinery(s Sources, b Budgets) []Metric {
 
 	return []Metric{
 		pointInTime("machinery", "Open goal PRs", count, hasGoalPRs, fmtCount,
-			&budgetSpec{b.OpenGoalPRsMax, "le", fmtCount(b.OpenGoalPRsMax)}),
+			&budgetSpec{Key: "open_goal_prs_max", Value: b.OpenGoalPRsMax, Op: "le", Display: fmtCount(b.OpenGoalPRsMax), Class: b.ClassFor("open_goal_prs_max")}),
 		buildMetric("machinery", "Shepherd re-merge rounds", remerge7, s.HasRemerge, remerge28, s.HasRemerge, fmtCount, nil),
 	}
 }

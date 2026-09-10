@@ -22,6 +22,8 @@ func main() {
 	mdPath := flag.String("md", "engineering-health.md", "markdown report output path")
 	dataDir := flag.String("data", "enghealth-data", "directory of gathered gh api/lint/coverage/currency JSON inputs")
 	repoRoot := flag.String("repo-root", ".", "repository root (for QUARANTINE.md, the maturity ledger, LOC-cap census)")
+	previousPath := flag.String("previous", "", "path to the previous run's engineering-health.json, for Consecutive-breach tracking (optional; empty on a first run)")
+	breachesDir := flag.String("breaches", "", "directory to write one <budget-key>.md per currently-breached budget (optional; skipped when empty)")
 	flag.Parse()
 
 	windowDays, err := ParseWindow(*window)
@@ -37,11 +39,13 @@ func main() {
 	}
 
 	report, err := Run(Config{
-		DataDir:     *dataDir,
-		RepoRoot:    absRepoRoot,
-		BudgetsPath: *budgetsPath,
-		WindowDays:  windowDays,
-		Now:         time.Now().UTC(),
+		DataDir:      *dataDir,
+		RepoRoot:     absRepoRoot,
+		BudgetsPath:  *budgetsPath,
+		WindowDays:   windowDays,
+		Now:          time.Now().UTC(),
+		PreviousPath: *previousPath,
+		BreachesDir:  *breachesDir,
 	})
 	if err != nil {
 		// The one real failure mode: the budgets file itself is missing

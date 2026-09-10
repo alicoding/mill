@@ -1,6 +1,9 @@
-import { describe, expect, it, vi } from 'vitest'
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { callFrameMethod, FRAME_METHODS, handleFrameMessage } from './pluginFrameBridge'
 import type { MillPluginAPI } from '../plugins/sdk'
+import { useAppStore } from '../shared/store'
+import { setMenuOwnedCombos } from '../shared/menuOwnership'
 
 // The bridge is the only surface a framed page can reach Mill through,
 // so what it refuses matters as much as what it routes: a method off
@@ -184,5 +187,86 @@ describe('handleFrameMessage', () => {
     expect(onPageMessage).toHaveBeenCalledWith({ hello: 1 })
     expect(onState).toHaveBeenCalledWith('grouped')
     expect(onReady).toHaveBeenCalled()
+  })
+
+  function liveFrame(): HTMLIFrameElement {
+    const frame = document.createElement('iframe')
+    document.body.appendChild(frame)
+    frame.focus()
+    return frame
+  }
+
+  afterEach(() => {
+    document.body.replaceChildren()
+    useAppStore.setState({ view: { kind: 'home' }, keybindingOverrides: {} })
+    useAppStore.getState().closePalette()
+    setMenuOwnedCombos([])
+  })
+
+  it('opens only palette.open for an opted-in, connected, focused source frame', () => {
+    useAppStore.setState({ view: { kind: 'home' }, keybindingOverrides: {} })
+    useAppStore.getState().closePalette()
+    const frame = liveFrame()
+    handleFrameMessage(
+      { frame, api: fakeApi(), paletteAccess: true },
+      { source: frame.contentWindow, data: { mill: 1, kind: 'palette-shortcut', payload: { mods: ['cmd'], key: '/' } } },
+    )
+    expect(useAppStore.getState().paletteOpen).toBe(true)
+  })
+
+  it('rechecks remaps and refuses a stale old binding', () => {
+    useAppStore.setState({
+      view: { kind: 'home' },
+      keybindingOverrides: { 'palette.open': { mods: ['cmd'], key: 'P' } },
+      paletteOpen: false,
+    })
+    const frame = liveFrame()
+    const options = { frame, api: fakeApi(), paletteAccess: true }
+    handleFrameMessage(options, { source: frame.contentWindow, data: { mill: 1, kind: 'palette-shortcut', payload: { mods: ['cmd'], key: 'K' } } })
+    expect(useAppStore.getState().paletteOpen).toBe(false)
+    handleFrameMessage(options, { source: frame.contentWindow, data: { mill: 1, kind: 'palette-shortcut', payload: { mods: ['cmd'], key: 'P' } } })
+    expect(useAppStore.getState().paletteOpen).toBe(true)
+  })
+
+  it('does not steal Atlas Cmd+K from atlas.jump', () => {
+    useAppStore.setState({ view: { kind: 'atlas' }, keybindingOverrides: {}, paletteOpen: false })
+    const frame = liveFrame()
+    handleFrameMessage(
+      { frame, api: fakeApi(), paletteAccess: true },
+      { source: frame.contentWindow, data: { mill: 1, kind: 'palette-shortcut', payload: { mods: ['cmd'], key: 'K' } } },
+    )
+    expect(useAppStore.getState().paletteOpen).toBe(false)
+  })
+
+  it('refuses messages from a non-opted-in, unfocused, hidden or disposed frame', () => {
+    useAppStore.setState({ view: { kind: 'home' }, keybindingOverrides: {}, paletteOpen: false })
+    const frame = liveFrame()
+    const payload = { mill: 1, kind: 'palette-shortcut', payload: { mods: ['cmd'], key: '/' } }
+    handleFrameMessage({ frame, api: fakeApi() }, { source: frame.contentWindow, data: payload })
+
+    const other = liveFrame()
+    handleFrameMessage({ frame, api: fakeApi(), paletteAccess: true }, { source: frame.contentWindow, data: payload })
+
+    other.remove()
+    const hiddenHost = document.createElement('div')
+    hiddenHost.style.display = 'none'
+    frame.before(hiddenHost)
+    hiddenHost.appendChild(frame)
+    frame.focus()
+    handleFrameMessage({ frame, api: fakeApi(), paletteAccess: true }, { source: frame.contentWindow, data: payload })
+
+    frame.remove()
+    handleFrameMessage({ frame, api: fakeApi(), paletteAccess: true }, { source: frame.contentWindow, data: payload })
+    expect(useAppStore.getState().paletteOpen).toBe(false)
+  })
+
+  it('refuses malformed combos and a combo currently owned by the native menu', () => {
+    useAppStore.setState({ view: { kind: 'home' }, keybindingOverrides: {}, paletteOpen: false })
+    const frame = liveFrame()
+    const options = { frame, api: fakeApi(), paletteAccess: true }
+    handleFrameMessage(options, { source: frame.contentWindow, data: { mill: 1, kind: 'palette-shortcut', payload: { mods: ['cmd', 'cmd'], key: '/' } } })
+    setMenuOwnedCombos(['CMD+/'])
+    handleFrameMessage(options, { source: frame.contentWindow, data: { mill: 1, kind: 'palette-shortcut', payload: { mods: ['cmd'], key: '/' } } })
+    expect(useAppStore.getState().paletteOpen).toBe(false)
   })
 })

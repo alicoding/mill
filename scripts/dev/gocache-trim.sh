@@ -22,7 +22,8 @@ set -uo pipefail
 dry_run=0
 [ "${1:-}" = "--dry-run" ] && dry_run=1
 
-log_file="$HOME/Library/Logs/mill-gocache-trim.log"
+log_file="${MILL_GOCACHE_LOG_FILE:-$HOME/Library/Logs/mill-gocache-trim.log}"
+gobin="${MILL_GOCACHE_GOBIN:-$HOME/go/bin}"
 # Selftest-only overrides: the selftest runs itself as a lefthook
 # pre-commit job, so a real lefthook process is always present in that
 # context and would mask the code paths under test behind an unrelated
@@ -57,8 +58,8 @@ fi
 hardcache_bin=""
 if command -v hardcache >/dev/null 2>&1; then
   hardcache_bin="$(command -v hardcache)"
-elif [ -x "$HOME/go/bin/hardcache" ]; then
-  hardcache_bin="$HOME/go/bin/hardcache"
+elif [ -x "$gobin/hardcache" ]; then
+  hardcache_bin="$gobin/hardcache"
 fi
 
 if [ -z "$hardcache_bin" ]; then
@@ -66,7 +67,28 @@ if [ -z "$hardcache_bin" ]; then
   exit 0
 fi
 
-gocache_dir="$(go env GOCACHE)"
+go_bin="${MILL_GOCACHE_GO:-}"
+if [ -n "$go_bin" ]; then
+  if [ ! -x "$go_bin" ]; then
+    echo "gocache-trim: go executable not found or not executable: $go_bin" >&2
+    exit 1
+  fi
+else
+  go_bin="$(command -v go 2>/dev/null || true)"
+  if [ -z "$go_bin" ]; then
+    echo "gocache-trim: go executable not found on PATH" >&2
+    exit 1
+  fi
+fi
+
+if ! gocache_dir="$("$go_bin" env GOCACHE)"; then
+  echo "gocache-trim: go env GOCACHE failed" >&2
+  exit 1
+fi
+if [ -z "$gocache_dir" ]; then
+  echo "gocache-trim: go env GOCACHE returned an empty path" >&2
+  exit 1
+fi
 max_size="${MILL_GOCACHE_MAX:-8GB}"
 unused_for="${MILL_GOCACHE_UNUSED:-24h}"
 
@@ -82,6 +104,11 @@ if [ "$dry_run" -eq 1 ]; then
 fi
 
 "$hardcache_bin" local trim --unused-for="$unused_for" --max-size="$max_size" --dir="$gocache_dir"
+status=$?
+if [ "$status" -ne 0 ]; then
+  echo "gocache-trim: hardcache failed with exit $status" >&2
+  exit "$status"
+fi
 
 after="$(size_of "$gocache_dir")"
 

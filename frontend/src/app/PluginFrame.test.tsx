@@ -3,6 +3,8 @@ import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginFrame } from './PluginFrame'
+import { useAppStore } from '../shared/store'
+import { setMenuOwnedCombos } from '../shared/menuOwnership'
 
 // @primer/react pulls in its own stylesheet at import, which the node
 // test runtime cannot load (NavRail.test.tsx carries the same stand-in)
@@ -35,6 +37,8 @@ describe('PluginFrame theme attributes', () => {
 
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, text: async () => '<html><body></body></html>' })))
+    useAppStore.setState({ view: { kind: 'home' }, keybindingOverrides: {}, paletteOpen: false })
+    setMenuOwnedCombos([])
     container = document.createElement('div')
     document.body.append(container)
   })
@@ -45,7 +49,7 @@ describe('PluginFrame theme attributes', () => {
     vi.unstubAllGlobals()
   })
 
-  async function mount(mode: 'light' | 'dark', scheme: string): Promise<void> {
+  async function mount(mode: 'light' | 'dark', scheme: string, paletteAccess = false): Promise<void> {
     setResolvedTheme(mode, scheme)
     root = createRoot(container)
     await act(async () => {
@@ -57,6 +61,7 @@ describe('PluginFrame theme attributes', () => {
           entry="view.html"
           version="1"
           stateKey="view:tester:state"
+          paletteAccess={paletteAccess}
           context={{}}
           onSink={() => {}}
           testId="plugin-view-probe-tester"
@@ -91,5 +96,41 @@ describe('PluginFrame theme attributes', () => {
     })
     expect(iframe()?.getAttribute('data-mill-theme')).toBe('light')
     expect(iframe()?.getAttribute('data-mill-scheme')).toBe('light_high_contrast')
+  })
+
+  it('advertises palette bindings only to an opted-in frame', async () => {
+    await mount('light', 'light', true)
+    const srcdoc = (iframe() as HTMLIFrameElement).srcdoc
+    const parsed = new DOMParser().parseFromString(srcdoc, 'text/html')
+    const init = JSON.parse(parsed.querySelector('meta[name="mill-frame-init"]')?.getAttribute('content') ?? '{}') as { paletteBindings?: unknown }
+    expect(init.paletteBindings).toEqual([
+      { mods: ['cmd'], key: 'K' },
+      { mods: ['cmd'], key: '/' },
+    ])
+  })
+
+  it('pushes changed bindings without rebuilding or losing the frame document', async () => {
+    await mount('light', 'light', true)
+    const frame = iframe() as HTMLIFrameElement
+    const before = frame.srcdoc
+    const post = vi.spyOn(frame.contentWindow!, 'postMessage')
+    post.mockClear()
+
+    await act(async () => {
+      useAppStore.getState().setKeybindingOverrides({ 'palette.open': { mods: ['cmd'], key: 'P' } })
+      await Promise.resolve()
+    })
+
+    expect(frame.srcdoc).toBe(before)
+    expect(post).toHaveBeenCalledWith({
+      mill: 1,
+      kind: 'event',
+      event: 'palette-bindings',
+      payload: [
+        { mods: ['cmd'], key: 'P' },
+        { mods: ['cmd'], key: '/' },
+      ],
+      tokens: undefined,
+    }, '*')
   })
 })

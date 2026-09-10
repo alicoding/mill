@@ -140,6 +140,12 @@ export interface CommandContribution {
     "label": string;
 
     /**
+     * Enablement is the command's global declarative predicate. Menu
+     * item When expressions control only their own seats.
+     */
+    "enablement"?: string;
+
+    /**
      * Menu seats this command in the native menu bar (goal 0335): the
      * host cross-references this declaration by id when the plugin
      * actually registers the command, since the manifest carries no

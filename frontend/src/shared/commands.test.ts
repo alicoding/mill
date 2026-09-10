@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { COMMANDS, findCommand, runCommand, surfacesIntersect } from './commands'
-import { dispatchCommandForEvent } from './commandDispatch'
+import { bindingsResolvingToCommand, dispatchCommandForEvent, resolveCommandForCombo } from './commandDispatch'
 import type { Command } from './commands'
 import { useAppStore } from './store'
 import { useUISignalStore } from './uiSignalStore'
@@ -8,6 +8,8 @@ import { UpdateState } from './bindings'
 import { useUpdateNoticeStore } from './updateNoticeStore'
 import { useVaultStatusStore } from './vaultStatusStore'
 import { useNoticeStore } from './noticeStore'
+import { comboKey } from './keybinding'
+import { setMenuOwnedCombos } from './menuOwnership'
 
 // docs/goals/BACKLOG.md Standing #6 (⌘?/⌘/ palette aliases): a
 // Command's optional extraBindings (shared/commands.ts) must dispatch
@@ -116,6 +118,36 @@ describe('dispatchCommandForEvent surface precedence (goal 0071)', () => {
     expect(useUISignalStore.getState().atlasJumpRequest).toBe(before)
     expect(useAppStore.getState().paletteOpen).toBe(true)
     useAppStore.getState().closePalette()
+  })
+})
+
+describe('palette frame binding resolution', () => {
+  afterEach(() => setMenuOwnedCombos([]))
+
+  it('advertises the current primary and retained alias on a normal surface', () => {
+    const bindings = bindingsResolvingToCommand('palette.open', {}, 'home')
+    expect(bindings.map((binding) => comboKey(binding.mods, binding.key))).toEqual(['CMD+K', 'CMD+/'])
+  })
+
+  it('advertises a remapped primary and refuses the stale default', () => {
+    const overrides = { 'palette.open': { mods: ['cmd'], key: 'P' } }
+    expect(bindingsResolvingToCommand('palette.open', overrides, 'home')).toEqual([
+      { mods: ['cmd'], key: 'P' },
+      { mods: ['cmd'], key: '/' },
+    ])
+    expect(resolveCommandForCombo({ mods: ['cmd'], key: 'K' }, overrides, 'home')).toBeUndefined()
+    expect(resolveCommandForCombo({ mods: ['cmd'], key: 'P' }, overrides, 'home')?.command.id).toBe('palette.open')
+  })
+
+  it('does not advertise Atlas-owned Cmd+K while keeping the palette alias', () => {
+    const bindings = bindingsResolvingToCommand('palette.open', {}, 'atlas')
+    expect(bindings).toEqual([{ mods: ['cmd'], key: '/' }])
+    expect(resolveCommandForCombo({ mods: ['cmd'], key: 'K' }, {}, 'atlas')?.command.id).toBe('atlas.jump')
+  })
+
+  it('does not advertise a combo currently owned by the native menu', () => {
+    setMenuOwnedCombos([comboKey(['cmd'], '/')])
+    expect(bindingsResolvingToCommand('palette.open', {}, 'home')).toEqual([{ mods: ['cmd'], key: 'K' }])
   })
 })
 

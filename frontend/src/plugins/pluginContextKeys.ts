@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import type { WhenFacts, WhenValue } from './whenClause'
+import { useExtensionEnablementStore } from '../shared/extensionEnablementStore'
+import { onPluginRemoved } from '../shared/pluginRemoveSignal'
 
 // The host-held table api.context.set(key, value) writes into (goal
 // 0349 S2c Decision 1): the extension-host "setContext" pattern,
@@ -16,6 +18,7 @@ import type { WhenFacts, WhenValue } from './whenClause'
 interface PluginContextKeyState {
   byPlugin: Record<string, Record<string, WhenValue>>
   setKey: (pluginId: string, key: string, value: WhenValue) => void
+  clearPlugin: (pluginId: string) => void
 }
 
 export const usePluginContextKeyStore = create<PluginContextKeyState>()((set) => ({
@@ -23,11 +26,31 @@ export const usePluginContextKeyStore = create<PluginContextKeyState>()((set) =>
   setKey: (pluginId, key, value) => set((s) => ({
     byPlugin: { ...s.byPlugin, [pluginId]: { ...s.byPlugin[pluginId], [key]: value } },
   })),
+  clearPlugin: (pluginId) => set((s) => {
+    if (!s.byPlugin[pluginId]) return s
+    const byPlugin = { ...s.byPlugin }
+    delete byPlugin[pluginId]
+    return { byPlugin }
+  }),
 }))
 
+// Every API created during one activation captures the same opaque
+// epoch. Clearing advances only this plugin's epoch, so retained API
+// handles from the retired activation can never restore its facts.
+const contextEpochs = new Map<string, symbol>()
+
+function currentContextEpoch(pluginId: string): symbol {
+  let epoch = contextEpochs.get(pluginId)
+  if (!epoch) {
+    epoch = Symbol(pluginId)
+    contextEpochs.set(pluginId, epoch)
+  }
+  return epoch
+}
+
 function isWhenValue(value: unknown): value is WhenValue {
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return true
-  return Array.isArray(value) && value.every((v) => typeof v === 'string')
+  const scalar = (candidate: unknown) => candidate === null || typeof candidate === 'string' || typeof candidate === 'boolean' || (typeof candidate === 'number' && Number.isFinite(candidate))
+  return scalar(value) || (Array.isArray(value) && value.every(scalar))
 }
 
 // setPluginContextKey is api.context.set's own host-side body (called
@@ -42,10 +65,39 @@ export function setPluginContextKey(pluginId: string, key: string, value: unknow
     throw new Error(`plugin ${pluginId}: context key "${key}" must not start with "plugin.". That prefix is added automatically wherever a when clause reads it back`)
   }
   if (!isWhenValue(value)) {
-    throw new Error(`plugin ${pluginId}: context value for "${key}" must be a string, number, boolean, or an array of strings`)
+    throw new Error(`plugin ${pluginId}: context value for "${key}" must be null, a string, a finite number, a boolean, or a flat array of those values`)
   }
-  usePluginContextKeyStore.getState().setKey(pluginId, key, value)
+  usePluginContextKeyStore.getState().setKey(pluginId, key, Array.isArray(value) ? [...value] : value)
 }
+
+// pluginContextWriter is captured when the host builds a plugin API.
+// Multiple handles built before teardown share the live epoch; every
+// handle retained after teardown refuses further writes.
+export function pluginContextWriter(pluginId: string): (key: string, value: unknown) => void {
+  const epoch = currentContextEpoch(pluginId)
+  return (key, value) => {
+    if (contextEpochs.get(pluginId) !== epoch) {
+      throw new Error(`plugin ${pluginId}: context.set belongs to a retired activation`)
+    }
+    setPluginContextKey(pluginId, key, value)
+  }
+}
+
+// Runtime context belongs to one activation. Unload and replacement remove
+// only that plugin's facts; stored settings and every other plugin stay put.
+export function clearPluginContextKeys(pluginId: string): void {
+  contextEpochs.set(pluginId, Symbol(pluginId))
+  usePluginContextKeyStore.getState().clearPlugin(pluginId)
+}
+
+// Disabling and removing are lifecycle changes performed outside the
+// loader. Their existing stores/signals notify this runtime-state owner.
+useExtensionEnablementStore.subscribe((state, previous) => {
+  for (const pluginId of state.disabledExtensionIds) {
+    if (!previous.disabledExtensionIds.includes(pluginId)) clearPluginContextKeys(pluginId)
+  }
+})
+onPluginRemoved(clearPluginContextKeys)
 
 // pluginContextFacts answers one plugin's own keys, namespaced
 // "plugin.<key>" (goal 0349 S2c Decision 2) -- the shape every when

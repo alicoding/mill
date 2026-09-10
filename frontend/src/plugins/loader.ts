@@ -9,6 +9,7 @@ import { pluginRunState, type PluginRunPolicy } from './pluginTrust'
 import { collectPluginCommand } from './pluginCommands'
 import { activateFramed, isFramedActivation } from './activation'
 import { captureSameDomExports } from './extensionExports'
+import { clearPluginContextKeys } from './pluginContextKeys'
 
 // The runtime plugin loader (docs/goals/0249). Runs BEFORE the app
 // module graph evaluates (main.tsx awaits it and only then
@@ -210,6 +211,7 @@ async function activateOne(info: PluginInfo, millVersion: string, storageSnapsho
 		await activateFramed(info, millVersion, storageSnapshot)
 		return
 	}
+	clearPluginContextKeys(info.Manifest.id)
 	const url = `/plugins/${info.Manifest.id}/main.js?v=${encodeURIComponent(info.Manifest.version)}`
 	const mod = (await import(/* @vite-ignore */ url)) as PluginModule
 	const activate = resolveActivate(mod)

@@ -16,7 +16,7 @@ import { settingDeclsFromManifest } from './pluginSettings'
 import { secretTitleOf } from '../shared/secretTitleCache'
 import { buildPluginStorage } from './pluginStorage'
 import { settingsPluginStorageDoors } from './pluginStorageHostDoors'
-import { setPluginContextKey } from './pluginContextKeys'
+import { pluginContextWriter } from './pluginContextKeys'
 import { buildFetchJSON } from './pluginFetchJSON'
 import { buildElement } from './pluginElementBuilder'
 import { formatPluginDate } from './pluginDateFormat'
@@ -26,6 +26,8 @@ import { resolveExtensionSetting, subscribeExtensionSetting } from '../shared/ex
 import type { CanvasObjectDecl, CanvasToolDecl, ContentQuery, LifecycleEventPayload, LinkQuery, MillPluginAPI, PluginContextValue, PluginFetchInit, PluginOutputOptions, PluginElAttrs, PluginElChild } from './sdk'
 import type { MenuPath } from '../shared/menuSkeleton'
 import type { Command } from '../shared/commands'
+import { commandHasEnablement, commandIsEnabled } from './pluginCommandEnablement'
+import { whenClauseError } from './whenClause'
 
 // buildPluginAPI constructs the ONE object a plugin ever holds
 // (docs/adr/0047 §2: capabilities arrive as api calls the host
@@ -53,6 +55,7 @@ async function writeContent(pluginId: string, req: Partial<ContentWriteWire>) {
 // works (declaring is required only for a command a manifest tool
 // names), so this must not become noise on every reload.
 const warnedCommands = new Set<string>()
+const warnedEnablements = new Set<string>()
 
 function warnUndeclaredCommand(manifest: Manifest, commandId: string): void {
 	if ((manifest.contributes?.commands ?? []).some((c) => c.id === commandId)) return
@@ -60,6 +63,17 @@ function warnUndeclaredCommand(manifest: Manifest, commandId: string): void {
 	if (warnedCommands.has(key)) return
 	warnedCommands.add(key)
 	console.warn(`plugin ${manifest.id}: command "${commandId}" is not declared in the manifest's contributes.commands. Declare it to make it reachable by an agent`)
+}
+
+function warnInvalidEnablement(manifest: Manifest, commandId: string): void {
+	const expression = manifest.contributes?.commands?.find((command) => command.id === commandId)?.enablement?.trim()
+	if (!expression) return
+	const problem = whenClauseError(expression)
+	if (!problem) return
+	const key = `${manifest.id}\u0000${commandId}\u0000${expression}`
+	if (warnedEnablements.has(key)) return
+	warnedEnablements.add(key)
+	console.warn(`plugin ${manifest.id}: command "${commandId}" has invalid enablement: ${problem}`)
 }
 
 // The manifest's own contributes.commands[].menu (goal 0335) is the
@@ -81,6 +95,7 @@ export function menuForDeclaredCommand(manifest: Manifest, commandId: string): C
 
 export function buildPluginAPI(manifest: Manifest, millVersion: string, storageSnapshot: Record<string, string> = {}): MillPluginAPI {
 	const pluginId = manifest.id
+	const setContext = pluginContextWriter(pluginId)
 	const requestGuardedAction = async (kind: string, attributes: Record<string, string>, description: string) => {
 		const d = await PluginService.RequestGuardedAction(pluginId, kind, attributes, description)
 		return { approved: d.Approved, effect: d.Effect, ruleLabel: d.RuleLabel, performed: d.Performed }
@@ -147,7 +162,7 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		settings,
 		// The context-key door (goal 0349 S2c): a plugin's own facts, read
 		// back by a declared item's `when` clause as `plugin.<key>`.
-		context: Object.freeze({ set: (key: string, value: PluginContextValue) => setPluginContextKey(pluginId, key, value) }),
+		context: Object.freeze({ set: (key: string, value: PluginContextValue) => setContext(key, value) }),
 		notify,
 		storage: buildPluginStorage(pluginId, storageSnapshot, settingsPluginStorageDoors(pluginId)),
 		// The read doors (goal 0278): query is the bound content index
@@ -315,12 +330,16 @@ export function buildPluginAPI(manifest: Manifest, millVersion: string, storageS
 		},
 		registerCommand: (decl) => {
 			warnUndeclaredCommand(manifest, decl.id)
+			warnInvalidEnablement(manifest, decl.id)
 			const declaredMenu = menuForDeclaredCommand(manifest, decl.id)
+			const enabled = commandHasEnablement(manifest, decl.id, decl.enabled)
+				? () => commandIsEnabled(manifest, decl.id, decl.enabled)
+				: undefined
 			collectPluginCommand({
 				id: `plugin.${pluginId}.${decl.id}`,
 				label: decl.label,
 				pluginId,
-				enabled: decl.enabled,
+				enabled,
 				run: decl.run,
 				menu: declaredMenu,
 			})

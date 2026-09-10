@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Stack, Text } from '@primer/react'
 import { Events } from '@wailsio/runtime'
@@ -10,6 +10,9 @@ import { PluginService } from '../../bindings/github.com/alicoding/mill/internal
 import type { GuardedActionResult } from '../plugins/sdk/guardedAction'
 import listStyles from '../shared/ListCard.module.css'
 import frameStyles from './PluginFrame.module.css'
+import { bindingsResolvingToCommand } from '../shared/commandDispatch'
+import { menuOwnershipSnapshot, subscribeMenuOwnership } from '../shared/menuOwnership'
+import { useAppStore } from '../shared/store'
 
 // PluginFrame mounts one plugin-owned page in its own sandboxed frame
 // (docs/goals/0349, docs/adr/0047): the plugin's entry HTML, fetched
@@ -47,6 +50,8 @@ export interface PluginFrameProps {
    * enforces at the pointer/wheel/key level; this is the one thing a
    * sandboxed page cannot observe for itself. */
   active?: boolean
+  /** Lets this main-window surface request only palette.open by shortcut. */
+  paletteAccess?: boolean
   /** Installs (and clears) the sink the plugin's postMessage uses. */
   onSink: (post: ((message: unknown) => void) | undefined) => void
   /** The plugin's own inbound handler for what the page posts. */
@@ -73,6 +78,25 @@ export function PluginFrame(props: PluginFrameProps) {
   const [pendingAsk, setPendingAsk] = useState<PendingAsk | null>(null)
   const theme = usePluginTheme()
   const api = pluginAPIFor(pluginId)
+  const keybindingOverrides = useAppStore((state) => state.keybindingOverrides)
+  const activeKind = useAppStore((state) => state.view.kind)
+  const menuOwnershipVersion = useSyncExternalStore(subscribeMenuOwnership, menuOwnershipSnapshot, menuOwnershipSnapshot)
+  const paletteBindings = useMemo(
+    () => {
+      // The version is the external-store signal that native menu
+      // ownership changed; the resolver reads the owned set itself.
+      void menuOwnershipVersion
+      return props.paletteAccess ? bindingsResolvingToCommand('palette.open', keybindingOverrides, activeKind) : []
+    },
+    [props.paletteAccess, keybindingOverrides, activeKind, menuOwnershipVersion],
+  )
+  const contextRef = useRef(context)
+  const paletteBindingsRef = useRef(paletteBindings)
+
+  useEffect(() => {
+    contextRef.current = context
+    paletteBindingsRef.current = paletteBindings
+  }, [context, paletteBindings])
 
   // performGuardedWrite is the ONLY place confirmed=true is ever set
   // (goal 0374 amendment 1): the frame's own performGuardedAction call
@@ -105,7 +129,7 @@ export function PluginFrame(props: PluginFrameProps) {
       const html = await response.text()
       if (!live) return
       const state = api?.storage.get(stateKey)
-      setSrcdoc(buildFrameSrcdoc(pluginAssetBase(pluginId), [frameBootstrapUrl()], html, { theme, state, context }, millTokenCss(hostTokenReader())))
+      setSrcdoc(buildFrameSrcdoc(pluginAssetBase(pluginId), [frameBootstrapUrl()], html, { theme, state, context, paletteBindings }, millTokenCss(hostTokenReader())))
     }
     load().catch((err: unknown) => {
       if (!live) return
@@ -130,9 +154,13 @@ export function PluginFrame(props: PluginFrameProps) {
       capture: props.capture,
       face: props.face,
       guardedWrite: { perform: performGuardedWrite },
+      paletteAccess: props.paletteAccess,
       onPageMessage: props.onPageMessage,
       onState: (state) => { void api.storage.set(stateKey, state).catch((err: unknown) => console.error(`plugin ${pluginId}: view state could not be saved`, err)) },
-      onReady: () => sendFrameEvent(frame, 'ctx', context),
+      onReady: () => {
+        sendFrameEvent(frame, 'ctx', contextRef.current)
+        sendFrameEvent(frame, 'palette-bindings', paletteBindingsRef.current)
+      },
     })
     props.onSink((message: unknown) => sendFrameMessage(frame, message))
     return () => {
@@ -140,7 +168,7 @@ export function PluginFrame(props: PluginFrameProps) {
       props.onSink(undefined)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the sink and the handlers are stable for a mounted surface
-  }, [api, srcdoc, pluginId, stateKey])
+  }, [api, srcdoc, pluginId, stateKey, props.paletteAccess])
 
   // Theme, settings and board changes are pushed in; the page decides
   // what to do with each.
@@ -161,6 +189,10 @@ export function PluginFrame(props: PluginFrameProps) {
     if (props.active === undefined || srcdoc === null) return
     sendFrameEvent(frameRef.current, props.active ? 'face:activate' : 'face:deactivate', {})
   }, [props.active, srcdoc])
+
+  useEffect(() => {
+    sendFrameEvent(frameRef.current, 'palette-bindings', paletteBindings)
+  }, [paletteBindings, srcdoc])
 
   useEffect(() => {
     if (srcdoc === null) return

@@ -85,19 +85,12 @@ test('a bookmark object draws its face in a sandboxed frame: select, right-click
 		await expect(node).toHaveAttribute('data-activation', 'editing')
 		await expect(face.locator('body')).toHaveAttribute('data-active', 'true')
 
-		// Escape reaches the PAGE's own listener (object.setEditing(false))
-		// rather than the host's -- a cross-origin frame's keydown never
-		// bubbles to the parent document either, which is why the page
-		// owns leaving editing at all. escape hatch: Playwright's own key
-		// dispatch does not reliably route into a sandboxed opaque-origin
-		// frame even once an element inside it holds real focus (proven
-		// separately: calling the SAME bridge door face.js's listener
-		// calls, `object.setEditing(false)`, does flip the host back to
-		// 'selected') -- dispatching the keydown INSIDE the frame's own
-		// document exercises face.js's real listener, only skipping
-		// Playwright's own focus routing. The object stays selected, not
-		// idle.
-		await face.locator('body').evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+		// Escape starts at the focused input, whose own keydown handler
+		// keeps board shortcuts out of typing. That handler must hand
+		// editing back before it stops propagation; a document-only
+		// listener cannot observe this real path.
+		await expect(urlInput).toBeFocused()
+		await urlInput.press('Escape')
 		await expect(node).toHaveAttribute('data-activation', 'selected')
 		await expect(face.locator('body')).toHaveAttribute('data-active', 'false')
 

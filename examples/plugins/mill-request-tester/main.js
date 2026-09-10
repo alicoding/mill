@@ -16,11 +16,11 @@
 // postMessage, so the button that seats in the tab header has to live
 // here) that re-plays the page's own send button through the SAME
 // view handle registerView returns. Its enablement is the manifest's
-// own declared when: "plugin.hasResult" (goal 0349 S2c) -- tester.js
-// calls mill.call('context.set', 'hasResult', true) once a send has a
-// result to replay, and that's what turns this title action on, since
-// this plugin activates in its own sandboxed frame and cannot answer
-// Command.enabled with a live predicate of its own across the async
+// own declared enablement: "plugin.hasResult" (goal 0349 S2c), while
+// its view/title seat independently declares the same fact in `when`.
+// tester.js calls context.set once a send has a result to replay, which
+// turns both on. The declarative command predicate lets this sandboxed
+// plugin answer synchronously without a live callback across the async
 // message boundary.
 /** @param {import('../../../frontend/plugin-sdk').MillPluginAPI} api */
 export function activate(api) {

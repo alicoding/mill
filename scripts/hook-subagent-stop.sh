@@ -24,6 +24,12 @@
 # unconditional block for this event) only on the one condition it
 # actually checks -- same fail-open/fail-closed split as
 # hook-task-completed.sh.
+#
+# This hook is the LAST NET for a stop it can observe, not the source
+# of the checkpoint-commit rule -- that rule lives in
+# .claude/agents/builder.md's own operational block. A harness
+# turn-cap stop is never a SubagentStop event, so this hook cannot see
+# or veto one (goal 0414 S4).
 set -uo pipefail
 
 input="$(cat)"

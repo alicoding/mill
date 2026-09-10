@@ -33,7 +33,8 @@
     "commands": [
       {
         "id": "mill-request-tester.sendAgain",
-        "label": "Send again"
+        "label": "Send again",
+        "enablement": "plugin.hasResult"
       }
     ],
     "menus": {

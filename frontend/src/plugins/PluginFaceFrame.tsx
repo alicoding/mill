@@ -69,6 +69,7 @@ export function pluginFramedFaceComponent(pluginId: string, decl: CanvasObjectDe
           entry={entry}
           version={version}
           stateKey={`face:${decl.kind}:${object.ID}:state`}
+          paletteAccess
           context={context}
           face={face}
           active={!!editing}

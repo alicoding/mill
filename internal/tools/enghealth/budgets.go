@@ -28,6 +28,24 @@ type Budgets struct {
 	NodeMinorsBehindMax       float64 `yaml:"node_minors_behind_max"`
 	WailsBetasBehindMax       float64 `yaml:"wails_betas_behind_max"`
 	PlaywrightMinorsBehindMax float64 `yaml:"playwright_minors_behind_max"`
+
+	// Classes maps each budget's own YAML key (above) to the
+	// defect/machinery class its breach becomes (goal 0413 S2 contract
+	// item 1) -- a data table read from engineering-budgets.yml, never a
+	// switch in Go. Every key in this struct gets a row (TestClassFor_
+	// EveryBudgetHasAClass pins it); ClassFor falls back to
+	// "unclassified" only for a row missing from the YAML file.
+	Classes map[string]string `yaml:"classes"`
+}
+
+// ClassFor returns the defect/machinery class the given budget YAML key
+// maps to, or "unclassified" if engineering-budgets.yml's classes table
+// doesn't carry a row for it yet.
+func (b Budgets) ClassFor(key string) string {
+	if c, ok := b.Classes[key]; ok && c != "" {
+		return c
+	}
+	return "unclassified"
 }
 
 // LoadBudgets decodes the budgets file at path.

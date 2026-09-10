@@ -20,7 +20,7 @@ func ComputeTestHealth(s Sources, b Budgets) []Metric {
 	return []Metric{
 		buildMetric("test", "Retry-passed test count", count7, ok7, count28, ok28, fmtCount, nil),
 		buildMetric("test", "Retry-passed rate", rate7, ok7, rate28, ok28, fmtPct,
-			&budgetSpec{b.RetryPassedRatePctMax, "le", fmtPct(b.RetryPassedRatePctMax)}),
+			&budgetSpec{Key: "retry_passed_rate_pct_max", Value: b.RetryPassedRatePctMax, Op: "le", Display: fmtPct(b.RetryPassedRatePctMax), Class: b.ClassFor("retry_passed_rate_pct_max")}),
 		// The census is a point-in-time snapshot (current QUARANTINE.md)
 		// compared against a 28-day-old snapshot from git history, not a
 		// trailing-window count -- the "7d" column has no independent

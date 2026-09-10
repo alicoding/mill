@@ -1,9 +1,32 @@
 package pluginsvc
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
+
+func TestCommandContribution_EnablementJSONShape(t *testing.T) {
+	var withEnablement Manifest
+	if err := json.Unmarshal([]byte(`{"id":"demo","contributes":{"commands":[{"id":"demo.run","label":"Run","enablement":"plugin.ready"}]}}`), &withEnablement); err != nil {
+		t.Fatal(err)
+	}
+	if got := withEnablement.Contributes.Commands[0].Enablement; got != "plugin.ready" {
+		t.Fatalf("Enablement = %q, want plugin.ready", got)
+	}
+
+	var omitted Manifest
+	if err := json.Unmarshal([]byte(`{"id":"demo","contributes":{"commands":[{"id":"demo.run","label":"Run"}]}}`), &omitted); err != nil {
+		t.Fatal(err)
+	}
+	if got := omitted.Contributes.Commands[0].Enablement; got != "" {
+		t.Fatalf("omitted Enablement = %q, want empty", got)
+	}
+
+	if _, problem := parseManifest([]byte(`{"id":"demo","contributes":{"commands":[{"id":"demo.run","label":"Run","enablement":true}]}}`)); problem == "" {
+		t.Fatal("non-string enablement parsed, want manifest JSON refusal")
+	}
+}
 
 // The manifest's VS Code recognisability contract (goal 0349 S2):
 // configuration is canonical, settings is a working deprecated alias,

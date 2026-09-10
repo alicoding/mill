@@ -1,6 +1,7 @@
 package main
 
 import (
+	"runtime"
 	"strconv"
 
 	"github.com/alicoding/mill/internal/adapters/windowing"
@@ -290,14 +291,19 @@ func setupTray(app *application.App, settingsService *settingssvc.SettingsServic
 	// toggles the attached status panel (Wails' own default click
 	// handler once AttachWindow is set -- no OnClick override);
 	// right-click keeps the native menu as the conventional escape
-	// hatch. SetTemplateIcon (not SetIcon) so the icon adapts to the
-	// menu bar's own appearance; SetLabel carries the pending-human-
+	// hatch. macOS receives a dedicated template mark so the icon adapts
+	// to the menu bar's own appearance. Other tray implementations keep
+	// the colored app tile. SetLabel carries the pending-human-
 	// action count, driven by the SAME frontend aggregate the dock
 	// badge uses (SetPendingBadge's tray hook below -- one count, two
 	// chromes). SetLabel is InvokeSync internally, safe from RPC
 	// goroutines.
 	trayIcon := app.SystemTray.New()
-	trayIcon.SetTemplateIcon(trayIconPNG)
+	if runtime.GOOS == "darwin" {
+		trayIcon.SetTemplateIcon(trayTemplateIconPNG)
+	} else {
+		trayIcon.SetIcon(appIconPNG)
+	}
 	trayIcon.SetTooltip("Mill")
 	// The panel is registered with the settings service as well as
 	// attached to the tray: the tray owns showing it, the service owns

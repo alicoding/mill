@@ -7,9 +7,8 @@ import type { MillPluginAPI } from '../plugins/sdk'
 import type { Manifest } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { callExportedMethod, toWireDescriptor } from '../plugins/extensionExports'
 import { CANVAS_TOOL_DOORS, callCanvasToolDoor, forgetCanvasTools } from '../plugins/canvasToolHostDoors'
-import { resolveMenus } from '../plugins/pluginMenus'
-import { evaluateWhen } from '../plugins/whenClause'
-import { factsNow } from '../plugins/pluginMenuFacts'
+import { commandIsEnabled } from '../plugins/pluginCommandEnablement'
+import { clearPluginContextKeys } from '../plugins/pluginContextKeys'
 
 // The host half of a third-party plugin's activation frame (docs/
 // goals/0375 S1b): the same envelope pluginFrameBridge.ts's entry-page
@@ -124,6 +123,7 @@ export function createActivationFrameContext(frame: HTMLIFrameElement, pluginId:
 // arrive -- a torn-down frame answers nothing again.
 export function teardownActivationFrameContext(ctx: ActivationFrameContext): void {
   ctx.alive = false
+  clearPluginContextKeys(ctx.pluginId)
   forgetCanvasTools(ctx.pluginId)
   for (const sub of ctx.subscriptions.values()) sub.unsubscribe()
   ctx.subscriptions.clear()
@@ -175,30 +175,16 @@ export function sendExtensionCall(ctx: ActivationFrameContext, method: string, a
   })
 }
 
-// whenForCommand answers the `when` clause the manifest's own
-// contributes.menus declared for this command id, from whichever seat
-// named it first in id order -- a declared item's `when` is the one
-// honest predicate a framed command can carry (goal 0349 S2c Decision
-// 3), since the plugin's own code cannot answer synchronously across
-// the frame boundary the way registerFramedCommand's caller needs.
-function whenForCommand(manifest: ActivationFrameContext['manifest'], commandId: string): string | undefined {
-  const { seated } = resolveMenus(manifest.contributes?.menus)
-  return seated.find((item) => item.command === commandId)?.when
-}
-
 // registerFramedCommand seats a registry command whose run() and
 // enabled() both answer the activation frame's own truth: run() awaits
-// the frame's registered handler; enabled() is the frame's aliveness
-// AND, when the manifest declared a `when` for this command, that
-// clause evaluated against factsNow -- the SAME `when` a seat already
-// gates its own visibility with, never a second predicate language.
+// the frame's registered handler; enabled() composes frame aliveness
+// with the command declaration's global enablement expression.
 function registerFramedCommand(ctx: ActivationFrameContext, api: MillPluginAPI, descriptor: { id: string; label: string }): void {
-  const when = whenForCommand(ctx.manifest, descriptor.id)
   api.registerCommand({
     id: descriptor.id,
     label: descriptor.label,
     run: () => sendCommandRun(ctx, descriptor.id, []),
-    enabled: () => ctx.alive && (when ? evaluateWhen(when, factsNow(ctx.pluginId)) : true),
+    enabled: () => ctx.alive && commandIsEnabled(ctx.manifest, descriptor.id),
   })
 }
 
@@ -300,6 +286,7 @@ function unsubscribe(ctx: ActivationFrameContext, subId: number): void {
 // plus the registration doors that turn a plugin's own registerX calls
 // into real host-side registrations.
 export async function callActivationMethod(ctx: ActivationFrameContext, api: MillPluginAPI, method: string, args: unknown[]): Promise<unknown> {
+  if (!ctx.alive) throw new Error(`plugin ${ctx.pluginId}: its extension frame was torn down`)
   if (SIMPLE_DOORS.has(method)) return callSimpleDoor(api, method, args)
   const [first] = args
   switch (method) {

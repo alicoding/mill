@@ -37,12 +37,14 @@ budget_cumulative_sentinel='CUMULATIVE across resumes'
 budget_resume_cap_sentinel='at most two resumes per brief'
 closeout_batch_sentinel='at most 3 merged PRs per batch'
 
-# goal 0414 S3 sentinels: the checkpoint-commit rule this goal moved
+# goal 0414 S3/S4 sentinels: the checkpoint-commit rule this goal moved
 # out of every dispatch prompt (a prompt-level rule did not survive 120
 # turns of context) and into builder.md whole, pr-shepherd.md rule d
-# only.
+# only. S4 replaced the fixed turn-80 checkpoint with a ~30-turn
+# cadence plus a turn-90 push pre-check.
 checkpoint_first_commit_sentinel='the first commit on the goal branch happens the moment'
-checkpoint_turn80_sentinel='checkpoint at turn 80'
+checkpoint_cadence_sentinel='checkpoint commit happens every ~30 turns'
+checkpoint_push_sentinel='at turn ~90 the pre-check pushes the branch'
 checkpoint_never_dirty_sentinel='never ends a turn'
 
 # A required phrase can wrap across a markdown line break in the body
@@ -113,7 +115,8 @@ while IFS= read -r -d '' file; do
       require_fixed "$file" "$budget_resume_cap_sentinel" "at most two resumes per brief"
       require_maxturns "$file" "$frontmatter" 120
       require_fixed "$file" "$checkpoint_first_commit_sentinel" "checkpoint-commit rule: first commit once the build is clean"
-      require_fixed "$file" "$checkpoint_turn80_sentinel" "checkpoint-commit rule: turn-80 self-checkpoint"
+      require_fixed "$file" "$checkpoint_cadence_sentinel" "checkpoint-commit rule: ~30-turn cadence"
+      require_fixed "$file" "$checkpoint_push_sentinel" "checkpoint-commit rule: turn-90 push pre-check"
       require_fixed "$file" "$checkpoint_never_dirty_sentinel" "checkpoint-commit rule: never end a turn with a dirty goal branch"
       ;;
     pr-shepherd.md)

@@ -55,6 +55,7 @@ jobs:
       plugins: ${{ steps.decide.outputs.plugins }}
       workflows: ${{ steps.decide.outputs.workflows }}
       docs: ${{ steps.decide.outputs.docs }}
+      icons: ${{ steps.decide.outputs.icons }}
     steps:
       # dorny/paths-filter fetches the changed-file list via the GitHub
       # REST API for pull_request events -- no actions/checkout needed.
@@ -113,6 +114,48 @@ jobs:
               - '**/*.md'
               - '.claude/**'
               - 'LICENSE'
+            icons:
+              - 'Taskfile.yml'
+              - 'auxwindows.go'
+              - 'main.go'
+              - 'build/appicon.png'
+              - 'build/appicon.icon/**'
+              - 'build/branding/mill-mark.svg'
+              - 'build/tray-template.png'
+              - 'build/Taskfile.yml'
+              - 'build/config.yml'
+              - 'build/darwin/Assets.car'
+              - 'build/darwin/icons.icns'
+              - 'build/darwin/Info.plist'
+              - 'build/darwin/Info.dev.plist'
+              - 'build/darwin/Taskfile.yml'
+              - 'build/darwin/dmg-background.png'
+              - 'build/darwin/dmg-file-icon.icns'
+              - 'build/darwin/dmg-file-icon.png'
+              - 'build/ios/Assets.xcassets'
+              - 'build/ios/icon.png'
+              - 'build/ios/Info.plist'
+              - 'build/ios/Taskfile.yml'
+              - 'build/linux/desktop'
+              - 'build/linux/nfpm/nfpm.yaml'
+              - 'build/linux/Taskfile.yml'
+              - 'build/windows/icon.ico'
+              - 'build/windows/msix/template.xml'
+              - 'build/windows/nsis/project.nsi'
+              - 'build/windows/Taskfile.yml'
+              - 'examples/browser-extension/icons/**'
+              - 'examples/browser-extension/manifest.json'
+              - 'frontend/index.html'
+              - 'frontend/public/icons/**'
+              - 'frontend/public/manifest.webmanifest'
+              - 'frontend/public/mill.svg'
+              - 'frontend/src/app/millicon.png'
+              - 'internal/iconassets/**'
+              - 'scripts/check-icon-routing-selftest.sh'
+              - 'scripts/check-modern-icon-assets.sh'
+              - 'scripts/check-modern-icon-mode-selftest.sh'
+              - 'scripts/detect-modern-apple-icons.sh'
+              - '.github/workflows/ci.yml'
       - name: Decide filter outputs
         id: decide
         run: |
@@ -131,6 +174,7 @@ jobs:
               echo "plugins=${{ steps.filter.outputs.plugins }}"
               echo "workflows=${{ steps.filter.outputs.workflows }}"
               echo "docs=${{ steps.filter.outputs.docs }}"
+              echo "icons=${{ steps.filter.outputs.icons }}"
             } >> "$GITHUB_OUTPUT"
           else
             {
@@ -141,6 +185,7 @@ jobs:
               echo "plugins=true"
               echo "workflows=true"
               echo "docs=true"
+              echo "icons=true"
             } >> "$GITHUB_OUTPUT"
           fi
 
@@ -168,6 +213,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-workflow-yaml.sh
+      - run: ./scripts/check-icon-routing-selftest.sh
       # goal 0419 S1c: SHA-pinned Docker image, not `go install @<tag>`
       # (an unpinned network fetch at every run) -- rhysd/actionlint
       # ships no action.yml of its own (confirmed against the repo:
@@ -541,19 +587,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-selftest-git-isolation-selftest.sh
 
-  # Goal 0403 S2c: probes scripts/with-install-lock.sh -- the
-  # machine-wide lock serializing `task install:app` and the
-  # drive-installed-app skill's quit/install/drive/relaunch pass, so
-  # two concurrent installed-app passes never clobber the same
-  # /Applications/Mill.app bundle or each other's launched process.
-  # Grep/process-only, so like hook-command-guard it needs no build
-  # setup even though the lock itself targets a macOS-only task.
+  # Goal 0403: probes the machine-wide install lock plus executable-path
+  # process selection, TERM signalling, and bounded refusal before the
+  # /Applications/Mill.app bundle is replaced.
   install-lock-selftest:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-install-lock-selftest.sh
+      - run: ./scripts/check-installed-process-selftest.sh
 
   # Fixture-tests check-review-report.sh itself (fixed PR bodies piped
   # on stdin), same shape as hook-command-guard's own probe job -- keeps
@@ -862,6 +905,37 @@ jobs:
       # mirrored job does, not just macOS.
       - run: ./scripts/check-build-warnings-selftest.sh
 
+  modern-icon-assets:
+    needs: [changes]
+    if: success() && needs.changes.outputs.icons == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 10
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install pinned packaging tools
+        run: |
+          set -euo pipefail
+          go install github.com/go-task/task/v3/cmd/task@v3.52.0
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.18
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Compile and validate the modern Apple icon catalog
+        run: |
+          mkdir -p /tmp/modern-apple-icon-assets
+          ./scripts/check-modern-icon-mode-selftest.sh
+          ./scripts/check-modern-icon-assets.sh /tmp/modern-apple-icon-assets
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: modern-apple-icon-assets
+          path: /tmp/modern-apple-icon-assets
+          retention-days: 7
+
   # New (goal 0384): a macOS-hosted runner already carries a real window
   # server (confirmed empirically by webview-smoke.yml booting a real
   # -tags mcp desktop build there daily) -- launching the PACKAGED .app
@@ -886,8 +960,13 @@ jobs:
   # docs/goals/0134-pipeline-reliability.md already applies to
   # webview-smoke.yml, never promoted on a hunch.
   desktop-launch:
-    needs: [changes, frontend]
-    if: success() && needs.changes.outputs.code == 'true'
+    needs: [changes, frontend, modern-icon-assets]
+    if: >-
+      always() &&
+      needs.changes.result == 'success' &&
+      needs.frontend.result == 'success' &&
+      (needs.modern-icon-assets.result == 'success' || needs.modern-icon-assets.result == 'skipped') &&
+      needs.changes.outputs.code == 'true'
     runs-on: macos-latest
     # The launch checks take ~30 s; the budget covers a cold Go module
     # cache (task install + build) that alone has crossed four minutes.
@@ -906,6 +985,19 @@ jobs:
       # task is used below (packaging only, no frontend/bindings deps) --
       # the same version beta-release already pins.
       - run: go install github.com/go-task/task/v3/cmd/task@v3.52.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: needs.modern-icon-assets.result == 'success'
+        with:
+          name: modern-apple-icon-assets
+          path: /tmp/modern-apple-icon-assets
+      - name: Reuse the compiled modern icon catalog
+        if: needs.modern-icon-assets.result == 'success'
+        run: |
+          set -euo pipefail
+          test -s /tmp/modern-apple-icon-assets/Assets.car
+          test -s /tmp/modern-apple-icon-assets/icons.icns
+          cp /tmp/modern-apple-icon-assets/Assets.car build/darwin/Assets.car
+          cp /tmp/modern-apple-icon-assets/icons.icns build/darwin/icons.icns
       # Mirrors build/darwin/Taskfile.yml's build:native cmds/env exactly
       # (production tags, trimpath, stripped ldflags, the same
       # deployment-target flags) but invoked directly rather than via
@@ -1458,6 +1550,7 @@ jobs:
       - e2e
       - govulncheck
       - dependency-review
+      - modern-icon-assets
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

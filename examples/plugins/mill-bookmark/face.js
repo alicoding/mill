@@ -57,6 +57,7 @@ function commit() {
 
 input.addEventListener('keydown', (e) => {
 	if (e.key === 'Enter') { e.preventDefault(); commit() }
+	if (e.key === 'Escape') void mill.call('object.setEditing', false)
 	e.stopPropagation() // board shortcuts stay out of typing
 })
 input.addEventListener('blur', commit)

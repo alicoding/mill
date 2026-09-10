@@ -76,6 +76,7 @@ async function remember(entry) {
 sendEl.addEventListener('click', async () => {
 	const target = urlEl.value.trim()
 	if (!target) { statusEl.textContent = 'Enter an address first.'; return }
+	void mill.call('context.set', 'hasResult', false)
 	statusEl.textContent = 'Asking… (this request needs your approval in Review)'
 	responseEl.textContent = ''
 	try {
@@ -85,11 +86,9 @@ sendEl.addEventListener('click', async () => {
 		statusEl.textContent = r.status + ' · ' + Object.keys(r.headers).length + ' headers'
 		renderResponse(r.body)
 		await remember({ method: chosen, url: target, body: bodyEl.value, status: r.status, at: Date.now() })
-		// The view/title seat's own worked example (goal 0349 S2c): once a
-		// send has a result to replay, "Send again" declares
-		// when: "plugin.hasResult" in the manifest, so this is the one
-		// call that turns the title action on for the rest of the tab's
-		// life.
+		// The worked example's global command enablement and view/title
+		// seat both read plugin.hasResult, so one successful result makes
+		// the command runnable and its title action visible.
 		void mill.call('context.set', 'hasResult', true)
 	} catch (err) {
 		statusEl.textContent = String(err && err.message ? err.message : err)

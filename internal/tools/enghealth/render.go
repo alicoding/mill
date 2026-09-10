@@ -25,6 +25,7 @@ func RenderMarkdown(r Report) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Engineering health\n\n")
 	fmt.Fprintf(&b, "Generated %s UTC. Trailing %d and %d days.\n\n", r.GeneratedAtUTC, r.WindowDays[0], r.WindowDays[1])
+	b.WriteString(renderBreaches(r))
 
 	byCategory := map[string][]Metric{}
 	for _, m := range r.Metrics {
@@ -54,5 +55,28 @@ func RenderMarkdown(r Report) string {
 		fmt.Fprintf(&b, "\n")
 	}
 
+	return b.String()
+}
+
+// renderBreaches lists every currently-breaching metric by the exact
+// title its tracking issue carries ("Platform health: <name>"), so the
+// workflow can string-replace each row with its real issue number after
+// creating/refreshing the breach issues (contract item 2: the health
+// issue body's own "Breaches" section, numbers filled in by the
+// workflow -- this renderer only knows the titles).
+func renderBreaches(r Report) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "## Breaches\n\n")
+	any := false
+	for _, m := range r.Metrics {
+		if m.StatusIcon() == "⚠️" {
+			fmt.Fprintf(&b, "- Platform health: %s\n", m.Name)
+			any = true
+		}
+	}
+	if !any {
+		fmt.Fprintf(&b, "No budgets breached this run.\n")
+	}
+	fmt.Fprintf(&b, "\n")
 	return b.String()
 }
