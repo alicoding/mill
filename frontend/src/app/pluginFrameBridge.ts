@@ -93,6 +93,7 @@ export const FRAME_METHODS = [
   'evaluateGuardedAction',
   'callIntegration',
   'performGuardedAction',
+  'context.set',
   'runCommand',
   'capture.done',
   'capture.cancel',
@@ -142,6 +143,7 @@ export async function callFrameMethod(api: MillPluginAPI, method: string, args: 
     case 'convert.htmlToMarkdown': return api.convert.htmlToMarkdown(String(first))
     case 'convert.markdownToHtml': return api.convert.markdownToHtml(String(first))
     case 'requestGuardedAction': return api.requestGuardedAction(String(first), second as Record<string, string>, String(third))
+    case 'context.set': { api.context.set(String(first), second as Parameters<MillPluginAPI['context']['set']>[1]); return true }
     case 'evaluateGuardedAction': return api.evaluateGuardedAction(String(first), second as Record<string, string>)
     case 'callIntegration': return api.callIntegration(String(first), String(second), String(third), args[3] as Record<string, string>)
     // Never api.<anything>: performGuardedAction's "ask" outcome is

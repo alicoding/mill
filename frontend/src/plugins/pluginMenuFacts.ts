@@ -1,4 +1,6 @@
 import type { WhenFacts } from './whenClause'
+import { mergePluginContext } from './pluginContextKeys'
+import { useAtlasSelectionStore } from '../shared/atlasSelectionStore'
 
 // The facts a declared menu item's `when` clause is written against
 // (docs/goals/0380 Decision 4). This list IS the author-facing
@@ -10,6 +12,11 @@ import type { WhenFacts } from './whenClause'
 // An undeclared fact reads as absent, so an item written against a
 // fact a later Mill drops stays hidden instead of taking the menu
 // down.
+//
+// Every fact set below is merged with the CALLING plugin's own context
+// keys (goal 0349 S2c Decision 2, mergePluginContext): a plugin's own
+// `plugin.<key>` facts, with Mill's own facts spread last so nothing a
+// plugin sets can ever shadow one of Mill's.
 
 export interface BoardObjectMenuInput {
   kind: string
@@ -40,12 +47,26 @@ export function boardObjectMenuFacts(input: BoardObjectMenuInput): WhenFacts {
     selectionKinds: input.selectionKinds,
   }
   for (const [key, value] of Object.entries(input.payload)) facts[`payload.${key}`] = value
-  return facts
+  return mergePluginContext(facts, input.pluginId)
 }
 
 // viewTitleMenuFacts is the work tab's fact set: which view's title bar
 // the item is being seated on, so one extension with several views can
 // scope an item to one of them.
-export function viewTitleMenuFacts(viewId: string): WhenFacts {
-  return { seat: 'viewTitle', viewId, selectionCount: 0, selectionKinds: [] }
+export function viewTitleMenuFacts(pluginId: string, viewId: string): WhenFacts {
+  return mergePluginContext({ seat: 'viewTitle', viewId, selectionCount: 0, selectionKinds: [] }, pluginId)
+}
+
+// factsNow is the seat-INDEPENDENT fact set a framed command's own
+// generic `enabled()` evaluates a declared item's `when` against (goal
+// 0349 S2c Decision 3): there is no right-clicked object or open tab
+// anchoring this evaluation the way a seat's own fact set has one, so
+// only the board's ambient selection COUNT is answered (no per-object
+// kind lookup without pulling the atlas objects store into this leaf)
+// -- plus the calling plugin's own context keys, exactly as every
+// seat's fact set carries them.
+export function factsNow(pluginId: string): WhenFacts {
+  const sel = useAtlasSelectionStore.getState()
+  const selectionCount = sel.cards.length + sel.notes.length + sel.objects.length + sel.links.length
+  return mergePluginContext({ selectionCount, selectionKinds: [] }, pluginId)
 }

@@ -19,6 +19,7 @@ function fakeApi(overrides: Partial<MillPluginAPI> = {}): MillPluginAPI {
     evaluateGuardedAction: vi.fn(),
     callIntegration: vi.fn(),
     settings: { get: vi.fn(() => 'value'), onChange: vi.fn() },
+    context: { set: vi.fn() },
     notify: vi.fn(() => () => {}),
     storage: {
       get: (key: string) => store.get(key),

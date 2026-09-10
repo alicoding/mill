@@ -7,6 +7,7 @@ import type { CanvasObjectDecl } from './canvasObjects'
 import type { CanvasMeasureResult, CanvasToolDecl } from './canvasTools'
 import type { GuardedActionEvaluation, GuardedActionResult } from './guardedAction'
 import type { PluginCommandDecl } from './commands'
+import type { PluginContextAPI } from './context'
 import type { PluginSettingsAPI } from './settings'
 import type { PluginNoticeInput } from './notify'
 import type { PluginStorageAPI } from './storage'
@@ -42,6 +43,9 @@ export interface MillPluginAPI {
    * fill that operation's declared fields. */
   callIntegration: (integrationId: string, path: string, method: string, values: Record<string, string>) => Promise<string>
   settings: PluginSettingsAPI
+  /** This plugin's own declared context keys, read by a declared
+   * item's `when` clause as `plugin.<key>`. See PluginContextAPI. */
+  context: PluginContextAPI
   /** Shows a notice and returns its dismiss function. */
   notify: (input: PluginNoticeInput) => () => void
   storage: PluginStorageAPI

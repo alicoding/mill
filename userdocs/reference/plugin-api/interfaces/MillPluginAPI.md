@@ -51,6 +51,17 @@ content: PluginContentAPI;
 
 ***
 
+### context
+
+```ts
+context: PluginContextAPI;
+```
+
+This plugin's own declared context keys, read by a declared
+item's `when` clause as `plugin.<key>`. See PluginContextAPI.
+
+***
+
 ### convert
 
 ```ts

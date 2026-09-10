@@ -2,7 +2,7 @@ import type { ActivationFrameInit } from '../app/pluginFrameBootstrap'
 import { buildFetchJSON } from '../plugins/pluginFetchJSON'
 import { formatPluginDate } from '../plugins/pluginDateFormat'
 import { buildPluginStorage, type PluginStorageDoors } from '../plugins/pluginStorage'
-import type { ContentQuery, LifecycleEventPayload, MillPluginAPI, PluginCaptureDecl, PluginCaptureHandle, PluginCommandDecl, PluginFetchResult, PluginNoticeInput, PluginViewDecl, PluginViewHandle } from '../plugins/sdk'
+import type { ContentQuery, LifecycleEventPayload, MillPluginAPI, PluginCaptureDecl, PluginCaptureHandle, PluginCommandDecl, PluginContextValue, PluginFetchResult, PluginNoticeInput, PluginViewDecl, PluginViewHandle } from '../plugins/sdk'
 import { CANVAS_TOOL_CALLS, buildCanvasToolsFrameHalf } from './canvasTools'
 
 // A third-party plugin's own activation, run inside a hidden sandboxed
@@ -46,7 +46,7 @@ type FramedPluginAPI = Omit<MillPluginAPI, 'evaluateGuardedAction' | 'callIntegr
 export const ACTIVATION_CALL_METHODS = [
 	'notify', 'storage.set', 'storage.delete', 'query', 'kinds', 'open', 'fetch',
 	'content.createNote', 'content.createCard', 'content.updateCard', 'content.appendListRow', 'content.createList', 'content.setCardFields',
-	'files.list', 'convert.htmlToMarkdown', 'convert.markdownToHtml', 'requestGuardedAction',
+	'files.list', 'convert.htmlToMarkdown', 'convert.markdownToHtml', 'requestGuardedAction', 'context.set',
 	'register.command', 'register.view', 'register.capture',
 	'view.postMessage', 'capture.postMessage',
 	'subscribe', 'unsubscribe',
@@ -228,6 +228,11 @@ export const ACTIVATION_CALL_METHODS = [
 				}
 			},
 		}),
+		// The context-key door (goal 0349 S2c): fire-and-forget, the same
+		// shape notify/open already use -- a declared item's `when`
+		// clause reads the new value the next time it is evaluated, so
+		// this door needs no reply.
+		context: Object.freeze({ set: (key: string, value: PluginContextValue) => { void call('context.set', key, value) } }),
 		notify: (input: PluginNoticeInput) => { void call('notify', input); return () => {} },
 		storage,
 		query: (q?: ContentQuery) => call('query', q || {}) as ReturnType<MillPluginAPI['query']>,

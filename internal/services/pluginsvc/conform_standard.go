@@ -81,9 +81,9 @@ func conformCommandNamespace(m Manifest) []string {
 }
 
 // ConformStandardWarnings returns the standard's advisory findings for
-// a folder (rules 3, 9, 21, 22, 25, 26 and 34): a warning is the author's
-// call, not a failure, so only the command-line checker surfaces it --
-// except the install checks' warnings, which the install prompt shows.
+// a folder (rules 3, 9, 21, 22, 25, 26, 34, 35): a warning is the
+// author's call, not a failure -- only the command-line checker
+// surfaces it, except the install checks', which the install prompt shows.
 func ConformStandardWarnings(dir string) []string {
 	raw, err := os.ReadFile(filepath.Join(dir, "manifest.json")) // #nosec G304 -- the caller's own plugin folder
 	if err != nil {
@@ -100,6 +100,7 @@ func ConformStandardWarnings(dir string) []string {
 	warnings = append(warnings, conformSurfacesWithoutEntry(m)...)
 	warnings = append(warnings, conformSetEditingNeedsInteractive(scripts)...)
 	warnings = append(warnings, conformMenusWithoutWhen(m)...)
+	warnings = append(warnings, conformUndeclaredContextKeys(m, scripts)...)
 	_, installWarnings := InstallChecks(dir, m)
 	warnings = append(warnings, installWarnings...)
 	sort.Strings(warnings)

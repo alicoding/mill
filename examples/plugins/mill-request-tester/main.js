@@ -15,14 +15,13 @@
 // is a host-side command (a framed view's own page has no doors but
 // postMessage, so the button that seats in the tab header has to live
 // here) that re-plays the page's own send button through the SAME
-// view handle registerView returns. No enabled predicate: this plugin
-// has no canvas object, so it activates in its own sandboxed frame
-// (activation.ts's isFramedActivation) -- a framed activation's
-// registerCommand answers Command.enabled with a synchronous ctx.alive
-// only (pluginActivationBridge.ts), never a plugin-declared predicate,
-// since Command.enabled must return synchronously and the plugin's own
-// state lives across an async message boundary. Always-available here
-// matches what the bridge actually delivers.
+// view handle registerView returns. Its enablement is the manifest's
+// own declared when: "plugin.hasResult" (goal 0349 S2c) -- tester.js
+// calls mill.call('context.set', 'hasResult', true) once a send has a
+// result to replay, and that's what turns this title action on, since
+// this plugin activates in its own sandboxed frame and cannot answer
+// Command.enabled with a live predicate of its own across the async
+// message boundary.
 /** @param {import('../../../frontend/plugin-sdk').MillPluginAPI} api */
 export function activate(api) {
 	const view = api.registerView({ id: 'tester' })

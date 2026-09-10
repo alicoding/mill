@@ -28,7 +28,16 @@ census = data["census"]
 
 assert len(goals) >= 40, f"expected >=40 goals, found {len(goals)}"
 
-assert len(census) > 0, "census is empty -- defect_class grep found nothing"
+assert len(census) > 0, "census is empty -- parsed defect_class metadata found nothing"
+
+expected_census = {}
+for goal in goals:
+    defect_class = goal.get("defect_class")
+    if defect_class is not None:
+        expected_census[defect_class] = expected_census.get(defect_class, 0) + 1
+assert census == expected_census, (
+    f"census differs from parsed goal metadata: {census!r} != {expected_census!r}"
+)
 
 goal_ids = {g["id"] for g in goals}
 unresolved = [q for q in queue if q["id"] and q["id"] not in goal_ids]
@@ -46,21 +55,43 @@ PY
 if [[ -f "$repo_root/docs/goals/DISPATCH.md" ]]; then
   "$repo_root/scripts/dashboard/render.sh" "$tmp_out" "$tmp_html" >/dev/null
   python3 - "$tmp_out" "$tmp_html" <<'PY'
-import json, re, sys
+import json, sys
+from html.parser import HTMLParser
+
+
+class DispatchRows(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.in_dispatch = False
+        self.saw_start = False
+        self.saw_end = False
+        self.rows = 0
+
+    def handle_comment(self, data):
+        marker = data.strip()
+        if marker.startswith("DERIVED:dispatch:START"):
+            self.in_dispatch = True
+            self.saw_start = True
+        elif marker.startswith("DERIVED:dispatch:END"):
+            self.in_dispatch = False
+            self.saw_end = True
+
+    def handle_starttag(self, tag, attrs):
+        if self.in_dispatch and tag == "tr":
+            self.rows += 1
 
 data_path, html_path = sys.argv[1:3]
 with open(data_path) as fh:
     data = json.load(fh)
+parser = DispatchRows()
 with open(html_path) as fh:
-    html = fh.read()
+    parser.feed(fh.read())
 
 row_count = len(data["dispatch"]["rows"])
-m = re.search(
-    r"<!-- DERIVED:dispatch:START.*?-->(.*?)<!-- DERIVED:dispatch:END -->",
-    html, re.DOTALL,
+assert parser.saw_start and parser.saw_end, (
+    "DERIVED:dispatch block not found in rendered page"
 )
-assert m, "DERIVED:dispatch block not found in rendered page"
-rendered_rows = len(re.findall(r"<tr><td>", m.group(1)))
+rendered_rows = parser.rows
 assert rendered_rows >= row_count, (
     f"rendered dispatch block has {rendered_rows} rows, ledger has {row_count}"
 )
@@ -103,3 +134,24 @@ assert row["status"] in ("shipped", "open"), row
 print("OK: turns-per-goal fixture counts match (sessions, tool calls, "
       "turns, cross-session goal rollup, invalid-id filtering)")
 PY
+
+# invariant 6: malformed declared YAML identifies its file and leaves an
+# existing dashboard artifact byte-for-byte intact.
+last_good="$tmp_dir/last-good.json"
+malformed_stderr="$tmp_dir/malformed.stderr"
+printf '%s\n' '{"last_good":true}' >"$last_good"
+if MILL_DASHBOARD_GOALS_DIR="$repo_root/internal/tools/dashboardgoals/testdata/malformed-goals" \
+  "$repo_root/scripts/dashboard/derive.sh" "$last_good" >/dev/null 2>"$malformed_stderr"; then
+  echo "expected malformed YAML derivation to fail" >&2
+  exit 1
+fi
+if [[ "$(cat "$last_good")" != '{"last_good":true}' ]]; then
+  echo "malformed YAML replaced the last good dashboard output" >&2
+  exit 1
+fi
+if ! grep -q '0001-malformed.md' "$malformed_stderr"; then
+  echo "malformed YAML error did not identify its source file" >&2
+  cat "$malformed_stderr" >&2
+  exit 1
+fi
+echo "OK: malformed YAML identifies its file and preserves the last good output"
