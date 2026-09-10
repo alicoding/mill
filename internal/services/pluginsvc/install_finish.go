@@ -25,6 +25,14 @@ func (p *PluginService) finishMarketplaceInstall(stage string, rec InstallRecord
 }
 
 func (p *PluginService) finishInstallMode(stage string, rec InstallRecord, replace bool, expectedSource *MarketplaceSource) (InstallRecord, error) {
+	return p.finishInstallModeWith(stage, rec, replace, expectedSource, installFinalizationDeps{})
+}
+
+type installFinalizationDeps struct {
+	beforePolicyRecheck func() error
+}
+
+func (p *PluginService) finishInstallModeWith(stage string, rec InstallRecord, replace bool, expectedSource *MarketplaceSource, deps installFinalizationDeps) (InstallRecord, error) {
 	p.installMu.Lock()
 	defer p.installMu.Unlock()
 	if err := p.validateMarketplaceSourceIdentity(expectedSource); err != nil {
@@ -50,6 +58,14 @@ func (p *PluginService) finishInstallMode(stage string, rec InstallRecord, repla
 		return InstallRecord{}, fmt.Errorf("a different extension is already installed at %q", id)
 	}
 	if err := p.validateMarketplaceSourceIdentity(expectedSource); err != nil {
+		return InstallRecord{}, err
+	}
+	if deps.beforePolicyRecheck != nil {
+		if err := deps.beforePolicyRecheck(); err != nil {
+			return InstallRecord{}, err
+		}
+	}
+	if err := recheckStagedPolicy(root, rec); err != nil {
 		return InstallRecord{}, err
 	}
 	if err := placeInstalledFolder(root, target, replace); err != nil {

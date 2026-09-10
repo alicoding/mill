@@ -376,33 +376,21 @@ func releaseAssetURL(repo, version, asset string) string {
 // folder. The policy sees the tier the staging earned and, for the
 // signed tier, which policy key signed the folder.
 func (p *PluginService) stagedChecks(root string, rec InstallRecord) ([]string, error) {
-	raw, err := os.ReadFile(filepath.Join(root, "manifest.json")) // #nosec G304 -- a staged temp folder this process just wrote
+	m, err := readStagedManifest(root)
 	if err != nil {
-		return nil, fmt.Errorf("that download has no manifest.json")
-	}
-	m, parseProblem := parseManifest(raw)
-	if parseProblem != "" {
-		return nil, fmt.Errorf("%s", parseProblem)
+		return nil, err
 	}
 	if _, mainErr := os.Stat(filepath.Join(root, "main.js")); mainErr != nil && isDataOnlyManifest(m) {
 		if problem := dataOnlyFolderProblem(os.DirFS(root)); problem != "" {
 			return nil, usererror.New(InstallRefusedCode, installRefusalSentence(problem))
 		}
 	}
-	hash, _ := ContentHash(root)
-	var policyErr error
-	if rec.Origin.Kind != "" {
-		if rec.FinalArtifactURL != "" {
-			if err := policyRequestRefusal(rec.Origin, rec.FinalArtifactURL, true); err != nil {
-				return nil, err
-			}
-		}
-		policyErr = policyInstallRefusalOriginAt(m, rec.Tier, rec.Origin, rec.Marketplace, root, hash)
-	} else {
-		policyErr = policyInstallRefusalAt(m, rec.Tier, rec.Marketplace, installSourceLocator(rec.Source), root, hash)
+	hash, err := ContentHash(root)
+	if err != nil {
+		return nil, err
 	}
-	if policyErr != nil {
-		return nil, policyErr
+	if err := stagedPolicyRefusal(m, rec, root, hash); err != nil {
+		return nil, err
 	}
 	refusals, warnings := InstallChecks(root, m)
 	if len(refusals) > 0 {
