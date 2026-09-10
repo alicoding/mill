@@ -353,7 +353,7 @@ pre-commit:
       # script that needs proving beyond exit-code review gets a sibling
       # scripts/<name>.test.sh, globbed alongside the script itself so
       # editing either re-runs it.
-      glob: "scripts/{check-go-coverage.sh,*.test.sh}"
+      glob: "{scripts/check-go-coverage.sh,scripts/*.test.sh,.github/workflows/engineering-health.yml}"
       run: for t in scripts/*.test.sh; do bash "$t"; done
     - name: go-test
       glob: "*.go"
