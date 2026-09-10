@@ -162,7 +162,6 @@ func TestRun_WritesOneFilePerBreach(t *testing.T) {
 	body := string(raw)
 	for _, want := range []string{
 		`title: "Platform health: Retry-passed rate"`,
-		"labels: platform-health,retry_passed_rate_pct_max\n",
 		"**Current (7d):** 33.3%",
 		"**Trailing (28d):** 16.7%",
 		"**Budget:** ≤ 1.0%",
@@ -172,6 +171,18 @@ func TestRun_WritesOneFilePerBreach(t *testing.T) {
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("retry_passed_rate_pct_max.md missing %q, got:\n%s", want, body)
+		}
+	}
+	// `labels` is a YAML block list, never a comma-joined scalar (goal
+	// 0413 S2b): parsed with yaml.v3, never a string-contains check.
+	fm := parseBreachFrontMatter(t, body)
+	wantLabels := []string{"platform-health", "retry_passed_rate_pct_max"}
+	if len(fm.Labels) != len(wantLabels) {
+		t.Fatalf("Labels = %v, want %v", fm.Labels, wantLabels)
+	}
+	for i, w := range wantLabels {
+		if fm.Labels[i] != w {
+			t.Errorf("Labels[%d] = %q, want %q", i, fm.Labels[i], w)
 		}
 	}
 	// First run (no --previous): Consecutive is 1, so escalate is absent.
@@ -223,14 +234,22 @@ func TestRun_ConsecutiveChainsThroughPreviousReportAndEscalates(t *testing.T) {
 		t.Errorf("Consecutive = %d, want 3 (previous report's 2 + this breach)", got.Consecutive)
 	}
 
-	body, err := os.ReadFile(filepath.Join(cfg.BreachesDir, "retry_passed_rate_pct_max.md"))
+	raw, err = os.ReadFile(filepath.Join(cfg.BreachesDir, "retry_passed_rate_pct_max.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(body), "labels: platform-health,retry_passed_rate_pct_max,escalate\n") {
-		t.Errorf("expected the escalate label at Consecutive 3, got:\n%s", body)
+	body := string(raw)
+	fm := parseBreachFrontMatter(t, body)
+	wantLabels := []string{"platform-health", "retry_passed_rate_pct_max", "escalate"}
+	if len(fm.Labels) != len(wantLabels) {
+		t.Fatalf("Labels = %v, want %v", fm.Labels, wantLabels)
 	}
-	if !strings.Contains(string(body), "**Consecutive:** 3") {
+	for i, w := range wantLabels {
+		if fm.Labels[i] != w {
+			t.Errorf("Labels[%d] = %q, want %q", i, fm.Labels[i], w)
+		}
+	}
+	if !strings.Contains(body, "**Consecutive:** 3") {
 		t.Errorf("expected Consecutive: 3 in the body, got:\n%s", body)
 	}
 }
