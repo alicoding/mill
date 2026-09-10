@@ -3,24 +3,20 @@
 No `paths` frontmatter — every goal, every language.
 
 ## Definition of Ready — before a BACKLOG.md item enters a session
-- Goal file carries three Research headings before Plan: **Precedent**
-  (best-in-class tools, real search), **Today** (what Mill does now,
-  read/probed), **Gap** (the delta Plan answers). No Gap ⇒ not Ready.
-- **Adoption named before dispatch.** Precedent also names the library,
-  framework or package that already solves it: a real search, primary
-  source linked, version pinned, entry-point API named — or the
-  search finding none. No brief goes out without it.
-- A capability map for any schema/adopt-vs-build call with >1 real
+- Before Plan, Goal Research has **Precedent** (best-in-class tools, real search),
+  **Today** (Mill read/probed), and **Gap** (Plan's delta). No Gap ⇒ not Ready.
+- **Adoption named before dispatch.** Precedent names the solving
+  library/framework/package from real search, with linked primary source,
+  pinned version and entry-point API — or records none found. No brief without it.
+- A capability map for any schema/adopt-vs-build call with >1
   future use (SPEC §3.3).
-- A goal file: Goal/Plan/**Acceptance as a checkable predicate**.
-- Frontmatter header (`id`, `status`, `date`, `prs [..]`, `proof [..]`,
-  `spec_refs [..]`) — delivery-evidence-ledger data.
-- Bug-shaped goals also carry `defect_class: <kebab-slug>` — ONE axis.
-  Grep `defect_class` across `goals/`. **Two strikes make the goal
-  about the CLASS.**
-- **One strike makes a class.** A CI/review finding is fixed as its
-  CLASS in the same PR — the gate/rule plus a sweep of instances —
-  or a same-day goal number.
+- A goal file with Goal/Plan/**checkable Acceptance**.
+- Frontmatter (`id`, `status`, `date`, `prs [..]`, `proof [..]`,
+  `spec_refs [..]`) for the delivery-evidence ledger.
+- Bug goals carry one-axis `defect_class: <kebab-slug>`. Grep it across
+  `goals/`. **Two strikes make the goal about the CLASS.**
+- **One strike makes a class.** Fix a CI/review finding as its CLASS
+  in the same PR — gate/rule plus instance sweep — or file a same-day goal.
 - No SPEC.md `OPEN` dependency silently resolved by starting.
 
 ## Definition of Ready, part 2 — the integration-surfaces triage
@@ -79,15 +75,19 @@ same-day or move OUT with a register entry naming the path back.
 - WIP limit: ≤6 open goal PRs before a new dispatch.
 - A builder owns its PR through merge; the orchestrator dispatches and
   verifies.
-- Budgets are per-dispatch (`maxTurns`, tokens), cumulative across
-  resumes (≤2/brief); one bounded wait/turn; closeouts batch per tick.
-- Every finished agent's tokens append to `docs/goals/AGENT-LEDGER.md`
-  (git-ignored).
+- Dispatch budgets (`maxTurns`, tokens) are cumulative across ≤2 resumes;
+  one bounded wait/turn; closeouts batch per tick.
+- Append every finished agent's tokens to the git-ignored
+  `docs/goals/AGENT-LEDGER.md`.
 - A brief carries ≤3 contract items; a 4th is the next slice.
+- The queue has Product and Platform lanes. Platform (`0PL-`) holds health
+  breaches, technical debt and toolchain currency. When both lanes have
+  Ready work, dispatch one Ready Platform item per two Ready Product items;
+  escalated `platform-health` issues lead Platform. Allocation never expands
+  a bounded user task's authorized scope.
 
 ## Tech debt and deferrals
-A BACKLOG.md entry needs the same DoR/DoD as any goal — never a bare
-TODO. A gap against researched precedent is never deferred: build it
-in the finding goal; an agent that would defer it reports it. Legal
-only when the same sentence names its tracking home: a goal number,
-BACKLOG line, SPEC `OPEN` item, or revisit trigger.
+Every BACKLOG.md entry needs goal-level DoR/DoD, never a bare TODO.
+Build researched-precedent gaps in the finding goal; agents report
+attempted deferral. A legal deferral's sentence names its goal, BACKLOG
+line, SPEC `OPEN` item, or revisit trigger.
