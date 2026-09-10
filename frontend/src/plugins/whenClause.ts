@@ -15,7 +15,8 @@
 // identifiers (a fact name, dotted for a payload key), single- or
 // double-quoted strings, numbers, and `true`/`false`.
 
-export type WhenValue = string | number | boolean | readonly string[]
+export type WhenScalar = string | number | boolean | null
+export type WhenValue = WhenScalar | readonly WhenScalar[]
 export type WhenFacts = Readonly<Record<string, WhenValue>>
 
 export class WhenSyntaxError extends Error {
@@ -177,13 +178,15 @@ export function parseWhen(src: string): WhenNode {
 // against a fact this Mill version does not compute stays hidden
 // rather than breaking the whole menu.
 function truthy(value: WhenValue | undefined): boolean {
-  if (value === undefined) return false
+  if (value === undefined || value === null) return false
   if (Array.isArray(value)) return value.length > 0
   return Boolean(value)
 }
 
 function compare(op: string, left: WhenValue | undefined, right: WhenValue | undefined): boolean {
-  if (op === 'in') return Array.isArray(right) ? right.includes(String(left)) : false
+  // Membership keeps the expression language's existing string-coercing
+  // comparison: mixed scalar arrays compare each item through String().
+  if (op === 'in') return Array.isArray(right) ? right.some((item) => String(item) === String(left)) : false
   if (op === '==') return String(left) === String(right)
   if (op === '!=') return String(left) !== String(right)
   const a = Number(left)
@@ -226,8 +229,8 @@ export function evaluateWhen(expression: string, facts: WhenFacts): boolean {
   }
 }
 
-// whenClauseError is the same parse, reported rather than swallowed --
-// for the manifest conformance check and the Extensions row.
+// whenClauseError reports the same parse failure evaluateWhen handles
+// by returning false, so a registration boundary can diagnose it once.
 export function whenClauseError(expression: string): string | null {
   try {
     parseWhen(expression)

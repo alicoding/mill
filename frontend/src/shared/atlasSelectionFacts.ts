@@ -43,7 +43,7 @@ export interface AtlasObjectFacts {
   // (docs/goals/0380 Decision 4). Names and meanings live in one place
   // -- plugins/pluginMenuFacts.ts -- since they are author-facing
   // vocabulary, not an internal shape.
-  menuFacts: Record<string, string | number | boolean | readonly string[]>
+  menuFacts: Readonly<Record<string, string | number | boolean | null | readonly (string | number | boolean | null)[]>>
 }
 
 export interface AtlasLinkFacts {

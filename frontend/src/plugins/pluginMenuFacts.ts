@@ -68,5 +68,5 @@ export function viewTitleMenuFacts(pluginId: string, viewId: string): WhenFacts 
 export function factsNow(pluginId: string): WhenFacts {
   const sel = useAtlasSelectionStore.getState()
   const selectionCount = sel.cards.length + sel.notes.length + sel.objects.length + sel.links.length
-  return mergePluginContext({ selectionCount, selectionKinds: [] }, pluginId)
+  return mergePluginContext({ selectionCount }, pluginId)
 }

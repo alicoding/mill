@@ -40,9 +40,9 @@ rewriting anything:
 | Source field | Mill field | Treatment | Why |
 | --- | --- | --- | --- |
 | `contributes.configuration` | `contributes.configuration` | Accepted as-is | Same shape: a typed setting with a default and a description. |
-| `contributes.commands` | `contributes.commands` | Accepted as-is | Same shape: an id and a label. The function it runs is rewritten (see below). |
+| `contributes.commands` | `contributes.commands` | Accepted as-is | Same shape: an id, a label, and an optional global `enablement` expression. The function it runs is rewritten (see below). |
 | `contributes.menus` | `contributes.menus` | Mapped and rendered | A foreign menu id renders on the Mill surface that plays the same role — see the seat table below. An id with no equivalent is accepted and ignored, never a load failure. |
-| `commands.executeCommand('setContext', key, value)` | `api.context.set(key, value)` | Adapted | Same job — an extension contributing a fact its own `when` clauses read back — over Mill's own door: `api.context.set` from `main.js`, or `call('context.set', key, value)` from a framed entry page. Read back as `plugin.<key>` in any seated item's `when`. |
+| `commands.executeCommand('setContext', key, value)` | `api.context.set(key, value)` | Adapted | Same job — an extension contributing a fact its own declarative expressions read back — over Mill's own door: `api.context.set` from `main.js`, or `call('context.set', key, value)` from a framed entry page. Read back as `plugin.<key>` in command `enablement` or a seated item's `when`. |
 | `contributes.views` | `contributes.views` | Mapped, narrower | Both declare an id, a title, and where the page's own code lives; Mill has no nested view-container tree — every view is a flat work tab. |
 | `contributes.viewsContainers` | — | Not supported | Mill's own chrome (the sidebar's fixed sections) is not a plugin-extensible tree; a view still declares which existing tab it opens in. |
 | `contributes.themes` | `contributes.themes` | Adapted | Mill themes are CSS token declarations. Importing a standalone JSON/JSONC color theme maps a fixed set of interface colors, keeps all other colors at Mill defaults, and does not import syntax highlighting. |
@@ -57,7 +57,7 @@ rewriting anything:
 | --- | --- |
 | `commandPalette` | Already true for every command Mill knows about; declaring it does nothing extra. |
 | `editor/context` | Renders in the canvas object's own right-click menu, after a separator. Its `when` clause decides when the item shows, over facts Mill computes about the right-clicked object and the selection: `objectKind`, `objectPluginId`, `hasFile`, `hasSize`, `editRoute`, `selectionCount`, `selectionKinds`, every payload key as `payload.<key>`, and any key your own extension set with `api.context.set` as `plugin.<key>`. An item that should always show says so with `when: "true"`. |
-| `view/title` | Renders as an icon-only action in the work tab's title area. Its `when` clause is evaluated against `viewId` and any `plugin.<key>` your own extension set — the only way a framed extension (one running in its own sandboxed frame) can answer `Command.enabled` honestly, since it cannot supply a live predicate across that boundary. |
+| `view/title` | Renders as an icon-only action in the work tab's title area. Its `when` clause is evaluated against `viewId` and any `plugin.<key>` your own extension set. The command's separate `enablement` expression still decides whether the command can run from any surface. |
 | any other id | Accepted and ignored — named once in the extension's status so you know it was silently dropped, never a load failure. |
 
 ## Three ported jobs, classified

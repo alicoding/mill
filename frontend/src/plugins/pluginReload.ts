@@ -17,6 +17,7 @@ import { unregisterPluginViews } from './pluginViews'
 import { pushNotice } from '../shared/noticeStore'
 import type { PluginModule } from './sdk'
 import { activateFramed, isFramedActivation, teardownActivationFrame } from './activation'
+import { clearPluginContextKeys } from './pluginContextKeys'
 
 // Per-plugin reload (goal 0319): drop exactly what one plugin
 // contributed, import its main.js again, and activate the fresh
@@ -45,6 +46,7 @@ const REFUSAL_KEY: Record<string, string> = {
 }
 
 function unregisterContributions(pluginId: string): void {
+	clearPluginContextKeys(pluginId)
 	unregisterPluginCommands(pluginId)
 	unregisterPluginViews(pluginId)
 	unregisterPluginCaptures(pluginId)

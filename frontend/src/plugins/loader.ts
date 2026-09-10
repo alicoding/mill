@@ -9,6 +9,7 @@ import { pluginRunState, type PluginRunPolicy } from './pluginTrust'
 import { collectPluginCommand } from './pluginCommands'
 import { activateFramed, isFramedActivation } from './activation'
 import { captureSameDomExports } from './extensionExports'
+import { clearPluginContextKeys } from './pluginContextKeys'
 
 // The runtime plugin loader (docs/goals/0249). Runs BEFORE the app
 // module graph evaluates (main.tsx awaits it and only then
@@ -203,6 +204,7 @@ export function collectReloadCommand(info: PluginInfo): void {
 // Split out of loadPlugins() so the per-plugin branch reads as one
 // step, not nested inside the scan loop's own state machine.
 async function activateOne(info: PluginInfo, millVersion: string, storageSnapshot: Record<string, string>): Promise<void> {
+	clearPluginContextKeys(info.Manifest.id)
 	if (isFramedActivation(!!info.Builtin, info.Manifest)) {
 		// A framed plugin's export capture happens inside activateFramed
 		// itself, at its own activation-done message -- the returned

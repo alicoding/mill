@@ -203,15 +203,23 @@ platform](port-a-vscode-extension.md).
 
 ## Context keys
 
-Your own plugin can contribute facts a `when` clause reads: call
+Your own plugin can contribute facts its declarative expressions read: call
 `api.context.set(key, value)` — from `main.js` directly, or from a
 framed entry page's `acquireMillApi().call('context.set', key,
-value)` — and a declared item's `when: "plugin.<key>"` reads it back,
-evaluated host-side, synchronously, every time the item's own seat or
-its command's enablement is checked. `value` is a string, number,
-boolean, or an array of strings; a key already starting with
-`"plugin."` is refused, since that prefix is added automatically
-wherever the fact is read back.
+value)` — and `plugin.<key>` reads it back. A command's optional
+`enablement` expression controls whether the command can run from any
+surface. Each menu item's separate `when` expression controls only
+whether that item appears in its own seat; it never changes the
+command's global availability. Command enablement can read the current
+`selectionCount` and the calling plugin's own context keys.
+
+`value` can be `null`, a string, a finite number, a boolean, or a flat
+array containing those scalar values. Mill copies arrays when they are
+stored. Context lasts for one activation and is cleared when the plugin
+is disabled, removed, reloaded, or activated afresh. A key already
+starting with `"plugin."` is refused, since that prefix is added
+automatically wherever the fact is read back. Unknown facts and invalid
+expressions fail closed.
 
 ## SDK conveniences
 

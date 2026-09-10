@@ -48,12 +48,11 @@ test('right-clicking a mill-drawing object shows its declared editor/context ite
   await expect(shapes).toHaveCount(0)
 })
 
-// goal 0349 S2c: the title action's honest enablement is a declared
-// when clause (contributes.menus["view/title"][0].when ==
-// "plugin.hasResult"), so it is ABSENT until tester.js's own send
-// handler contributes that context key -- not merely disabled, since
-// this plugin activates in its own sandboxed frame and had no other
-// way to answer Command.enabled truthfully before S2c.
+// goal 0349 S2c: command enablement and menu visibility are separate
+// declarations that intentionally read the same context fact here.
+// The title seat and palette both stay absent until tester.js records
+// a successful result, then normal registry dispatch can reach the
+// framed command from either surface.
 pluginTest('the Request tester\'s "Send again" title action is absent before the first send, present after, and re-sends the current request', async () => {
   const http = createServer((_req, res) => { res.setHeader('Content-Type', 'application/json'); res.end('{"pong":true}') })
   await new Promise<void>((resolve) => http.listen(0, '127.0.0.1', resolve))
@@ -67,6 +66,13 @@ pluginTest('the Request tester\'s "Send again" title action is absent before the
 
     const actions = page.getByTestId('work-tab-title-actions-mill-request-tester-tester')
     await baseExpect(actions).toHaveCount(0)
+
+    await page.keyboard.press('Meta+/')
+    const palette = page.getByRole('dialog', { name: 'Command palette' })
+    await baseExpect(palette).toBeVisible()
+    await palette.getByRole('combobox').fill('Send again')
+    await baseExpect(palette.getByRole('option', { name: 'Send again', exact: true })).toHaveCount(0)
+    await page.keyboard.press('Escape')
 
     const frame = page.frameLocator('[data-testid="plugin-view-mill-request-tester-tester"]')
     await frame.getByTestId('tester-url').fill(`http://127.0.0.1:${port}/ping`)
@@ -89,17 +95,16 @@ pluginTest('the Request tester\'s "Send again" title action is absent before the
     const sendAgain = actions.getByRole('button', { name: 'Send again' })
     await baseExpect(sendAgain).toBeVisible()
 
-    // The observable effect (goal 0349 S2b amendment): clicking the
-    // title action posts into the frame, which re-clicks Send with the
-    // same fields -- a second parked approval is proof the frame
-    // received the message and acted on it, not just that the button
-    // exists.
+    // The palette and title seat consume the same global command. A
+    // second parked approval proves normal registry dispatch reached
+    // the frame after enablement became true.
     const reviewPage2 = await page.context().newPage()
     await applyCpuThrottle(reviewPage2)
     await reviewPage2.goto('/')
     await reviewPage2.getByRole('link', { name: 'Review' }).click()
     const parked2 = reviewPage2.locator('[data-testid="review-guarded-action-item"]')
-    await sendAgain.click()
+    await page.getByRole('link', { name: 'Atlas' }).focus()
+    await runFromPalette(page, 'Send again')
     await baseExpect(parked2).toHaveCount(1)
     await reviewPage2.close()
   } finally {
