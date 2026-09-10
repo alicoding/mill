@@ -18,6 +18,7 @@ import (
 	"github.com/alicoding/mill/internal/domain/secretsource"
 	"github.com/alicoding/mill/internal/services/codeloopsvc"
 	"github.com/alicoding/mill/internal/services/configuresvc"
+	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/alicoding/mill/internal/services/guardrailsvc"
 	"github.com/alicoding/mill/internal/services/secretsvc"
@@ -52,6 +53,9 @@ func WireSecrets(vaultPath, backupDir string, credentials credential.Store, stor
 	// the first, and on every install that never enabled the old one.
 	secretService.MigrateLegacyPresenceProtection()
 	configureService.SetSecretResolver(secretService.ResolveSecretValue)
+	dataevent.Observe("secret", func(string) { configuresvc.InvalidateAIProviderAvailabilityForSecrets(configureService) })
+	dataevent.Observe("secretsource", func(string) { configuresvc.InvalidateAIProviderAvailabilityForSecrets(configureService) })
+	secretsvc.SetSourceChangeHook(secretService, func(string) { configuresvc.InvalidateAIProviderAvailabilityForSecrets(configureService) })
 	// Goal 0408 S1: the unresolved-reference preflight check, and the
 	// live file watch that re-arms whenever a source is created,
 	// edited or deleted.

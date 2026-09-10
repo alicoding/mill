@@ -53,6 +53,67 @@ export interface AIProvider {
     "Seed": seedorigin$0.Origin;
 }
 
+export enum AuthenticationStatus {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    AuthenticationNotRequired = "not-required",
+    AuthenticationUnknown = "unknown",
+    AuthenticationMetadataAuthorized = "metadata-authorized",
+    AuthenticationOperationTested = "operation-tested",
+    AuthenticationRejected = "rejected",
+};
+
+export enum CheckStatus {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    CheckNotStarted = "not-started",
+    CheckAwaitingApproval = "awaiting-approval",
+    CheckChecking = "checking",
+    CheckCancelled = "cancelled",
+    CheckTimedOut = "timed-out",
+    CheckCompleted = "completed",
+};
+
+export enum EvidenceSource {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    EvidenceProviderMetadata = "provider-metadata",
+    EvidenceSampleTest = "sample-test",
+    EvidenceAdapterContract = "adapter-contract",
+};
+
+export enum Freshness {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    FreshnessNotChecked = "not-checked",
+    FreshnessFresh = "fresh",
+    FreshnessStale = "stale",
+};
+
+export enum InspectionStatus {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    InspectionNotChecked = "not-checked",
+    InspectionAvailable = "available",
+    InspectionUnsupported = "unsupported",
+    InspectionFailed = "failed",
+};
+
 /**
  * Kind is a provider's wire-protocol family -- a closed, typed choice
  * (execenv.Shell's own "typed choice, not free text" precedent), each
@@ -74,4 +135,97 @@ export enum Kind {
 
     KindOpenAICompat = "openai-compatible",
     KindAnthropic = "anthropic",
+};
+
+export interface ModelChoice {
+    "id": string;
+}
+
+export enum Operation {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    OperationText = "text",
+    OperationStructured = "structured",
+    OperationClassification = "classification",
+};
+
+export interface OperationFeature {
+    "operation": Operation;
+    "support": Support;
+    "evidence": EvidenceSource;
+    "wireOperation": string;
+    "reasonCodes": string[] | null;
+}
+
+export interface PermissionResult {
+    "status": PermissionStatus;
+    "source": string;
+    "ruleId"?: string;
+    "ruleLabel"?: string;
+}
+
+export enum PermissionStatus {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    PermissionUnchecked = "unchecked",
+    PermissionAllowed = "allowed",
+    PermissionDenied = "denied",
+};
+
+/**
+ * Report is machine-local evidence about one configured provider revision.
+ * It contains neither provider credentials nor raw provider responses and is
+ * intentionally absent from configuration export schemas.
+ */
+export interface Report {
+    "providerId": string;
+    "checkId": string;
+    "configRevision": string;
+    "model": string;
+    "adapterVersion": number;
+    "machineId": string;
+    "sessionId": string;
+    "checkedAt": string;
+    "checkedEndpoint": string;
+    "transport": TransportStatus;
+    "inspection": InspectionStatus;
+    "authentication": AuthenticationStatus;
+    "permission": PermissionResult;
+    "operations": OperationFeature[] | null;
+    "modelChoices": ModelChoice[] | null;
+    "modelInventoryComplete": boolean;
+    "selectedModelFound"?: boolean | null;
+    "reasonCodes": string[] | null;
+    "freshness": Freshness;
+    "lifecycle": CheckStatus;
+}
+
+export enum Support {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    SupportSupported = "supported",
+    SupportUnsupported = "unsupported",
+    SupportUnknown = "unknown",
+};
+
+export enum TransportStatus {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    TransportUnchecked = "unchecked",
+    TransportChecking = "checking",
+    TransportResponded = "responded",
+    TransportUnreachable = "unreachable",
+    TransportInvalidConfiguration = "invalid-configuration",
 };

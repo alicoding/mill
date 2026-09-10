@@ -68,6 +68,24 @@ pasted context envelope). Three facts shape everything:
   unintentional duplicate. Empty proposals ("nothing to add") are
   valid; say so instead of inventing content.
 
+## Checking an AI provider
+
+- `get_ai_provider_availability` reads cached machine-local evidence. It
+  never resolves a secret or calls the provider. Treat `stale` and
+  `not-checked` as evidence states, not as proof that the provider fails.
+- `start_ai_provider_check` requests one guarded metadata inspection and
+  returns immediately. Poll the read tool with the provider ID. The check
+  may remain `awaiting-approval` in Review; do not retry it while it waits.
+- `cancel_ai_provider_check` cancels the exact check ID returned by start,
+  including a pending approval or retry wait.
+
+Metadata can establish that an endpoint responded and that a model ID or
+alias resolves. It does not exercise a completion. Keep text, structured,
+and classification support `unknown` when their evidence is only
+`provider-metadata`; an operation result requires `sample-test` or an
+exact `adapter-contract` entry. Reports contain a checked destination for
+the configured endpoint, not a claim that computation runs on this device.
+
 ## Reply envelopes (when you're pasted a context envelope instead of MCP)
 
 A pasted Mill context document carries its own reply schema inline.

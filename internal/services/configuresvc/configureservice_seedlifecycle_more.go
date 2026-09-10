@@ -112,6 +112,7 @@ func (c *ConfigureService) ResetAIProviderToSeed(id string) (aiprovider.AIProvid
 	if err != nil {
 		return aiprovider.AIProvider{}, err
 	}
+	InvalidateAIProviderAvailability(c, id)
 	dataevent.Emit("aiprovider", id) // goal 0017: live-sync every open surface
 	return updated, nil
 }
@@ -127,6 +128,7 @@ func (c *ConfigureService) RestoreAIProvider(id string) (aiprovider.AIProvider, 
 	if err != nil {
 		return aiprovider.AIProvider{}, err
 	}
+	InvalidateAIProviderAvailability(c, id)
 	dataevent.Emit("aiprovider", id) // goal 0017: live-sync every open surface
 	return restored, nil
 }
