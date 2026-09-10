@@ -266,7 +266,7 @@ jobs:
         run: |
           set -euo pipefail
           gh label create platform-health --repo "$REPO" --color B60205 \
-            --description "A breached engineering budget, refreshed weekly (goal 0413 S2)" --force
+            --description "A breached engineering budget, refreshed weekly" --force
           gh label create escalate --repo "$REPO" --color B60205 \
             --description "The same engineering budget breached two Mondays running" --force
 
@@ -342,6 +342,37 @@ jobs:
           filename: breaches/${{ matrix.file }}
           update_existing: true
           search_existing: all
+
+      # create-an-issue's own update path only ever PATCHes body (its
+      # own action.ts never sets labels or state on an existing issue),
+      # so a label added after creation (escalate, once Consecutive
+      # reaches 2) or a reopen after a prior recovery-close both need a
+      # second, explicit call -- contract item 2's "Consecutive >= 2
+      # adds the label escalate" and "opens or refreshes them" (staying
+      # open, not silently going dark after one recovery cycle). The
+      # metric-key label is unique to exactly this budget's one issue,
+      # set at its original creation, so it finds the issue regardless
+      # of its current open/closed state without depending on the
+      # action's own outputs.
+      - name: Apply this breach's labels and reopen if recovery-closed it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          MATRIX_FILE: ${{ matrix.file }}
+        run: |
+          set -euo pipefail
+          key="${MATRIX_FILE%.md}"
+          labels=$(awk -F': ' '/^labels:/ {print $2; exit}' "breaches/${MATRIX_FILE}")
+          number=$(gh issue list --repo "$REPO" --label "$key" --state all --json number --jq '.[0].number // empty')
+          if [ -z "$number" ]; then
+            echo "engineering-health: no issue found for breach key $key" >&2
+            exit 1
+          fi
+          gh issue edit "$number" --repo "$REPO" --add-label "$labels"
+          state=$(gh issue view "$number" --repo "$REPO" --json state --jq .state)
+          if [ "$state" = "CLOSED" ]; then
+            gh issue reopen "$number" --repo "$REPO"
+          fi
 
   # A budget back within budget: close its issue (contract item 2). Reads
   # the current readings straight out of this run's own JSON artifact
