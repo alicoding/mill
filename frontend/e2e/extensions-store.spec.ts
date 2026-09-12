@@ -50,7 +50,12 @@ async function holdNextPrepareInstall(targetPage: Page) {
 		}
 		held = true
 		await released
-		await route.continue()
+		try {
+			await route.continue()
+		} catch (error) {
+			// Cancelling the dialog aborts the held request before the test releases it.
+			if (!(error instanceof Error) || !error.message.includes('Route is already handled')) throw error
+		}
 	}
 	await targetPage.route('**/wails/runtime', handler)
 	return {
@@ -159,7 +164,7 @@ test('A pending install preview can be cancelled without stale details reopening
 	await gotoAppReady(page)
 	await openExtensions(page, 'browse')
 	const entry = page.locator('[data-testid="extensions-browse-row"][data-plugin-id="fixture-notes"]')
-	const loading = page.getByRole('dialog', { name: 'Review extension installation' })
+	const loading = page.getByRole('dialog', { name: 'Preparing extension' })
 
 	const cancelledByButton = await holdNextPrepareInstall(page)
 	try {
