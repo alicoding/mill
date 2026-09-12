@@ -6,6 +6,7 @@ import { KeybindingHint } from '@primer/react/experimental'
 import { hintKeysFromLabel } from '../shared/keybinding'
 import type { AttributeDef, NodeType } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { Type as ConfigFieldType } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
+import { Operation } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 import type { CanvasNode } from './canvasStore'
 import { useHotkeyCapture, isAccessibilityError, ACCESSIBILITY_SETTINGS_URL } from './hotkeyCapture'
 import { generateSamplePayload } from '../shared/configSchema'
@@ -243,6 +244,13 @@ export function NodeConfigFields({ node, attrs, nodeType, sameKindNodeTypes, has
                 value={node.data.config[field.Key] ?? ''}
                 onChange={(id) => onConfigChange(field.Key, id)}
                 readOnly={readOnly}
+                requiredOperation={field.RefKind === 'aiprovider'
+                  ? node.data.nodeTypeID === 'process-ai-extract-structured'
+                    ? Operation.OperationStructured
+                    : node.data.nodeTypeID === 'process-ai-classify'
+                      ? Operation.OperationClassification
+                      : Operation.OperationText
+                  : undefined}
               />
               {/* Hover-preview + jump for a selected workflow reference
                   (docs/SPEC.md §3.8's n8n pattern) -- see the

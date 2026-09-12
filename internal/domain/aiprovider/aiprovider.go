@@ -97,7 +97,7 @@ type AIProvider struct {
 // index, no such facet exists for label text).
 var Fields = []typedfield.Field{
 	{Key: "label", Label: "Label", Type: typedfield.TypeText, Required: true},
-	{Key: "kind", Label: "Kind", Type: typedfield.TypeOptions, Required: true,
+	{Key: "kind", Label: "Protocol", Type: typedfield.TypeOptions, Required: true,
 		Options: []string{string(KindOpenAICompat), string(KindAnthropic)}},
 	{Key: "baseURL", Label: "Base URL", Type: typedfield.TypeText},
 	{Key: "model", Label: "Model", Type: typedfield.TypeText, Required: true},

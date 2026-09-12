@@ -874,6 +874,38 @@
     "needs": null
   },
   {
+    "id": "configure.aiprovider.cancelCheck",
+    "label": "Cancel check",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.aiprovider.check",
+    "label": "Check connection",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.aiprovider.copyAddress",
+    "label": "Copy address",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.aiprovider.dataHelp",
+    "label": "Data access help",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
     "id": "configure.aiprovider.delete",
     "label": "Delete",
     "binding": null,
@@ -892,6 +924,54 @@
   {
     "id": "configure.aiprovider.reset",
     "label": "Reset to shipped example",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.aiprovider.restore.classification",
+    "label": "Restore sample",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.aiprovider.restore.structured",
+    "label": "Restore sample",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.aiprovider.restore.text",
+    "label": "Restore sample",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.aiprovider.test.classification",
+    "label": "Test feature",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.aiprovider.test.structured",
+    "label": "Test feature",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "configure.aiprovider.test.text",
+    "label": "Test feature",
     "binding": null,
     "surface": null,
     "enabled": true,
