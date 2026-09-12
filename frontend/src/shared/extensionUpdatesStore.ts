@@ -144,6 +144,11 @@ async function updateOne(candidate: UpdateCandidate, hasRemaining: boolean): Pro
 			return { count: 'cancelled', recoveryRequired: false }
 		}
 		const prepared = await PluginService.PrepareInstall(handle, installCandidate(candidate))
+		if (useExtensionUpdatesStore.getState().cancelRemaining) {
+			await PluginService.CancelInstallPreparation(handle)
+			setItemPhase(candidate.ID, 'cancelled')
+			return { count: 'cancelled', recoveryRequired: false }
+		}
 		if (prepared.RequiresReview) {
 			await PluginService.CancelInstallPreparation(handle)
 			setItemPhase(candidate.ID, 'needs-review')

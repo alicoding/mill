@@ -284,6 +284,28 @@ describe('prepared extension install commands', () => {
     expect(useExtensionUpdatesStore.getState().itemPhases.second).toBe('cancelled')
   })
 
+  it('cancels a prepared bulk item before confirmation starts', async () => {
+    useExtensionUpdatesStore.setState({
+      candidates: [
+        { ID: 'first', Name: 'First', Installed: '1.0.0', Available: '2.0.0' },
+        { ID: 'second', Name: 'Second', Installed: '1.0.0', Available: '2.0.0' },
+      ] as never,
+    })
+    const preparing = deferred<unknown>()
+    vi.mocked(PluginService.PrepareInstall).mockReturnValueOnce(preparing.promise as never)
+    expect(await runCommand('extensions.updateAll')).toBe(true)
+    await vi.waitFor(() => expect(useExtensionUpdatesStore.getState().currentHandle).toBe('handle-one'))
+    expect(await runCommand('extensions.cancelRemainingUpdates')).toBe(true)
+    preparing.resolve({
+      Handle: 'handle-one', ExpiresAt: '2099-01-01T00:00:00Z', Preview: preview({ ID: 'first' }), RequiresReview: false,
+    })
+    await vi.waitFor(() => expect(useExtensionUpdatesStore.getState().bulkActive).toBe(false))
+
+    expect(PluginService.CancelInstallPreparation).toHaveBeenCalledWith('handle-one')
+    expect(PluginService.ConfirmInstall).not.toHaveBeenCalled()
+    expect(useExtensionUpdatesStore.getState().itemPhases).toEqual({ first: 'cancelled', second: 'cancelled' })
+  })
+
   it('gives recovery precedence when cancellation arrives during a recovering commit', async () => {
     useExtensionUpdatesStore.setState({
       candidates: [
