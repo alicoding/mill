@@ -25,8 +25,7 @@ import (
 // panicking.
 var workflowRunner func(workflowID string) (runID string, succeeded bool, pending bool, err error)
 
-// SetWorkflowRunner installs the seam -- called once from main.go,
-// mirroring ExecutionService.WireChildWorkflowRunner.
+// SetWorkflowRunner installs the seam from the composition root.
 //
 //wails:ignore
 func SetWorkflowRunner(fn func(workflowID string) (string, bool, bool, error)) {
@@ -91,8 +90,7 @@ func (a *AtlasService) UpdateNow(cardID string) (atlas.Card, error) {
 // a human resolves a parked guardrail approval). A failed run leaves
 // ReceiptRunID pointing at it (visible via the overlay's live status)
 // without ever stamping LastSyncedAt. Exported for main.go's
-// cross-service wiring only, same as ExecutionService.
-// WireChildWorkflowRunner -- never a frontend RPC.
+// cross-service wiring only.
 //
 //wails:ignore
 func (a *AtlasService) NotifyRunCompleted(runID string, succeeded bool) {

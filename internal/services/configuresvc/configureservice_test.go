@@ -51,6 +51,7 @@ func newTestConfigureService(t *testing.T) (*ConfigureService, *compositionsvc.C
 	cfg.lists = nil
 	cfg.mcpServers = nil
 	cfg.aiProviders = nil
+	installAIProviderReviewCoordinator(cfg, nil)
 	wireTestSecretStore(cfg)
 	return cfg, comp
 }
@@ -63,6 +64,10 @@ func newTestConfigureServiceWithSeeds(t *testing.T) (*ConfigureService, *composi
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := NewConfigureService(store, comp, servicetest.FakeCredentialStore{})
+	installAIProviderReviewCoordinator(cfg, nil)
+	if err := ReconcileBuiltInAIProviders(cfg); err != nil {
+		t.Fatalf("ReconcileBuiltInAIProviders: %v", err)
+	}
 	wireTestSecretStore(cfg)
 	return cfg, comp
 }

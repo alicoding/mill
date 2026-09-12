@@ -173,6 +173,8 @@ type ConfigureService struct {
 	availabilitySecretEpoch uint64
 	availabilityMachineID   string
 	availabilitySessionID   string
+	aiProviderMutation      aiProviderMutationCoordinator
+	aiProviderImpact        aiProviderImpactLookup
 	availabilityClosed      bool
 	providerCheckAuthorizer func(context.Context, ProviderCheckPermissionRequest) (aiprovider.PermissionResult, error)
 }
@@ -271,7 +273,6 @@ func NewConfigureService(store settings.Store, comp *compositionsvc.CompositionS
 	c.reconcileBuiltInMCPServers()
 	c.reconcileBuiltInExecEnvs()
 	c.reconcileBuiltInEnvironments()
-	c.reconcileBuiltInAIProviders()
 	c.reconcileBuiltInConversionProfiles()
 	c.reconcileBuiltInClientCertificates()
 	c.reconcileBuiltInDeclaredStepTypes()

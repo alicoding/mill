@@ -3,9 +3,11 @@
 
 export {
     AuthenticationStatus,
+    ChangeBlockerCode,
     CheckStatus,
     EvidenceSource,
     Freshness,
+    ImportMode,
     InspectionStatus,
     Kind,
     Operation,
@@ -16,6 +18,9 @@ export {
 
 export type {
     AIProvider,
+    ChangeImpact,
+    ImportPreview,
+    ImportProjection,
     ModelChoice,
     OperationFeature,
     PermissionResult,

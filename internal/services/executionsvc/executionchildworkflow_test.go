@@ -54,7 +54,6 @@ func TestRunChildWorkflow_TracksRealParentChildRelationship(t *testing.T) {
 		t.Fatalf("NewExecutionService: %v", err)
 	}
 	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
-	exec.WireChildWorkflowRunner()
 
 	summary, err := exec.RunWorkflow(parentWF.ID, RunKindTest, nil)
 	if err != nil {
@@ -116,7 +115,6 @@ func TestRunChildWorkflow_IdempotencyKey_PreventsDuplicateChildRuns(t *testing.T
 		t.Fatalf("NewExecutionService: %v", err)
 	}
 	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
-	exec.WireChildWorkflowRunner()
 
 	first, err := exec.RunWorkflow(parentWF.ID, RunKindTest, nil)
 	if err != nil || first.Status != "SUCCESS" {
@@ -153,7 +151,6 @@ func TestSeededParentChildExample_TypedInputAndOutput_RunsEndToEnd(t *testing.T)
 		t.Fatalf("NewExecutionService: %v", err)
 	}
 	t.Cleanup(func() { _ = exec.Shutdown(2 * time.Second) })
-	exec.WireChildWorkflowRunner()
 
 	summary, err := exec.RunWorkflow("example-parent-workflow", RunKindTest, nil)
 	if err != nil {

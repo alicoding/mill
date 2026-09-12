@@ -6,9 +6,8 @@ import (
 )
 
 // WireCompositionSeams installs the injected-function seams
-// apply/process atlas-card-* nodes need (goal 0066) -- mirrors
-// ExecutionService.WireChildWorkflowRunner's identical "one call from
-// main.go, the wiring itself lives beside the owning service" shape.
+// apply/process atlas-card-* nodes need (goal 0066). The wiring lives beside
+// the owning service and is invoked once from the composition root.
 // composition can't import atlas/atlassvc directly (atlas already
 // imports composition for ExampleChildWorkflowID, so the reverse would
 // cycle) -- this file is where the atlas.Card <-> composition.AtlasCard

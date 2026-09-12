@@ -249,9 +249,8 @@ type ExecutionService struct {
 	minutesSavedLookup func(workflowID string) int
 	// systemEventSink is the injected dispatch seam for docs/adr/0035's
 	// trigger-system-event family -- see executionservice_systemevent.go.
-	// Wired from main.go via SetSystemEventSink once TriggerService
-	// exists; nil in every standalone test that builds ExecutionService
-	// directly, same as minutesSavedLookup above.
+	// Production installs it between preparation and durable recovery;
+	// nil in standalone tests means no system-event consumer.
 	systemEventSink func(SystemEvent)
 	// runCompletionSink is goal 0061 slice C's run-completion seam
 	// (ADR-0038 decision 4) -- called from runWorkflow for EVERY run's
@@ -261,7 +260,7 @@ type ExecutionService struct {
 	// for guardrail approval and resolved long after the call that
 	// started it returned). Wired from main.go via
 	// SetRunCompletionSink; nil in every standalone test, same as
-	// systemEventSink above.
+	// systemEventSink above. Production installs it before recovery too.
 	runCompletionSink func(runID string, succeeded bool)
 	// version is the app version string a run receipt's Build field
 	// stamps (executionservice_receipt.go) -- set via SetVersion once
@@ -286,20 +285,21 @@ type ExecutionService struct {
 	// ingress started (goal 0373) -- see
 	// executionservice_webhookresponder.go's own doc comment.
 	responders sync.Map
-	// runStartMu serializes the moment a new run is handed to the
-	// durable runtime (execution.RunWorkflow's own call, never the run's
-	// subsequent execution or its blocking GetResult wait). Goal 0395's
+	// runStartMu serializes provider-dependent preflight and the moment a
+	// parent, child, or redrive is handed to the durable runtime. Provider
+	// impact scans and mutations use the same lock, so a run starts against
+	// either the configuration before a mutation or the configuration after it.
+	// The lock never spans the run's later execution or GetResult wait. Goal 0395's
 	// own -race reproduction (against DBOS v1.3.0) is a launch racing a
 	// concurrent Shutdown() on the runtime's shared per-context
 	// bookkeeping (context.AfterFunc inside its executeWorkflow), fixed
 	// by triggersvc's fireWG/Drain handshake that keeps a fire from
 	// still being inside a launch call when Shutdown starts -- this
-	// mutex is the untested-but-cheap extension of that same reasoning
-	// to two launches racing EACH OTHER on the same durable context, a
-	// shape goal 0395 never actually reproduced. Held only around the
-	// launch call itself, so runs still execute concurrently once
-	// started.
-	runStartMu sync.Mutex
+	// mutex began as the extension of that same reasoning to two launches
+	// racing each other on the same durable context; provider mutation safety
+	// now gives this ordering a directly tested second purpose.
+	runStartMu         sync.Mutex
+	aiProviderMutation aiProviderMutationState
 }
 
 // runWorkflow is the one DBOS-registered durable workflow function --
@@ -310,10 +310,18 @@ type ExecutionService struct {
 // ID (execution.WithStepName), via composition's injected StepRunner
 // seam -- composition itself never imports DBOS (domain purity).
 func (e *ExecutionService) runWorkflow(ctx execution.Context, in runInput) (string, error) {
+	runID, err := ctx.GetWorkflowID()
+	if err != nil {
+		return "", fmt.Errorf("read workflow ID before provider resolution: %w", err)
+	}
+	leaveProviderBody, err := enterAIProviderRunBody(e, runID, in)
+	if err != nil {
+		return "", err
+	}
+	defer leaveProviderBody()
 	stepRunner := func(stepID string, fn func() (composition.ExecContext, error)) (composition.ExecContext, error) {
 		return e.runStep(ctx, in, stepID, fn)
 	}
-	runID, _ := ctx.GetWorkflowID()
 	responder, hasResponder := e.loadResponder(runID)
 	if hasResponder {
 		defer e.responders.Delete(runID)
@@ -395,13 +403,14 @@ func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, opt
 		return RunSummary{}, err
 	}
 
+	e.runStartMu.Lock()
 	if err := preflightRefusal(nodes, edges, attrs, environmentID); err != nil {
+		e.runStartMu.Unlock()
 		return RunSummary{}, err
 	}
-
+	returnBeforeResult := opts.Stepped || e.mayRequireApproval(wf.ID, nodes) || e.mayWaitForVault(wf.ID, nodes)
 	runID := uuid.NewString()
 	e.storeResponder(runID, opts.Responder)
-	e.runStartMu.Lock()
 	handle, err := execution.RunWorkflow(e.ctx, e.runWorkflow, runInput{
 		WorkflowID:        wf.ID,
 		Nodes:             nodes,
@@ -443,7 +452,7 @@ func (e *ExecutionService) runWorkflowStart(workflowID string, kind RunKind, opt
 	// return immediately with the run ID, so a Run click never hangs on
 	// a human decision or an unlock -- the pending state surfaces via
 	// RunSummary.Pending instead.
-	if opts.Stepped || e.mayRequireApproval(wf.ID, nodes) || e.mayWaitForVault(wf.ID, nodes) {
+	if returnBeforeResult {
 		return e.summaryFor(handle.GetWorkflowID())
 	}
 	if _, err := handle.GetResult(); err != nil {

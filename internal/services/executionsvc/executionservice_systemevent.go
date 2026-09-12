@@ -54,11 +54,9 @@ type SystemEvent struct {
 	Channel string `json:"channel,omitempty"`
 }
 
-// SetSystemEventSink installs the dispatch seam. A nil sink (every
-// standalone Go test that constructs ExecutionService directly, same as
-// composition.guardrailGate's own "nil means no gating" default) means
-// system events are simply dropped -- there's nothing wired to hear
-// them.
+// SetSystemEventSink installs the dispatch seam. Production calls it from
+// the prepare/launch boundary before recovery can run a workflow body. A nil sink in a
+// standalone service means system events are simply dropped.
 //
 //wails:ignore
 func (e *ExecutionService) SetSystemEventSink(sink func(SystemEvent)) {

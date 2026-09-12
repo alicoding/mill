@@ -172,17 +172,3 @@ func (c *ConfigureService) reconcileBuiltInExecEnvs() {
 		}
 	}
 }
-
-// reconcileBuiltInAIProviders mirrors reconcileBuiltInMCPServers for
-// the seeded example AI provider (docs/goals/0031-ai-node-family.md)
-// via aiProviderDescriptor (configureaiprovider.go, goal 0165). No
-// credential seeding step: the seeded "Local Ollama" example needs no
-// secret at all.
-func (c *ConfigureService) reconcileBuiltInAIProviders() {
-	tombstones := seeding.LoadTombstones(c.store)
-	if _, changed := entitystore.Reconcile(&c.mu, &c.aiProviders, tombstones, aiProviderDescriptor); changed {
-		if err := c.persistAIProviders(); err != nil {
-			slog.Error("failed to reconcile built-in AI providers", "error", err)
-		}
-	}
-}
