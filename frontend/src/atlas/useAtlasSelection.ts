@@ -4,6 +4,10 @@ import type { BoardObject, Card, Note } from '../../bindings/github.com/alicodin
 import { useAtlasSelectionStore } from '../shared/atlasSelectionStore'
 import type { ResolvedBoardEdge } from './atlasLinkResolution'
 
+function retainEqualIDs(current: string[], next: string[]): string[] {
+  return current.length === next.length && current.every((id, i) => id === next[i]) ? current : next
+}
+
 // Multi-selection state + the two context-menu paths that read it
 // (goal 0081; split from AtlasBoard.tsx along the selection seam at
 // the 500-line convention).
@@ -72,9 +76,12 @@ export function useAtlasSelection({ cards, notes, objects, arteries, spaceId, on
     const selectedCardIDs = ids.filter((id) => cards.some((c) => c.ID === id))
     const selectedNoteIDs = ids.filter((id) => notes.some((n) => n.ID === id))
     const selectedObjectIDs = ids.filter((id) => objects.some((o) => o.ID === id))
-    setSelectedCards(selectedCardIDs)
-    setSelectedNotes(selectedNoteIDs)
-    setSelectedObjects(selectedObjectIDs)
+    // React Flow reports again when a controlled nodes array changes.
+    // Keep the existing state references when membership did not change
+    // so that report cannot create a render -> nodes -> report loop.
+    setSelectedCards((current) => retainEqualIDs(current, selectedCardIDs))
+    setSelectedNotes((current) => retainEqualIDs(current, selectedNoteIDs))
+    setSelectedObjects((current) => retainEqualIDs(current, selectedObjectIDs))
     const links = edges.map((e) => e.id).filter((id) => arteries.some((a) => a.id === id && a.count === 1))
     useAtlasSelectionStore.getState().setSelection({ spaceId, cards: selectedCardIDs, notes: selectedNoteIDs, objects: selectedObjectIDs, links })
   }, [cards, notes, objects, arteries, spaceId])
