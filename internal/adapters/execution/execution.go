@@ -9,7 +9,7 @@ import (
 	_ "github.com/dbos-inc/dbos-transact-golang/dbos/driver/sqlite"
 )
 
-// New builds a DBOS runtime backed by databaseURL -- a DBOS-native DSN
+// Prepare builds a DBOS runtime backed by databaseURL -- a DBOS-native DSN
 // string (dbos.Config's own DatabaseURL field). The default caller
 // (main.go) passes a "sqlite:"-prefixed local file path, satisfying
 // docs/SPEC.md §1.2's embeddable-in-binary hard filter with zero
@@ -40,7 +40,7 @@ import (
 // application_version match, which strands every PENDING run written by
 // any earlier build. Callers pass a value that changes only when a
 // parked run's checkpoints could not replay under the new code.
-func New(appName, appVersion, databaseURL string, register func(Context)) (Context, error) {
+func Prepare(appName, appVersion, databaseURL string, register func(Context)) (Context, error) {
 	ctx, err := dbos.NewContext(context.Background(), dbos.Config{
 		AppName:            appName,
 		ApplicationVersion: appVersion,
@@ -51,9 +51,26 @@ func New(appName, appVersion, databaseURL string, register func(Context)) (Conte
 	}
 
 	register(ctx)
+	return ctx, nil
+}
 
+// Launch starts queue processing and recovery for a prepared runtime.
+func Launch(ctx Context) error {
 	if err := dbos.Launch(ctx); err != nil {
-		return nil, fmt.Errorf("execution: launch: %w", err)
+		return fmt.Errorf("execution: launch: %w", err)
+	}
+	return nil
+}
+
+// New preserves the original construct-and-launch operation for callers that
+// have no host wiring to install between registration and recovery.
+func New(appName, appVersion, databaseURL string, register func(Context)) (Context, error) {
+	ctx, err := Prepare(appName, appVersion, databaseURL, register)
+	if err != nil {
+		return nil, err
+	}
+	if err := Launch(ctx); err != nil {
+		return nil, err
 	}
 	return ctx, nil
 }
