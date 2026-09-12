@@ -18,6 +18,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/launchatlogin"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/adapters/windowing"
+	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/alicoding/mill/internal/pluginscaffold"
 	"github.com/alicoding/mill/internal/services/agentloopsvc"
