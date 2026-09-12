@@ -7,7 +7,7 @@ import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { ConfigureService } from '../shared/bindings'
 import type { AIProvider, ChangeImpact } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
-import { ChangeBlockerCode, Kind as AIProviderKind } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
+import { ChangeBlockerCode, CheckStatus, Kind as AIProviderKind } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { refreshAIProviders, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { useViewMode } from '../shared/viewMode'
@@ -284,7 +284,11 @@ export function ConfigureAIProviders() {
               { header: t('configureAIProviders.columns.baseUrl'), id: 'baseURL', width: 'growCollapse', minWidth: '160px', renderCell: (p) => <TruncatedCell text={p.BaseURL} mono /> },
               { header: t('configureAIProviders.columns.connection'), id: 'connection', renderCell: (p) => <Text>{t(`configureAIProviders.availability.connection.${aiProviderConnectionState(availability[p.ID])}`)}</Text> },
               { header: t('configureAIProviders.columns.features'), id: 'features', renderCell: (p) => <Text>{t('configureAIProviders.testedCount', { count: (availability[p.ID]?.operations ?? []).filter((op) => op.lastSampleSuccess?.freshness === 'fresh').length })}</Text> },
-              { header: t('configureAIProviders.columns.lastChecked'), id: 'lastChecked', renderCell: (p) => <Text>{availability[p.ID]?.checkedAt ? new Date(availability[p.ID].checkedAt).toLocaleString() : t('configureAIProviders.availability.connection.notChecked')}</Text> },
+              { header: t('configureAIProviders.columns.lastChecked'), id: 'lastChecked', renderCell: (p) => {
+                const report = availability[p.ID]
+                const hasCheckedAt = report?.lifecycle !== CheckStatus.CheckNotStarted && !!report?.checkedAt && !report.checkedAt.startsWith('0001-')
+                return <Text>{hasCheckedAt ? new Date(report.checkedAt).toLocaleString() : t('configureAIProviders.availability.connection.notChecked')}</Text>
+              } },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (p) => (

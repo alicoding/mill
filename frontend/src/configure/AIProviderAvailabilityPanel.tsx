@@ -54,6 +54,7 @@ export function AIProviderAvailabilityPanel({ provider, report, dirty, choicesCu
   const modelItems: SelectPanelItemInput[] = (report?.modelChoices ?? []).map((choice) => ({ id: choice.id, text: choice.id }))
   const filteredModels = modelFilter ? modelItems.filter((item) => item.text?.toLowerCase().includes(modelFilter.toLowerCase())) : modelItems
   const selectedModel = modelItems.find((item) => item.id === model)
+  const hasCheckedAt = report?.lifecycle !== CheckStatus.CheckNotStarted && !!report?.checkedAt && !report.checkedAt.startsWith('0001-')
 
   const run = async (work: () => Promise<unknown>) => {
     setBusy(true)
@@ -88,11 +89,11 @@ export function AIProviderAvailabilityPanel({ provider, report, dirty, choicesCu
     <AdvancedDisclosure open={false} testId="aiprovider-availability" summary={t('configureAIProviders.availability.heading')}>
       <Stack direction="vertical" gap="condensed">
         <Stack direction="horizontal" gap="condensed" align="center" aria-live="polite">
-          <StatusStamp variant={state === 'responded' ? 'success' : state === 'notChecked' ? 'neutral' : 'caution'}>
+          <StatusStamp variant={state === 'responded' || state === 'notChecked' ? 'neutral' : 'caution'}>
             {t(`configureAIProviders.availability.connection.${state}`)}
           </StatusStamp>
           {report?.freshness === Freshness.FreshnessStale && <StatusStamp variant="caution">{t('configureAIProviders.availability.previousCheck')}</StatusStamp>}
-          {report?.checkedAt && <Text size="small" className={styles.muted}>{t('configureAIProviders.availability.checkedAt', { date: new Date(report.checkedAt).toLocaleString() })}</Text>}
+          {hasCheckedAt && <Text size="small" className={styles.muted}>{t('configureAIProviders.availability.checkedAt', { date: new Date(report.checkedAt).toLocaleString() })}</Text>}
         </Stack>
         <Stack direction="horizontal" gap="condensed" align="center">
           <Text as="p" size="small"><strong>{t('configureAIProviders.availability.address')}</strong> {report?.checkedEndpoint || provider.BaseURL || t('configureAIProviders.availability.defaultAddress')}</Text>
