@@ -157,15 +157,20 @@ func TestResolveAIProvider_UnknownID_Rejected(t *testing.T) {
 	}
 }
 
-// TestSeededAIProvider_PresentOnFreshInstall constructs ConfigureService
-// directly (not via newTestConfigureService, which deliberately clears
-// seeded state for CRUD-test isolation -- see that helper's own doc
-// comment) so this test actually observes reconcileBuiltInAIProviders'
-// real effect on a genuinely fresh store.
-func TestSeededAIProvider_PresentOnFreshInstall(t *testing.T) {
+// Seed reconciliation is deferred until execution ownership and mutation
+// coordination are available, so startup can never upgrade a connection
+// around a recovered run.
+func TestSeededAIProvider_PresentAfterMutationCoordinatorIsInstalled(t *testing.T) {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
 	cfg := NewConfigureService(store, comp, credential.NewInMemory())
+	if len(cfg.AIProviders()) != 0 {
+		t.Fatalf("constructor seeded AI providers before mutation coordination: %+v", cfg.AIProviders())
+	}
+	installAIProviderReviewCoordinator(cfg, nil)
+	if err := ReconcileBuiltInAIProviders(cfg); err != nil {
+		t.Fatalf("ReconcileBuiltInAIProviders: %v", err)
+	}
 	var found bool
 	for _, p := range cfg.AIProviders() {
 		if p.ID == aiprovider.ExampleLocalOllamaID {

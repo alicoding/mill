@@ -19,8 +19,8 @@ import (
 )
 
 type (
-	// Context is a launched DBOS runtime handle -- the first argument to
-	// every durable operation below.
+	// Context is a prepared or launched DBOS runtime handle -- the first
+	// argument to every durable operation below.
 	Context = dbos.Context
 
 	// Workflow is a durable workflow function's shape: input P, result R.
@@ -194,6 +194,11 @@ var (
 	// doc comment).
 	WithQueue = dbos.WithQueue
 
+	// WithDelay keeps a queued workflow in DBOS's DELAYED state until
+	// the duration elapses. Provider-safety tests use the real state so
+	// the scanner cannot accidentally omit it.
+	WithDelay = dbos.WithDelay
+
 	// WithWorkerConcurrency caps how many queued workflows this executor
 	// dequeues concurrently -- test-only today; a queue registered with
 	// 0 never dequeues anything submitted to it, the real DBOS mechanism
@@ -218,6 +223,12 @@ var (
 	// WithFilterStatus scopes ListWorkflows to the given lifecycle
 	// states.
 	WithFilterStatus = dbos.WithFilterStatus
+
+	// WithFilterLoadInput/WithFilterLoadOutput select the checkpoint
+	// columns a ListWorkflows caller needs. Provider safety reads the
+	// immutable run input and deliberately skips output.
+	WithFilterLoadInput  = dbos.WithFilterLoadInput
+	WithFilterLoadOutput = dbos.WithFilterLoadOutput
 
 	// WithFilterAppVersion scopes ListWorkflows to specific application
 	// versions. DBOS offers no "every version EXCEPT" filter, so a
@@ -261,5 +272,6 @@ var (
 const (
 	WorkflowStatusPending   = dbos.WorkflowStatusPending
 	WorkflowStatusEnqueued  = dbos.WorkflowStatusEnqueued
+	WorkflowStatusDelayed   = dbos.WorkflowStatusDelayed
 	WorkflowStatusCancelled = dbos.WorkflowStatusCancelled
 )

@@ -3,6 +3,9 @@
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as reference$0 from "../reference/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as seedorigin$0 from "../seedorigin/models.js";
 
 /**
@@ -66,6 +69,32 @@ export enum AuthenticationStatus {
     AuthenticationRejected = "rejected",
 };
 
+export enum ChangeBlockerCode {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    ChangeBlockerProviderInUse = "provider-in-use",
+    ChangeBlockerProviderUseIndeterminate = "provider-use-indeterminate",
+    ChangeBlockerProviderOwnershipUnestablished = "provider-ownership-unestablished",
+    ChangeBlockerProviderCheckUnavailable = "provider-check-unavailable",
+};
+
+/**
+ * ChangeImpact reports execution evidence separately from authored consumers.
+ * RunIDs and WorkflowIDs contain only confirmed provider references; a safety
+ * check that cannot prove absence is represented by its blocker code.
+ */
+export interface ChangeImpact {
+    "providerId": string;
+    "configRevision": string;
+    "runIDs": string[] | null;
+    "workflowIDs": string[] | null;
+    "mutationAllowed": boolean;
+    "blockerCodes": ChangeBlockerCode[] | null;
+}
+
 export enum CheckStatus {
     /**
      * The Go zero value for the underlying type of the enum.
@@ -101,6 +130,41 @@ export enum Freshness {
     FreshnessFresh = "fresh",
     FreshnessStale = "stale",
 };
+
+export enum ImportMode {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    ImportModeCreate = "create",
+    ImportModeReplace = "replace",
+};
+
+/**
+ * ImportPreview is a compare-and-apply token plus the information needed to
+ * review a provider import without resolving a secret or contacting its host.
+ */
+export interface ImportPreview {
+    "providerId": string;
+    "mode": ImportMode;
+    "expectedRevision": string;
+    "current"?: ImportProjection | null;
+    "proposed": ImportProjection;
+    "references": reference$0.Refs;
+    "impact": ChangeImpact;
+}
+
+/**
+ * ImportProjection is the credential-free subset shown before an import.
+ */
+export interface ImportProjection {
+    "label": string;
+    "kind": Kind;
+    "endpoint": string;
+    "model": string;
+    "keyRef": string;
+}
 
 export enum InspectionStatus {
     /**
