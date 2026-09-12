@@ -28,6 +28,26 @@ test('Base URL caption follows the selected Kind', async ({ page }) => {
   await page.getByRole('button', { name: 'Cancel' }).click()
 })
 
+test('A saved provider exposes connection evidence and operation-scoped tests without running one', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 700 })
+  await openAIProvidersTab(page)
+
+  const row = page.locator('[data-testid="inventory-row"][data-entity="aiprovider"]').first()
+  await expect(row).toContainText('Not checked')
+  await expect(row).toContainText('0 of 3 tested')
+  await row.click()
+
+  await expect(page.getByLabel('Protocol')).toBeVisible()
+  await page.getByTestId('aiprovider-availability-summary').click()
+  await expect(page.getByText('Execution location:')).toBeVisible()
+  await expect(page.getByText('This address may forward requests to another machine.')).toBeVisible()
+  await expect(page.getByText('Generate text')).toBeVisible()
+  await expect(page.getByText('Extract fields')).toBeVisible()
+  await expect(page.getByText('Classify text')).toBeVisible()
+  await expect(page.getByText('Your provider may charge for this test.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Check connection' })).toBeEnabled()
+})
+
 test('Creating, editing, and deleting an OpenAI-compatible AI provider round-trips its fields', async ({ page }) => {
   await openAIProvidersTab(page)
   await page.getByTestId('new-aiprovider').click()

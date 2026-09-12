@@ -8,8 +8,9 @@ import { AuthType } from '../../bindings/github.com/alicoding/mill/internal/doma
 import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal/domain/composition/models'
 import { Category } from '../../bindings/github.com/alicoding/mill/internal/domain/decision/models'
 import { Shell, ProfileMode } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
-import { Kind as AIProviderKind } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
+import { Kind as AIProviderKind, Operation, Support } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 import { decisionCategoryLabelFor } from './entityRefFieldLogic'
+import { useConfigureEntityStore } from '../shared/configureEntityStore'
 
 // A workflow is only a valid child-workflow target if it's rooted in
 // trigger-callable (docs/adr/0010) -- mirrors trigger.ExtractTrigger's
@@ -110,12 +111,13 @@ const QUICK_CREATABLE_KINDS = new Set(['request', 'list', 'mcpserver', 'decision
 // None) and, while the tab can be switched to edit, an Edit link that
 // runs workflow.edit. Links are not disabled by an enclosing disabled
 // fieldset, which is what makes this reachable inside the inspector.
-export function EntityRefField({ refKind, value, onChange, readOnly }: { refKind: string; value: string; onChange: (id: string) => void; readOnly?: boolean }) {
+export function EntityRefField({ refKind, value, onChange, readOnly, requiredOperation }: { refKind: string; value: string; onChange: (id: string) => void; readOnly?: boolean; requiredOperation?: Operation }) {
   const { t } = useTranslation('configure')
   const KIND_NOUN = kindNounFor(t)
   const [entities, setEntities] = useState<Entity[] | null>(null)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
+  const providerAvailability = useConfigureEntityStore((s) => s.aiProviderAvailability)
 
   const refresh = () => {
     fetchEntities(refKind).then(setEntities).catch((err) => setError(String(err)))
@@ -155,15 +157,34 @@ export function EntityRefField({ refKind, value, onChange, readOnly }: { refKind
                 ? t('entityRefField.allWorkflows')
                 : t(selectEntityKeyFor(KIND_NOUN[refKind]), { noun: KIND_NOUN[refKind] })}
         </Select.Option>
-        {(entities ?? []).map((entity) => (
-          <Select.Option key={entity.ID} value={entity.ID}>{entity.Label}</Select.Option>
-        ))}
+        {(entities ?? []).slice().sort((a, b) => {
+          if (refKind !== 'aiprovider' || !requiredOperation) return a.Label.localeCompare(b.Label)
+          const rank = (id: string) => {
+            const feature = providerAvailability[id]?.operations?.find((item) => item.operation === requiredOperation)
+            if (feature?.lastSampleSuccess?.freshness === 'fresh') return 0
+            if (feature?.support === Support.SupportUnsupported) return 2
+            return 1
+          }
+          return rank(a.ID) - rank(b.ID) || a.Label.localeCompare(b.Label)
+        }).map((entity) => {
+          const feature = requiredOperation ? providerAvailability[entity.ID]?.operations?.find((item) => item.operation === requiredOperation) : undefined
+          const incompatible = feature?.support === Support.SupportUnsupported
+          const evidence = feature?.lastSampleSuccess?.freshness === 'fresh'
+            ? t('entityRefField.aiTested')
+            : incompatible ? t('entityRefField.aiUnsupported') : t('entityRefField.aiUnverified')
+          return <Select.Option key={entity.ID} value={entity.ID} disabled={incompatible && entity.ID !== value}>{refKind === 'aiprovider' && requiredOperation ? t('entityRefField.aiProviderOption', { label: entity.Label, evidence }) : entity.Label}</Select.Option>
+        })}
         {QUICK_CREATABLE_KINDS.has(refKind) && (
           <Select.Option value={CREATE_NEW}>{t('entityRefField.createNewEntity', { noun: KIND_NOUN[refKind] })}</Select.Option>
         )}
       </Select>
       {error && <span>{error}</span>}
       <ReferencePeek refKind={refKind} id={entities?.some((e) => e.ID === value) ? value : ''} noun={KIND_NOUN[refKind] ?? refKind} />
+      {refKind === 'aiprovider' && value && (
+        <Text as="p" size="small" data-testid="aiprovider-reference-location">
+          {t('entityRefField.aiExecutionLocation')} {t('entityRefField.aiExecutionLocationUnknown')} · {t('entityRefField.aiMayForward')}
+        </Text>
+      )}
       {/* An empty callable-workflow list is a dead end without saying
           how to fix it (reported from live use: "Select a callable
           workflow…" with zero options and no hint) -- name the exact

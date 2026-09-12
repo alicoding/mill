@@ -7,7 +7,7 @@ import type { ExecEnv } from '../../bindings/github.com/alicoding/mill/internal/
 import type { Environment } from '../../bindings/github.com/alicoding/mill/internal/domain/environment/models'
 import type { Source as SecretSource } from '../../bindings/github.com/alicoding/mill/internal/domain/secretsource/models'
 import type { Profile as ConversionProfile } from '../../bindings/github.com/alicoding/mill/internal/domain/conversionprofile/models'
-import type { AIProvider } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
+import type { AIProvider, Report as AIProviderReport } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 import type { ClientCertificate, Status as ClientCertStatus } from '../../bindings/github.com/alicoding/mill/internal/domain/clientcert/models'
 import type { DeclaredStepType } from '../../bindings/github.com/alicoding/mill/internal/domain/declaredsteptype/models'
 import type { ListUsage } from '../../bindings/github.com/alicoding/mill/internal/services/configuresvc/models'
@@ -36,6 +36,7 @@ interface ConfigureEntityState {
   secretSources: SecretSource[] | null
   conversionProfiles: ConversionProfile[] | null
   aiProviders: AIProvider[] | null
+  aiProviderAvailability: Record<string, AIProviderReport>
   clientCerts: ClientCertificate[] | null
   clientCertStatuses: Record<string, ClientCertStatus>
   declaredStepTypes: DeclaredStepType[] | null
@@ -50,6 +51,7 @@ interface ConfigureEntityState {
   setSecretSources: (secretSources: SecretSource[]) => void
   setConversionProfiles: (conversionProfiles: ConversionProfile[]) => void
   setAIProviders: (aiProviders: AIProvider[]) => void
+  setAIProviderAvailability: (reports: AIProviderReport[]) => void
   setClientCerts: (clientCerts: ClientCertificate[], statuses: ClientCertStatus[]) => void
   setDeclaredStepTypes: (declaredStepTypes: DeclaredStepType[]) => void
   setListUsage: (listUsage: ListUsage[]) => void
@@ -64,6 +66,7 @@ export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => (
   secretSources: null,
   conversionProfiles: null,
   aiProviders: null,
+  aiProviderAvailability: {},
   clientCerts: null,
   clientCertStatuses: {},
   declaredStepTypes: null,
@@ -76,6 +79,7 @@ export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => (
   setSecretSources: (secretSources) => set({ secretSources }),
   setConversionProfiles: (conversionProfiles) => set({ conversionProfiles }),
   setAIProviders: (aiProviders) => set({ aiProviders }),
+  setAIProviderAvailability: (reports) => set({ aiProviderAvailability: Object.fromEntries(reports.map((report) => [report.providerId, report])) }),
   setClientCerts: (clientCerts, statuses) => set({ clientCerts, clientCertStatuses: Object.fromEntries(statuses.map((s) => [s.id, s])) }),
   setDeclaredStepTypes: (declaredStepTypes) => set({ declaredStepTypes }),
   setListUsage: (listUsage) => set({ listUsage: Object.fromEntries(listUsage.map((u) => [u.ListID, u])) }),
@@ -122,8 +126,21 @@ export function refreshSecretSources(): Promise<void> {
 }
 
 export function refreshAIProviders(): Promise<void> {
-  return background(ConfigureService.AIProviders()
-    .then((list) => useConfigureEntityStore.getState().setAIProviders(list ?? [])), 'configureEntity.aiProviders')
+  return background(Promise.all([ConfigureService.AIProviders(), refreshAIProviderAvailability()])
+    .then(([list]) => useConfigureEntityStore.getState().setAIProviders(list ?? [])), 'configureEntity.aiProviders')
+}
+
+let aiProviderAvailabilityGeneration = 0
+
+// Availability is one cache-only server projection shared by inventory,
+// editor, references and samples. The generation prevents an older response
+// from restoring stale or removed reports after a newer refresh has landed.
+export function refreshAIProviderAvailability(): Promise<void> {
+  const generation = ++aiProviderAvailabilityGeneration
+  return background(ConfigureService.ListAIProviderAvailability().then((reports) => {
+    if (generation !== aiProviderAvailabilityGeneration) return
+    useConfigureEntityStore.getState().setAIProviderAvailability(reports ?? [])
+  }), 'configureEntity.aiProviderAvailability')
 }
 
 // The list and its statuses arrive together: a row shows both, and two

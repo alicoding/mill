@@ -6,8 +6,8 @@ import { DataTable } from '@primer/react/experimental'
 import { StatusStamp } from '../shared/StatusStamp'
 import { ResizableTableContainer, TruncatedCell } from '../shared/ResizableTable'
 import { ConfigureService } from '../shared/bindings'
-import type { AIProvider } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
-import { Kind as AIProviderKind } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
+import type { AIProvider, ChangeImpact } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
+import { ChangeBlockerCode, Kind as AIProviderKind } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 import type { Field } from '../../bindings/github.com/alicoding/mill/internal/domain/typedfield/models'
 import { refreshAIProviders, useConfigureEntityStore } from '../shared/configureEntityStore'
 import { useViewMode } from '../shared/viewMode'
@@ -25,9 +25,14 @@ import { SecretPicker } from '../shared/SecretPicker'
 import { secretTitleFor } from './secretTitleFor'
 import { Kind } from '../../bindings/github.com/alicoding/mill/internal/domain/secret/models'
 import { useSeedLifecycle } from './useSeedLifecycle'
-import { useEntityImportExport } from './useEntityImportExport'
+import { useAIProviderImport } from './useAIProviderImport'
+import { AIProviderAvailabilityPanel } from './AIProviderAvailabilityPanel'
 import styles from '../shared/ListCard.module.css'
 import { background } from '../shared/background'
+import { aiProviderConnectionState } from './aiProviderConnectionState'
+import { useAppStore } from '../shared/store'
+import { messageFor } from '../shared/userError'
+import { Events } from '@wailsio/runtime'
 
 function kindLabelFor(t: (key: string) => string): Record<string, string> {
   return {
@@ -61,12 +66,14 @@ export function ConfigureAIProviders() {
   const rowActionError = useEntityActionError('aiprovider')
   const KIND_LABEL = kindLabelFor(t)
   const providers = useConfigureEntityStore((s) => s.aiProviders)
+  const availability = useConfigureEntityStore((s) => s.aiProviderAvailability)
   const [fields, setFields] = useState<Field[]>([])
   const [editingID, setEditingID] = useState<string | null>(null)
   const [values, setValues] = useState<Record<string, string>>(emptyValues)
   const [keyRef, setKeyRef] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
+  const [impact, setImpact] = useState<ChangeImpact | null>(null)
   const [viewMode, setViewMode] = useViewMode('mill-aiproviders-view-mode')
 
   const seedLifecycle = useSeedLifecycle<AIProvider>(() => ConfigureService.RestorableAIProviders(), providers)
@@ -75,13 +82,7 @@ export function ConfigureAIProviders() {
     void refreshAIProviders()
   }
 
-  const importExport = useEntityImportExport<AIProvider>({
-    existing: providers ?? [],
-    exportEntity: (id) => ConfigureService.ExportAIProvider(id),
-    importEntity: (text) => ConfigureService.ImportAIProvider(text),
-    onImported: refetch,
-    filenameFallback: 'ai-provider',
-  })
+  const importExport = useAIProviderImport(refetch)
 
   useEffect(() => {
     refetch()
@@ -96,6 +97,7 @@ export function ConfigureAIProviders() {
     setKeyRef('')
     setFormOpen(true)
     setError('')
+    setImpact(null)
   }
 
   // configure.new.aiproviders (shared/configureCreateCommands.ts, goal
@@ -114,9 +116,10 @@ export function ConfigureAIProviders() {
     setEditingID(p.ID)
     setValues({ label: p.Label, kind: p.Kind, baseURL: p.BaseURL, model: p.Model })
     setKeyRef(p.KeyRef ?? '')
-    setKeyRef('') // write-only -- never pre-fills
     setFormOpen(true)
     setError('')
+    setImpact(null)
+    void background(ConfigureService.GetAIProviderChangeImpact(p.ID).then(setImpact), 'configureAIProviders.changeImpact')
   }
   // goal 0312: a reference field's Open in Configure lands on THIS
   // entity's editor, once its list has loaded.
@@ -129,6 +132,16 @@ export function ConfigureAIProviders() {
     if (target) startEdit(target)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- startEdit/consumeConfigureEdit deliberately excluded, same reasoning as the create effect above
   }, [configureEditRequest, providers])
+
+  useEffect(() => {
+    if (!editingID) return
+    const refreshImpact = () => void background(ConfigureService.GetAIProviderChangeImpact(editingID).then(setImpact), 'configureAIProviders.changeImpactEvent')
+    const off = Events.On('mill-data-changed', (event) => {
+      const entity = (event.data as { entity?: string })?.entity
+      if (entity === 'run' || entity === 'aiprovider') refreshImpact()
+    })
+    return off
+  }, [editingID])
 
   const setValue = (key: string, value: string) => setValues((prev) => ({ ...prev, [key]: value }))
 
@@ -146,7 +159,8 @@ export function ConfigureAIProviders() {
       setKeyRef('')
       refetch()
     } catch (err) {
-      setError(String(err))
+      setError(messageFor(err, t))
+      if (editingID) void background(ConfigureService.GetAIProviderChangeImpact(editingID).then(setImpact), 'configureAIProviders.changeImpactAfterRefusal')
     }
   }
 
@@ -165,8 +179,8 @@ export function ConfigureAIProviders() {
       createdAt: p.CreatedAt,
       labelBadges: p.BuiltIn ? <StatusStamp variant="identity">{t('builtIn')}</StatusStamp> : undefined,
       description: p.BaseURL
-        ? t('configureAIProviders.rowSummaryWithBaseURL', { kind: KIND_LABEL[p.Kind] ?? p.Kind, model: p.Model, baseURL: p.BaseURL })
-        : t('configureAIProviders.rowSummary', { kind: KIND_LABEL[p.Kind] ?? p.Kind, model: p.Model }),
+        ? t('configureAIProviders.rowSummaryWithAvailability', { kind: KIND_LABEL[p.Kind] ?? p.Kind, model: p.Model, baseURL: p.BaseURL, connection: t(`configureAIProviders.availability.connection.${aiProviderConnectionState(availability[p.ID])}`), tested: (availability[p.ID]?.operations ?? []).filter((op) => op.lastSampleSuccess?.freshness === 'fresh').length })
+        : t('configureAIProviders.rowSummaryWithAvailabilityNoAddress', { kind: KIND_LABEL[p.Kind] ?? p.Kind, model: p.Model, connection: t(`configureAIProviders.availability.connection.${aiProviderConnectionState(availability[p.ID])}`), tested: (availability[p.ID]?.operations ?? []).filter((op) => op.lastSampleSuccess?.freshness === 'fresh').length }),
       onOpen: () => startEdit(p),
       menuActions: [
         { commandId: 'configure.aiprovider.export', ctx: entityRowContext('aiprovider', p.ID) },
@@ -209,6 +223,12 @@ export function ConfigureAIProviders() {
                 ? t('configureAIProviders.baseUrlCaptionAnthropic')
                 : t('configureAIProviders.baseUrlCaptionOther'),
             }}
+            labelOverrides={{
+              label: t('configureAIProviders.label'),
+              kind: t('configureAIProviders.protocol'),
+              baseURL: t('configureAIProviders.baseUrl'),
+              model: t('configureAIProviders.model'),
+            }}
             optionLabels={{ kind: KIND_LABEL }}
             testIds={{ kind: 'aiprovider-kind' }}
           />
@@ -224,6 +244,25 @@ export function ConfigureAIProviders() {
               testID="aiprovider-key-picker"
             />
           </FormControl>
+          {editingID && (() => {
+            const provider = providers?.find((item) => item.ID === editingID)
+            const dirty = !!provider && (values.label !== provider.Label || values.kind !== provider.Kind || values.baseURL !== provider.BaseURL || values.model !== provider.Model || keyRef !== provider.KeyRef)
+            const choicesCurrent = !!provider && values.kind === provider.Kind && values.baseURL === provider.BaseURL && availability[provider.ID]?.freshness === 'fresh'
+            return provider ? <AIProviderAvailabilityPanel provider={provider} report={availability[provider.ID]} dirty={dirty} choicesCurrent={choicesCurrent} model={values.model} onModelChange={(model) => setValue('model', model)} /> : null
+          })()}
+          {impact && !impact.mutationAllowed && (
+            <Stack direction="vertical" gap="condensed" className={styles.attention} data-testid="aiprovider-mutation-blocker">
+              {(impact.blockerCodes ?? []).map((code) => (
+                <Text as="p" size="small" key={code}>{t(`configureAIProviders.blocker.${code}`)}</Text>
+              ))}
+              {(impact.blockerCodes ?? []).some((code) => code === ChangeBlockerCode.ChangeBlockerProviderInUse || code === ChangeBlockerCode.ChangeBlockerProviderUseIndeterminate) && (
+                <Button size="small" variant="invisible" onClick={() => useAppStore.getState().setView({ kind: 'activity' })}>{t('configureAIProviders.blocker.viewRuns')}</Button>
+              )}
+              {(impact.blockerCodes ?? []).includes(ChangeBlockerCode.ChangeBlockerProviderOwnershipUnestablished) && (
+                <Button size="small" variant="invisible" onClick={() => useAppStore.getState().setView({ kind: 'docs', page: 'trust/data-and-safety.md' })}>{t('configureAIProviders.blocker.dataHelp')}</Button>
+              )}
+            </Stack>
+          )}
           {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
           <Stack direction="horizontal" gap="condensed">
             <Button variant="primary" size="small" onClick={save}>{t('configureAIProviders.saveAiProvider')}</Button>
@@ -243,6 +282,9 @@ export function ConfigureAIProviders() {
               { header: t('configureAIProviders.columns.kind'), id: 'kind', renderCell: (p) => <Text>{KIND_LABEL[p.Kind] ?? p.Kind}</Text> },
               { header: t('configureAIProviders.columns.model'), field: 'Model' },
               { header: t('configureAIProviders.columns.baseUrl'), id: 'baseURL', width: 'growCollapse', minWidth: '160px', renderCell: (p) => <TruncatedCell text={p.BaseURL} mono /> },
+              { header: t('configureAIProviders.columns.connection'), id: 'connection', renderCell: (p) => <Text>{t(`configureAIProviders.availability.connection.${aiProviderConnectionState(availability[p.ID])}`)}</Text> },
+              { header: t('configureAIProviders.columns.features'), id: 'features', renderCell: (p) => <Text>{t('configureAIProviders.testedCount', { count: (availability[p.ID]?.operations ?? []).filter((op) => op.lastSampleSuccess?.freshness === 'fresh').length })}</Text> },
+              { header: t('configureAIProviders.columns.lastChecked'), id: 'lastChecked', renderCell: (p) => <Text>{availability[p.ID]?.checkedAt ? new Date(availability[p.ID].checkedAt).toLocaleString() : t('configureAIProviders.availability.connection.notChecked')}</Text> },
               {
                 header: '', id: 'actions', width: 'auto', align: 'end',
                 renderCell: (p) => (
@@ -272,7 +314,7 @@ export function ConfigureAIProviders() {
           }}
         />
       )}
-      importConfirmDialog={importExport.importConfirm.dialog}
+      importConfirmDialog={importExport.dialog}
     />
   )
 }

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Events } from '@wailsio/runtime'
 import { refreshKeybindings, refreshNodeTypes, refreshRequests, refreshWorkflows } from '../shared/store'
-import { refreshAIProviders, refreshClientCerts, refreshConversionProfiles, refreshDeclaredStepTypes, refreshDecisions, refreshEnvironments, refreshExecEnvs, refreshLists, refreshListUsage, refreshMCPServers, refreshSecretSources } from '../shared/configureEntityStore'
+import { refreshAIProviderAvailability, refreshAIProviders, refreshClientCerts, refreshConversionProfiles, refreshDeclaredStepTypes, refreshDecisions, refreshEnvironments, refreshExecEnvs, refreshLists, refreshListUsage, refreshMCPServers, refreshSecretSources } from '../shared/configureEntityStore'
 import { refreshVaultStatus } from '../shared/vaultStatusStore'
 import { refreshSecretTitles } from '../shared/secretTitleCache'
 import { refreshDisabledExtensions } from '../shared/extensionEnablementStore'
@@ -71,10 +71,19 @@ const ENTITY_REFRESHERS: Record<string, () => Promise<void> | void> = {
 
 export function useDataChangedRouter(): void {
   useEffect(() => {
-    return Events.On('mill-data-changed', (evt) => {
+    const offDataChanged = Events.On('mill-data-changed', (evt) => {
       const entity = (evt.data as { entity?: string })?.entity
       if (!entity) return
       void ENTITY_REFRESHERS[entity]?.()
     })
+    // The typed payload is only an invalidation hint. Reports are always read
+    // back through the single cache-only store path above.
+    const offAIProviderAvailability = Events.On('aiprovider-availability-changed', () => {
+      void refreshAIProviderAvailability()
+    })
+    return () => {
+      offDataChanged()
+      offAIProviderAvailability()
+    }
   }, [])
 }
