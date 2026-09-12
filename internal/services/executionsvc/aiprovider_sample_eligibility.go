@@ -60,10 +60,14 @@ func reserveFreshAIProviderSampleAttempt(
 	if !ok || attempt.RunID != runID {
 		return aiprovider.SampleAttempt{}, false
 	}
+	outputNode, err := aiProviderSampleOutputNode(workflow, attempt.Operation)
+	if err != nil {
+		return aiprovider.SampleAttempt{}, false
+	}
 	if _, exists := state.observations[runID]; exists {
 		return aiprovider.SampleAttempt{}, false
 	}
 	state.workers.Add(1)
-	state.observations[runID] = &aiProviderSampleObservation{attempt: attempt}
+	state.observations[runID] = &aiProviderSampleObservation{attempt: attempt, outputNode: outputNode}
 	return attempt, true
 }

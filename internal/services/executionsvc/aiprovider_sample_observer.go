@@ -1,21 +1,23 @@
 package executionsvc
 
 import (
-	"strings"
+	"errors"
 	"sync"
 	"time"
 
 	"github.com/alicoding/mill/internal/adapters/execution"
 	"github.com/alicoding/mill/internal/domain/aiprovider"
+	"github.com/alicoding/mill/internal/domain/composition"
 )
 
 const aiProviderSampleStatusReadTimeout = 5 * time.Second
 
 type aiProviderSampleObservation struct {
-	attempt aiprovider.SampleAttempt
-	cancel  func()
-	active  bool
-	started bool
+	attempt    aiprovider.SampleAttempt
+	outputNode composition.Node
+	cancel     func()
+	active     bool
+	started    bool
 }
 
 // activateAIProviderSampleObservation runs only after successful DBOS genesis
@@ -138,7 +140,7 @@ func observeAIProviderSampleResult(
 	if err != nil {
 		return
 	}
-	_, _ = handle.GetResult()
+	_, waitErr := handle.GetResult()
 
 	statusContext, cancelStatus := execution.WithTimeout(ctx, aiProviderSampleStatusReadTimeout)
 	defer cancelStatus()
@@ -146,9 +148,17 @@ func observeAIProviderSampleResult(
 	if err != nil {
 		return
 	}
-	outcome, ok := aiProviderSampleOutcomeFromStatus(observation.attempt.Operation, status)
-	if !ok {
+	outcome, terminal := aiProviderSampleObservedOutcome(status, waitErr)
+	if !terminal {
 		return
+	}
+	if status.Status == execution.WorkflowStatusSuccess {
+		output, ok := aiProviderSamplePersistedOutput(status, observation.outputNode, func() ([]execution.StepInfo, error) {
+			return execution.GetWorkflowSteps(statusContext, observation.attempt.RunID)
+		})
+		if !ok || composition.ValidateAIProviderSampleOutput(observation.outputNode, output) != nil {
+			outcome = aiprovider.SampleOutcomeFailed
+		}
 	}
 	checkedAt := status.CompletedAt
 	if checkedAt.IsZero() {
@@ -157,15 +167,23 @@ func observeAIProviderSampleResult(
 	settle(observation.attempt, outcome, checkedAt)
 }
 
-func aiProviderSampleOutcomeFromStatus(operation aiprovider.Operation, status execution.WorkflowStatus) (aiprovider.SampleOutcome, bool) {
+func aiProviderSampleObservedOutcome(status execution.WorkflowStatus, waitErr error) (aiprovider.SampleOutcome, bool) {
+	outcome, terminal := aiProviderSampleTerminalOutcome(status)
+	if !terminal {
+		return "", false
+	}
+	// GetResult returns the workflow's own error for ERROR/CANCELLED runs, so
+	// their exact persisted status remains authoritative. A SUCCESS paired with
+	// an error instead means observation failed and must publish no evidence.
+	if status.Status == execution.WorkflowStatusSuccess && waitErr != nil {
+		return "", false
+	}
+	return outcome, true
+}
+
+func aiProviderSampleTerminalOutcome(status execution.WorkflowStatus) (aiprovider.SampleOutcome, bool) {
 	switch status.Status {
 	case execution.WorkflowStatusSuccess:
-		if operation == aiprovider.OperationText {
-			output, ok := decodeAny[string](status.Output)
-			if !ok || strings.TrimSpace(output) == "" {
-				return aiprovider.SampleOutcomeFailed, true
-			}
-		}
 		return aiprovider.SampleOutcomeSucceeded, true
 	case execution.WorkflowStatusError, execution.WorkflowStatusMaxRecoveryAttemptsExceeded:
 		return aiprovider.SampleOutcomeFailed, true
@@ -174,6 +192,61 @@ func aiProviderSampleOutcomeFromStatus(operation aiprovider.Operation, status ex
 	default:
 		return "", false
 	}
+}
+
+func aiProviderSamplePersistedOutput(
+	status execution.WorkflowStatus,
+	outputNode composition.Node,
+	loadSteps func() ([]execution.StepInfo, error),
+) (composition.ExecContext, bool) {
+	if outputNode.NodeTypeID == "process-ai-completion" {
+		output, ok := decodeAny[string](status.Output)
+		return composition.ExecContext{Payload: output}, ok
+	}
+	if loadSteps == nil {
+		return composition.ExecContext{}, false
+	}
+	steps, err := loadSteps()
+	if err != nil {
+		return composition.ExecContext{}, false
+	}
+	var latest execution.StepInfo
+	found := false
+	for _, step := range steps {
+		if step.StepName != outputNode.ID || (found && step.StepID <= latest.StepID) {
+			continue
+		}
+		latest = step
+		found = true
+	}
+	if !found || latest.Error != nil {
+		return composition.ExecContext{}, false
+	}
+	output, ok := decodeAny[composition.ExecContext](latest.Output)
+	return output, ok
+}
+
+func aiProviderSampleOutputNode(workflow composition.Workflow, operation aiprovider.Operation) (composition.Node, error) {
+	nodeTypeID := map[aiprovider.Operation]string{
+		aiprovider.OperationText:           "process-ai-completion",
+		aiprovider.OperationStructured:     "process-ai-extract-structured",
+		aiprovider.OperationClassification: "process-ai-classify",
+	}[operation]
+	if nodeTypeID == "" {
+		return composition.Node{}, errors.New("unsupported AI provider sample operation")
+	}
+	var found composition.Node
+	count := 0
+	for _, node := range workflow.Nodes {
+		if node.NodeTypeID == nodeTypeID {
+			found = node
+			count++
+		}
+	}
+	if count != 1 {
+		return composition.Node{}, errors.New("sample workflow must contain exactly one matching AI node")
+	}
+	return found, nil
 }
 
 // stopAIProviderSampleObservers latches the state before cancelling and

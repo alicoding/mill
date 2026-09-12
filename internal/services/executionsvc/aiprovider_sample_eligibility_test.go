@@ -9,12 +9,12 @@ import (
 )
 
 func TestReserveFreshAIProviderSampleAttemptEligibility(t *testing.T) {
-	workflow := composition.Workflow{ID: "sample-workflow"}
+	workflow := sampleWorkflowForTest(aiprovider.OperationText)
 	capture := func(_ composition.Workflow, payload string, values map[string]string, runID string) (aiprovider.SampleAttempt, bool) {
 		if payload != "" || len(values) != 0 {
 			return aiprovider.SampleAttempt{}, false
 		}
-		return aiprovider.SampleAttempt{RunID: runID, WorkflowID: workflow.ID}, true
+		return aiprovider.SampleAttempt{RunID: runID, WorkflowID: workflow.ID, Operation: aiprovider.OperationText}, true
 	}
 	tests := []struct {
 		name string

@@ -76,6 +76,38 @@ func TestAIProviderSampleOutputContractDigestRejectsInvalidNode(t *testing.T) {
 	}
 }
 
+func TestValidateAIProviderSampleOutput(t *testing.T) {
+	structured := Node{NodeTypeID: "process-ai-extract-structured", Config: map[string]string{
+		"outputFields": `[{"Key":"item","Type":"text"},{"Key":"quantity","Type":"integer"},{"Key":"inStock","Type":"boolean"}]`,
+	}}
+	classification := Node{NodeTypeID: "process-ai-classify", Config: map[string]string{
+		"categories": "urgent\nnormal", "outputAttribute": "category",
+	}}
+	tests := []struct {
+		name   string
+		node   Node
+		output ExecContext
+		valid  bool
+	}{
+		{name: "text", node: Node{NodeTypeID: "process-ai-completion"}, output: ExecContext{Payload: "summary"}, valid: true},
+		{name: "empty text", node: Node{NodeTypeID: "process-ai-completion"}, output: ExecContext{Payload: "  "}},
+		{name: "structured", node: structured, output: ExecContext{Attributes: map[string]any{"item": "tea", "quantity": float64(2), "inStock": true, "unrelated": "ignored"}}, valid: true},
+		{name: "structured missing", node: structured, output: ExecContext{Attributes: map[string]any{"item": "tea", "quantity": float64(2)}}},
+		{name: "structured wrong type", node: structured, output: ExecContext{Attributes: map[string]any{"item": "tea", "quantity": "two", "inStock": true}}},
+		{name: "classification", node: classification, output: ExecContext{Attributes: map[string]any{"category": "urgent"}}, valid: true},
+		{name: "classification out of enum", node: classification, output: ExecContext{Attributes: map[string]any{"category": "later"}}},
+		{name: "classification empty", node: classification, output: ExecContext{Attributes: map[string]any{"category": ""}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateAIProviderSampleOutput(tt.node, tt.output)
+			if (err == nil) != tt.valid {
+				t.Fatalf("ValidateAIProviderSampleOutput error = %v, valid want %t", err, tt.valid)
+			}
+		})
+	}
+}
+
 func assertDifferentAIProviderSampleDigests(t *testing.T, a, b Node) {
 	t.Helper()
 	aDigest, err := AIProviderSampleOutputContractDigest(a)
