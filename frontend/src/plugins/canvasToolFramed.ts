@@ -279,12 +279,13 @@ function framedGesture(runtime: FramedToolRuntime, sticky: boolean): AtlasToolGe
         const last = points[points.length - 1]
         const point = last ? boardPoint(ctx, last) : { x: 0, y: 0, t: performance.now() }
         const completion = sendPointer(runtime, 'up', point, [], session.zoom, ctx.modifiers, targetObjectAt(ctx, point))
-        // A same-document tool serializes pointer handlers and returns that
-        // queue here. Keep its session available until queued move doors have
-        // finished; otherwise eraseAt sees an already-ended gesture. A framed
-        // post returns void, preserving its existing immediate handoff.
-        if (completion) return completion.finally(() => endSession(runtime))
+        // An ephemeral same-document tool serializes pointer handlers and
+        // returns that queue here. Keep its session available until queued
+        // move doors finish; otherwise eraseAt sees an ended gesture. Persisted
+        // tools and framed posts preserve their existing immediate handoff.
+        if (completion && runtime.descriptor.ephemeral) return completion.finally(() => endSession(runtime))
         endSession(runtime)
+        return completion
       } finally {
         if (!sticky && meetsDragThreshold(points)) ctx.disarmUnlessLocked()
       }
