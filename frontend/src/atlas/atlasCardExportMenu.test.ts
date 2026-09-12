@@ -54,4 +54,13 @@ describe('runCardExport', () => {
     await runCardExport(card(), exporter, onError)
     expect(onError).toHaveBeenCalledWith('Error: source file vanished')
   })
+
+  it('awaits and reports the save failure', async () => {
+    const { downloadBlob } = await import('../shared/downloadBlob')
+    vi.mocked(downloadBlob).mockRejectedValueOnce(new Error('save failed'))
+    const exporter: UnitExporter = { format: 'mmd', label: 'Mermaid source (.mmd)', serialize: async () => ({ bytes: 'graph TD', filename: 'flow.mmd' }) }
+    const onError = vi.fn()
+    await runCardExport(card(), exporter, onError)
+    expect(onError).toHaveBeenCalledWith('Error: save failed')
+  })
 })

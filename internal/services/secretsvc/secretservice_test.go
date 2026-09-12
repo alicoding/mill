@@ -9,8 +9,8 @@ import (
 
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/secretaudit"
-	"github.com/alicoding/mill/internal/domain/secret"
 	"github.com/alicoding/mill/internal/adapters/secretvault"
+	"github.com/alicoding/mill/internal/domain/secret"
 	"github.com/alicoding/mill/internal/services/servicetest"
 )
 

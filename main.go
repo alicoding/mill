@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
+	backupadapter "github.com/alicoding/mill/internal/adapters/backup"
 	"github.com/alicoding/mill/internal/adapters/credential"
 	"github.com/alicoding/mill/internal/adapters/dataownership"
 	"github.com/alicoding/mill/internal/adapters/launchatlogin"
@@ -188,7 +189,14 @@ func main() {
 	// adapter change needed). Takes precedence over the path-based
 	// override below when set; MILL_EXECUTION_DB_PATH and the default
 	// sqlite path are otherwise unchanged.
-	backupsvc.GuardVersionChange(logger, settingsStore, backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion)
+	pluginDir := pluginsvc.ResolveDir(settingsPath)
+	snapshotOptions := backupadapter.SnapshotOptions{
+		ReadSettings: settingsStore.Snapshot,
+		Participants: []backupadapter.Participant{{Name: "plugin-state", Write: func(destination string) error {
+			return pluginsvc.SnapshotStoredState(pluginDir, destination)
+		}}},
+	}
+	backupsvc.GuardVersionChange(logger, settingsStore, backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion, snapshotOptions)
 
 	mcpAuditService := wiring.WireAuditTrails(secretService, backupsvc.SQLiteDBPath(executionDatabaseURL), logger)
 
@@ -204,6 +212,7 @@ func main() {
 		logger.Error("migrate legacy MCP pending writes", "error", err)
 	}
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
+	wiring.WireAIProviderCheckAuthorizer(configureService, guardrailService)
 	pluginService := wiring.NewPluginService(settingsPath, guardrailService, millChannel, millUpdateVersion, backupsvc.SQLiteDBPath(executionDatabaseURL), logger)
 	pluginService.SetExampleMarketplace(examplePluginsFS)
 	// docs/goals/0240 S1: the coding loop's Confirm-screen preview --
@@ -253,7 +262,7 @@ func main() {
 	wiring.WireCanvasObjectExamples(atlasService, pluginService)                                 // goal 0411: Board gallery seeds every plugin's declared canvasObjects example
 	wiring.WireNotify(notificationService)                                                       // goal 0368: apply-notify publishes through the notification spine
 
-	backupService := backupsvc.Wire(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion, compositionService, configureService, atlasService)
+	backupService := backupsvc.Wire(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion, compositionService, configureService, atlasService, snapshotOptions)
 
 	// docs/adr/0038, goal 0063/0067: the share model's mirror root, plus the image tool's captures folder (goal 0169 slice 2).
 	wiring.WireAtlasStorageDirs(atlasService)
@@ -468,10 +477,11 @@ func main() {
 		}
 	}()
 
-	// Run the application. This blocks until the application has been exited.
-	err = app.Run()
-
-	wiring.RunShutdown(logger, executionService, backupService, millMCPService, mcpAuditService, atlasService, secretService, bridgeService, auditService)
+	// Register teardown with Wails' native lifecycle before Run. The adapter
+	// also invokes the same exactly-once owner if Run returns or startup fails.
+	err = windowing.RunWithShutdown(app, func() {
+		wiring.RunShutdown(logger, executionService, backupService, millMCPService, pluginService, mcpAuditService, atlasService, secretService, bridgeService, auditService, configureService)
+	})
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {

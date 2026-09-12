@@ -12,8 +12,9 @@ install, and it runs only with your say-so.
 
 **Extensions** is its own page (⇧⌘X). **Installed** lists what you
 have and what each one adds. **Browse** lists what your marketplaces
-offer that you have not installed, starting with the examples Mill
-ships. **Updates** shows what has a newer version.
+offer that you have not installed. It distinguishes loading, source
+failure, installed matches, filters with no results, and a genuinely
+empty catalog. **Updates** shows what has a newer version.
 
 Installing shows what the extension can do — the hosts it reaches,
 whether it writes to your boards, what it adds — and installs only
@@ -37,6 +38,11 @@ file, listing the extensions it offers. Add one under **Sources**;
 Mill reads it only when you add it, refresh it, install from it, or
 check for updates — never on its own. You can also install straight
 from a repository, a `.zip` address, or a folder on this Mac.
+
+Each source keeps its own identity, canonical location, cached catalog,
+and refresh status. A failed refresh leaves the last successful catalog
+available and shows the failure. Removing a source leaves extensions
+already installed from it in place.
 
 ## Tiers
 

@@ -24,6 +24,10 @@ interface UISignalState {
   // page's Sources dialog from the palette.
   extensionSourcesRequest: number
   requestExtensionSources: () => void
+  consumeExtensionSourcesRequest: (request: number) => void
+  extensionInstalledRequest: number
+  requestExtensionInstalled: () => void
+  consumeExtensionInstalledRequest: (request: number) => void
   // extensions.importTheme may navigate here from any surface, or keep
   // the currently selected Extensions tab when it is already open.
   extensionThemeImportRequest: boolean
@@ -353,9 +357,17 @@ interface UISignalState {
 export const useUISignalStore = create<UISignalState>()((set) => ({
   atlasJumpRequest: 0,
   extensionSourcesRequest: 0,
+  extensionInstalledRequest: 0,
   extensionThemeImportRequest: false,
   requestAtlasJump: () => set((s) => ({ atlasJumpRequest: s.atlasJumpRequest + 1 })),
   requestExtensionSources: () => set((s) => ({ extensionSourcesRequest: s.extensionSourcesRequest + 1 })),
+  consumeExtensionSourcesRequest: (request) => set((state) => (
+    state.extensionSourcesRequest === request ? { extensionSourcesRequest: 0 } : {}
+  )),
+  requestExtensionInstalled: () => set((s) => ({ extensionInstalledRequest: s.extensionInstalledRequest + 1 })),
+  consumeExtensionInstalledRequest: (request) => set((state) => (
+    state.extensionInstalledRequest === request ? { extensionInstalledRequest: 0 } : {}
+  )),
   requestExtensionThemeImport: () => set({ extensionThemeImportRequest: true }),
   consumeExtensionThemeImport: () => set({ extensionThemeImportRequest: false }),
   atlasBoardRequest: 0,

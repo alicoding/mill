@@ -44,6 +44,15 @@ export const OUTPUT_COMMANDS: Command[] = [
     run: () => focusedOutputViewer()?.toggleWrap?.(),
   },
   {
+    id: 'output.save',
+    label: 'commands.output.save',
+    keywords: ['save output'],
+    defaultBinding: null,
+    paletteHidden: true,
+    enabled: () => focusedOutputViewer()?.save !== undefined,
+    run: () => focusedOutputViewer()?.save?.(),
+  },
+  {
     id: 'output.openFull',
     label: 'commands.output.openFull',
     keywords: ['open output', 'full output'],

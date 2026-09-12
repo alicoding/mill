@@ -43,7 +43,7 @@ export function buildExportMenuChoice({
 export async function runCardExport(card: Card, exporter: UnitExporter, onError: (message: string) => void): Promise<void> {
   try {
     const { bytes, filename } = await exporter.serialize(card)
-    downloadBlob(filename, bytes instanceof Blob ? bytes : new Blob([bytes]))
+    await downloadBlob(filename, bytes instanceof Blob ? bytes : new Blob([bytes]))
   } catch (err) {
     onError(String(err))
   }

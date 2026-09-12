@@ -126,6 +126,11 @@ export function OutputViewer({ value, shape, mime, title, site, context, default
     openWorkTab({ kind: 'output', outputId: id })
   }, [openWorkTab, title, value, shape, mime, site, t])
 
+  const save = useCallback(() => {
+    const name = `${site}.txt`
+    return downloadBlob(name, new Blob([text], { type: mime ?? 'text/plain' }))
+  }, [mime, site, text])
+
   const textual = view === 'log' || view === 'raw' || view === 'source'
   const findable = view === 'tree' || view === 'log' || view === 'table' || view === 'error'
 
@@ -138,8 +143,9 @@ export function OutputViewer({ value, shape, mime, title, site, context, default
       toggleFind: () => setFindOpen((open) => !open),
       toggleWrap: textual ? () => setWrap((w) => !w) : undefined,
       openFull: full ? undefined : openFull,
+      save: resolved.shape === 'binary' ? save : undefined,
     })
-  }, [setFocused, viewerId, copyText, textual, full, openFull])
+  }, [setFocused, viewerId, copyText, textual, full, openFull, resolved.shape, save])
 
   useEffect(() => () => clearFocused(viewerId), [clearFocused, viewerId])
 
@@ -151,11 +157,6 @@ export function OutputViewer({ value, shape, mime, title, site, context, default
   const changeView = (next: OutputView) => {
     setView(next)
     writeStoredView(site, next)
-  }
-
-  const save = () => {
-    const name = `${site}.txt`
-    downloadBlob(name, new Blob([text], { type: mime ?? 'text/plain' }))
   }
 
   const id = testId ?? `${site}-output`
@@ -192,7 +193,6 @@ export function OutputViewer({ value, shape, mime, title, site, context, default
         showOpenFull={!full}
         onExpandAll={() => setExpandToken((n) => n + 1)}
         onCollapseAll={() => setCollapseToken((n) => n + 1)}
-        onSave={save}
         invoke={invoke}
       />
 

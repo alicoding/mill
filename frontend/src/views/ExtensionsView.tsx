@@ -33,6 +33,8 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
   const { t } = useTranslation('views')
   const [tab, setTab] = useState<ExtensionsTab>(tabFrom(initialTab))
   const sourcesRequest = useUISignalStore((s) => s.extensionSourcesRequest)
+  const installedRequest = useUISignalStore((s) => s.extensionInstalledRequest)
+  const consumeInstalledRequest = useUISignalStore((s) => s.consumeExtensionInstalledRequest)
   const importRequest = useUISignalStore((s) => s.extensionThemeImportRequest)
   const consumeImportRequest = useUISignalStore((s) => s.consumeExtensionThemeImport)
   const [importOpen, setImportOpen] = useState(false)
@@ -44,13 +46,15 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
   }, [consumeImportRequest, importRequest])
   // A palette "marketplace sources" ask lands on Browse, where the
   // dialog lives.
-  const [seenSources, setSeenSources] = useState(sourcesRequest)
   useEffect(() => {
-    if (sourcesRequest !== seenSources) {
-      setSeenSources(sourcesRequest)
-      setTab('browse')
+    if (sourcesRequest > 0) setTab('browse')
+  }, [sourcesRequest])
+  useEffect(() => {
+    if (installedRequest > 0) {
+      setTab('installed')
+      consumeInstalledRequest(installedRequest)
     }
-  }, [sourcesRequest, seenSources])
+  }, [consumeInstalledRequest, installedRequest])
 
   // An install changes what the Installed tab shows; the same signal
   // a removal raises re-reads it.
@@ -78,12 +82,19 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
 
       <ExtensionsPolicyBanner />
 
-      <SegmentedControl aria-label={t('extensions.tabsAria')} className={styles.tabs} data-testid="extensions-tabs">
+      <SegmentedControl
+        aria-label={t('extensions.tabsAria')}
+        className={styles.tabs}
+        data-testid="extensions-tabs"
+        onChange={(index) => {
+          const next = TABS[index]
+          if (next) setTab(next)
+        }}
+      >
         {TABS.map((id) => (
           <SegmentedControl.Button
             key={id}
             selected={tab === id}
-            onClick={() => setTab(id)}
             data-testid={`extensions-tab-${id}`}
           >
             {id === 'updates' && updateCount > 0 ? t('extensions.tabs.updatesCount', { count: updateCount }) : t(`extensions.tabs.${id}`)}
@@ -92,7 +103,7 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
       </SegmentedControl>
 
       {tab === 'installed' && <ExtensionsSection />}
-      {tab === 'browse' && <ExtensionsBrowseTab sourcesRequest={sourcesRequest} onInstalled={onInstalled} />}
+      {tab === 'browse' && <ExtensionsBrowseTab sourcesRequest={sourcesRequest} />}
       {tab === 'updates' && <ExtensionsUpdatesTab />}
       <ExtensionsUpdateDialogHost />
       {importOpen && <ThemeImportDialog onClose={() => setImportOpen(false)} onImported={() => { setImportOpen(false); onInstalled() }} />}

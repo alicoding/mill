@@ -78,6 +78,15 @@ type Request struct {
 	// means context.Background(), exactly like retryablehttp.NewRequest's
 	// own default.
 	Context context.Context
+	// NoRedirect makes the caller observe the first redirect response.
+	// Credentials must not follow an inspection request to another URL,
+	// even when that destination would otherwise pass a host allowlist.
+	NoRedirect bool
+	// ReturnLastResponse preserves the final HTTP response after the
+	// retry policy is exhausted. Callers that need to distinguish a
+	// responding 429/5xx endpoint from a transport failure opt in; the
+	// default keeps the existing error-only behavior.
+	ReturnLastResponse bool
 }
 
 // requestContext returns req.Context, defaulting to Background so every

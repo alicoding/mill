@@ -25,13 +25,29 @@ Every key:
 
 | Key | Meaning |
 | --- | --- |
-| `version` | Always `1`. |
+| `version` | `1` for legacy name-based source rules, or `2` for canonical origin rules. |
 | `managedBy` | The organisation's name, shown in the banner above Extensions. |
 | `allow` | Rules naming the extensions that may install and run. Once the list has any entry, it is exclusive: anything it does not name is blocked. |
 | `block` | Rules naming extensions that may never install or run. A block always wins over an allow. |
 | `requiredTier` | The lowest trust tier an extension may wear: `"verified"`, `"hash-pinned"`, or `"any"` (the default). Checked when installing and every time extensions load. |
 | `blockedCapabilities` | Capabilities no extension may declare: `fetch`, `write-content`, `open-url`, `open-app`, `list-files`, `read-file`, `erase-board-items`. An extension declaring one is blocked. |
-| `allowedSources` | Marketplace names and addresses installs may come from. Once set, Add source, Browse installs and installs from a link are limited to them. |
+| `allowedSources` | Version 1 only. Marketplace names and address prefixes installs may come from. |
+| `sources` | Version 2 only. Exact rules for `bundled`, `github`, `url`, `path`, or `theme-file` origins. |
+
+A policy cannot mix `allowedSources` and `sources`. Omitting `sources` in a
+version 2 policy leaves origins unrestricted. An explicit empty `sources`
+list denies every external, theme-file, and included-example origin; Mill's
+kernel components remain available.
+
+A version 2 source rule is `{ "kind", "locator", "ref", "artifactOrigins" }`.
+`bundled` and `theme-file` use only `kind`. GitHub uses a lowercase
+`owner/repository` locator and an optional case-sensitive ref. URL locators
+match the exact canonical index address, including path and query. Path
+locators are absolute and include only files below that root after symlinks
+are resolved. `artifactOrigins` lists exact scheme, host, and port roots that
+may serve downloads. Mill checks the source and every redirect before making
+the request. An allowed source does not by itself verify its publisher or
+files; tier, signature, capability, and consent checks still apply.
 
 A rule in `allow` or `block` is `{ "id", "publisherKey", "versions" }`,
 with at least one of `id` (the extension's id) or `publisherKey` (the
@@ -66,14 +82,20 @@ from the bank's own marketplace:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "managedBy": "Example Bank",
   "allow": [
     { "id": "bank-reconcile", "publisherKey": "RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3" },
     { "id": "bank-tickets", "versions": "^2" }
   ],
   "requiredTier": "verified",
-  "allowedSources": ["bank-market"]
+  "sources": [
+    {
+      "kind": "url",
+      "locator": "https://extensions.example-bank.test/marketplace.json",
+      "artifactOrigins": ["https://downloads.example-bank.test"]
+    }
+  ]
 }
 ```
 
@@ -81,7 +103,7 @@ Anything may install, but nothing that reaches the network:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "managedBy": "Example Bank",
   "blockedCapabilities": ["fetch"]
 }
@@ -91,7 +113,7 @@ One extension is blocked below a fixed version:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "managedBy": "Example Bank",
   "block": [{ "id": "acme-notes", "versions": "<1.4.0" }],
   "requiredTier": "hash-pinned"
@@ -117,3 +139,12 @@ policy or not:
   shows in the install prompt and again on the Verification tab.
 
 A refused install leaves nothing on disk.
+
+Version 1 remains supported for existing deployments. Its
+`allowedSources` entries can match marketplace names or address prefixes,
+so a name alone does not prove where an installed extension came from.
+Move to version 2 by replacing each name with its explicit `bundled`,
+`github`, `url`, `path`, or `theme-file` origin. When a version 2 policy
+restricts sources, a legacy installation without recorded origin evidence
+is refused with **Source could not be verified. Reinstall this extension
+from an allowed source.**

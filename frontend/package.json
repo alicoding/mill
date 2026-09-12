@@ -17,7 +17,8 @@
     "plugin:typecheck": "tsc -p tsconfig.plugins.json",
     "plugin:lint": "cd .. && eslint --no-error-on-unmatched-pattern --config frontend/eslint.plugins.config.js examples/plugins/*/*.js --max-warnings 0",
     "sdk:build": "tsc -p tsconfig.sdk.json && mv plugin-sdk/sdk.d.ts plugin-sdk/index.d.ts",
-    "docs:sdk": "typedoc"
+    "docs:sdk": "typedoc",
+    "docs:commands": "vitest run src/shared/commandsDeclaration.test.ts --update"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
