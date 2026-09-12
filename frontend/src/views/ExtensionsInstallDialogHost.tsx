@@ -25,7 +25,7 @@ export function ExtensionsInstallDialogHost() {
   if (phase === 'reserved' || phase === 'preparing') {
     return (
       <Dialog
-        title={t('extensions.install.loadingTitle')}
+        title={t('extensions.install.preparingTitle')}
         onClose={dismiss}
         footerButtons={[{
           content: t('extensions.install.cancel'), onClick: dismiss, autoFocus: true,

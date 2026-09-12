@@ -2,6 +2,7 @@
 import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import views from '../locales/en/views.json'
 
 type Props = Record<string, unknown> & { children?: ReactNode }
 
@@ -74,7 +75,8 @@ describe('ExtensionsInstallDialogHost', () => {
   it('shows cancellable preparation without an actionable manifest', async () => {
     useExtensionMarketplaceInstallStore.setState({ operationId: 'operation-one', phase: 'preparing', visible: true })
     await renderHost()
-    expect(container.textContent).toContain('extensions.install.loadingTitle')
+    expect(container.textContent).toContain('extensions.install.preparingTitle')
+    expect(views.extensions.install.preparingTitle).toBe('Preparing extension')
     expect(container.querySelector('[data-testid="extensions-install-loading"]')).not.toBeNull()
     expect(container.querySelector('[data-testid="prepared-dialog"]')).toBeNull()
     await act(async () => (container.querySelector('[data-testid="host-close"]') as HTMLButtonElement).click())

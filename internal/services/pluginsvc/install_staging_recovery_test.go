@@ -73,6 +73,25 @@ func TestStagingRecoveryReconstructsFromRealSQLiteCrashStates(t *testing.T) {
 	}
 }
 
+func TestStagingRecoveryRestoresPreviousPackageMovedBeforePhasePublication(t *testing.T) {
+	fixture := newStagingRecoveryFixture(t)
+	if err := os.MkdirAll(fixture.workspace, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(fixture.target, fixture.backup); err != nil {
+		t.Fatal(err)
+	}
+
+	service := restartPluginService(t, fixture.service)
+	if err := service.RecoverInstallations(); err != nil {
+		t.Fatal(err)
+	}
+	assertStagingRecoveryRestored(t, service, fixture)
+	if err := service.RecoverInstallations(); err != nil {
+		t.Fatalf("repeated recovery: %v", err)
+	}
+}
+
 func TestPreparedPublicationReconcilesBeforeAnyTargetMove(t *testing.T) {
 	for _, test := range []struct {
 		name         string

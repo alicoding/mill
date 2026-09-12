@@ -1062,6 +1062,7 @@ export interface UpdateCandidate {
     "Installed": string;
     "Available": string;
     "Marketplace": string;
+    "Incarnation": string;
 
     /**
      * Tier is what applying the update would earn, before any

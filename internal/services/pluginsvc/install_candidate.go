@@ -218,7 +218,7 @@ func (p *PluginService) stageUpdateCandidateContext(ctx context.Context, stage s
 		if err != nil {
 			return InstallRecord{}, nil, err
 		}
-		if resolved.Entry.Version != candidate.Available {
+		if resolved.Source.Incarnation != candidate.Incarnation || resolved.Entry.Version != candidate.Available {
 			return InstallRecord{}, nil, candidateChangedError()
 		}
 		tier, finalURL, err := p.stageEntryContext(ctx, stage, resolved)

@@ -31,6 +31,7 @@ type UpdateCandidate struct {
 	Installed   string
 	Available   string
 	Marketplace string
+	Incarnation string
 	// Tier is what applying the update would earn, before any
 	// download -- the same promise a Browse row makes.
 	Tier   string
@@ -143,6 +144,7 @@ func (p *PluginService) updateCandidateFor(info PluginInfo, rec InstallRecord) (
 		if rec.Origin.Kind != "" && resolved.Source.Origin != rec.Origin {
 			return cand, "Source could not be verified. Reinstall this extension from an allowed source.", false
 		}
+		cand.Incarnation = resolved.Source.Incarnation
 		cand.Available = resolved.Entry.Version
 		cand.Tier = entryTier(resolved.Index.Name, resolved.Entry)
 	case rec.Source.Kind == "github":

@@ -809,7 +809,7 @@
     },
     "install": {
       "title": "Install {{name}}?",
-      "loadingTitle": "Review extension installation",
+      "preparingTitle": "Preparing extension",
       "loadingBody": "Reading the extension and its permissions…",
       "unreviewedTitle": "Install unreviewed code?",
       "unreviewedBody": "Nothing has checked what this extension does. It can read what you allow it to and change your boards.",

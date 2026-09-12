@@ -226,7 +226,7 @@ func (p *PluginService) restoreFirstInstall(tx installTransaction, target string
 }
 
 func (p *PluginService) recoverStagingTransaction(tx installTransaction, target, backup, workspace string) error {
-	if err := validateStagingDestinations(tx, target, backup); err != nil {
+	if err := p.reconcileStagingDestinations(tx, target, backup); err != nil {
 		return err
 	}
 	workspaceRoot, workspaceInfo, err := openStableRoot(workspace)
@@ -263,17 +263,23 @@ func (p *PluginService) recoverStagingTransaction(tx installTransaction, target,
 	return p.settleInstallTransaction(tx, workspace)
 }
 
-func validateStagingDestinations(tx installTransaction, target, backup string) error {
-	if packageState(backup, "", nil) != packageAbsent {
-		return fmt.Errorf("extension install transaction %q has an unexpected staging backup", tx.TransactionID)
+func (p *PluginService) reconcileStagingDestinations(tx installTransaction, target, backup string) error {
+	if !tx.HadPrevious {
+		if packageState(target, "", nil) != packageAbsent || packageState(backup, "", nil) != packageAbsent {
+			return fmt.Errorf("extension install transaction %q found unexpected first-install files while staging", tx.TransactionID)
+		}
+		return nil
 	}
-	if tx.HadPrevious && packageState(target, tx.PreviousArtifactIdentity, nil) != packageExpected {
-		return fmt.Errorf("extension install transaction %q found a changed previous extension while staging", tx.TransactionID)
+	targetState := packageState(target, tx.PreviousArtifactIdentity, nil)
+	backupState := packageState(backup, tx.PreviousArtifactIdentity, nil)
+	switch {
+	case targetState == packageExpected && backupState == packageAbsent:
+		return nil
+	case targetState == packageAbsent && backupState == packageExpected:
+		return p.installRename(backup, target)
+	default:
+		return fmt.Errorf("extension install transaction %q cannot safely restore its previous extension while staging", tx.TransactionID)
 	}
-	if !tx.HadPrevious && packageState(target, "", nil) != packageAbsent {
-		return fmt.Errorf("extension install transaction %q found an unexpected target while staging", tx.TransactionID)
-	}
-	return nil
 }
 
 func openStableRoot(path string) (*os.Root, fs.FileInfo, error) {
