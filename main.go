@@ -241,6 +241,7 @@ func main() {
 			return executionsvc.AIProviderChangeImpact(executionService, id, revision)
 		},
 	)
+	wiring.WireAIProviderSamples(compositionService, configureService, executionService)
 	codeLoopService.SetExecutionService(executionService)
 	wiring.WireCodingLoopSecrets(codeLoopService, secretService)
 	wiring.WireVaultWaits(executionService, secretService)                                 // goal 0360 S2
