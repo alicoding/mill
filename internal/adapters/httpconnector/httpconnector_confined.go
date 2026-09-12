@@ -11,6 +11,10 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 )
 
+// ErrResponseTooLarge identifies a response that exceeded the caller's
+// configured body limit without exposing any of the response body.
+var ErrResponseTooLarge = errors.New("httpconnector: response body too large")
+
 // ExecuteConfined is Execute for a caller that may reach only named
 // hosts (docs/goals/0288, a plugin's declared network): every hop --
 // the request itself and every redirect -- must satisfy allowHost, or
@@ -26,8 +30,15 @@ func ExecuteConfined(req Request, allowHost func(host string) bool, maxBody int6
 	if !allowHost(u) {
 		return Response{}, fmt.Errorf("host %q is not declared for this request", u)
 	}
-	c := newClient()
+	baseClient, err := clientForRequest(requestContext(req), req.URL)
+	if err != nil {
+		return Response{}, err
+	}
+	c := cloneClient(baseClient)
 	c.HTTPClient.CheckRedirect = func(next *http.Request, _ []*http.Request) error {
+		if req.NoRedirect {
+			return http.ErrUseLastResponse
+		}
 		if next.URL.Scheme != "https" && next.URL.Scheme != "http" {
 			return errors.New("redirect to a non-http(s) URL refused")
 		}
@@ -36,11 +47,14 @@ func ExecuteConfined(req Request, allowHost func(host string) bool, maxBody int6
 		}
 		return nil
 	}
+	if req.ReturnLastResponse {
+		c.ErrorHandler = retryablehttp.PassthroughErrorHandler
+	}
 	var bodyReader io.Reader
 	if req.Body != "" {
 		bodyReader = strings.NewReader(req.Body)
 	}
-	httpReq, err := retryablehttp.NewRequest(req.Method, req.URL, bodyReader)
+	httpReq, err := retryablehttp.NewRequestWithContext(requestContext(req), req.Method, req.URL, bodyReader)
 	if err != nil {
 		return Response{}, err
 	}
@@ -49,7 +63,7 @@ func ExecuteConfined(req Request, allowHost func(host string) bool, maxBody int6
 	}
 	resp, err := c.Do(httpReq)
 	if err != nil {
-		return Response{}, err
+		return Response{}, classifyTLSError(err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	data, err := io.ReadAll(io.LimitReader(resp.Body, maxBody+1))
@@ -57,13 +71,34 @@ func ExecuteConfined(req Request, allowHost func(host string) bool, maxBody int6
 		return Response{}, err
 	}
 	if int64(len(data)) > maxBody {
-		return Response{}, fmt.Errorf("response body exceeds the %d byte limit", maxBody)
+		return Response{}, fmt.Errorf("%w: limit is %d bytes", ErrResponseTooLarge, maxBody)
 	}
 	headers := make(map[string]string, len(resp.Header))
 	for k := range resp.Header {
 		headers[k] = resp.Header.Get(k)
 	}
 	return Response{StatusCode: resp.StatusCode, Body: string(data), Headers: headers}, nil
+}
+
+// cloneClient copies retry and HTTP-client configuration while retaining
+// the selected transport, including a host-specific client certificate.
+// Per-request redirect/error behavior can then change without mutating a
+// shared client or its connection pool.
+func cloneClient(base *retryablehttp.Client) *retryablehttp.Client {
+	httpClient := *base.HTTPClient
+	return &retryablehttp.Client{
+		HTTPClient:      &httpClient,
+		Logger:          base.Logger,
+		RetryWaitMin:    base.RetryWaitMin,
+		RetryWaitMax:    base.RetryWaitMax,
+		RetryMax:        base.RetryMax,
+		RequestLogHook:  base.RequestLogHook,
+		ResponseLogHook: base.ResponseLogHook,
+		CheckRetry:      base.CheckRetry,
+		Backoff:         base.Backoff,
+		ErrorHandler:    base.ErrorHandler,
+		PrepareRetry:    base.PrepareRetry,
+	}
 }
 
 // parseHTTPURL returns the lowercased host of an http(s) URL, or an

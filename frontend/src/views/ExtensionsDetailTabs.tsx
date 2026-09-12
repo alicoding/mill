@@ -34,12 +34,15 @@ export function ExtensionsDetailTabStrip({ active, onSelect, hasSettings }: {
       className={styles.detailTabs}
       data-testid="extensions-detail-tabs"
       size="small"
+      onChange={(index) => {
+        const next = tabs[index]
+        if (next) onSelect(next)
+      }}
     >
       {tabs.map((tab) => (
         <SegmentedControl.Button
           key={tab}
           selected={active === tab}
-          onClick={() => onSelect(tab)}
           data-testid={`extensions-detail-tab-${tab}`}
         >
           {t(`extensions.detailTabs.${tab}`)}

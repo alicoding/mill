@@ -12,7 +12,9 @@ import (
 	"path/filepath"
 	"time"
 
+	backupadapter "github.com/alicoding/mill/internal/adapters/backup"
 	"github.com/alicoding/mill/internal/adapters/credential"
+	"github.com/alicoding/mill/internal/adapters/dataownership"
 	"github.com/alicoding/mill/internal/adapters/launchatlogin"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/adapters/windowing"
@@ -115,6 +117,30 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "plugin" {
 		os.Exit(pluginscaffold.Run(os.Args[2:], pluginsvc.ResolveDir(settingsPath), millVersion, os.Stdout, os.Stderr))
 	}
+	executionDatabaseURL := os.Getenv("MILL_EXECUTION_DATABASE_URL")
+	if executionDatabaseURL == "" {
+		executionDatabaseURL = "sqlite:" + windowing.ConfigDirOrEnv("MILL_EXECUTION_DB_PATH", "execution.db")
+	}
+
+	startup := windowing.NewStartupCoordinates()
+	app := application.New(application.Options{
+		Name:        "mill",
+		Description: "Guardrailed agentic-workflow automation",
+		Logger:      logger,
+		Assets: application.AssetOptions{
+			Handler:    application.AssetFileServerFS(assets),
+			Middleware: startup.AssetMiddleware,
+		},
+		Mac:            windowing.MacAppOptions(),
+		ShouldQuit:     startup.ShouldQuit,
+		SingleInstance: singleInstanceOptions(startup.RequestActivation),
+	})
+
+	dataOwner, err := dataownership.AcquireForProcess(settingsPath, executionDatabaseURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	logger.Debug("data ownership acquired", "execution", dataOwner.ExecutionOwnership())
 	settingsStore, err := settings.New(settingsPath)
 	if err != nil {
 		log.Fatal(err)
@@ -163,12 +189,14 @@ func main() {
 	// adapter change needed). Takes precedence over the path-based
 	// override below when set; MILL_EXECUTION_DB_PATH and the default
 	// sqlite path are otherwise unchanged.
-	executionDatabaseURL := os.Getenv("MILL_EXECUTION_DATABASE_URL")
-	if executionDatabaseURL == "" {
-		executionDatabaseURL = "sqlite:" + windowing.ConfigDirOrEnv("MILL_EXECUTION_DB_PATH", "execution.db")
+	pluginDir := pluginsvc.ResolveDir(settingsPath)
+	snapshotOptions := backupadapter.SnapshotOptions{
+		ReadSettings: settingsStore.Snapshot,
+		Participants: []backupadapter.Participant{{Name: "plugin-state", Write: func(destination string) error {
+			return pluginsvc.SnapshotStoredState(pluginDir, destination)
+		}}},
 	}
-
-	backupsvc.GuardVersionChange(logger, settingsStore, backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion)
+	backupsvc.GuardVersionChange(logger, settingsStore, backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion, snapshotOptions)
 
 	mcpAuditService := wiring.WireAuditTrails(secretService, backupsvc.SQLiteDBPath(executionDatabaseURL), logger)
 
@@ -184,6 +212,7 @@ func main() {
 		logger.Error("migrate legacy MCP pending writes", "error", err)
 	}
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
+	wiring.WireAIProviderCheckAuthorizer(configureService, guardrailService)
 	pluginService := wiring.NewPluginService(settingsPath, guardrailService, millChannel, millUpdateVersion, backupsvc.SQLiteDBPath(executionDatabaseURL), logger)
 	pluginService.SetExampleMarketplace(examplePluginsFS)
 	// docs/goals/0240 S1: the coding loop's Confirm-screen preview --
@@ -233,7 +262,7 @@ func main() {
 	wiring.WireCanvasObjectExamples(atlasService, pluginService)                                 // goal 0411: Board gallery seeds every plugin's declared canvasObjects example
 	wiring.WireNotify(notificationService)                                                       // goal 0368: apply-notify publishes through the notification spine
 
-	backupService := backupsvc.Wire(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion, compositionService, configureService, atlasService)
+	backupService := backupsvc.Wire(backupsvc.SQLiteDBPath(executionDatabaseURL), settingsPath, vaultPath, backupDir, millVersion, compositionService, configureService, atlasService, snapshotOptions)
 
 	// docs/adr/0038, goal 0063/0067: the share model's mirror root, plus the image tool's captures folder (goal 0169 slice 2).
 	wiring.WireAtlasStorageDirs(atlasService)
@@ -288,10 +317,6 @@ func main() {
 
 	agentLoopService := agentloopsvc.NewAgentLoopService(millMCPService) // an MCP client of it, ADR-0035
 
-	// Declared before application.New so the SingleInstance callback's
-	// closure (below) can capture it; assigned with `=` once the window
-	// is actually created further down. The callback only fires on a real
-	// second launch, long after mainWindow is set.
 	var mainWindow *application.WebviewWindow
 
 	// Every bound service marshals its errors through the same door: a
@@ -302,57 +327,34 @@ func main() {
 	// Wails version -- see usererror.MarshalForWails.
 	boundErrors := application.ServiceOptions{MarshalError: usererror.MarshalForWails(logger)}
 
-	app := application.New(application.Options{
-		Name:        "mill",
-		Description: "Guardrailed agentic-workflow automation",
-		Logger:      logger,
-		Services: []application.Service{
-			application.NewServiceWithOptions(&capabilitysvc.CapabilitiesService{}, boundErrors),
-			application.NewServiceWithOptions(compositionService, boundErrors),
-			application.NewServiceWithOptions(triggerService, boundErrors),
-			application.NewServiceWithOptions(configureService, boundErrors),
-			application.NewServiceWithOptions(secretService, boundErrors),
-			application.NewServiceWithOptions(atlasService, boundErrors),
-			application.NewServiceWithOptions(companionService, boundErrors),
-			application.NewServiceWithOptions(agentLoopService, boundErrors),
-			application.NewServiceWithOptions(guardrailService, boundErrors),
-			application.NewServiceWithOptions(pluginService, boundErrors),
-			application.NewServiceWithOptions(clipboardHistoryService, boundErrors),
-			application.NewServiceWithOptions(codeLoopService, boundErrors),
-			application.NewServiceWithOptions(executionService, boundErrors),
-			application.NewServiceWithOptions(settingsService, boundErrors),
-			application.NewServiceWithOptions(backupService, boundErrors),
-			application.NewServiceWithOptions(docssvc.New(userdocsFS), boundErrors),
-			application.NewServiceWithOptions(mcpAuditService, boundErrors),
-			application.NewServiceWithOptions(auditService, boundErrors),
-			application.NewServiceWithOptions(remoteAuthService, boundErrors),
-			application.NewServiceWithOptions(bridgeService, boundErrors),
-			application.NewServiceWithOptions(notificationService, boundErrors),
-			// The native menu bar, projected from the frontend command
-			// registry (docs/goals/0332) -- stateless, so it is constructed
-			// inline like CapabilitiesService above.
-			application.NewServiceWithOptions(menusvc.New(), boundErrors),
-		},
-		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
-			// Auth gate around the plugin asset route around the embedded
-			// bundle -- wiring.ComposedAssetMiddleware's own doc.
-			Middleware: wiring.ComposedAssetMiddleware(remoteAuthService, pluginService),
-		},
-		// Mill's macOS archetype and its termination contract live in the
-		// windowing adapter, where they are documented and pinned by a test
-		// (goal 0188) rather than sitting as bare option values here.
-		Mac: windowing.MacAppOptions(),
-		// The one termination gate every quit path reaches (settingsservice_flush.go).
-		ShouldQuit: settingsService.ShouldQuit,
-		// Production-only single-instance guard (docs/SPEC.md §3.7's
-		// data-corruption hazard). nil in dev/server builds -- see
-		// singleinstance_{production,dev}.go for why the guard must NOT
-		// be active under `wails3 dev`. getMainWindow closes over
-		// mainWindow, assigned below after the window is created (the
-		// callback only ever fires on a real second launch, long after).
-		SingleInstance: singleInstanceOptions(func() *application.WebviewWindow { return mainWindow }),
-	})
+	startup.SetAssetMiddleware(wiring.ComposedAssetMiddleware(remoteAuthService, pluginService))
+	startup.SetShouldQuit(settingsService.ShouldQuit)
+	for _, service := range []application.Service{
+		application.NewServiceWithOptions(&capabilitysvc.CapabilitiesService{}, boundErrors),
+		application.NewServiceWithOptions(compositionService, boundErrors),
+		application.NewServiceWithOptions(triggerService, boundErrors),
+		application.NewServiceWithOptions(configureService, boundErrors),
+		application.NewServiceWithOptions(secretService, boundErrors),
+		application.NewServiceWithOptions(atlasService, boundErrors),
+		application.NewServiceWithOptions(companionService, boundErrors),
+		application.NewServiceWithOptions(agentLoopService, boundErrors),
+		application.NewServiceWithOptions(guardrailService, boundErrors),
+		application.NewServiceWithOptions(pluginService, boundErrors),
+		application.NewServiceWithOptions(clipboardHistoryService, boundErrors),
+		application.NewServiceWithOptions(codeLoopService, boundErrors),
+		application.NewServiceWithOptions(executionService, boundErrors),
+		application.NewServiceWithOptions(settingsService, boundErrors),
+		application.NewServiceWithOptions(backupService, boundErrors),
+		application.NewServiceWithOptions(docssvc.New(userdocsFS), boundErrors),
+		application.NewServiceWithOptions(mcpAuditService, boundErrors),
+		application.NewServiceWithOptions(auditService, boundErrors),
+		application.NewServiceWithOptions(remoteAuthService, boundErrors),
+		application.NewServiceWithOptions(bridgeService, boundErrors),
+		application.NewServiceWithOptions(notificationService, boundErrors),
+		application.NewServiceWithOptions(menusvc.New(), boundErrors),
+	} {
+		app.RegisterService(service)
+	}
 
 	// Wails3's own first-party self-updater (v3/pkg/updater) -- app.Updater
 	// is constructed by application.New() itself; the provider/Init
@@ -371,6 +373,10 @@ func main() {
 	// Everything that must wait for the native run loop (hotkeys, trigger
 	// sync, the menu-accelerator release) lives in wiring.
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
+		startup.AttachActivation(func() {
+			mainWindow.Restore()
+			mainWindow.Focus()
+		})
 		wiring.ApplicationStarted(triggerService, compositionService, settingsService, millMCPService, logger)
 	})
 
@@ -471,10 +477,11 @@ func main() {
 		}
 	}()
 
-	// Run the application. This blocks until the application has been exited.
-	err = app.Run()
-
-	wiring.RunShutdown(logger, executionService, backupService, millMCPService, mcpAuditService, atlasService, secretService, bridgeService, auditService)
+	// Register teardown with Wails' native lifecycle before Run. The adapter
+	// also invokes the same exactly-once owner if Run returns or startup fails.
+	err = windowing.RunWithShutdown(app, func() {
+		wiring.RunShutdown(logger, executionService, backupService, millMCPService, pluginService, mcpAuditService, atlasService, secretService, bridgeService, auditService, configureService)
+	})
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {

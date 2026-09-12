@@ -27,6 +27,8 @@ export interface OutputViewerHandle {
   toggleWrap?: () => void
   // Absent when this viewer IS the full view.
   openFull?: () => void
+  // Absent unless the current output has binary bytes to save.
+  save?: () => Promise<void>
 }
 
 interface OutputFocusState {

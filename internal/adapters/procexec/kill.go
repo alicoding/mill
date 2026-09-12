@@ -1,36 +1,8 @@
 package procexec
 
 import (
-	"syscall"
 	"time"
 )
-
-// setpgidAttr returns the SysProcAttr that puts a new process in its
-// own process group -- shared by every Start call. POSIX
-// (darwin+linux): confirmed the exact same SysProcAttr.Setpgid field
-// exists under syscall on both, so this needs no build-tag split, only
-// a plain function (kept here, next to the kill path it exists for,
-// rather than in procexec.go, since the two only make sense read
-// together).
-func setpgidAttr() *syscall.SysProcAttr {
-	return &syscall.SysProcAttr{Setpgid: true}
-}
-
-// killGroup signals every process sharing pgid (the negative-pid
-// convention: signal(2)'s own man page -- "If pid is less than -1,
-// sig is sent to every process in the process group whose ID is
-// -pid"). This is the whole reason Start puts the child in its own
-// group: os.Process.Kill (and a bare SIGTERM to cmd.Process) only ever
-// reaches the direct child, never a shell's own children, per Go's own
-// os.Process.Kill doc ("only kills the Process itself, not any
-// children it may have started"). Errors (already-gone process,
-// permission) are deliberately not surfaced -- both Cancel and a
-// timeout firing are best-effort requests to a process that may have
-// already exited on its own, not a contract that something was alive
-// to kill.
-func killGroup(pgid int, sig syscall.Signal) {
-	_ = syscall.Kill(-pgid, sig)
-}
 
 // trigger is the ONE kill path Cancel, a hard timeout, and an idle
 // timeout all funnel through (docs/adr/0026's "one implementation,
@@ -52,7 +24,7 @@ func (h *Handle) trigger(outcome Outcome) {
 		h.forcedOutcome = outcome
 		h.mu.Unlock()
 
-		killGroup(h.pgid, syscall.SIGTERM)
+		terminateProcessGroup(h.pgid)
 		go h.escalate()
 	})
 }
@@ -62,8 +34,8 @@ func (h *Handle) trigger(outcome Outcome) {
 // the ADR's named choice (Go 1.20's Cmd.Cancel/Cmd.WaitDelay vs manual
 // escalation) -- manual was picked, not Cmd.Cancel, for two concrete
 // reasons: (1) Cmd.Cancel's own default action is os.Process.Kill,
-// which -- same doc warning as killGroup's above -- only reaches the
-// direct child, not the process group SIGTERM/SIGKILL both need to
+// which -- same doc warning as the package overview -- only reaches
+// the direct child, not the process group SIGTERM/SIGKILL both need to
 // target here; overriding Cancel to do a group-kill would still leave
 // WaitDelay's own post-Cancel fallback-to-os.Kill(direct-child-only)
 // racing it on top. (2) idle-timeout's reset-per-output-chunk timer
@@ -78,7 +50,7 @@ func (h *Handle) escalate() {
 	case <-h.done:
 		return
 	case <-time.After(h.grace):
-		killGroup(h.pgid, syscall.SIGKILL)
+		forceKillProcessGroup(h.pgid)
 	}
 }
 

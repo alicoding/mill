@@ -318,6 +318,7 @@ func (c *ConfigureService) adoptOneAIProviderKey(p aiprovider.AIProvider) (bool,
 	if err := c.persistAIProviders(); err != nil {
 		return true, fmt.Errorf("saving %q after moving its key into the store: %w", p.Label, err)
 	}
+	InvalidateAIProviderAvailability(c, p.ID)
 	if err := c.credentials.Delete(p.ID); err != nil && !errors.Is(err, credential.ErrNotFound) {
 		slog.Warn("removing a credential Mill no longer keeps in the OS keychain", "aiprovider", p.ID, "error", err)
 	}

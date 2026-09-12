@@ -5,7 +5,7 @@ import (
 	"io/fs"
 	"math"
 	"os"
-	"path/filepath"
+	"path"
 	"regexp"
 	"sort"
 	"strings"
@@ -54,15 +54,11 @@ type shippedSource struct {
 	vendored bool
 }
 
-// shippedSources lists every .js and .html file under dir, hidden and
+// shippedSources lists every .js and .html file under root, hidden and
 // dependency directories excluded -- vendor/ INCLUDED, flagged. The
 // walk PLANS and the reads follow, the same order CopyPluginFolder
 // keeps: nothing is opened while the tree is still being read.
-func shippedSources(dir string) []shippedSource {
-	root, err := filepath.Abs(dir)
-	if err != nil {
-		return nil
-	}
+func shippedSources(root fs.FS) []shippedSource {
 	rels := shippedRelPaths(root)
 	out := make([]shippedSource, 0, len(rels))
 	for _, rel := range rels {
@@ -75,25 +71,23 @@ func shippedSources(dir string) []shippedSource {
 
 // shippedRelPaths is the walk's plan: the sorted relative path of
 // every shipped code file, vendored or not.
-func shippedRelPaths(root string) []string {
+func shippedRelPaths(root fs.FS) []string {
 	var rels []string
-	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
+	_ = fs.WalkDir(root, ".", func(name string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return nil
 		}
 		if d.IsDir() {
-			if path != root && (strings.HasPrefix(d.Name(), ".") || d.Name() == "node_modules") {
-				return filepath.SkipDir
+			if name != "." && (strings.HasPrefix(d.Name(), ".") || d.Name() == "node_modules") {
+				return fs.SkipDir
 			}
 			return nil
 		}
-		ext := strings.ToLower(filepath.Ext(d.Name()))
+		ext := strings.ToLower(path.Ext(d.Name()))
 		if ext != ".js" && ext != ".html" {
 			return nil
 		}
-		if rel, relErr := filepath.Rel(root, path); relErr == nil {
-			rels = append(rels, rel)
-		}
+		rels = append(rels, name)
 		return nil
 	})
 	sort.Strings(rels)
@@ -102,14 +96,13 @@ func shippedRelPaths(root string) []string {
 
 // readShippedSource reads one planned file, flagging it vendored when
 // it lives under a vendor/ directory.
-func readShippedSource(root, rel string) (shippedSource, bool) {
-	raw, err := os.ReadFile(filepath.Join(root, rel)) // #nosec G304 -- rel came from this same folder's own walk
+func readShippedSource(root fs.FS, rel string) (shippedSource, bool) {
+	raw, err := fs.ReadFile(root, rel)
 	if err != nil {
 		return shippedSource{}, false
 	}
-	slash := filepath.ToSlash(rel)
-	vendored := strings.HasPrefix(slash, "vendor/") || strings.Contains(slash, "/vendor/")
-	return shippedSource{rel: slash, body: string(raw), vendored: vendored}, true
+	vendored := strings.HasPrefix(rel, "vendor/") || strings.Contains(rel, "/vendor/")
+	return shippedSource{rel: rel, body: string(raw), vendored: vendored}, true
 }
 
 // conformFramedSurfaces is standard rule 32 (docs/goals/0375 S1b): a
@@ -139,8 +132,17 @@ func conformFramedSurfaces(m Manifest) []string {
 // warnings (rule 26, and a vendored file's undeclared address) with
 // the rule number each names.
 func InstallChecks(dir string, m Manifest) (refusals, warnings []string) {
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return conformFramedSurfaces(m), nil
+	}
+	defer func() { _ = root.Close() }()
+	return installChecksFS(root.FS(), m)
+}
+
+func installChecksFS(root fs.FS, m Manifest) (refusals, warnings []string) {
 	refusals = append(refusals, conformFramedSurfaces(m)...)
-	for _, src := range shippedSources(dir) {
+	for _, src := range shippedSources(root) {
 		refusals = append(refusals, runtimeCodeProblems(src)...)
 		reach, vendorReach := undeclaredHosts(src, m.Contributes.Network)
 		refusals = append(refusals, reach...)

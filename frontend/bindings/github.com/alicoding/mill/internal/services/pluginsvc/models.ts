@@ -30,6 +30,14 @@ export interface BrowseEntry {
      * "unverified" when it does not.
      */
     "Tier": string;
+    "PolicyReason": string;
+}
+
+export interface BrowseResult {
+    "Entries": BrowseEntry[] | null;
+    "Sources": MarketplaceSource[] | null;
+    "InstalledStateReady": boolean;
+    "InstalledStateError": string;
 }
 
 /**
@@ -294,6 +302,8 @@ export interface InstallPreview {
 export interface InstallRecord {
     "source": PluginSource;
     "marketplace": string;
+    "origin"?: SourceOrigin;
+    "finalArtifactURL"?: string;
     "version": string;
     "contentHash": string;
     "tier": string;
@@ -475,10 +485,20 @@ export interface ManifestContributes {
  */
 export interface MarketplaceSource {
     "name": string;
+    "owner"?: string;
     "kind": string;
     "locator": string;
     "ref": string;
     "addedAt": string;
+    "origin": SourceOrigin;
+    "incarnation": string;
+    "generation": number;
+    "status": string;
+    "lastAttemptAt"?: string;
+    "lastSuccessAt"?: string;
+    "errorCode"?: string;
+    "errorDetail"?: string;
+    "included"?: boolean;
 }
 
 /**
@@ -766,11 +786,14 @@ export interface PluginSource {
  * render: the read-only summary of the file on this machine.
  */
 export interface PolicyView {
+    "Version": number;
     "Managed": boolean;
     "ManagedBy": string;
     "RequiredTier": string;
     "BlockedCapabilities": string[] | null;
     "AllowedSources": string[] | null;
+    "SourceRules": SourcePolicyRule[] | null;
+    "LegacySourceRules": boolean;
     "AllowCount": number;
     "BlockCount": number;
     "Path": string;
@@ -874,6 +897,19 @@ export interface SettingContribution {
 export interface SettingOption {
     "value": string;
     "label": string;
+}
+
+export interface SourceOrigin {
+    "kind": string;
+    "locator"?: string;
+    "ref"?: string;
+}
+
+export interface SourcePolicyRule {
+    "kind": string;
+    "locator"?: string;
+    "ref"?: string;
+    "artifactOrigins"?: string[] | null;
 }
 
 /**
@@ -995,6 +1031,7 @@ export interface UpdateCandidate {
      */
     "Tier": string;
     "Source": PluginSource;
+    "Origin": SourceOrigin;
 }
 
 /**

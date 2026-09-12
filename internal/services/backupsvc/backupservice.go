@@ -55,16 +55,21 @@ type BackupService struct {
 	dir         string
 	millVersion string
 
-	families []FamilyBundle
-	atlas    atlasBundle
+	families        []FamilyBundle
+	atlas           atlasBundle
+	snapshotOptions backup.SnapshotOptions
 }
 
 // New constructs a BackupService against dbPath (a plain sqlite file
 // path, or "" for a non-sqlite deployment)/settingsPath/vaultPath/dir
 // (the backup root directory)/millVersion (stamped into
 // export-everything's manifest) -- called once from main.go.
-func New(dbPath, settingsPath, vaultPath, dir, millVersion string) *BackupService {
-	return &BackupService{dbPath: dbPath, settingsPath: settingsPath, vaultPath: vaultPath, dir: dir, millVersion: millVersion}
+func New(dbPath, settingsPath, vaultPath, dir, millVersion string, options ...backup.SnapshotOptions) *BackupService {
+	service := &BackupService{dbPath: dbPath, settingsPath: settingsPath, vaultPath: vaultPath, dir: dir, millVersion: millVersion}
+	if len(options) == 1 {
+		service.snapshotOptions = options[0]
+	}
+	return service
 }
 
 // BackupStatus is GetBackupStatus's Wails-bound shape.
@@ -138,13 +143,13 @@ func (b *BackupService) BackupNow(keepN int) (BackupStatus, error) {
 		keepN = DefaultKeepN
 	}
 	b.mu.Lock()
-	dbPath, settingsPath, vaultPath, dir := b.dbPath, b.settingsPath, b.vaultPath, b.dir
+	dbPath, settingsPath, vaultPath, dir, options := b.dbPath, b.settingsPath, b.vaultPath, b.dir, b.snapshotOptions
 	b.mu.Unlock()
 
 	if dbPath == "" {
 		return BackupStatus{}, fmt.Errorf("backup: not available -- this instance is configured against a non-sqlite execution database")
 	}
-	if _, err := backup.Snapshot(dbPath, settingsPath, vaultPath, dir, keepN); err != nil {
+	if _, err := backup.Snapshot(dbPath, settingsPath, vaultPath, dir, keepN, options); err != nil {
 		return BackupStatus{}, fmt.Errorf("backup now: %w", err)
 	}
 	dataevent.Emit("backup", "")
@@ -156,7 +161,7 @@ func (b *BackupService) BackupNow(keepN int) (BackupStatus, error) {
 // composition.SetBackupRunner's own wiring in main.go.
 func (b *BackupService) runBackupPrimitive(keepN int) (string, error) {
 	b.mu.Lock()
-	dbPath, settingsPath, vaultPath, dir := b.dbPath, b.settingsPath, b.vaultPath, b.dir
+	dbPath, settingsPath, vaultPath, dir, options := b.dbPath, b.settingsPath, b.vaultPath, b.dir, b.snapshotOptions
 	b.mu.Unlock()
 	if dbPath == "" {
 		return "", fmt.Errorf("backup: not available -- this instance is configured against a non-sqlite execution database")
@@ -164,7 +169,7 @@ func (b *BackupService) runBackupPrimitive(keepN int) (string, error) {
 	if keepN <= 0 {
 		keepN = DefaultKeepN
 	}
-	result, err := backup.Snapshot(dbPath, settingsPath, vaultPath, dir, keepN)
+	result, err := backup.Snapshot(dbPath, settingsPath, vaultPath, dir, keepN, options)
 	if err != nil {
 		return "", err
 	}
@@ -189,18 +194,12 @@ func (b *BackupService) BackupRunner() func(keepN int) (string, error) {
 // logged by the caller, never fatal -- the app is already exiting
 // either way.
 //
-// MANUAL-ONLY RESIDUE (.claude/rules/testing.md's registry
-// discipline): this method's own logic (the skip-if-recent check, the
-// primitive call) is exercised by
-// TestBackupOnCleanShutdown_SkipsWithinTheHour /
-// TestBackupOnCleanShutdown_RunsWhenStale below, but the REAL trigger
-// -- app.Run() actually returning during a genuine window/Cmd+Q close
-// -- only exists in a live desktop run, not under `go test` or
-// Playwright's server-mode harness (neither ever exercises Wails3's
-// own OS-level quit sequence). Verify desktop-mode: quit Mill via
-// Cmd+Q shortly after a fresh install (no prior backup), confirm a new
-// timestamped subdirectory appears under the backup folder before the
-// process actually exits.
+// The method's own logic (the skip-if-recent check, the primitive call) is
+// exercised by TestBackupOnCleanShutdown_SkipsWithinTheHour /
+// TestBackupOnCleanShutdown_RunsWhenStale. The webview bridge smoke's
+// final phase exercises the real desktop lifecycle: it quits a fresh,
+// isolated app with no recent snapshot and validates the backup before
+// accepting the process exit.
 //
 //wails:ignore
 func (b *BackupService) BackupOnCleanShutdown() error {

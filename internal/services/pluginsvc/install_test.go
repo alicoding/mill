@@ -80,7 +80,7 @@ func TestExtractZip_RefusesATopLevelParentEntry(t *testing.T) {
 	dest := t.TempDir()
 	data := zipOf(t, map[string]string{
 		"safe/manifest.json": `{"id":"acme"}`,
-		"../evil":             "nope",
+		"../evil":            "nope",
 	})
 	if err := ExtractZip(data, dest); err == nil {
 		t.Fatal("ExtractZip() = nil error, want a traversal refusal")
@@ -138,6 +138,27 @@ func TestManifestIDIn_FindsTheIDAtTheRootOrOneLevelDown(t *testing.T) {
 	id, dir, err = ManifestIDIn(nested)
 	if err != nil || id != "acme-notes" || dir != sub {
 		t.Fatalf("ManifestIDIn(nested) = %q %q %v", id, dir, err)
+	}
+}
+
+func TestInstallFromLink_StagesAHostNativeAbsoluteFolder(t *testing.T) {
+	source := t.TempDir()
+	if err := os.WriteFile(filepath.Join(source, "manifest.json"), []byte(`{"id":"native-folder","name":"Native folder","version":"1.0.0"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "main.js"), []byte("export function activate() {}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	svc, installedRoot := newStoreService(t)
+	record, err := svc.InstallFromLink(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.Tier != TierDev || record.Source.Kind != "path" || record.Source.Path != source {
+		t.Fatalf("InstallFromLink(%q) = %+v", source, record)
+	}
+	if _, err := os.Stat(filepath.Join(installedRoot, "native-folder", "main.js")); err != nil {
+		t.Fatalf("installed folder: %v", err)
 	}
 }
 

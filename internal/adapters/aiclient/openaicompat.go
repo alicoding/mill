@@ -72,18 +72,21 @@ func completeOpenAICompat(req Request) (Result, error) {
 		} `json:"choices"`
 	}
 	if err := json.Unmarshal([]byte(resp.Body), &parsed); err != nil {
+		if req.Schema != nil {
+			return Result{}, ErrInvalidStructuredResult
+		}
 		return Result{}, fmt.Errorf("openai-compatible: parse response: %w", err)
 	}
 	if len(parsed.Choices) == 0 {
+		if req.Schema != nil {
+			return Result{}, ErrInvalidStructuredResult
+		}
 		return Result{}, fmt.Errorf("openai-compatible: response had no choices")
 	}
 	text := parsed.Choices[0].Message.Content
 
 	result := Result{Text: text}
 	if req.Schema != nil {
-		if !json.Valid([]byte(text)) {
-			return Result{}, fmt.Errorf("openai-compatible: expected structured JSON output, got non-JSON content")
-		}
 		result.JSON = []byte(text)
 	}
 	return result, nil

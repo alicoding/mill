@@ -16,14 +16,19 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
+
+	"github.com/alicoding/mill/internal/adapters/pluginstate"
+	"github.com/alicoding/mill/internal/services/pluginsvc"
 )
 
 const (
@@ -76,7 +81,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	defer stopProcess(proc)
+	defer func() { stopProcess(proc) }()
 
 	client := newMCPClient(mcpHost, mcpPort)
 	if err := waitForBridge(client, proc, appBootTimeout); err != nil {
@@ -97,7 +102,24 @@ func run() error {
 		return fmt.Errorf("capture app event dispatcher: %w\napp stderr tail:\n%s", err, stderrTail())
 	}
 
-	return runRegistry(client, registry)
+	if err := runRegistry(client, registry); err != nil {
+		return err
+	}
+	source, err := prepareShutdownBackup(client, tmpDir)
+	if err != nil {
+		return err
+	}
+	quitApp(client)
+	exitErr := waitForCleanExit(proc, 15*time.Second)
+	proc = nil
+	if exitErr != nil {
+		return fmt.Errorf("clean shutdown: %w\napp stderr tail:\n%s", exitErr, stderrTail())
+	}
+	if err := validateShutdownBackup(tmpDir, source); err != nil {
+		return err
+	}
+	fmt.Println("PASS  final-shutdown-backup        settings and extension source state captured")
+	return nil
 }
 
 // runRegistry runs each check in order and reports PASS/FAIL, stopping
@@ -196,12 +218,7 @@ func buildApp(repoRoot, outPath string) error {
 func launchApp(repoRoot, binPath, tmpDir string) (*os.Process, func() string, error) {
 	cmd := exec.Command(binPath) //nolint:gosec,noctx // binPath is our own just-built temp binary, not untrusted input; lifecycle is managed via stopProcess, not a context
 	cmd.Dir = repoRoot
-	cmd.Env = append(os.Environ(),
-		"WAILS_MCP_HOST="+mcpHost,
-		"WAILS_MCP_PORT="+strconv.Itoa(mcpPort),
-		"MILL_SETTINGS_PATH="+filepath.Join(tmpDir, "settings.json"),
-		"MILL_EXECUTION_DB_PATH="+filepath.Join(tmpDir, "execution.db"),
-	)
+	cmd.Env = isolatedAppEnvironment(os.Environ(), tmpDir)
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, nil, fmt.Errorf("stdout pipe: %w", err)
@@ -215,6 +232,148 @@ func launchApp(repoRoot, binPath, tmpDir string) (*os.Process, func() string, er
 	}
 	tail := tailLines(stdoutPipe, stderrPipe, 50)
 	return cmd.Process, tail, nil
+}
+
+func isolatedAppEnvironment(base []string, tmpDir string) []string {
+	executionPath := filepath.Join(tmpDir, "execution.db")
+	overrides := map[string]string{
+		"WAILS_MCP_HOST":              mcpHost,
+		"WAILS_MCP_PORT":              strconv.Itoa(mcpPort),
+		"MILL_SETTINGS_PATH":          filepath.Join(tmpDir, "settings.json"),
+		"MILL_EXECUTION_DB_PATH":      executionPath,
+		"MILL_EXECUTION_DATABASE_URL": "sqlite:" + executionPath,
+		"MILL_SECRETS_PATH":           filepath.Join(tmpDir, "secrets.kdbx"),
+		"MILL_BACKUP_DIR":             filepath.Join(tmpDir, "backups"),
+		"MILL_PLUGINS_DIR":            filepath.Join(tmpDir, "plugins"),
+		"MILL_ATLAS_MIRRORS_DIR":      filepath.Join(tmpDir, "mirrors"),
+		"MILL_ATLAS_CAPTURES_DIR":     filepath.Join(tmpDir, "captures"),
+		"MILL_TEST_KEYRING":           "memory",
+		"MILL_MCP_ADDR":               "127.0.0.1:0",
+		"MILL_BRIDGE_ADDR":            "127.0.0.1:0",
+	}
+	environment := make([]string, 0, len(base)+len(overrides))
+	for _, entry := range base {
+		key, _, _ := strings.Cut(entry, "=")
+		if _, replaced := overrides[key]; !replaced {
+			environment = append(environment, entry)
+		}
+	}
+	for _, key := range []string{
+		"WAILS_MCP_HOST", "WAILS_MCP_PORT", "MILL_SETTINGS_PATH",
+		"MILL_EXECUTION_DB_PATH", "MILL_EXECUTION_DATABASE_URL",
+		"MILL_SECRETS_PATH", "MILL_BACKUP_DIR", "MILL_PLUGINS_DIR",
+		"MILL_ATLAS_MIRRORS_DIR", "MILL_ATLAS_CAPTURES_DIR",
+		"MILL_TEST_KEYRING", "MILL_MCP_ADDR", "MILL_BRIDGE_ADDR",
+	} {
+		environment = append(environment, key+"="+overrides[key])
+	}
+	return environment
+}
+
+type shutdownSource struct {
+	Name        string `json:"name"`
+	Incarnation string `json:"incarnation"`
+}
+
+func prepareShutdownBackup(c mcpCaller, tmpDir string) (shutdownSource, error) {
+	backupDir := filepath.Join(tmpDir, "backups")
+	if _, err := os.Stat(backupDir); err == nil {
+		return shutdownSource{}, fmt.Errorf("backup directory exists before the final shutdown phase")
+	} else if !os.IsNotExist(err) {
+		return shutdownSource{}, fmt.Errorf("inspect backup directory before shutdown: %w", err)
+	}
+
+	sourceDir := filepath.Join(tmpDir, "shutdown-source")
+	if err := os.MkdirAll(filepath.Join(sourceDir, ".mill"), 0o750); err != nil {
+		return shutdownSource{}, fmt.Errorf("create shutdown source: %w", err)
+	}
+	index := []byte(`{"name":"webview-smoke-source","owner":{"name":"Mill smoke"},"plugins":[]}`)
+	if err := os.WriteFile(filepath.Join(sourceDir, ".mill", "marketplace.json"), index, 0o600); err != nil {
+		return shutdownSource{}, fmt.Errorf("write shutdown source: %w", err)
+	}
+	var source shutdownSource
+	if err := callBoundJSON(c, "github.com/alicoding/mill/internal/services/pluginsvc.PluginService.AddMarketplaceSource", []any{sourceDir}, &source); err != nil {
+		return shutdownSource{}, fmt.Errorf("add shutdown source: %w", err)
+	}
+	if source.Name != "webview-smoke-source" || source.Incarnation == "" {
+		return shutdownSource{}, fmt.Errorf("add shutdown source returned incomplete identity: %+v", source)
+	}
+	return source, nil
+}
+
+func waitForCleanExit(proc *os.Process, timeout time.Duration) error {
+	type waitResult struct {
+		state *os.ProcessState
+		err   error
+	}
+	done := make(chan waitResult, 1)
+	go func() {
+		state, err := proc.Wait()
+		done <- waitResult{state: state, err: err}
+	}()
+	select {
+	case result := <-done:
+		if result.err != nil {
+			return result.err
+		}
+		if !result.state.Success() {
+			return fmt.Errorf("app exited with status %d", result.state.ExitCode())
+		}
+		return nil
+	case <-time.After(timeout):
+		_ = proc.Kill()
+		<-done
+		return fmt.Errorf("app did not exit within %s", timeout)
+	}
+}
+
+func validateShutdownBackup(tmpDir string, source shutdownSource) error {
+	backupDir := filepath.Join(tmpDir, "backups")
+	entries, err := os.ReadDir(backupDir)
+	if err != nil {
+		return fmt.Errorf("read shutdown backups: %w", err)
+	}
+	if len(entries) != 1 || !entries[0].IsDir() {
+		return fmt.Errorf("shutdown backups = %d entries, want one completed snapshot", len(entries))
+	}
+	snapshotDir := filepath.Join(backupDir, entries[0].Name())
+	settingsRaw, err := os.ReadFile(filepath.Join(snapshotDir, "settings.json")) //nolint:gosec // snapshotDir is the harness-owned temp directory
+	if err != nil {
+		return fmt.Errorf("read shutdown settings snapshot: %w", err)
+	}
+	var settingsObject map[string]any
+	if err := json.Unmarshal(settingsRaw, &settingsObject); err != nil || settingsObject == nil {
+		return fmt.Errorf("shutdown settings snapshot is not a JSON object")
+	}
+
+	catalogPath := filepath.Join(snapshotDir, "plugin-state", "catalog.sqlite")
+	if err := pluginsvc.ValidateStoredSnapshot(catalogPath, nil); err != nil {
+		return fmt.Errorf("validate shutdown extension source snapshot: %w", err)
+	}
+	store := pluginstate.NewAt(catalogPath)
+	payload, _, present, loadErr := store.Load(context.Background())
+	closeErr := store.Close()
+	if loadErr != nil {
+		return fmt.Errorf("load shutdown extension source snapshot: %w", loadErr)
+	}
+	if closeErr != nil {
+		return fmt.Errorf("close shutdown extension source snapshot: %w", closeErr)
+	}
+	if !present {
+		return fmt.Errorf("shutdown extension source snapshot has no catalog")
+	}
+	var catalog struct {
+		Sources []shutdownSource `json:"sources"`
+	}
+	if err := json.Unmarshal(payload, &catalog); err != nil {
+		return fmt.Errorf("decode shutdown extension source snapshot: %w", err)
+	}
+	for _, backedUp := range catalog.Sources {
+		if backedUp == source {
+			return nil
+		}
+	}
+	return fmt.Errorf("shutdown extension source snapshot does not contain %+v", source)
 }
 
 // waitForBridge polls app_info until the MCP HTTP server answers, or the

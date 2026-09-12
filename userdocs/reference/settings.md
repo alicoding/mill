@@ -220,16 +220,20 @@ Mill — for an agent that can't reach Mill over MCP.
 
 ## Backups
 
-Mill snapshots your workflow history, settings, and your secrets
+Mill snapshots your workflow history, settings, extension source catalog,
+and your secrets
 vault automatically — on clean shutdown, on version change, and daily
 via the built-in "Backup Mill data" workflow, keeping the most recent
 ten. "Back up now" adds one on demand. "Export everything" bundles
 your data into one file for moving machines, excluding the vault;
 "Import everything" merges it back. The export covers Mill's own
 data — files mirrored from folders on disk are referenced by path,
-not copied in, so back those folders up separately. Restoring brings
-back a backup's vault file; it opens if that vault's key is still on
-this device.
+not copied in, so back those folders up separately. Source state is stored
+as `plugin-state/catalog.sqlite`, or as `plugin-state/legacy-marketplaces.json`
+before its first migration. Export files report when this snapshot is
+included. Import validates and retains it in the archive but does not apply
+it over the source catalog currently open in Mill. Restoring brings back a
+local backup's vault file; it opens if that vault's key is still on this device.
 
 ## Updates
 

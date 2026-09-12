@@ -63,6 +63,23 @@ persisted, but it is still a gated write (a real outbound call):
 poll `check_write_status` for the statusCode/body result. Test a
 draft BEFORE proposing its import.
 
+## Checking an AI provider
+
+`get_ai_provider_availability` is a cache-only read: it never resolves a
+secret or calls the provider. `start_ai_provider_check` requests a guarded
+metadata inspection and returns immediately; poll the read tool, and expect
+`awaiting-approval` while Review is pending. `cancel_ai_provider_check`
+cancels the exact provider/check ID pair returned by start, including a
+pending approval or retry wait.
+
+Metadata evidence can show that an endpoint responded and that a model ID
+or alias resolves. It does not execute a completion. Keep text, structured,
+and classification support `unknown` when the evidence is only
+`provider-metadata`; operation support needs `sample-test` or an exact
+`adapter-contract` entry. Treat `stale` and `not-checked` as evidence states,
+not as proof of provider failure. The checked destination describes the
+configured endpoint and does not prove where computation runs.
+
 ## Atlas
 
 Cards are typed by kinds; links by link kinds, unique per

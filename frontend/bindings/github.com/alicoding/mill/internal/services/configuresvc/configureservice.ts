@@ -128,6 +128,13 @@ export function ApplyListRow(listID: string, keyColumn: string, values: { [_ in 
 }
 
 /**
+ * CancelAIProviderCheck cancels approval, retry waits, or the active request.
+ */
+export function CancelAIProviderCheck(id: string, checkID: string): $CancellablePromise<aiprovider$0.Report> {
+    return $Call.ByID(3449147415, id, checkID);
+}
+
+/**
  * CaptureShellPath returns the user's real login-shell $PATH -- the
  * ExecEnv form's "Capture from my shell" affordance (ADR-0026's
  * Amendment: determinism through materialization; the captured value
@@ -385,6 +392,13 @@ export function ExportSecretSource(id: string): $CancellablePromise<string> {
 }
 
 /**
+ * GetAIProviderAvailability is a cache-only read.
+ */
+export function GetAIProviderAvailability(id: string): $CancellablePromise<aiprovider$0.Report> {
+    return $Call.ByID(1518058696, id);
+}
+
+/**
  * GetList returns one List by id -- the grid's schema edits read the
  * current record through this instead of fetching every list (goal
  * 0147's O(all-lists)-per-column-edit finding).
@@ -490,6 +504,13 @@ export function ImportMCPServer(jsonData: string): $CancellablePromise<mcpserver
  */
 export function ImportSecretSource(jsonData: string): $CancellablePromise<secretsource$0.Source> {
     return $Call.ByID(3918269428, jsonData);
+}
+
+/**
+ * ListAIProviderAvailability is a cache-only read with one row per provider.
+ */
+export function ListAIProviderAvailability(): $CancellablePromise<aiprovider$0.Report[] | null> {
+    return $Call.ByID(1692637716);
 }
 
 /**
@@ -797,6 +818,13 @@ export function SecretSources(): $CancellablePromise<secretsource$0.Source[] | n
  */
 export function SeedRevisions(): $CancellablePromise<{ [_ in string]?: number } | null> {
     return $Call.ByID(2403654017);
+}
+
+/**
+ * StartAIProviderCheck starts one asynchronous metadata inspection.
+ */
+export function StartAIProviderCheck(id: string): $CancellablePromise<aiprovider$0.Report> {
+    return $Call.ByID(1647892873, id);
 }
 
 /**

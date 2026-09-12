@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionList, ActionMenu, Stack, Text, TextInput } from '@primer/react'
 import { SearchIcon } from '@primer/octicons-react'
@@ -29,11 +29,12 @@ export interface ListToolbarProps {
   // Page-owned filter controls (Activity's source and outcome pickers).
   filters?: ReactNode
   count?: ListCount
+  inputRef?: Ref<HTMLInputElement>
 }
 
 export function ListToolbar({
   query, onQueryChange, searchPlaceholder, searchTestId, searchAriaLabel,
-  sort, sortOptions, onSortChange, filters, count,
+  sort, sortOptions, onSortChange, filters, count, inputRef,
 }: ListToolbarProps) {
   const { t } = useTranslation('common')
   const showSort = sortOptions !== undefined && sortOptions.length > 1 && sort !== undefined && onSortChange !== undefined
@@ -42,6 +43,7 @@ export function ListToolbar({
     <Stack direction="horizontal" gap="condensed" align="center" className={styles.toolbar} data-testid="list-toolbar">
       <div className={styles.search}>
         <TextInput
+          ref={inputRef}
           leadingVisual={SearchIcon}
           placeholder={searchPlaceholder ?? t('inventoryList.defaultSearchPlaceholder')}
           value={query}

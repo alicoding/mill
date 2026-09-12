@@ -1,16 +1,10 @@
 package pluginsvc
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -28,111 +22,8 @@ import (
 
 const marketplacesFile = ".mill-marketplaces.json"
 
-// fetchTimeout bounds every user-initiated download. Long enough for a
-// slow release asset, short enough that a hung host does not hold the
-// UI's notice open forever.
-const fetchTimeout = 60 * time.Second
-
-// maxIndexBytes caps an index download; an index is a small JSON file,
-// and anything larger is a wrong address, not a marketplace.
-const maxIndexBytes int64 = 4 << 20
-
-// maxDownloadBytes caps an archive download.
-const maxDownloadBytes int64 = maxArchiveBytes
-
-type marketplaceState struct {
-	Sources []MarketplaceSource         `json:"sources"`
-	Indexes map[string]MarketplaceIndex `json:"indexes"`
-	// Updates is the last Check for updates outcome (updates.go).
-	Updates UpdateCheck `json:"updates"`
-}
-
-var marketplaceStateMu sync.Mutex
-
 func (p *PluginService) marketplacesPath() string {
 	return filepath.Join(p.dir, marketplacesFile)
-}
-
-func (p *PluginService) readState() marketplaceState {
-	st := marketplaceState{Indexes: map[string]MarketplaceIndex{}}
-	raw, err := os.ReadFile(p.marketplacesPath()) // #nosec G304 -- this service's own plugins directory
-	if err != nil {
-		return st
-	}
-	if err := json.Unmarshal(raw, &st); err != nil {
-		return marketplaceState{Indexes: map[string]MarketplaceIndex{}}
-	}
-	if st.Indexes == nil {
-		st.Indexes = map[string]MarketplaceIndex{}
-	}
-	return st
-}
-
-func (p *PluginService) writeState(st marketplaceState) error {
-	if err := os.MkdirAll(p.dir, 0o750); err != nil {
-		return err
-	}
-	raw, err := json.MarshalIndent(st, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(p.marketplacesPath(), raw, 0o600)
-}
-
-// httpGetBytes performs one user-initiated download. The seam
-// (p.download) exists so tests never reach a real host; the default
-// is a plain client with a timeout and a size cap.
-func (p *PluginService) httpGetBytes(url string, limit int64) ([]byte, error) {
-	if p.download != nil {
-		return p.download(url, limit)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), fetchTimeout)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("that address can't be read")
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't reach that address")
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("nothing is published at that address")
-	}
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, fmt.Errorf("that address answered %d", resp.StatusCode)
-	}
-	data, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
-	if err != nil {
-		return nil, fmt.Errorf("that download stopped partway")
-	}
-	if int64(len(data)) > limit {
-		return nil, fmt.Errorf("that download is too large")
-	}
-	return data, nil
-}
-
-// fetchIndex reads one source's index -- from disk for a folder
-// source, over https for every other kind. Called only from AddSource
-// and RefreshSource.
-func (p *PluginService) fetchIndex(src MarketplaceSource) (MarketplaceIndex, error) {
-	if src.Kind == "path" {
-		raw, err := os.ReadFile(filepath.Join(expandHome(src.Locator), filepath.FromSlash(IndexFile))) // #nosec G304 -- a folder the user chose
-		if err != nil {
-			return MarketplaceIndex{}, fmt.Errorf("that folder has no %s file", IndexFile)
-		}
-		return ParseIndex(raw)
-	}
-	url, err := IndexURL(src)
-	if err != nil {
-		return MarketplaceIndex{}, err
-	}
-	raw, err := p.httpGetBytes(url, maxIndexBytes)
-	if err != nil {
-		return MarketplaceIndex{}, err
-	}
-	return ParseIndex(raw)
 }
 
 // AddMarketplaceSource adds one source and reads its index once, so a
@@ -146,31 +37,37 @@ func (p *PluginService) AddMarketplaceSource(input string) (MarketplaceSource, e
 	// The organisation's allowed sources (policy_service.go) are checked
 	// on the pasted locator BEFORE any fetch, and on the index's own
 	// name after -- a source may be allowed under either.
-	if err := policySourceRefusal("", src.Locator); err != nil {
-		if err := policySourceRefusal(src.Name, ""); err != nil {
-			return MarketplaceSource{}, err
-		}
+	if err := policySourceRegistrationRefusal("", src); err != nil {
+		return MarketplaceSource{}, err
 	}
 	idx, err := p.fetchIndex(src)
 	if err != nil {
 		return MarketplaceSource{}, err
 	}
-	if err := policySourceRefusal(idx.Name, src.Locator); err != nil {
+	if err := policySourceRegistrationRefusal(idx.Name, src); err != nil {
 		return MarketplaceSource{}, err
 	}
 	src.Name = idx.Name
+	src.Owner = idx.Owner.Name
 	src.AddedAt = time.Now().UTC().Format(time.RFC3339)
-	marketplaceStateMu.Lock()
-	defer marketplaceStateMu.Unlock()
-	st := p.readState()
-	for _, existing := range st.Sources {
-		if existing.Name == src.Name {
-			return MarketplaceSource{}, fmt.Errorf("%q is already one of your sources", src.Name)
-		}
+	src.Status = SourceCurrent
+	src.LastAttemptAt = src.AddedAt
+	src.LastSuccessAt = src.AddedAt
+	src.Incarnation, err = freshIncarnation()
+	if err != nil {
+		return MarketplaceSource{}, err
 	}
-	st.Sources = append(st.Sources, src)
-	st.Indexes[src.Name] = idx
-	if err := p.writeState(st); err != nil {
+	_, err = p.mutateState(func(st *marketplaceState) error {
+		for _, existing := range st.Sources {
+			if existing.Name == src.Name {
+				return fmt.Errorf("%q is already one of your sources", src.Name)
+			}
+		}
+		st.Sources = append(st.Sources, src)
+		st.Indexes[src.Name] = marketplaceIndexCache{Incarnation: src.Incarnation, Origin: src.Origin, Index: idx}
+		return nil
+	})
+	if err != nil {
 		return MarketplaceSource{}, err
 	}
 	return src, nil
@@ -180,65 +77,131 @@ func (p *PluginService) AddMarketplaceSource(input string) (MarketplaceSource, e
 // first. Mill's own bundled examples are not one of them -- they need
 // no source and cannot be removed.
 func (p *PluginService) ListMarketplaceSources() ([]MarketplaceSource, error) {
-	marketplaceStateMu.Lock()
-	defer marketplaceStateMu.Unlock()
-	st := p.readState()
-	if st.Sources == nil {
-		return []MarketplaceSource{}, nil
+	st, err := p.readState()
+	if err != nil {
+		return nil, err
 	}
-	return st.Sources, nil
+	included := MarketplaceSource{Name: ReservedMarketplaceName, Owner: "Mill", Kind: "bundled", Origin: SourceOrigin{Kind: "bundled"}, Incarnation: "bundled", Status: SourceCurrent, Included: true}
+	return append([]MarketplaceSource{included}, st.Sources...), nil
 }
 
 // RemoveMarketplaceSource drops one source and its cached index.
 // Extensions already installed from it stay installed.
-func (p *PluginService) RemoveMarketplaceSource(name string) error {
-	marketplaceStateMu.Lock()
-	defer marketplaceStateMu.Unlock()
-	st := p.readState()
-	kept := make([]MarketplaceSource, 0, len(st.Sources))
-	found := false
-	for _, s := range st.Sources {
-		if s.Name == name {
-			found = true
-			continue
+func (p *PluginService) RemoveMarketplaceSource(name, expectedIncarnation string) error {
+	if name == ReservedMarketplaceName {
+		return fmt.Errorf("%q is included with Mill and cannot be removed", name)
+	}
+	if strings.TrimSpace(expectedIncarnation) == "" {
+		return fmt.Errorf("source identity is required")
+	}
+	_, err := p.mutateState(func(st *marketplaceState) error {
+		kept := make([]MarketplaceSource, 0, len(st.Sources))
+		found := false
+		for _, source := range st.Sources {
+			if source.Name == name {
+				if source.Incarnation != expectedIncarnation {
+					return fmt.Errorf("source changed since it was selected")
+				}
+				found = true
+				continue
+			}
+			kept = append(kept, source)
 		}
-		kept = append(kept, s)
-	}
-	if !found {
-		return fmt.Errorf("%q is not one of your sources", name)
-	}
-	st.Sources = kept
-	delete(st.Indexes, name)
-	return p.writeState(st)
+		if !found {
+			return fmt.Errorf("%q is not one of your sources", name)
+		}
+		st.Sources = kept
+		delete(st.Indexes, name)
+		return nil
+	})
+	return err
 }
 
 // RefreshMarketplaceSources re-reads every source's index. A source
 // that cannot be read keeps the index it had, and its reason is
 // returned -- one unreachable host never empties the whole tab.
 func (p *PluginService) RefreshMarketplaceSources() ([]string, error) {
-	marketplaceStateMu.Lock()
-	sources := append([]MarketplaceSource(nil), p.readState().Sources...)
-	marketplaceStateMu.Unlock()
-	fetched := map[string]MarketplaceIndex{}
+	now := time.Now().UTC().Format(time.RFC3339)
+	reserved, err := p.mutateState(func(st *marketplaceState) error {
+		for i := range st.Sources {
+			st.Sources[i].Generation++
+			st.Sources[i].LastAttemptAt = now
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sources := append([]MarketplaceSource(nil), reserved.Sources...)
 	problems := []string{}
 	for _, src := range sources {
+		if err := policySourceRegistrationRefusal(src.Name, src); err != nil {
+			problems = append(problems, fmt.Sprintf("%s: %s", src.Name, err.Error()))
+			if _, storeErr := p.finishRefresh(src, MarketplaceIndex{}, "source-blocked", err.Error()); storeErr != nil {
+				return nil, storeErr
+			}
+			continue
+		}
 		idx, err := p.fetchIndex(src)
 		if err != nil {
 			problems = append(problems, fmt.Sprintf("%s: %s", src.Name, err.Error()))
+			if _, storeErr := p.finishRefresh(src, MarketplaceIndex{}, "source-unavailable", err.Error()); storeErr != nil {
+				return nil, storeErr
+			}
 			continue
 		}
-		fetched[src.Name] = idx
-	}
-	marketplaceStateMu.Lock()
-	defer marketplaceStateMu.Unlock()
-	st := p.readState()
-	for name, idx := range fetched {
-		st.Indexes[name] = idx
-	}
-	if err := p.writeState(st); err != nil {
-		return problems, err
+		if idx.Name != src.Name {
+			problems = append(problems, fmt.Sprintf("%s: Source identity changed", src.Name))
+			if _, storeErr := p.finishRefresh(src, MarketplaceIndex{}, "source-identity-changed", "Source identity changed"); storeErr != nil {
+				return nil, storeErr
+			}
+			continue
+		}
+		if err := policySourceRegistrationRefusal(src.Name, src); err != nil {
+			problems = append(problems, fmt.Sprintf("%s: %s", src.Name, err.Error()))
+			if _, storeErr := p.finishRefresh(src, MarketplaceIndex{}, "source-blocked", err.Error()); storeErr != nil {
+				return nil, storeErr
+			}
+			continue
+		}
+		accepted, storeErr := p.finishRefresh(src, idx, "", "")
+		if storeErr != nil {
+			return nil, storeErr
+		}
+		if !accepted {
+			problems = append(problems, fmt.Sprintf("%s: refresh result was discarded", src.Name))
+		}
 	}
 	return problems, nil
+}
+
+func (p *PluginService) finishRefresh(expected MarketplaceSource, idx MarketplaceIndex, code, detail string) (bool, error) {
+	accepted := false
+	_, err := p.mutateState(func(st *marketplaceState) error {
+		for i := range st.Sources {
+			source := &st.Sources[i]
+			if source.Name != expected.Name || source.Incarnation != expected.Incarnation || source.Origin != expected.Origin || source.Generation != expected.Generation {
+				continue
+			}
+			accepted = true
+			source.ErrorCode, source.ErrorDetail = code, detail
+			if code != "" {
+				if code == "source-blocked" {
+					source.Status = SourceBlocked
+				} else {
+					source.Status = SourceUnavailable
+				}
+				return nil
+			}
+			source.Status = SourceCurrent
+			source.LastSuccessAt = source.LastAttemptAt
+			source.Owner = idx.Owner.Name
+			st.Indexes[source.Name] = marketplaceIndexCache{Incarnation: source.Incarnation, Origin: source.Origin, Index: idx}
+			return nil
+		}
+		return nil
+	})
+	return accepted, err
 }
 
 // BrowseEntry is one offering in the Browse tab: the index's own
@@ -257,47 +220,93 @@ type BrowseEntry struct {
 	// Tier is what installing this entry would earn, before any
 	// download -- "hash-pinned" when the index declares a hash,
 	// "unverified" when it does not.
-	Tier string
+	Tier         string
+	PolicyReason string
+}
+
+type BrowseResult struct {
+	Entries             []BrowseEntry
+	Sources             []MarketplaceSource
+	InstalledStateReady bool
+	InstalledStateError string
 }
 
 // BrowseMarketplaces lists every cached index's entries plus Mill's
 // own bundled examples, sorted by marketplace then name. Reads only
 // what is already on disk: opening Browse never fetches.
-func (p *PluginService) BrowseMarketplaces() ([]BrowseEntry, error) {
+func (p *PluginService) BrowseMarketplaces() (BrowseResult, error) {
+	installed, installedErr := p.installedPluginIDs()
+	st, err := p.readState()
+	if err != nil {
+		return BrowseResult{}, err
+	}
+	bundled, err := p.exampleIndexChecked()
+	if err != nil {
+		return BrowseResult{}, err
+	}
+	out := p.browseRows(append([]MarketplaceIndex{bundled}, indexList(st)...), st.Sources, installed)
+	sources, err := p.ListMarketplaceSources()
+	if err != nil {
+		return BrowseResult{}, err
+	}
+	result := BrowseResult{Entries: out, Sources: sources, InstalledStateReady: installedErr == nil}
+	if installedErr != nil {
+		result.InstalledStateError = installedErr.Error()
+	}
+	return result, nil
+}
+
+func (p *PluginService) installedPluginIDs() (map[string]bool, error) {
 	installed := map[string]bool{}
 	infos, err := p.ListPlugins()
-	if err == nil {
-		for _, info := range infos {
-			installed[info.Manifest.ID] = true
+	if err != nil {
+		return installed, err
+	}
+	for _, info := range infos {
+		installed[info.Manifest.ID] = true
+	}
+	return installed, nil
+}
+
+func (p *PluginService) browseRows(indexes []MarketplaceIndex, sources []MarketplaceSource, installed map[string]bool) []BrowseEntry {
+	origins := map[string]SourceOrigin{ReservedMarketplaceName: {Kind: "bundled"}}
+	for _, source := range sources {
+		origins[source.Name] = source.Origin
+	}
+	rows := []BrowseEntry{}
+	for _, idx := range indexes {
+		for _, entry := range idx.Plugins {
+			rows = append(rows, p.browseRow(idx, entry, origins[idx.Name], installed[entry.ID]))
 		}
 	}
-	marketplaceStateMu.Lock()
-	st := p.readState()
-	marketplaceStateMu.Unlock()
-	out := []BrowseEntry{}
-	for _, idx := range append([]MarketplaceIndex{p.exampleIndex()}, indexList(st)...) {
-		for _, e := range idx.Plugins {
-			out = append(out, BrowseEntry{
-				Marketplace: idx.Name,
-				Owner:       idx.Owner.Name,
-				ID:          e.ID,
-				Name:        e.Name,
-				Description: e.Description,
-				Version:     e.Version,
-				Author:      e.Author,
-				Kinds:       e.Kinds,
-				Installed:   installed[e.ID],
-				Tier:        entryTier(idx.Name, e),
-			})
+	sort.SliceStable(rows, func(i, j int) bool {
+		if rows[i].Marketplace != rows[j].Marketplace {
+			return rows[i].Marketplace < rows[j].Marketplace
 		}
-	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].Marketplace != out[j].Marketplace {
-			return out[i].Marketplace < out[j].Marketplace
-		}
-		return strings.ToLower(out[i].Name) < strings.ToLower(out[j].Name)
+		return strings.ToLower(rows[i].Name) < strings.ToLower(rows[j].Name)
 	})
-	return out, nil
+	return rows
+}
+
+func (p *PluginService) browseRow(idx MarketplaceIndex, entry MarketplaceEntry, origin SourceOrigin, installed bool) BrowseEntry {
+	tier := entryTier(idx.Name, entry)
+	row := BrowseEntry{
+		Marketplace: idx.Name,
+		Owner:       idx.Owner.Name,
+		ID:          entry.ID,
+		Name:        entry.Name,
+		Description: entry.Description,
+		Version:     entry.Version,
+		Author:      entry.Author,
+		Kinds:       entry.Kinds,
+		Installed:   installed,
+		Tier:        tier,
+	}
+	manifest := Manifest{ID: entry.ID, Version: entry.Version}
+	if refusal := policyInstallRefusalOriginAt(manifest, tier, origin, idx.Name, "", ""); refusal != nil {
+		row.PolicyReason = refusal.Error()
+	}
+	return row
 }
 
 // entryTier is what a browse row PROMISES, before anything is
@@ -327,49 +336,82 @@ func declaredHash(e MarketplaceEntry) string {
 	return e.Source.SHA256
 }
 
-func indexList(st marketplaceState) []MarketplaceIndex {
-	names := make([]string, 0, len(st.Indexes))
-	for name := range st.Indexes {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	out := make([]MarketplaceIndex, 0, len(names))
-	for _, name := range names {
-		out = append(out, st.Indexes[name])
-	}
-	return out
+type marketplaceEntryResolution struct {
+	Index  MarketplaceIndex
+	Entry  MarketplaceEntry
+	Source MarketplaceSource
 }
 
-// findEntry resolves one marketplace entry by marketplace and plugin
-// id, over the cached indexes and the bundled examples alike.
-func (p *PluginService) findEntry(marketplace, id string) (MarketplaceIndex, MarketplaceEntry, error) {
-	marketplaceStateMu.Lock()
-	st := p.readState()
-	marketplaceStateMu.Unlock()
-	for _, idx := range append([]MarketplaceIndex{p.exampleIndex()}, indexList(st)...) {
-		if idx.Name != marketplace {
-			continue
+// resolveMarketplaceEntry captures an entry and its source identity from one
+// accepted catalog read. Installation keeps this value through acquisition so
+// a later source with the same display name cannot relabel the staged bytes.
+func (p *PluginService) resolveMarketplaceEntry(marketplace, id string) (marketplaceEntryResolution, error) {
+	if marketplace == ReservedMarketplaceName {
+		idx, err := p.exampleIndexChecked()
+		if err != nil {
+			return marketplaceEntryResolution{}, err
 		}
-		for _, e := range idx.Plugins {
-			if e.ID == id {
-				return idx, e, nil
-			}
+		entry, ok := marketplaceEntryIn(idx, id)
+		if !ok {
+			return marketplaceEntryResolution{}, fmt.Errorf("%q is no longer offered by %q", id, marketplace)
+		}
+		return marketplaceEntryResolution{
+			Index:  idx,
+			Entry:  entry,
+			Source: MarketplaceSource{Name: ReservedMarketplaceName, Kind: "bundled", Origin: SourceOrigin{Kind: "bundled"}, Incarnation: "bundled", Included: true},
+		}, nil
+	}
+
+	st, err := p.readState()
+	if err != nil {
+		return marketplaceEntryResolution{}, err
+	}
+	source, foundSource := marketplaceSourceIn(st.Sources, marketplace)
+	if !foundSource {
+		return marketplaceEntryResolution{}, fmt.Errorf("%q is no longer a registered source", marketplace)
+	}
+	cache, ok := st.Indexes[marketplace]
+	if !ok {
+		return marketplaceEntryResolution{}, fmt.Errorf("%q is no longer offered by %q", id, marketplace)
+	}
+	entry, ok := marketplaceEntryIn(cache.Index, id)
+	if !ok {
+		return marketplaceEntryResolution{}, fmt.Errorf("%q is no longer offered by %q", id, marketplace)
+	}
+	return marketplaceEntryResolution{Index: cache.Index, Entry: entry, Source: source}, nil
+}
+
+func marketplaceSourceIn(sources []MarketplaceSource, name string) (MarketplaceSource, bool) {
+	for _, source := range sources {
+		if source.Name == name {
+			return source, true
 		}
 	}
-	return MarketplaceIndex{}, MarketplaceEntry{}, fmt.Errorf("%q is no longer offered by %q", id, marketplace)
+	return MarketplaceSource{}, false
+}
+
+func marketplaceEntryIn(index MarketplaceIndex, id string) (MarketplaceEntry, bool) {
+	for _, entry := range index.Plugins {
+		if entry.ID == id {
+			return entry, true
+		}
+	}
+	return MarketplaceEntry{}, false
 }
 
 // sourceFor answers the source a marketplace was added from, so a
 // path-kind entry resolves against the folder the index lives in.
-func (p *PluginService) sourceFor(marketplace string) (MarketplaceSource, bool) {
-	marketplaceStateMu.Lock()
-	defer marketplaceStateMu.Unlock()
-	for _, s := range p.readState().Sources {
+func (p *PluginService) sourceFor(marketplace string) (MarketplaceSource, bool, error) {
+	st, err := p.readState()
+	if err != nil {
+		return MarketplaceSource{}, false, err
+	}
+	for _, s := range st.Sources {
 		if s.Name == marketplace {
-			return s, true
+			return s, true, nil
 		}
 	}
-	return MarketplaceSource{}, false
+	return MarketplaceSource{}, false, nil
 }
 
 // SetDownloader replaces the user-initiated download seam.

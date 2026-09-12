@@ -1,6 +1,12 @@
 package composition
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/alicoding/mill/internal/adapters/aiclient"
@@ -83,7 +89,7 @@ func TestAIExtractStructuredExec_WritesTypedAttributes(t *testing.T) {
 	}
 }
 
-func TestAIExtractStructuredExec_MissingFieldGetsZeroValue(t *testing.T) {
+func TestAIExtractStructuredExec_MissingFieldFailsWithoutPartialWrite(t *testing.T) {
 	withAIStubs(t, ResolvedAIProvider{Model: "m"}, func(aiclient.Request) (aiclient.Result, error) {
 		return aiclient.Result{JSON: []byte(`{"amount":10}`)}, nil // "note" omitted
 	})
@@ -92,12 +98,49 @@ func TestAIExtractStructuredExec_MissingFieldGetsZeroValue(t *testing.T) {
 		aiProviderIDConfigKey: "p1",
 		"outputFields":        `[{"Key":"amount","Type":"number"},{"Key":"note","Type":"text"}]`,
 	}}
-	out, err := exec(node, ExecContext{})
-	if err != nil {
-		t.Fatalf("exec: %v", err)
+	attributes := map[string]any{"amount": "original", "existing": true}
+	wantAttributes := map[string]any{"amount": "original", "existing": true}
+	_, err := exec(node, ExecContext{Attributes: attributes})
+	if err == nil {
+		t.Fatal("expected an error for a missing required field")
 	}
-	if out.Attributes["note"] != "" {
-		t.Errorf("Attributes[note] = %v, want the zero value for text (\"\")", out.Attributes["note"])
+	if !reflect.DeepEqual(attributes, wantAttributes) {
+		t.Errorf("Attributes = %#v, want no partial change from %#v", attributes, wantAttributes)
+	}
+}
+
+func fixtureOpenAIStructuredResultServer(t *testing.T, result string) *httptest.Server {
+	t.Helper()
+	encodedResult, err := json.Marshal(result)
+	if err != nil {
+		t.Fatalf("encode fixture result: %v", err)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprintf(w, `{"choices":[{"message":{"content":%s}}]}`, encodedResult)
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestAIExtractStructuredExec_RealCompleteRejectsMissingField(t *testing.T) {
+	srv := fixtureOpenAIStructuredResultServer(t, `{"amount":10}`)
+	withAIStubs(t, ResolvedAIProvider{
+		Kind: "openai-compatible", BaseURL: srv.URL, Model: "fixture-model",
+	}, aiclient.Complete)
+
+	exec := lookupNodeType(t, "process-ai-extract-structured")
+	node := Node{ID: "n1", NodeTypeID: "process-ai-extract-structured", Config: map[string]string{
+		aiProviderIDConfigKey: "p1",
+		"outputFields":        `[{"Key":"amount","Type":"number"},{"Key":"note","Type":"text"}]`,
+	}}
+	attributes := map[string]any{"amount": "original", "existing": true}
+	wantAttributes := map[string]any{"amount": "original", "existing": true}
+	_, err := exec(node, ExecContext{Attributes: attributes})
+	if !errors.Is(err, aiclient.ErrInvalidStructuredResult) {
+		t.Fatalf("exec error = %v, want ErrInvalidStructuredResult", err)
+	}
+	if !reflect.DeepEqual(attributes, wantAttributes) {
+		t.Errorf("Attributes = %#v, want no partial change from %#v", attributes, wantAttributes)
 	}
 }
 

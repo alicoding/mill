@@ -143,6 +143,7 @@ func (c *ConfigureService) createAIProviderWithID(id, label string, kind aiprovi
 	if err := entitystore.Insert(&c.mu, &c.aiProviders, c.persistAIProviders, aiProviderDescriptor, p); err != nil {
 		return aiprovider.AIProvider{}, err
 	}
+	InvalidateAIProviderAvailability(c, p.ID)
 	dataevent.Emit("aiprovider", p.ID) // goal 0017: live-sync every open surface
 	return p, nil
 }
@@ -163,6 +164,7 @@ func (c *ConfigureService) UpdateAIProvider(id, label string, kind aiprovider.Ki
 	if err != nil {
 		return aiprovider.AIProvider{}, err
 	}
+	InvalidateAIProviderAvailability(c, updated.ID)
 	dataevent.Emit("aiprovider", updated.ID) // goal 0017: live-sync every open surface
 	return updated, nil
 }
@@ -173,9 +175,13 @@ func (c *ConfigureService) UpdateAIProvider(id, label string, kind aiprovider.Ki
 // c.credentials.Delete call already documents.
 func (c *ConfigureService) DeleteAIProvider(id string) error {
 	announce := func(id string) { dataevent.Emit("aiprovider", id) }
-	return deleteEntity(c, "aiprovider", &c.aiProviders, c.persistAIProviders, aiProviderDescriptor,
+	err := deleteEntity(c, "aiprovider", &c.aiProviders, c.persistAIProviders, aiProviderDescriptor,
 		func(id string) error { return c.refIntegrityError("aiprovider", "AI provider", id) },
 		func(p aiprovider.AIProvider) string { return p.Label }, announce, id)
+	if err == nil {
+		InvalidateAIProviderAvailability(c, id)
+	}
+	return err
 }
 
 // --- persistence ---

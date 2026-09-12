@@ -6,6 +6,15 @@
 import * as httprequest$0 from "../../domain/httprequest/models.js";
 
 /**
+ * AIProviderAvailabilityChanged is the typed event payload. Reports stay
+ * behind Get/List, so an event can never accidentally broadcast local evidence.
+ */
+export interface AIProviderAvailabilityChanged {
+    "providerId": string;
+    "checkId": string;
+}
+
+/**
  * ClientCertificateMatch is what the request form shows: the entity
  * that would present a certificate to a URL's host, if any.
  */

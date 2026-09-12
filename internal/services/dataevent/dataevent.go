@@ -55,6 +55,19 @@ type Changed struct {
 // names its family).
 var kindResolvers sync.Map // entity string -> func(id string) string
 
+var observers sync.Map // entity string -> *sync.Map of id -> func(string)
+
+// Observe registers a process-local listener for one entity family. The
+// callback runs after the UI event and must not take the emitting service's
+// mutation lock. It returns an idempotent unregister function.
+func Observe(entity string, fn func(id string)) func() {
+	listenersValue, _ := observers.LoadOrStore(entity, &sync.Map{})
+	listeners := listenersValue.(*sync.Map)
+	key := new(byte)
+	listeners.Store(key, fn)
+	return func() { listeners.Delete(key) }
+}
+
 // RegisterKindResolver installs one entity's family resolver, called
 // once at the service's construction. "" from the resolver means
 // "unknown", and the payload carries no Kind at all.
@@ -85,6 +98,12 @@ const EventName = "mill-data-changed"
 // without spinning up a real Wails application.
 func Emit(entity, id string) {
 	windowing.Emit(EventName, Changed{Entity: entity, ID: id, Kind: resolvedKind(entity, id)})
+	if listenersValue, ok := observers.Load(entity); ok {
+		listenersValue.(*sync.Map).Range(func(_, value any) bool {
+			value.(func(string))(id)
+			return true
+		})
+	}
 	if TestHook != nil {
 		TestHook(entity, id)
 	}
