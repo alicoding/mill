@@ -154,6 +154,32 @@ func TestPrepareRefusesMalformedJSON(t *testing.T) {
 	}
 }
 
+func TestPrepareRejectsHuJSONExtensionsLikeTheLoader(t *testing.T) {
+	tests := map[string]func([]byte) []byte{
+		"comment": func(raw []byte) []byte {
+			return bytes.Replace(raw, []byte(`"id":`), []byte("// extension syntax\n  \"id\":"), 1)
+		},
+		"trailing comma": func(raw []byte) []byte {
+			return bytes.Replace(raw, []byte("\n}"), []byte(",\n}"), 1)
+		},
+	}
+	for name, extend := range tests {
+		t.Run(name, func(t *testing.T) {
+			dir := copyCommandFixture(t)
+			path := filepath.Join(dir, "manifest.json")
+			if err := os.WriteFile(path, extend(readManifest(t, dir)), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := Prepare(dir, filepath.Join(t.TempDir(), "installed"), testMillVersion); err == nil {
+				t.Fatal("Prepare accepted syntax rejected by the plugin loader")
+			}
+			if problems := pluginsvc.ConformDir(dir, testMillVersion); !slices.Contains(problems, "manifest.json is not valid JSON") {
+				t.Fatalf("ConformDir problems = %v", problems)
+			}
+		})
+	}
+}
+
 func TestPrepareRefusesInstalledLocationsAndReceipts(t *testing.T) {
 	t.Run("installed directory descendant", func(t *testing.T) {
 		installed := t.TempDir()

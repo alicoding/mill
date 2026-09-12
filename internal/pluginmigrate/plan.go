@@ -58,8 +58,8 @@ func Prepare(sourceDir, installedDir, appVersion string) (*Prepared, error) {
 	if err != nil {
 		return nil, err
 	}
-	var manifest pluginsvc.Manifest
-	if err := json.Unmarshal(raw, &manifest); err != nil {
+	manifest, err := pluginsvc.DecodeManifest(raw)
+	if err != nil {
 		return nil, fmt.Errorf("decode manifest.json: %w", err)
 	}
 	plan := Plan{
