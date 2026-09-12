@@ -8,9 +8,9 @@ import (
 // WireAtlasWorkflowRunners connects a card's referenced workflow (goal
 // 0061 slice C's "Update now") and a card action (goal 0084) to
 // executionService.RunWorkflow/RunWorkflowForAtlasCard, plus a run's
-// completion back to atlasService -- same late-bound-setter shape as
-// WireChildWorkflowRunner in main.go, atlassvc never imports
-// executionsvc directly. Kind is RunKindTriggered (production
+// completion back to atlasService. Production calls this between execution
+// preparation and launch; atlassvc never imports executionsvc directly. Kind
+// is RunKindTriggered (production
 // semantics: a disabled or never-published refresh workflow is
 // rejected, same requirement child-workflow nodes already hold their
 // callable target to).

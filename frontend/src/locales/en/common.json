@@ -408,6 +408,12 @@
         "reset": "Reset to shipped example"
       },
       "aiprovider": {
+        "check": "Check connection",
+        "cancelCheck": "Cancel check",
+        "testFeature": "Test feature",
+        "restoreSample": "Restore sample",
+        "copyAddress": "Copy address",
+        "dataHelp": "Data access help",
         "delete": "Delete",
         "export": "Export",
         "reset": "Reset to shipped example"

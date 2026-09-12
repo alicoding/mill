@@ -1,4 +1,4 @@
-import type { CanvasDraft, CanvasMeasureResult, CanvasToolCtx, CanvasToolDecl, CanvasToolPointerEvent } from '../plugins/sdk/canvasTools'
+import type { CanvasDraft, CanvasMeasureResult, CanvasToolCtx, CanvasToolDecl, CanvasToolPointerEvent, RegisterFaceDescriptor } from '../plugins/sdk/canvasTools'
 import { toolWireDescriptor } from '../plugins/canvasToolProtocol'
 
 // The framed half of the canvas tool contract (docs/goals/0380): a
@@ -15,7 +15,7 @@ import { toolWireDescriptor } from '../plugins/canvasToolProtocol'
 // the protocol-surface test can check it against the host's own
 // CANVAS_TOOL_DOORS instead of the two drifting apart.
 export const CANVAS_TOOL_CALLS = [
-    'register.tool',
+    'register.tool', 'register.face',
     'object.create', 'object.patch', 'object.commit', 'object.discard',
     'object.measure',
     'files.saveImageBytes',
@@ -26,6 +26,9 @@ export type FrameCall = (method: string, ...args: unknown[]) => Promise<unknown>
 
 export interface CanvasToolsFrameHalf {
     registerCanvasTool: (decl: CanvasToolDecl) => void
+    // registerCanvasObjectFace (docs/goals/0380 S2): a framed runtime
+    // registers the exact kind and entry page its manifest declared.
+    registerCanvasObjectFace: (descriptor: RegisterFaceDescriptor) => Promise<void>
     measure: (markup: string, maxWidth: number) => Promise<CanvasMeasureResult>
     saveImageBytes: (base64: string, ext: string, title: string) => Promise<string>
     // onToolPointer routes one host->frame 'tool.pointer' event onto the
@@ -68,6 +71,7 @@ export function buildCanvasToolsFrameHalf(call: FrameCall, pluginId: string, cap
             tools.set(decl.kind, decl)
             void call('register.tool', toolWireDescriptor(decl)).catch((err: unknown) => console.error(`plugin ${pluginId}: registerCanvasTool failed`, err))
         },
+        registerCanvasObjectFace: (descriptor: RegisterFaceDescriptor) => call('register.face', descriptor).then(() => undefined),
         measure: (markup: string, maxWidth: number) => call('object.measure', { markup, maxWidth }) as Promise<CanvasMeasureResult>,
         saveImageBytes: (base64: string, ext: string, title: string) => call('files.saveImageBytes', base64, ext, title) as Promise<string>,
         onToolPointer: (payload: Record<string, unknown>) => {
@@ -84,4 +88,11 @@ export function buildCanvasToolsFrameHalf(call: FrameCall, pluginId: string, cap
             }
         },
     }
+}
+
+// Manifest faces register before the plugin's activate() runs, so a
+// registerCanvasTool call made during activation always resolves the
+// entry page already accepted by the host.
+export async function registerManifestCanvasFaces(canvasTools: CanvasToolsFrameHalf, faces: readonly RegisterFaceDescriptor[]): Promise<void> {
+    for (const face of faces) await canvasTools.registerCanvasObjectFace(face)
 }

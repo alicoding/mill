@@ -201,9 +201,18 @@ pluginTest('a plugin face and view carry the resolved theme, and it flips with t
     if (!bb) throw new Error('board has no bounding box')
     await board.click({ position: { x: spot.x - bb.x + 10, y: spot.y - bb.y + 10 } })
 
-    const face = page.locator('[data-testid="plugin-face-bookmark"]')
+    // The face draws in its own sandboxed frame now (goal 0380 S2):
+    // PluginFrame carries the SAME theme attributes on the iframe host
+    // element every other framed surface does, and pushes them again
+    // into the frame's own document root on every change
+    // (pluginFrameBootstrap's applyTheme) -- both are checked, so this
+    // proves the door reaches all the way into the sandboxed page, not
+    // only the host wrapper around it.
+    const face = page.locator('[data-testid="plugin-face-frame-bookmark"]')
+    const faceDocument = page.frameLocator('[data-testid="plugin-face-frame-bookmark"]').locator('html')
     await baseExpect(face).toHaveAttribute('data-mill-theme', 'light')
     await baseExpect(face).toHaveAttribute('data-mill-scheme', 'light')
+    await baseExpect(faceDocument).toHaveAttribute('data-mill-theme', 'light')
 
     // Settings runs in a SECOND page of the same context, so the face
     // stays mounted -- the attribute has to change under it, not be
@@ -217,6 +226,7 @@ pluginTest('a plugin face and view carry the resolved theme, and it flips with t
 
     await baseExpect(face).toHaveAttribute('data-mill-theme', 'dark')
     await baseExpect(face).toHaveAttribute('data-mill-scheme', 'dark_dimmed')
+    await baseExpect(faceDocument).toHaveAttribute('data-mill-theme', 'dark')
 
     // The Request tester example's own view root carries the same pair;
     // its styling passes the theme conformance check (the Go suite runs

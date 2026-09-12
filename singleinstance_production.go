@@ -24,14 +24,11 @@ import "github.com/wailsapp/wails/v3/pkg/application"
 // (build:native applies -tags production) gets the real guard. The
 // dev-orphan problem is a separate, tooling-level fix (Taskfile's
 // orphan sweep) -- SingleInstance is deliberately not it.
-func singleInstanceOptions(getWindow func() *application.WebviewWindow) *application.SingleInstanceOptions {
+func singleInstanceOptions(activate func()) *application.SingleInstanceOptions {
 	return &application.SingleInstanceOptions{
 		UniqueID: "com.alicoding.mill",
 		OnSecondInstanceLaunch: func(application.SecondInstanceData) {
-			if w := getWindow(); w != nil {
-				w.Restore()
-				w.Focus()
-			}
+			activate()
 		},
 	}
 }

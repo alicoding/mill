@@ -20,11 +20,8 @@ func init() {
 }
 
 // SetVersion records the app version string (main.go's millVersion)
-// this ExecutionService stamps into a run receipt's Build field --
-// late-bound the same way SetMinutesSavedLookup/SetSystemEventSink are
-// (executionservice.go), since ExecutionService is constructed before
-// main.go would otherwise have a natural place to thread a version
-// parameter through.
+// this ExecutionService stamps into a run receipt's Build field. Production
+// installs it between preparation and launch, before recovered bodies can emit receipts.
 //
 //wails:ignore
 func (e *ExecutionService) SetVersion(version string) {
@@ -32,9 +29,8 @@ func (e *ExecutionService) SetVersion(version string) {
 }
 
 // SetEnvironmentLabelLookup wires the Environment id -> label read a
-// run summary and receipt need (goal 0306 S5) -- late-bound the same
-// way SetVersion is, since ConfigureService is constructed after this
-// service.
+// run summary and receipt need (goal 0306 S5). Production installs it through
+// the prepare/launch boundary before recovered bodies can emit receipts.
 //
 //wails:ignore
 func (e *ExecutionService) SetEnvironmentLabelLookup(fn func(environmentID string) string) {

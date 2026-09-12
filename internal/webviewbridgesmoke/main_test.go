@@ -7,7 +7,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strconv"
+	"strings"
 	"testing"
+
+	"github.com/alicoding/mill/internal/services/pluginsvc"
 )
 
 func TestRepoRootFrom(t *testing.T) {
@@ -160,5 +165,97 @@ func TestProcExited(t *testing.T) {
 	}
 	if !procExited(cmd.Process) {
 		t.Fatal("procExited reported a reaped process as alive")
+	}
+}
+
+func TestIsolatedAppEnvironmentReplacesEveryMutablePath(t *testing.T) {
+	tmpDir := t.TempDir()
+	base := []string{
+		"PATH=/usr/bin",
+		"MILL_SETTINGS_PATH=/real/settings.json",
+		"MILL_EXECUTION_DB_PATH=/real/execution.db",
+		"MILL_EXECUTION_DATABASE_URL=postgres://real",
+		"MILL_SECRETS_PATH=/real/secrets.kdbx",
+		"MILL_BACKUP_DIR=/real/backups",
+		"MILL_PLUGINS_DIR=/real/plugins",
+		"MILL_ATLAS_MIRRORS_DIR=/real/mirrors",
+		"MILL_ATLAS_CAPTURES_DIR=/real/captures",
+		"MILL_TEST_KEYRING=system",
+		"MILL_MCP_ADDR=127.0.0.1:4444",
+		"MILL_BRIDGE_ADDR=127.0.0.1:5555",
+		"WAILS_MCP_HOST=production.example",
+		"WAILS_MCP_PORT=1234",
+	}
+	want := map[string]string{
+		"MILL_SETTINGS_PATH":          filepath.Join(tmpDir, "settings.json"),
+		"MILL_EXECUTION_DB_PATH":      filepath.Join(tmpDir, "execution.db"),
+		"MILL_EXECUTION_DATABASE_URL": "sqlite:" + filepath.Join(tmpDir, "execution.db"),
+		"MILL_SECRETS_PATH":           filepath.Join(tmpDir, "secrets.kdbx"),
+		"MILL_BACKUP_DIR":             filepath.Join(tmpDir, "backups"),
+		"MILL_PLUGINS_DIR":            filepath.Join(tmpDir, "plugins"),
+		"MILL_ATLAS_MIRRORS_DIR":      filepath.Join(tmpDir, "mirrors"),
+		"MILL_ATLAS_CAPTURES_DIR":     filepath.Join(tmpDir, "captures"),
+		"MILL_TEST_KEYRING":           "memory",
+		"MILL_MCP_ADDR":               "127.0.0.1:0",
+		"MILL_BRIDGE_ADDR":            "127.0.0.1:0",
+		"WAILS_MCP_HOST":              mcpHost,
+		"WAILS_MCP_PORT":              strconv.Itoa(mcpPort),
+	}
+
+	got := isolatedAppEnvironment(base, tmpDir)
+	for key, value := range want {
+		var matches []string
+		for _, entry := range got {
+			if strings.HasPrefix(entry, key+"=") {
+				matches = append(matches, strings.TrimPrefix(entry, key+"="))
+			}
+		}
+		if len(matches) != 1 || matches[0] != value {
+			t.Errorf("%s values = %q, want [%q]", key, matches, value)
+		}
+	}
+	if !slices.Contains(got, "PATH=/usr/bin") {
+		t.Fatal("unrelated child environment was not preserved")
+	}
+}
+
+func TestValidateShutdownBackupRequiresSettingsAndSourceIdentity(t *testing.T) {
+	tmpDir := t.TempDir()
+	snapshotDir := filepath.Join(tmpDir, "backups", "20260101-010203.000")
+	pluginSnapshotDir := filepath.Join(snapshotDir, "plugin-state")
+	if err := os.MkdirAll(pluginSnapshotDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(snapshotDir, "settings.json"), []byte(`{"profile":"smoke"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	sourceDir := filepath.Join(tmpDir, "source")
+	if err := os.MkdirAll(filepath.Join(sourceDir, ".mill"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sourceDir, ".mill", "marketplace.json"), []byte(`{"name":"webview-smoke-source","owner":{"name":"Mill smoke"},"plugins":[]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	pluginDir := filepath.Join(tmpDir, "plugins")
+	service := pluginsvc.New(pluginDir, nil, "")
+	t.Cleanup(func() {
+		if err := service.CloseState(); err != nil {
+			t.Errorf("CloseState: %v", err)
+		}
+	})
+	source, err := service.AddMarketplaceSource(sourceDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := pluginsvc.SnapshotStoredState(pluginDir, pluginSnapshotDir); err != nil {
+		t.Fatal(err)
+	}
+	identity := shutdownSource{Name: source.Name, Incarnation: source.Incarnation}
+	if err := validateShutdownBackup(tmpDir, identity); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateShutdownBackup(tmpDir, shutdownSource{Name: identity.Name, Incarnation: "replaced"}); err == nil {
+		t.Fatal("validateShutdownBackup accepted a different source incarnation")
 	}
 }

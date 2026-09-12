@@ -84,15 +84,3 @@ func (e *ExecutionService) runChildWorkflow(runCtx any, workflowID string, attrV
 	}
 	return result, nil
 }
-
-// WireChildWorkflowRunner registers e.runChildWorkflow with composition
-// (composition.SetChildWorkflowRunner) -- called once from main.go,
-// same late-bound-setter shape as TriggerService.SetExecutionService,
-// since composition's package-level var must exist before any workflow
-// (including one containing a child-workflow node) can run. Exported
-// for main.go's cross-package wiring only, never a frontend RPC.
-//
-//wails:ignore
-func (e *ExecutionService) WireChildWorkflowRunner() {
-	composition.SetChildWorkflowRunner(e.runChildWorkflow)
-}

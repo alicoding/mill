@@ -118,9 +118,19 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `clipboard.pin` | Pin | — | Global | Acts on the selected clipboard entry |
 | `clipboard.unpin` | Unpin | — | Global | Acts on the selected clipboard entry |
 | `codingLoop.run` | Run from clipboard… | — | Global | Always available |
+| `configure.aiprovider.cancelCheck` | Cancel check | — | Global | Acts on the selected entity |
+| `configure.aiprovider.check` | Check connection | — | Global | Acts on the selected entity |
+| `configure.aiprovider.copyAddress` | Copy address | — | Global | Acts on the selected entity |
+| `configure.aiprovider.dataHelp` | Data access help | — | Global | Acts on the selected entity |
 | `configure.aiprovider.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.aiprovider.export` | Export | — | Global | Acts on the selected entity |
 | `configure.aiprovider.reset` | Reset to shipped example | — | Global | Acts on the selected entity |
+| `configure.aiprovider.restore.classification` | Restore sample | — | Global | Acts on the selected entity |
+| `configure.aiprovider.restore.structured` | Restore sample | — | Global | Acts on the selected entity |
+| `configure.aiprovider.restore.text` | Restore sample | — | Global | Acts on the selected entity |
+| `configure.aiprovider.test.classification` | Test feature | — | Global | Acts on the selected entity |
+| `configure.aiprovider.test.structured` | Test feature | — | Global | Acts on the selected entity |
+| `configure.aiprovider.test.text` | Test feature | — | Global | Acts on the selected entity |
 | `configure.conversionprofile.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.decision.delete` | Delete | — | Global | Acts on the selected entity |
 | `configure.decision.duplicate` | Duplicate | — | Global | Acts on the selected entity |

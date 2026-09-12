@@ -18,6 +18,7 @@ import { pushNotice } from '../shared/noticeStore'
 import type { PluginModule } from './sdk'
 import { activateFramed, isFramedActivation, teardownActivationFrame } from './activation'
 import { clearPluginContextKeys } from './pluginContextKeys'
+import { forgetCanvasObjectFaces } from './canvasObjectFaceRegistry'
 
 // Per-plugin reload (goal 0319): drop exactly what one plugin
 // contributed, import its main.js again, and activate the fresh
@@ -52,6 +53,11 @@ function unregisterContributions(pluginId: string): void {
 	unregisterPluginViews(pluginId)
 	unregisterPluginCaptures(pluginId)
 	unregisterThirdPartyNouns(pluginId)
+	// registerCanvasObjectFace is available to both same-DOM and framed
+	// activations, so its per-plugin registry follows the common sweep.
+	// Framed teardown repeats this cleanup through its live context;
+	// the per-plugin registry cleanup is intentionally idempotent.
+	forgetCanvasObjectFaces(pluginId)
 	// Ends whatever activation frame the PREVIOUS activation created,
 	// framed or not (a no-op when it never had one) -- "unload/reload
 	// tears the frame down" (docs/goals/0375 S1b).

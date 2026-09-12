@@ -89,6 +89,9 @@ export async function activateFramed(info: PluginInfo, millVersion: string, stor
     storage: decodedStorage,
     exports: exportAllowlist,
     capabilities: [...(manifest.capabilities ?? [])],
+    canvasFaces: (manifest.contributes?.canvasObjects ?? [])
+      .filter((face) => !!face.entry)
+      .map((face) => ({ objectKind: face.kind, entry: face.entry })),
   }
   const srcdoc = buildFrameSrcdoc(pluginAssetBase(pluginId), [activationScriptUrl()], '', init, millTokenCss(hostTokenReader()))
 

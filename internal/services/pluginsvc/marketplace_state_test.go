@@ -33,6 +33,7 @@ func TestMarketplaceStateMigratesLegacyExactlyOnceAndPreservesEvidence(t *testin
 		t.Fatal(err)
 	}
 	svc := New(dir, nil, "")
+	closeTestPluginState(t, svc)
 	before, err := svc.readState()
 	if err != nil || before.Updates.CheckedAt == "" || len(before.Sources) != 1 || before.Sources[0].LastSuccessAt != "" {
 		t.Fatalf("legacy read = %+v, %v", before, err)
@@ -72,6 +73,7 @@ func TestMarketplaceStateRefusesMalformedAndVersionedLegacyWithoutMigration(t *t
 				t.Fatal(err)
 			}
 			svc := New(dir, nil, "")
+			closeTestPluginState(t, svc)
 			if _, err := svc.readState(); err == nil {
 				t.Fatal("readState succeeded")
 			}
@@ -96,6 +98,7 @@ func TestMarketplaceStateFailedFirstMutationCanRetryPreparedLegacy(t *testing.T)
 		t.Fatal(err)
 	}
 	svc := New(dir, nil, "")
+	closeTestPluginState(t, svc)
 	if _, err := svc.mutateState(func(*marketplaceState) error { return os.ErrPermission }); err == nil {
 		t.Fatal("failed mutation succeeded")
 	}

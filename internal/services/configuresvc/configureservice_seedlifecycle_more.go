@@ -108,12 +108,7 @@ func (c *ConfigureService) RestoreExecEnv(id string) (execenv.ExecEnv, error) {
 // ResetAIProviderToSeed mirrors ResetMCPServerToSeed for AI providers,
 // via aiProviderDescriptor (configureaiprovider.go, goal 0165).
 func (c *ConfigureService) ResetAIProviderToSeed(id string) (aiprovider.AIProvider, error) {
-	updated, err := entitystore.ResetToSeed(&c.mu, &c.aiProviders, c.persistAIProviders, aiProviderDescriptor, id)
-	if err != nil {
-		return aiprovider.AIProvider{}, err
-	}
-	dataevent.Emit("aiprovider", id) // goal 0017: live-sync every open surface
-	return updated, nil
+	return c.resetAIProviderToSeedCoordinated(id)
 }
 
 // RestorableAIProviders mirrors RestorableMCPServers for AI providers.
@@ -123,10 +118,5 @@ func (c *ConfigureService) RestorableAIProviders() []aiprovider.AIProvider {
 
 // RestoreAIProvider mirrors RestoreMCPServer for AI providers.
 func (c *ConfigureService) RestoreAIProvider(id string) (aiprovider.AIProvider, error) {
-	restored, err := entitystore.Restore(&c.mu, &c.aiProviders, c.persistAIProviders, c.store, aiProviderDescriptor, id)
-	if err != nil {
-		return aiprovider.AIProvider{}, err
-	}
-	dataevent.Emit("aiprovider", id) // goal 0017: live-sync every open surface
-	return restored, nil
+	return c.restoreAIProviderCoordinated(id)
 }

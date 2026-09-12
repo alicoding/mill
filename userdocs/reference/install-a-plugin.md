@@ -155,6 +155,34 @@ Nothing is compiled — the types are read by your editor, and Mill
 loads the same plain file either way. Every type is listed in the
 [plugin API reference](plugin-api/index.md).
 
+The SDK also publishes `manifest.schema.json`. Point your editor or
+manifest-checking tool at that JSON Schema for field completion and structural
+errors. Run the loader's checks below for semantic rules and files named by the
+manifest.
+
+To preview the ordered manifest migrations available for a source plugin, run:
+
+```sh
+mill plugin migrate path/to/your-source-plugin
+```
+
+The preview prints the ordered migration IDs and their aggregate RFC 6902 patch,
+and writes nothing. Add `--json` for a versioned machine-readable plan with
+`formatVersion`, `migrations`, `patch`, `manual`, and `applied`, or `--apply` to
+replace `manifest.json` after the full plugin validates.
+
+The current migrations rename deprecated `contributes.settings` to
+`contributes.configuration` and namespace a bare lower-camel command ID with
+the plugin ID. Command references in declared tools and menus change with the
+declaration. Existing JavaScript may keep registering the old bare command: the
+host connects it to the exact namespaced manifest declaration centrally.
+
+Mill leaves the source unchanged when both setting keys or both command
+identities exist, when the canonical command target collides, when a bare
+command needs an authored rename such as `send-again` to `sendAgain`, or when a
+reference is ambiguous. The command refuses installed plugin folders and
+install receipts; run it only against the source folder you author.
+
 ## Reloading one plugin while you work
 
 Each installed plugin's page has a **Reload** button, and the command

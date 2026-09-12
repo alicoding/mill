@@ -124,9 +124,18 @@ func (s *SecretService) debounceSourceChange(id string) {
 		_, stillArmed := s.sourceWatches[id]
 		s.watchMu.Unlock()
 		if stillArmed {
-			emitSourcesChanged(id)
+			s.emitSourcesChanged(id)
 		}
 	})
+}
+
+// SetSourceChangeHook wires process-local consumers that must invalidate
+// derived evidence when an enabled source file changes. Keeping this as a
+// package function prevents Wails from exposing the callback seam as an RPC.
+func SetSourceChangeHook(s *SecretService, fn func(string)) {
+	s.watchMu.Lock()
+	s.sourceChangeHook = fn
+	s.watchMu.Unlock()
 }
 
 // stopSourceDebounceLocked cancels id's own pending timer, if any --
@@ -139,8 +148,14 @@ func (s *SecretService) stopSourceDebounceLocked(id string) {
 }
 
 // emitSourcesChanged fires SourcesChangedEvent for id.
-func emitSourcesChanged(id string) {
+func (s *SecretService) emitSourcesChanged(id string) {
 	windowing.Emit(SourcesChangedEvent, SourcesChanged{SourceID: id})
+	s.watchMu.Lock()
+	hook := s.sourceChangeHook
+	s.watchMu.Unlock()
+	if hook != nil {
+		hook(id)
+	}
 	if SourcesChangedTestHook != nil {
 		SourcesChangedTestHook(id)
 	}

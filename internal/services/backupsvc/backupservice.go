@@ -194,18 +194,12 @@ func (b *BackupService) BackupRunner() func(keepN int) (string, error) {
 // logged by the caller, never fatal -- the app is already exiting
 // either way.
 //
-// MANUAL-ONLY RESIDUE (.claude/rules/testing.md's registry
-// discipline): this method's own logic (the skip-if-recent check, the
-// primitive call) is exercised by
-// TestBackupOnCleanShutdown_SkipsWithinTheHour /
-// TestBackupOnCleanShutdown_RunsWhenStale below, but the REAL trigger
-// -- app.Run() actually returning during a genuine window/Cmd+Q close
-// -- only exists in a live desktop run, not under `go test` or
-// Playwright's server-mode harness (neither ever exercises Wails3's
-// own OS-level quit sequence). Verify desktop-mode: quit Mill via
-// Cmd+Q shortly after a fresh install (no prior backup), confirm a new
-// timestamped subdirectory appears under the backup folder before the
-// process actually exits.
+// The method's own logic (the skip-if-recent check, the primitive call) is
+// exercised by TestBackupOnCleanShutdown_SkipsWithinTheHour /
+// TestBackupOnCleanShutdown_RunsWhenStale. The webview bridge smoke's
+// final phase exercises the real desktop lifecycle: it quits a fresh,
+// isolated app with no recent snapshot and validates the backup before
+// accepting the process exit.
 //
 //wails:ignore
 func (b *BackupService) BackupOnCleanShutdown() error {

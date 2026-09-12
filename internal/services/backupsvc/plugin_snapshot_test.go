@@ -21,6 +21,15 @@ func pluginStateParticipant(write func(string) error) backup.SnapshotOptions {
 	return backup.SnapshotOptions{Participants: []backup.Participant{{Name: "plugin-state", Write: write}}}
 }
 
+func closeTestPluginServiceState(t *testing.T, service *pluginsvc.PluginService) {
+	t.Helper()
+	t.Cleanup(func() {
+		if err := service.CloseState(); err != nil {
+			t.Errorf("CloseState: %v", err)
+		}
+	})
+}
+
 func TestBackupServicePassesPluginStateParticipantToEveryBackupDoor(t *testing.T) {
 	_, _, dbPath := newTestExecutionHarness(t)
 	var calls atomic.Int32
@@ -88,6 +97,7 @@ func TestImportEverythingReportsButDoesNotApplyValidPluginStateSnapshot(t *testi
 		t.Fatal(err)
 	}
 	liveService := pluginsvc.New(pluginDir, nil, "test")
+	closeTestPluginServiceState(t, liveService)
 	added, err := liveService.AddMarketplaceSource(liveIndexDir)
 	if err != nil {
 		t.Fatal(err)
@@ -115,6 +125,7 @@ func TestImportEverythingReportsButDoesNotApplyValidPluginStateSnapshot(t *testi
 		t.Fatal("live source catalog bytes changed")
 	}
 	reopened := pluginsvc.New(pluginDir, nil, "test")
+	closeTestPluginServiceState(t, reopened)
 	sources, err := reopened.ListMarketplaceSources()
 	if err != nil {
 		t.Fatal(err)

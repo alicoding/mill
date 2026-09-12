@@ -59,7 +59,25 @@ The entities:
   steps. (Connecting an agent *to* Mill is the other direction — see
   Settings → MCP access.)
 - **AI Providers** — a local or remote model endpoint the AI steps
-  resolve by reference.
+  resolve by reference. Availability evidence is machine-local and
+  specific to the saved endpoint, model, secret source, and adapter
+  version. A guarded check may wait for approval and can be cancelled;
+  it reads provider model metadata without sending a completion. A
+  reachable metadata endpoint or listed model does not prove that text,
+  structured output, or classification works, so those operations stay
+  Unknown until an exact operation test supplies evidence. Cached
+  evidence becomes stale when the provider or its secret source changes.
+  Mill refuses changes to a connection's protocol, address, model, or
+  secret reference, and its deletion or recreation, while an unfinished
+  run still depends on it. The same check applies to imports, resets,
+  restores, undo, and redo. Finish or stop the named runs first; a stopped
+  run's body may still be finishing before edits unlock. A label-only edit
+  remains available, as does repairing the value behind the same secret
+  reference. When Mill
+  cannot read the unfinished-run history or confirm exclusive access to its
+  execution database, it refuses the connection change instead of guessing.
+  Authored workflow references remain separate from the unfinished-run
+  evidence because they answer different questions.
 - **Execution environments** — a pinned shell, directory, and
   environment for Run a command. This is reproducibility, not a
   sandbox: the script runs with your full user account. Clean profile

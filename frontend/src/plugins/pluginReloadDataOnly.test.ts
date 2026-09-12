@@ -35,8 +35,10 @@ const { reloadPlugin } = await import('./pluginReload')
 const { approvalUnavailableMessage, loadPlugins, pluginLoadStates } = await import('./loader')
 const { unregisterPluginCommands } = await import('./pluginCommands')
 const { pluginContextFacts, setPluginContextKey } = await import('./pluginContextKeys')
+const { callCanvasToolDoor, forgetCanvasTools, framedObjectFaceEntry } = await import('./canvasToolHostDoors')
 
 const pluginID = 'imported-theme-dark-123456789012345678901234'
+const otherPluginID = 'other-face-plugin'
 const info = {
 	DataOnly: true,
 	ApprovalState: 'allowed',
@@ -61,7 +63,11 @@ describe('reloadPlugin data-only activation', () => {
 		pluginLoadStates().clear()
 	})
 
-	afterEach(() => unregisterPluginCommands(pluginID))
+	afterEach(() => {
+		unregisterPluginCommands(pluginID)
+		forgetCanvasTools(pluginID)
+		forgetCanvasTools(otherPluginID)
+	})
 
 	it('reloads host registrations without attempting main.js activation', async () => {
 		setPluginContextKey(pluginID, 'ready', true)
@@ -71,6 +77,22 @@ describe('reloadPlugin data-only activation', () => {
 		expect(pluginContextFacts(pluginID)).toEqual({})
 		expect(pluginLoadStates().get(pluginID)).toMatchObject({ status: 'loaded', info })
 		expect(mocks.emit).toHaveBeenCalledWith('plugin-contributions-changed', pluginID)
+	})
+
+	it('clears only this same-DOM plugin’s registered object faces during the common sweep', async () => {
+		const face = { kind: 'bookmark', entry: 'face.html', tool: true }
+		const register = (id: string) => callCanvasToolDoor({
+			pluginId: id,
+			manifest: { id, contributes: { canvasObjects: [face] } } as PluginInfo['Manifest'],
+			post: () => {},
+		}, 'register.face', [{ objectKind: face.kind, entry: face.entry }])
+		await register(pluginID)
+		await register(otherPluginID)
+
+		await reloadPlugin(pluginID)
+
+		expect(framedObjectFaceEntry(pluginID, face.kind)).toBeUndefined()
+		expect(framedObjectFaceEntry(otherPluginID, face.kind)).toBe(face.entry)
 	})
 
 	it('refuses reload when the scan has no approval verdict', async () => {

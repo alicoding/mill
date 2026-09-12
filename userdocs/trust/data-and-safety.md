@@ -28,6 +28,24 @@ catalog. The vault's key sits in your OS keychain, stored against that
 specific vault file — a second vault, or a vault restored from a
 backup, gets its own key rather than replacing the first one's.
 
+Mill gives one running process ownership of each local settings file
+and run-history database before it opens either file. Opening the app a
+second time restores and focuses the copy that is already running. If
+you start a server or source-built copy against files another Mill
+process owns, it stops before changing them and tells you to close that
+instance or choose different data paths. The small lock files beside
+the data stay on disk after Mill exits; their presence is harmless, and
+Mill never treats an old file by itself as a running process.
+
+Changing an AI connection while a workflow is unfinished also depends on
+exclusive access to the run-history database. Mill uses that database to prove
+which saved connection revision an active run can still call. If ownership
+cannot be established, Mill keeps the connection locked instead of assuming it
+is unused. Close the other Mill process that owns the same data and retry after
+its runs have stopped. This database check says nothing about where an AI model
+runs: a configured provider address may forward a request to another machine,
+so Mill reports the execution location as unknown.
+
 Turn on the unlock requirement and Mill asks before the vault opens.
 The checkbox names what this Mac can actually offer — Touch ID, an
 Apple Watch, your Mac password — rather than promising hardware you

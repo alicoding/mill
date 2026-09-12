@@ -6,39 +6,19 @@
 // directory (Settings > Extensions > Open plugins folder) and reload.
 //
 // It contributes one canvas object on the object contract: a web
-// address pinned to the board (source: url). The URL is edited right
-// on the face (editRoute: inline); Open never touches the browser
-// itself -- it asks Mill for the guarded open-url action, which the
-// owner's guardrail rules evaluate per use.
-//
-// Its two declared settings (manifest contributes.settings) show the
-// settings door: Mill renders the controls in the plugin's Extensions
-// row and stores the values; the plugin only reads them
-// (api.settings.get) and re-renders its live faces when one changes
-// (api.settings.onChange) -- renderFace itself re-runs on object data
-// changes only.
+// address pinned to the board (source: url). Its face is its own entry
+// page (face.html/face.js, docs/goals/0380 S2) -- this file only
+// declares the object and its context-menu item, never draws into
+// Mill's own document. Open never touches the browser itself -- it
+// asks Mill for the guarded open-url action, which the owner's
+// guardrail rules evaluate per use.
 
 /** @param {import('../../../frontend/plugin-sdk').MillPluginAPI} api */
 export function activate(api) {
-	// Live faces, so a settings change can redraw them.
-	const faces = new Map()
-	const redrawAll = () => {
-		for (const [el, ctx] of faces) {
-			if (!el.isConnected) { faces.delete(el); continue }
-			render(el, ctx)
-		}
-	}
-	api.settings.onChange('titleStyle', redrawAll)
-	api.settings.onChange('placeholderTitle', redrawAll)
-
-	const titleFor = (url) => {
-		if (!url) return api.settings.get('placeholderTitle')
-		return api.settings.get('titleStyle') === 'address' ? withScheme(url) : new URL(withScheme(url)).hostname
-	}
-
-	// The guarded open, shared by the face's Open button and the
-	// object's context-menu item (menuItems below): Mill performs the
-	// open on approval; the plugin never touches the browser.
+	// The guarded open, shared by the face's own Open button (over the
+	// requestGuardedAction door) and this object-menu item: Mill
+	// performs the open on approval; the plugin never touches the
+	// browser.
 	const openGuarded = async (ctx, onStatus) => {
 		const url = withScheme((ctx.object.Payload.url || '').trim())
 		if (!url) { onStatus('Enter an address first.'); return }
@@ -69,60 +49,9 @@ export function activate(api) {
 		source: 'url',
 		editRoute: 'inline',
 		defaultPayload: { url: '', title: '' },
-		renderFace(el, ctx) {
-			faces.set(el, ctx)
-			render(el, ctx)
-		},
+		// No renderFace: the manifest's own entry page (face.html) draws
+		// it in its own sandboxed frame instead.
 	})
-
-	function render(el, ctx) {
-		// Rebuild the face from the object's current data. api.ui.el is
-		// text-safe by construction -- never innerHTML -- so a URL can
-		// never inject anything.
-		el.replaceChildren()
-		el.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:10px 12px;font:12px system-ui;height:100%;box-sizing:border-box'
-
-		const title = api.ui.el('div', { style: 'display:flex;align-items:center;gap:6px;font-weight:600' }, [
-			api.ui.el('span', {}, ['🔖']),
-			api.ui.el('span', { 'data-testid': 'bookmark-title' }, [titleFor((ctx.object.Payload.url || '').trim())]),
-		])
-
-		// Commit on Enter/blur, not per keystroke -- each payload
-		// write re-renders this face, which would rebuild the input
-		// under the caret mid-word.
-		function commit() {
-			const next = input.value.trim()
-			if (next === (ctx.object.Payload.url || '')) return
-			void ctx.updatePayload({ url: next, title: next ? new URL(withScheme(next)).hostname : '' }).catch(() => {
-				// A failed save reaches the user through Mill's own notice
-				// surface, never only the console.
-				api.notify({ level: 'error', text: 'Could not save the bookmark address.' })
-			})
-		}
-		const input = api.ui.el('input', {
-			type: 'text',
-			placeholder: 'https://…',
-			value: ctx.object.Payload.url || '',
-			'data-testid': 'bookmark-url-input',
-			style: 'font:11px ui-monospace,monospace;padding:4px 6px;border:1px solid var(--borderColor-default);border-radius:6px;width:100%;box-sizing:border-box',
-			onkeydown: (e) => {
-				if (e instanceof KeyboardEvent && e.key === 'Enter') { e.preventDefault(); commit() }
-				e.stopPropagation() // board shortcuts stay out of typing
-			},
-			onblur: commit,
-		})
-
-		const status = api.ui.el('span', { 'data-testid': 'bookmark-status', style: 'font:11px system-ui;color:var(--fgColor-muted)' })
-		const open = api.ui.el('button', {
-			type: 'button',
-			'data-testid': 'bookmark-open',
-			style: 'font:11px system-ui;padding:3px 10px;border:1px solid var(--borderColor-default);border-radius:6px;background:var(--bgColor-muted);cursor:pointer',
-			onclick: () => { void openGuarded(ctx, (text) => { status.textContent = text }) },
-		}, ['Open'])
-		const row = api.ui.el('div', { style: 'display:flex;align-items:center;gap:8px' }, [open, status])
-
-		el.append(title, input, row)
-	}
 }
 
 function withScheme(url) {

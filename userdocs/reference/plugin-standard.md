@@ -10,6 +10,11 @@ your plugin feels like part of Mill. Bringing a plugin over from
 another platform? Start with [Port an extension from another
 platform](port-a-vscode-extension.md).
 
+Rule numbers are stable diagnostic identities. Add a new rule with a new
+number; do not renumber existing rules, because conformance and install
+messages use these numbers to lead an author back here. Retired numbers stay
+unused.
+
 ## Configuration
 
 1. Declare every setting in the manifest's `configuration` key, with a
@@ -44,36 +49,30 @@ platform](port-a-vscode-extension.md).
 9. Report a failure through `api.notify` with one actionable sentence;
    `console.error` only alongside it, never instead. (checked: a
    `console.error` with no `api.notify` in the same function warns)
-10. Present output, never type it: show a result through
-    `api.ui.renderOutput`, which gives the reader the same tree,
-    table, log, rendered view, Find, Copy and Raw every other output
-    surface in Mill has. Never a `<pre>` or a text box of your own —
-    a text box says the reader can edit what they are reading.
-    (review)
-11. One narrow purpose per plugin. (review)
+10. One narrow purpose per plugin. (review)
 
 ## Contracts
 
-12. `id` is a kebab-case slug distinct from `name`; `name` contains
+11. `id` is a kebab-case slug distinct from `name`; `name` contains
     neither "Mill" nor "plugin". (checked)
-13. `version` is semver; `minMillVersion` names the oldest Mill you
+12. `version` is semver; `minMillVersion` names the oldest Mill you
     support. (checked)
-14. `icon.png` (128×128) is present and declared as `icon`;
+13. `icon.png` (128×128) is present and declared as `icon`;
     `icon@dark.png` is optional. (checked)
-15. `README.md` sits beside the plugin folder in your repository,
+14. `README.md` sits beside the plugin folder in your repository,
     never inside it (a plugin folder holds only files Mill serves); it
     says what the plugin does, its settings and the capabilities it
     needs. (checked for the examples: `examples/plugins/<id>.md`)
-16. No remote code, no self-update, no telemetry: `fetch` only through
+15. No remote code, no self-update, no telemetry: `fetch` only through
     `api.fetch`, no `import()` of a URL, no `eval`. (checked)
-17. Labels and messages use sentence case; no emoji in labels.
+16. Labels and messages use sentence case; no emoji in labels.
     (checked)
-18. Payload keys are camelCase; command ids are `<plugin>.<verb>`;
+17. Payload keys are camelCase; command ids are `<plugin>.<verb>`;
     tool names are `verb_noun`. (checked)
-19. SDK comments and your README describe behaviour for plugin
+18. SDK comments and your README describe behaviour for plugin
     authors: no repository vocabulary (goal ids, internal file
     names). (checked over the generated reference)
-20. A theme you contribute is a CSS file of nothing but
+19. A theme you contribute is a CSS file of nothing but
     `--token: value;` declarations, every token drawn from the
     documented theme variables: no selector, no at-rule, no `url()`.
     Mill layers it over the built-in palette of the family you name,
@@ -201,6 +200,15 @@ platform](port-a-vscode-extension.md).
     somewhere — a key you never set stays permanently falsy. (checked,
     advisory)
 
+## Output
+
+36. Present output, never type it: show a result through
+    `api.ui.renderOutput`, which gives the reader the same tree,
+    table, log, rendered view, Find, Copy and Raw every other output
+    surface in Mill has. Never a `<pre>` or a text box of your own —
+    a text box says the reader can edit what they are reading.
+    (review)
+
 ## Context keys
 
 Your own plugin can contribute facts its declarative expressions read: call
@@ -226,7 +234,7 @@ expressions fail closed.
 The SDK carries a few small helpers so a plugin never re-invents them:
 `api.ui.el(tag, attrs, children)` builds one DOM element the safe way —
 never `innerHTML`, so nothing you pass can inject markup — for the
-rest of your face's own layout (rule 10 still governs presenting a
+rest of your face's own layout (rule 36 still governs presenting a
 *result*, through `api.ui.renderOutput`). `api.fetchJSON(url, init?)`
 is `api.fetch` plus a JSON parse, answering `{ ok, status, data,
 errorText }` and never throwing, not even for a denied request or a

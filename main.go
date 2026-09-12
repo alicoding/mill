@@ -14,11 +14,13 @@ import (
 
 	backupadapter "github.com/alicoding/mill/internal/adapters/backup"
 	"github.com/alicoding/mill/internal/adapters/credential"
+	"github.com/alicoding/mill/internal/adapters/dataownership"
 	"github.com/alicoding/mill/internal/adapters/launchatlogin"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/adapters/windowing"
+	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/usererror"
-	"github.com/alicoding/mill/internal/pluginscaffold"
+	"github.com/alicoding/mill/internal/plugincli"
 	"github.com/alicoding/mill/internal/services/agentloopsvc"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/backupsvc"
@@ -110,12 +112,35 @@ func main() {
 	if settingsPath == "" {
 		settingsPath = defaultSettingsPath
 	}
-	// `mill plugin new <name>` (goal 0319): the scaffold is a subcommand
-	// of this one binary, routed here before any app state is opened so
-	// it never touches the settings store it only names.
+	// Plugin authoring commands are routed before any app state opens, so
+	// scaffolding and source-manifest migration never touch the settings store.
 	if len(os.Args) > 1 && os.Args[1] == "plugin" {
-		os.Exit(pluginscaffold.Run(os.Args[2:], pluginsvc.ResolveDir(settingsPath), millVersion, os.Stdout, os.Stderr))
+		os.Exit(plugincli.Run(os.Args[2:], pluginsvc.ResolveDir(settingsPath), millVersion, os.Stdout, os.Stderr))
 	}
+	executionDatabaseURL := os.Getenv("MILL_EXECUTION_DATABASE_URL")
+	if executionDatabaseURL == "" {
+		executionDatabaseURL = "sqlite:" + windowing.ConfigDirOrEnv("MILL_EXECUTION_DB_PATH", "execution.db")
+	}
+
+	startup := windowing.NewStartupCoordinates()
+	app := application.New(application.Options{
+		Name:        "mill",
+		Description: "Guardrailed agentic-workflow automation",
+		Logger:      logger,
+		Assets: application.AssetOptions{
+			Handler:    application.AssetFileServerFS(assets),
+			Middleware: startup.AssetMiddleware,
+		},
+		Mac:            windowing.MacAppOptions(),
+		ShouldQuit:     startup.ShouldQuit,
+		SingleInstance: singleInstanceOptions(startup.RequestActivation),
+	})
+
+	dataOwner, err := dataownership.AcquireForProcess(settingsPath, executionDatabaseURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	logger.Debug("data ownership acquired", "execution", dataOwner.ExecutionOwnership())
 	settingsStore, err := settings.New(settingsPath)
 	if err != nil {
 		log.Fatal(err)
@@ -164,11 +189,6 @@ func main() {
 	// adapter change needed). Takes precedence over the path-based
 	// override below when set; MILL_EXECUTION_DB_PATH and the default
 	// sqlite path are otherwise unchanged.
-	executionDatabaseURL := os.Getenv("MILL_EXECUTION_DATABASE_URL")
-	if executionDatabaseURL == "" {
-		executionDatabaseURL = "sqlite:" + windowing.ConfigDirOrEnv("MILL_EXECUTION_DB_PATH", "execution.db")
-	}
-
 	pluginDir := pluginsvc.ResolveDir(settingsPath)
 	snapshotOptions := backupadapter.SnapshotOptions{
 		ReadSettings: settingsStore.Snapshot,
@@ -192,48 +212,40 @@ func main() {
 		logger.Error("migrate legacy MCP pending writes", "error", err)
 	}
 	guardrailService := guardrailsvc.NewGuardrailService(settingsStore, compositionService)
+	wiring.WireAIProviderCheckAuthorizer(configureService, guardrailService)
 	pluginService := wiring.NewPluginService(settingsPath, guardrailService, millChannel, millUpdateVersion, backupsvc.SQLiteDBPath(executionDatabaseURL), logger)
 	pluginService.SetExampleMarketplace(examplePluginsFS)
 	// docs/goals/0240 S1: the coding loop's Confirm-screen preview --
 	// read-only over guardrailService.Rules(). Its ExecutionService
 	// dependency (goal 0240 S2, RunCommandBlock's own doc comment) is
-	// late-bound below via SetExecutionService, same shape
-	// TriggerService.SetExecutionService already uses just after this,
-	// since ExecutionService itself isn't constructed yet at this point.
+	// wired after the durable runtime is prepared below.
 	codeLoopService := codeloopsvc.NewCodeLoopService(guardrailService)
-	executionService, err := executionsvc.NewExecutionService(executionDatabaseURL, compositionService, guardrailService)
+	executionService, err := executionsvc.PrepareExecutionServiceWithOwnership(
+		executionDatabaseURL, dataOwner.ExecutionOwnership(), compositionService, guardrailService,
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
+	triggerService.SetExecutionService(executionService)
+	wiring.WireSystemEventNotifications(executionService, triggerService, notificationService)
+	wiring.WireAtlasWorkflowRunners(executionService, atlasService)
+	executionService.SetVersion(millVersion)
+	executionService.SetEnvironmentLabelLookup(configureService.EnvironmentLabel)
+	configuresvc.SetAIProviderMutationCoordinator(
+		configureService,
+		func(mutate func(assertUnused func(id string) error) error) error {
+			return executionsvc.WithAIProviderMutations(executionService, mutate)
+		},
+		func(id string, revision func() string) aiprovider.ChangeImpact {
+			return executionsvc.AIProviderChangeImpact(executionService, id, revision)
+		},
+	)
+	wiring.WireAIProviderSamples(compositionService, configureService, executionService)
 	codeLoopService.SetExecutionService(executionService)
 	wiring.WireCodingLoopSecrets(codeLoopService, secretService)
 	wiring.WireVaultWaits(executionService, secretService)                                 // goal 0360 S2
 	wiring.WireCodingLoopEnvPreview(codeLoopService, compositionService, configureService) // docs/goals/0240 S4
-	// Single execution path (docs/adr/0008): a headless trigger fire now
-	// runs through the same durable ExecutionService.RunWorkflow every
-	// other entrypoint uses, tagged RunKindTriggered -- constructed after
-	// TriggerService (which needs comp at construction time for Sync's
-	// own workflow lookups) since ExecutionService itself depends on
-	// compositionService, so this can't be a constructor parameter
-	// without a cycle; same late-bound-setter shape as SetReservedCombo
-	// below.
-	triggerService.SetExecutionService(executionService)
-	// docs/adr/0010: a child-workflow node's real DBOS parent/child
-	// invocation, wired the same late-bound way for the same reason.
-	executionService.WireChildWorkflowRunner()
-	// docs/adr/0035's system-event dispatch seam, plus the notification
-	// spine's second consumer of it (docs/goals/0171-notification-spine.md).
-	wiring.WireSystemEventNotifications(executionService, triggerService, notificationService)
-	// goal 0052 slice 3: the version a run receipt's Build field stamps.
-	executionService.SetVersion(millVersion)
-	// goal 0306 S5: a run summary and receipt name the Environment the
-	// run executed in; the labels live in Configure.
-	executionService.SetEnvironmentLabelLookup(configureService.EnvironmentLabel)
-
-	// atlassvc's own run/action/completion seams onto executionService --
-	// composition-root code split out of this file at the 500-line limit.
-	wiring.WireAtlasWorkflowRunners(executionService, atlasService)
-	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange) // goal 0066
+	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange)              // goal 0066
 	// Cross-service seam adapters (recognition, List projection) live in the wiring package -- composition-root code split out of this file at the 500-line limit.
 	wiring.WireAtlasProjections(atlasService, configureService, compositionService)
 	wiring.WireValidationSeams(configureService)
@@ -277,6 +289,12 @@ func main() {
 	// SettingsService exists, same late-bound-setter shape as
 	// SetReservedCombo just above.
 	executionService.SetMinutesSavedLookup(settingsService.GetWorkflowMinutesSaved)
+	if err := executionsvc.LaunchExecutionService(executionService); err != nil {
+		log.Fatal(err)
+	}
+	if err := configuresvc.ReconcileBuiltInAIProviders(configureService); err != nil {
+		logger.Error("reconcile built-in AI providers", "error", err)
+	}
 
 	// docs/SPEC.md §11 (task #12): Mill as MCP server, exposing its own
 	// workflows/Configure data as read-only Resources. Bind-address
@@ -296,10 +314,6 @@ func main() {
 
 	agentLoopService := agentloopsvc.NewAgentLoopService(millMCPService) // an MCP client of it, ADR-0035
 
-	// Declared before application.New so the SingleInstance callback's
-	// closure (below) can capture it; assigned with `=` once the window
-	// is actually created further down. The callback only fires on a real
-	// second launch, long after mainWindow is set.
 	var mainWindow *application.WebviewWindow
 
 	// Every bound service marshals its errors through the same door: a
@@ -310,57 +324,34 @@ func main() {
 	// Wails version -- see usererror.MarshalForWails.
 	boundErrors := application.ServiceOptions{MarshalError: usererror.MarshalForWails(logger)}
 
-	app := application.New(application.Options{
-		Name:        "mill",
-		Description: "Guardrailed agentic-workflow automation",
-		Logger:      logger,
-		Services: []application.Service{
-			application.NewServiceWithOptions(&capabilitysvc.CapabilitiesService{}, boundErrors),
-			application.NewServiceWithOptions(compositionService, boundErrors),
-			application.NewServiceWithOptions(triggerService, boundErrors),
-			application.NewServiceWithOptions(configureService, boundErrors),
-			application.NewServiceWithOptions(secretService, boundErrors),
-			application.NewServiceWithOptions(atlasService, boundErrors),
-			application.NewServiceWithOptions(companionService, boundErrors),
-			application.NewServiceWithOptions(agentLoopService, boundErrors),
-			application.NewServiceWithOptions(guardrailService, boundErrors),
-			application.NewServiceWithOptions(pluginService, boundErrors),
-			application.NewServiceWithOptions(clipboardHistoryService, boundErrors),
-			application.NewServiceWithOptions(codeLoopService, boundErrors),
-			application.NewServiceWithOptions(executionService, boundErrors),
-			application.NewServiceWithOptions(settingsService, boundErrors),
-			application.NewServiceWithOptions(backupService, boundErrors),
-			application.NewServiceWithOptions(docssvc.New(userdocsFS), boundErrors),
-			application.NewServiceWithOptions(mcpAuditService, boundErrors),
-			application.NewServiceWithOptions(auditService, boundErrors),
-			application.NewServiceWithOptions(remoteAuthService, boundErrors),
-			application.NewServiceWithOptions(bridgeService, boundErrors),
-			application.NewServiceWithOptions(notificationService, boundErrors),
-			// The native menu bar, projected from the frontend command
-			// registry (docs/goals/0332) -- stateless, so it is constructed
-			// inline like CapabilitiesService above.
-			application.NewServiceWithOptions(menusvc.New(), boundErrors),
-		},
-		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
-			// Auth gate around the plugin asset route around the embedded
-			// bundle -- wiring.ComposedAssetMiddleware's own doc.
-			Middleware: wiring.ComposedAssetMiddleware(remoteAuthService, pluginService),
-		},
-		// Mill's macOS archetype and its termination contract live in the
-		// windowing adapter, where they are documented and pinned by a test
-		// (goal 0188) rather than sitting as bare option values here.
-		Mac: windowing.MacAppOptions(),
-		// The one termination gate every quit path reaches (settingsservice_flush.go).
-		ShouldQuit: settingsService.ShouldQuit,
-		// Production-only single-instance guard (docs/SPEC.md §3.7's
-		// data-corruption hazard). nil in dev/server builds -- see
-		// singleinstance_{production,dev}.go for why the guard must NOT
-		// be active under `wails3 dev`. getMainWindow closes over
-		// mainWindow, assigned below after the window is created (the
-		// callback only ever fires on a real second launch, long after).
-		SingleInstance: singleInstanceOptions(func() *application.WebviewWindow { return mainWindow }),
-	})
+	startup.SetAssetMiddleware(wiring.ComposedAssetMiddleware(remoteAuthService, pluginService))
+	startup.SetShouldQuit(settingsService.ShouldQuit)
+	for _, service := range []application.Service{
+		application.NewServiceWithOptions(&capabilitysvc.CapabilitiesService{}, boundErrors),
+		application.NewServiceWithOptions(compositionService, boundErrors),
+		application.NewServiceWithOptions(triggerService, boundErrors),
+		application.NewServiceWithOptions(configureService, boundErrors),
+		application.NewServiceWithOptions(secretService, boundErrors),
+		application.NewServiceWithOptions(atlasService, boundErrors),
+		application.NewServiceWithOptions(companionService, boundErrors),
+		application.NewServiceWithOptions(agentLoopService, boundErrors),
+		application.NewServiceWithOptions(guardrailService, boundErrors),
+		application.NewServiceWithOptions(pluginService, boundErrors),
+		application.NewServiceWithOptions(clipboardHistoryService, boundErrors),
+		application.NewServiceWithOptions(codeLoopService, boundErrors),
+		application.NewServiceWithOptions(executionService, boundErrors),
+		application.NewServiceWithOptions(settingsService, boundErrors),
+		application.NewServiceWithOptions(backupService, boundErrors),
+		application.NewServiceWithOptions(docssvc.New(userdocsFS), boundErrors),
+		application.NewServiceWithOptions(mcpAuditService, boundErrors),
+		application.NewServiceWithOptions(auditService, boundErrors),
+		application.NewServiceWithOptions(remoteAuthService, boundErrors),
+		application.NewServiceWithOptions(bridgeService, boundErrors),
+		application.NewServiceWithOptions(notificationService, boundErrors),
+		application.NewServiceWithOptions(menusvc.New(), boundErrors),
+	} {
+		app.RegisterService(service)
+	}
 
 	// Wails3's own first-party self-updater (v3/pkg/updater) -- app.Updater
 	// is constructed by application.New() itself; the provider/Init
@@ -379,6 +370,10 @@ func main() {
 	// Everything that must wait for the native run loop (hotkeys, trigger
 	// sync, the menu-accelerator release) lives in wiring.
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
+		startup.AttachActivation(func() {
+			mainWindow.Restore()
+			mainWindow.Focus()
+		})
 		wiring.ApplicationStarted(triggerService, compositionService, settingsService, millMCPService, logger)
 	})
 
@@ -479,10 +474,11 @@ func main() {
 		}
 	}()
 
-	// Run the application. This blocks until the application has been exited.
-	err = app.Run()
-
-	wiring.RunShutdown(logger, executionService, backupService, millMCPService, pluginService, mcpAuditService, atlasService, secretService, bridgeService, auditService)
+	// Register teardown with Wails' native lifecycle before Run. The adapter
+	// also invokes the same exactly-once owner if Run returns or startup fails.
+	err = windowing.RunWithShutdown(app, func() {
+		wiring.RunShutdown(logger, executionService, backupService, millMCPService, pluginService, mcpAuditService, atlasService, secretService, bridgeService, auditService, configureService)
+	})
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {

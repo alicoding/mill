@@ -45,18 +45,7 @@ func (c *ConfigureService) ImportMCPServer(jsonData string) (mcpserver.MCPServer
 // provider's key reference is replaced by the imported one, like every
 // other field: a reference is a name, never a credential.
 func (c *ConfigureService) ImportAIProvider(jsonData string) (aiprovider.AIProvider, error) {
-	return importUniform(jsonData, "aiprovider", importSpec[exportedAIProvider, aiprovider.AIProvider]{
-		existsLocked: func(id string) bool { c.mu.Lock(); defer c.mu.Unlock(); return c.aiProviderExistsLocked(id) },
-		createWithID: func(id string, in exportedAIProvider) (aiprovider.AIProvider, error) {
-			return c.createAIProviderWithID(id, in.Label, in.Kind, in.BaseURL, in.Model, in.KeyRef)
-		},
-		create: func(in exportedAIProvider) (aiprovider.AIProvider, error) {
-			return c.CreateAIProvider(in.Label, in.Kind, in.BaseURL, in.Model, in.KeyRef)
-		},
-		update: func(in exportedAIProvider) (aiprovider.AIProvider, error) {
-			return c.UpdateAIProvider(in.ID, in.Label, in.Kind, in.BaseURL, in.Model, in.KeyRef)
-		},
-	})
+	return c.importAIProviderCoordinated(jsonData)
 }
 
 // importEnvelope is implemented by every exported*Entity wire shape --

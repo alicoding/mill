@@ -2,8 +2,8 @@ import type { ActivationFrameInit } from '../app/pluginFrameBootstrap'
 import { buildFetchJSON } from '../plugins/pluginFetchJSON'
 import { formatPluginDate } from '../plugins/pluginDateFormat'
 import { buildPluginStorage, type PluginStorageDoors } from '../plugins/pluginStorage'
-import type { ContentQuery, LifecycleEventPayload, MillPluginAPI, PluginCaptureDecl, PluginCaptureHandle, PluginCommandDecl, PluginContextValue, PluginFetchResult, PluginNoticeInput, PluginViewDecl, PluginViewHandle } from '../plugins/sdk'
-import { CANVAS_TOOL_CALLS, buildCanvasToolsFrameHalf } from './canvasTools'
+import type { ContentQuery, LifecycleEventPayload, LinkQuery, MillPluginAPI, PluginCaptureDecl, PluginCaptureHandle, PluginCommandDecl, PluginContextValue, PluginFetchResult, PluginNoticeInput, PluginViewDecl, PluginViewHandle } from '../plugins/sdk'
+import { CANVAS_TOOL_CALLS, buildCanvasToolsFrameHalf, registerManifestCanvasFaces } from './canvasTools'
 
 // A third-party plugin's own activation, run inside a hidden sandboxed
 // frame (goal 0375 S1b): main.js's activate(api) runs HERE, not in
@@ -26,16 +26,13 @@ import { CANVAS_TOOL_CALLS, buildCanvasToolsFrameHalf } from './canvasTools'
 // implementation, not a hand-kept copy.
 
 // FramedPluginAPI is everything this frame's own api object
-// implements: MillPluginAPI minus the four doors a framed activation
+// implements: MillPluginAPI minus the two doors a framed activation
 // has no story for yet (evaluateGuardedAction, callIntegration --
-// neither door existed when this frame runtime was first built;
-// links/linkKinds -- read doors never wired into FRAME_METHODS'
-// activation-only sibling, ACTIVATION_ONLY_METHODS, whatever needs
-// them today reaches them through requestGuardedAction/query instead).
-// A plugin calling one of the four gets "is not a function", the same
+// neither door existed when this frame runtime was first built).
+// A plugin calling one of the two gets "is not a function", the same
 // answer any object missing a property gives -- unchanged from before
 // this file existed.
-type FramedPluginAPI = Omit<MillPluginAPI, 'evaluateGuardedAction' | 'callIntegration' | 'links' | 'linkKinds'>
+type FramedPluginAPI = Omit<MillPluginAPI, 'evaluateGuardedAction' | 'callIntegration'>
 
 // ACTIVATION_CALL_METHODS -- every RPC method name this file's own
 // call() invokes, kept in one place so the Vitest protocol-surface
@@ -44,7 +41,7 @@ type FramedPluginAPI = Omit<MillPluginAPI, 'evaluateGuardedAction' | 'callIntegr
 // (pluginActivationBridge.ts): one source of truth for both sides
 // instead of the byte-parity test this file replaces.
 export const ACTIVATION_CALL_METHODS = [
-	'notify', 'storage.set', 'storage.delete', 'query', 'kinds', 'open', 'fetch',
+	'notify', 'storage.set', 'storage.delete', 'query', 'kinds', 'links', 'linkKinds', 'open', 'fetch',
 	'content.createNote', 'content.createCard', 'content.updateCard', 'content.appendListRow', 'content.createList', 'content.setCardFields',
 	'files.list', 'convert.htmlToMarkdown', 'convert.markdownToHtml', 'requestGuardedAction', 'context.set',
 	'register.command', 'register.view', 'register.capture',
@@ -56,7 +53,7 @@ export const ACTIVATION_CALL_METHODS = [
 
 ;(function () {
 	const initMeta = document.querySelector('meta[name="mill-frame-init"]')
-	let init: ActivationFrameInit = { pluginId: '', millVersion: '', version: '', settings: {}, storage: {}, exports: [], capabilities: [] }
+	let init: ActivationFrameInit = { pluginId: '', millVersion: '', version: '', settings: {}, storage: {}, exports: [], capabilities: [], canvasFaces: [] }
 	try {
 		if (initMeta) init = JSON.parse(initMeta.getAttribute('content') || '{}') as ActivationFrameInit
 	} catch (err) {
@@ -237,6 +234,8 @@ export const ACTIVATION_CALL_METHODS = [
 		storage,
 		query: (q?: ContentQuery) => call('query', q || {}) as ReturnType<MillPluginAPI['query']>,
 		kinds: () => call('kinds') as ReturnType<MillPluginAPI['kinds']>,
+		links: (q?: LinkQuery) => call('links', q || {}) as ReturnType<MillPluginAPI['links']>,
+		linkKinds: () => call('linkKinds') as ReturnType<MillPluginAPI['linkKinds']>,
 		open: (cardId: string) => { void call('open', cardId) },
 		on: ((event: string, handler: (payload: unknown) => void, filter?: { kinds?: string[] }) => {
 			if (event === 'contents:changed') {
@@ -291,6 +290,7 @@ export const ACTIVATION_CALL_METHODS = [
 		// is the framed shape of the same contribution.
 		registerCanvasObject: notAvailable('registerCanvasObject'),
 		registerCanvasTool: canvasTools.registerCanvasTool,
+		registerCanvasObjectFace: canvasTools.registerCanvasObjectFace,
 		measure: canvasTools.measure,
 		registerCommand: (decl: PluginCommandDecl) => {
 			runHandlers.set(decl.id, decl.run)
@@ -349,7 +349,8 @@ export const ACTIVATION_CALL_METHODS = [
 	// location), never the document's <base>, so a relative reference
 	// here would resolve to the wrong folder entirely.
 	const url = new URL(`main.js?v=${encodeURIComponent(init.version || '')}`, document.baseURI).href
-	import(/* @vite-ignore */ url)
+	registerManifestCanvasFaces(canvasTools, init.canvasFaces || [])
+		.then(() => import(/* @vite-ignore */ url))
 		.then((mod: Record<string, unknown>) => {
 			const activate = resolveActivate(mod)
 			if (!activate) throw new Error('main.js exports no activate() function')

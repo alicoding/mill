@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Bookmark</title>
+    <style>
+      /* Mill injects its own palette as custom properties on :root and
+         updates them in place, so plain CSS follows the user's theme. */
+      body {
+        margin: 0;
+        padding: 10px 12px;
+        font: 12px system-ui, sans-serif;
+        color: var(--fgColor-default);
+        background: var(--bgColor-default);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        box-sizing: border-box;
+        height: 100%;
+      }
+      .title { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+      input {
+        font: 11px ui-monospace, monospace;
+        padding: 4px 6px;
+        border: 1px solid var(--borderColor-default);
+        border-radius: 6px;
+        width: 100%;
+        box-sizing: border-box;
+        color: inherit;
+        background: var(--bgColor-default);
+      }
+      .row { display: flex; align-items: center; gap: 8px; }
+      button {
+        font: 11px system-ui, sans-serif;
+        padding: 3px 10px;
+        border: 1px solid var(--borderColor-default);
+        border-radius: 6px;
+        background: var(--bgColor-muted);
+        color: inherit;
+        cursor: pointer;
+      }
+      .status { font: 11px system-ui, sans-serif; color: var(--fgColor-muted); }
+    </style>
+  </head>
+  <body>
+    <div class="title">
+      <span aria-hidden="true">🔖</span>
+      <span data-testid="bookmark-title"></span>
+    </div>
+    <input type="text" placeholder="https://…" data-testid="bookmark-url-input">
+    <div class="row">
+      <button type="button" data-testid="bookmark-open">Open</button>
+      <span class="status" data-testid="bookmark-status"></span>
+    </div>
+    <script src="face.js"></script>
+  </body>
+</html>

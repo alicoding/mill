@@ -10,6 +10,7 @@ import (
 	"github.com/alicoding/mill/internal/services/agentloopsvc"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/companionsvc"
+	"github.com/alicoding/mill/internal/services/configuresvc"
 	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/executionsvc"
 	"github.com/alicoding/mill/internal/services/mcpsvc"
@@ -30,6 +31,7 @@ func init() {
 	application.RegisterEvent[secretsvc.SourcesChanged](secretsvc.SourcesChangedEvent)
 	application.RegisterEvent[executionsvc.GuardrailPendingChanged]("guardrail-pending-changed")
 	application.RegisterEvent[companionsvc.CompanionDelta](companionsvc.DeltaEventName)
+	application.RegisterEvent[configuresvc.AIProviderAvailabilityChanged](configuresvc.AIProviderAvailabilityEventName)
 	application.RegisterEvent[agentloopsvc.AgentLoopEvent](agentloopsvc.StateEventName)
 	application.RegisterEvent[agentloopsvc.AgentLoopDelta](agentloopsvc.DeltaEventName)
 	// docs/adr/0033: OpenMainWindow emits this so App.tsx can switch views

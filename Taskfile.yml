@@ -80,6 +80,7 @@ tasks:
       committing anything that touches those surfaces.
     cmds:
       - go generate ./internal/contract/...
+      - go generate ./internal/pluginschema
       - go generate ./internal/docsgen
       - go test ./internal/services/seeding/ -run TestSeedFingerprints_MatchCommittedRecord -update
       - PATH="$HOME/go/bin:$PATH" wails3 generate bindings -clean=true -ts -i

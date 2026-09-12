@@ -172,6 +172,28 @@ func TestManifestIDIn_FindsTheIDAtTheRootOrOneLevelDown(t *testing.T) {
 	}
 }
 
+func TestInstallFromLink_StagesAHostNativeAbsoluteFolder(t *testing.T) {
+	source := t.TempDir()
+	if err := os.WriteFile(filepath.Join(source, "manifest.json"), []byte(`{"id":"native-folder","name":"Native folder","version":"1.0.0"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "main.js"), []byte("export function activate() {}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	svc, installedRoot := newStoreService(t)
+	result, err := prepareAndConfirmForTest(t, svc, InstallCandidate{Kind: "link", Locator: source})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record := result.Record
+	if record.Tier != TierDev || record.Source.Kind != "path" || record.Source.Path != source {
+		t.Fatalf("InstallFromLink(%q) = %+v", source, record)
+	}
+	if _, err := os.Stat(filepath.Join(installedRoot, "native-folder", "main.js")); err != nil {
+		t.Fatalf("installed folder: %v", err)
+	}
+}
+
 func TestManifestIDIn_RefusesADownloadWithNoManifest(t *testing.T) {
 	if _, _, err := ManifestIDIn(t.TempDir()); err == nil {
 		t.Fatal("ManifestIDIn() = nil error, want a refusal")

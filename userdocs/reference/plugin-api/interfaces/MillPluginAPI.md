@@ -409,6 +409,28 @@ registerCanvasObject: (decl) => void;
 
 ***
 
+### registerCanvasObjectFace
+
+```ts
+registerCanvasObjectFace: (descriptor) => Promise<void>;
+```
+
+Registers the manifest entry page for one framed canvas-object
+kind. Mill rejects any kind or entry absent from this plugin's
+manifest.
+
+#### Parameters
+
+##### descriptor
+
+[`RegisterFaceDescriptor`](RegisterFaceDescriptor.md)
+
+#### Returns
+
+`Promise`\<`void`\>
+
+***
+
 ### registerCanvasTool
 
 ```ts

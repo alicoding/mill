@@ -214,6 +214,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/check-workflow-yaml.sh
       - run: ./scripts/check-icon-routing-selftest.sh
+      - run: ./scripts/check-engineering-health-issue-results.test.sh
       # goal 0419 S1c: SHA-pinned Docker image, not `go install @<tag>`
       # (an unpinned network fetch at every run) -- rhysd/actionlint
       # ships no action.yml of its own (confirmed against the repo:
@@ -1149,7 +1150,7 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - run: go test -tags server -v -count=1 -timeout=10m ./internal/services/pluginsvc ./internal/adapters/pluginstate ./internal/adapters/backup ./internal/services/backupsvc ./internal/adapters/settings
+      - run: go test -tags server -v -count=1 -timeout=10m ./internal/services/pluginsvc ./internal/adapters/pluginstate ./internal/adapters/backup ./internal/services/backupsvc ./internal/adapters/settings ./internal/adapters/procexec
 
   # Advisory, goal 0401 (Decision 3): sub-5-minute affected-only signal on
   # top of the correctness-first full `test-go` above, never a
