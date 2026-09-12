@@ -1139,6 +1139,19 @@ jobs:
           name: go-coverprofile
           path: cover.out
 
+  test-plugin-filesystem-windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      CGO_ENABLED: 0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go test -tags server -v -count=1 -timeout=10m ./internal/services/pluginsvc ./internal/adapters/pluginstate ./internal/adapters/backup ./internal/services/backupsvc ./internal/adapters/settings ./internal/adapters/procexec
+
   # Advisory, goal 0401 (Decision 3): sub-5-minute affected-only signal on
   # top of the correctness-first full `test-go` above, never a
   # replacement for it -- continue-on-error and outside ci-gate's needs,
@@ -1548,6 +1561,7 @@ jobs:
       - lint-go
       - build-go
       - test-go
+      - test-plugin-filesystem-windows
       - e2e
       - govulncheck
       - dependency-review

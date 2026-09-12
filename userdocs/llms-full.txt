@@ -420,7 +420,9 @@ installing one is copying that folder into Mill's plugins folder.
 It has three tabs: **Installed**, **Browse**, and **Updates**.
 
 Browse lists everything your marketplaces offer that you have not
-installed yet, starting with the examples Mill ships. Press **Install**
+installed yet, including the examples Mill ships when policy allows
+them. While sources load, fail, or return only installed entries,
+Browse says which state it is in instead of calling the result empty. Press **Install**
 on a row. Mill shows what the extension can do — the hosts it reaches,
 whether it writes to your boards, what it adds — and installs it only
 after you confirm. The new extension appears under **Installed**;
@@ -464,8 +466,15 @@ file at its root, listing the plugins it offers. Press **Sources** in
 the Browse tab to add one: `owner/repo`, a repository address, a direct
 address of a `marketplace.json` file, or a folder path.
 
-Mill reads a marketplace only when you add it, refresh it, install
-from it, or check for updates. It never reaches out on its own.
+Sources shows the canonical location, publisher, last successful refresh,
+and any current failure. A failed refresh keeps the last usable catalog.
+Removing a source removes its registration and cached catalog; extensions
+already installed from it stay installed. Re-adding the same name creates
+a new source identity, so an older refresh or confirmation cannot change it.
+
+Opening Sources and pressing **Retry** after a local read error do not use
+the network. Mill reads a marketplace only when you add it, press **Refresh**,
+install from it, or check for updates. It never reaches out on its own.
 
 ### Updates
 
@@ -2114,8 +2123,9 @@ install, and it runs only with your say-so.
 
 **Extensions** is its own page (⇧⌘X). **Installed** lists what you
 have and what each one adds. **Browse** lists what your marketplaces
-offer that you have not installed, starting with the examples Mill
-ships. **Updates** shows what has a newer version.
+offer that you have not installed. It distinguishes loading, source
+failure, installed matches, filters with no results, and a genuinely
+empty catalog. **Updates** shows what has a newer version.
 
 Installing shows what the extension can do — the hosts it reaches,
 whether it writes to your boards, what it adds — and installs only
@@ -2139,6 +2149,11 @@ file, listing the extensions it offers. Add one under **Sources**;
 Mill reads it only when you add it, refresh it, install from it, or
 check for updates — never on its own. You can also install straight
 from a repository, a `.zip` address, or a folder on this Mac.
+
+Each source keeps its own identity, canonical location, cached catalog,
+and refresh status. A failed refresh leaves the last successful catalog
+available and shows the failure. Removing a source leaves extensions
+already installed from it in place.
 
 ## Tiers
 
@@ -2183,14 +2198,17 @@ channel you chose is enabled; workflow steps talk only to endpoints
 you configured.
 
 **Your data is local files.** Settings and entities live in a JSON
-store, run history in SQLite, both on your machine. Settings →
+store; run history and the extension source catalog use separate SQLite
+files on your machine. Settings →
 Backups snapshots them on a schedule, exports everything to one
 file, and imports it on another machine. Passwords and keys live in
 their own encrypted vault file on your device. Every local backup
 carries a copy of that file too — never its key, which stays in your
 OS keychain — but "Export everything" leaves it out, since that
 archive is the one meant to move to another machine or another
-person. The vault's key sits in your OS keychain, stored against that
+person. A portable export includes a validated extension source snapshot,
+but Import everything reports it without applying it over the live source
+catalog. The vault's key sits in your OS keychain, stored against that
 specific vault file — a second vault, or a vault restored from a
 backup, gets its own key rather than replacing the first one's.
 
@@ -2550,7 +2568,7 @@ Extracts one element (by CSS selector) out of the payload's HTML, dropping every
 
 ### Extract fields with AI
 
-Sends a prompt plus the payload to a configured AI provider, requests a structured response, and writes each declared output field into this workflow's Attributes by the same key. Every declared field is required; one the provider omits is written empty rather than dropped.
+Sends a prompt plus the payload to a configured AI provider, requests a structured response, and writes each declared output field into this workflow's Attributes by the same key. Every declared field is required; a response that does not match the requested schema fails the step.
 
 - Takes: text — Produces: its input, unchanged
 - Effect: external — parks for approval by default
@@ -3070,12 +3088,20 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `edit.save` | Save | `⌘S` | Global | Conditional — available only in a matching state |
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
 | `extension.addMcpServer` | Add to Configure | — | Global | Acts on the selected entity |
+| `extension.addSource` | Add extension source | — | Global | Acts on the selected marketplaceSourceInput |
+| `extension.browse.cancelInstall` | Cancel extension installation | — | Global | Conditional — available only in a matching state |
+| `extension.browse.clearFilters` | Clear extension filters | — | Global | Conditional — available only in a matching state |
+| `extension.browse.confirmInstall` | Install extension | — | Global | Acts on the selected marketplaceEntry |
+| `extension.browse.previewInstall` | Review extension installation | — | Global | Acts on the selected marketplaceEntry |
+| `extension.browse.retry` | Retry loading extensions | — | Global | Conditional — available only in a matching state |
 | `extension.checkUpdates` | Check for updates | — | Global | Acts on the selected entity |
 | `extension.disable` | Turn off | — | Global | Acts on the selected entity |
 | `extension.enable` | Turn on | — | Global | Acts on the selected entity |
-| `extension.refreshSources` | Extensions: refresh sources | — | Global | Always available |
+| `extension.refreshSources` | Extensions: refresh sources | — | Global | Conditional — available only in a matching state |
 | `extension.remove` | Remove | — | Global | Acts on the selected entity |
 | `extension.reveal` | Reveal folder | — | Global | Acts on the selected entity |
+| `extension.source.remove` | Remove source | — | Global | Acts on the selected entity |
+| `extension.sources.retry` | Retry sources | — | Global | Conditional — available only in a matching state |
 | `extension.update` | Update | — | Global | Acts on the selected entity |
 | `extensions.checkUpdates` | Extensions: check for updates | — | Global | Always available |
 | `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
@@ -3084,6 +3110,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `extensions.review` | Review extensions waiting for you | — | Global | Conditional — available only in a matching state |
 | `extensions.sources` | Extensions: marketplace sources | — | Global | Always available |
 | `extensions.updateAll` | Extensions: update all | — | Global | Conditional — available only in a matching state |
+| `extensions.viewInstalled` | Extensions: view installed | — | Global | Always available |
 | `guardrail.rule.delete` | Delete rule | — | Global | Acts on the selected entity |
 | `guardrail.rule.edit` | Edit rule | — | Global | Acts on the selected entity |
 | `help.openDataFolder` | Open data folder | — | Global | Always available |
@@ -3108,6 +3135,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `output.copy` | Copy output | — | Global | Conditional — available only in a matching state |
 | `output.find` | Find in output | `⌘F` | Global | Conditional — available only in a matching state |
 | `output.openFull` | Open output in full | — | Global | Conditional — available only in a matching state |
+| `output.save` | Save output | — | Global | Conditional — available only in a matching state |
 | `output.toggleWrap` | Wrap output lines | — | Global | Conditional — available only in a matching state |
 | `palette.open` | Open command palette | `⌘K` | Global | Always available |
 | `panel.applyClipboard` | Apply from clipboard | — | Global | Always available |
@@ -3955,16 +3983,20 @@ Mill — for an agent that can't reach Mill over MCP.
 
 ## Backups
 
-Mill snapshots your workflow history, settings, and your secrets
+Mill snapshots your workflow history, settings, extension source catalog,
+and your secrets
 vault automatically — on clean shutdown, on version change, and daily
 via the built-in "Backup Mill data" workflow, keeping the most recent
 ten. "Back up now" adds one on demand. "Export everything" bundles
 your data into one file for moving machines, excluding the vault;
 "Import everything" merges it back. The export covers Mill's own
 data — files mirrored from folders on disk are referenced by path,
-not copied in, so back those folders up separately. Restoring brings
-back a backup's vault file; it opens if that vault's key is still on
-this device.
+not copied in, so back those folders up separately. Source state is stored
+as `plugin-state/catalog.sqlite`, or as `plugin-state/legacy-marketplaces.json`
+before its first migration. Export files report when this snapshot is
+included. Import validates and retains it in the archive but does not apply
+it over the source catalog currently open in Mill. Restoring brings back a
+local backup's vault file; it opens if that vault's key is still on this device.
 
 ## Updates
 
@@ -4660,9 +4692,15 @@ Settings' rebinding list, and the Quick Panel for anything opting into
 
 `frontend/src/shared/commands.test.ts` covers the dispatch contract
 generically; add a case there if your command's `enabled` predicate has
-real branches worth pinning. `commandsDeclaration.json` regenerates via
-`go generate ./internal/docsgen` — run it and commit the result so
-"Commands" picks up the new row.
+real branches worth pinning. From the repository root, regenerate the
+TypeScript registry declaration first, then the user docs that consume it:
+
+```sh
+npm --prefix frontend run docs:commands
+go generate ./internal/docsgen
+```
+
+Inspect and commit both generated outputs so "Commands" picks up the new row.
 
 ---
 
@@ -5239,13 +5277,29 @@ Every key:
 
 | Key | Meaning |
 | --- | --- |
-| `version` | Always `1`. |
+| `version` | `1` for legacy name-based source rules, or `2` for canonical origin rules. |
 | `managedBy` | The organisation's name, shown in the banner above Extensions. |
 | `allow` | Rules naming the extensions that may install and run. Once the list has any entry, it is exclusive: anything it does not name is blocked. |
 | `block` | Rules naming extensions that may never install or run. A block always wins over an allow. |
 | `requiredTier` | The lowest trust tier an extension may wear: `"verified"`, `"hash-pinned"`, or `"any"` (the default). Checked when installing and every time extensions load. |
 | `blockedCapabilities` | Capabilities no extension may declare: `fetch`, `write-content`, `open-url`, `open-app`, `list-files`, `read-file`, `erase-board-items`. An extension declaring one is blocked. |
-| `allowedSources` | Marketplace names and addresses installs may come from. Once set, Add source, Browse installs and installs from a link are limited to them. |
+| `allowedSources` | Version 1 only. Marketplace names and address prefixes installs may come from. |
+| `sources` | Version 2 only. Exact rules for `bundled`, `github`, `url`, `path`, or `theme-file` origins. |
+
+A policy cannot mix `allowedSources` and `sources`. Omitting `sources` in a
+version 2 policy leaves origins unrestricted. An explicit empty `sources`
+list denies every external, theme-file, and included-example origin; Mill's
+kernel components remain available.
+
+A version 2 source rule is `{ "kind", "locator", "ref", "artifactOrigins" }`.
+`bundled` and `theme-file` use only `kind`. GitHub uses a lowercase
+`owner/repository` locator and an optional case-sensitive ref. URL locators
+match the exact canonical index address, including path and query. Path
+locators are absolute and include only files below that root after symlinks
+are resolved. `artifactOrigins` lists exact scheme, host, and port roots that
+may serve downloads. Mill checks the source and every redirect before making
+the request. An allowed source does not by itself verify its publisher or
+files; tier, signature, capability, and consent checks still apply.
 
 A rule in `allow` or `block` is `{ "id", "publisherKey", "versions" }`,
 with at least one of `id` (the extension's id) or `publisherKey` (the
@@ -5280,14 +5334,20 @@ from the bank's own marketplace:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "managedBy": "Example Bank",
   "allow": [
     { "id": "bank-reconcile", "publisherKey": "RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3" },
     { "id": "bank-tickets", "versions": "^2" }
   ],
   "requiredTier": "verified",
-  "allowedSources": ["bank-market"]
+  "sources": [
+    {
+      "kind": "url",
+      "locator": "https://extensions.example-bank.test/marketplace.json",
+      "artifactOrigins": ["https://downloads.example-bank.test"]
+    }
+  ]
 }
 ```
 
@@ -5295,7 +5355,7 @@ Anything may install, but nothing that reaches the network:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "managedBy": "Example Bank",
   "blockedCapabilities": ["fetch"]
 }
@@ -5305,7 +5365,7 @@ One extension is blocked below a fixed version:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "managedBy": "Example Bank",
   "block": [{ "id": "acme-notes", "versions": "<1.4.0" }],
   "requiredTier": "hash-pinned"
@@ -5331,6 +5391,15 @@ policy or not:
   shows in the install prompt and again on the Verification tab.
 
 A refused install leaves nothing on disk.
+
+Version 1 remains supported for existing deployments. Its
+`allowedSources` entries can match marketplace names or address prefixes,
+so a name alone does not prove where an installed extension came from.
+Move to version 2 by replacing each name with its explicit `bundled`,
+`github`, `url`, `path`, or `theme-file` origin. When a version 2 policy
+restricts sources, a legacy installation without recorded origin evidence
+is refused with **Source could not be verified. Reinstall this extension
+from an allowed source.**
 
 ---
 

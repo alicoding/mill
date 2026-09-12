@@ -5,7 +5,11 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
+
+	"github.com/alicoding/mill/internal/services/pluginsvc"
 )
 
 // FamilySummary is one archive family's counted contribution to an
@@ -26,9 +30,10 @@ type FamilySummary struct {
 // summary component for both, per capture-first-then-confirm's own
 // "mirror useImportConfirm" bar (docs/goals/0065).
 type ImportEverythingSummary struct {
-	Families        []FamilySummary `json:"families"`
-	SnapshotPresent bool            `json:"snapshotPresent"`
-	SnapshotTakenAt time.Time       `json:"snapshotTakenAt"`
+	Families                   []FamilySummary `json:"families"`
+	SnapshotPresent            bool            `json:"snapshotPresent"`
+	PluginStateSnapshotPresent bool            `json:"pluginStateSnapshotPresent"`
+	SnapshotTakenAt            time.Time       `json:"snapshotTakenAt"`
 }
 
 // openArchive base64-decodes and opens data as a zip -- shared by
@@ -67,7 +72,11 @@ func (b *BackupService) PreviewImportEverything(archiveData string) (ImportEvery
 		return ImportEverythingSummary{}, err
 	}
 
-	summary := ImportEverythingSummary{}
+	pluginStatePresent, err := validatePluginStateSnapshot(zr)
+	if err != nil {
+		return ImportEverythingSummary{}, err
+	}
+	summary := ImportEverythingSummary{PluginStateSnapshotPresent: pluginStatePresent}
 	for _, fam := range families {
 		fs, err := previewFamily(zr, fam)
 		if err != nil {
@@ -129,7 +138,11 @@ func (b *BackupService) ImportEverything(archiveData string) (ImportEverythingSu
 		return ImportEverythingSummary{}, err
 	}
 
-	summary := ImportEverythingSummary{}
+	pluginStatePresent, err := validatePluginStateSnapshot(zr)
+	if err != nil {
+		return ImportEverythingSummary{}, err
+	}
+	summary := ImportEverythingSummary{PluginStateSnapshotPresent: pluginStatePresent}
 	for _, fam := range families {
 		fs, err := applyFamily(zr, fam)
 		if err != nil {
@@ -153,6 +166,95 @@ func (b *BackupService) ImportEverything(archiveData string) (ImportEverythingSu
 	summary.SnapshotPresent = hasZipEntry(zr, "db-snapshot/execution.db")
 	summary.SnapshotTakenAt = man.TakenAt
 	return summary, nil
+}
+
+func validatePluginStateSnapshot(zr *zip.Reader) (bool, error) {
+	catalog, legacy, err := pluginStateEntries(zr)
+	if err != nil {
+		return false, err
+	}
+	if catalog == nil && legacy == nil {
+		return false, nil
+	}
+	if catalog != nil && legacy != nil {
+		return false, fmt.Errorf("import everything: extension source snapshot has conflicting formats")
+	}
+	if legacy != nil {
+		return validateLegacyPluginState(legacy)
+	}
+	return validateCatalogPluginState(catalog)
+}
+
+func pluginStateEntries(zr *zip.Reader) (catalog, legacy *zip.File, err error) {
+	const prefix = "db-snapshot/plugin-state/"
+	for _, file := range zr.File {
+		if file.Name == "db-snapshot/plugin-state" || file.Name == prefix {
+			continue
+		}
+		if len(file.Name) < len(prefix) || file.Name[:len(prefix)] != prefix {
+			continue
+		}
+		switch file.Name {
+		case prefix + "catalog.sqlite":
+			if catalog != nil {
+				return nil, nil, fmt.Errorf("import everything: duplicate extension source snapshot")
+			}
+			catalog = file
+		case prefix + "legacy-marketplaces.json":
+			if legacy != nil {
+				return nil, nil, fmt.Errorf("import everything: duplicate extension source snapshot")
+			}
+			legacy = file
+		default:
+			return nil, nil, fmt.Errorf("import everything: unrecognized extension source snapshot entry %q", file.Name)
+		}
+	}
+	return catalog, legacy, nil
+}
+
+func validateLegacyPluginState(legacy *zip.File) (bool, error) {
+	raw, err := readZipFile(legacy)
+	if err != nil {
+		return false, fmt.Errorf("import everything: read extension source snapshot: %w", err)
+	}
+	if err := pluginsvc.ValidateStoredSnapshot("", raw); err != nil {
+		return false, fmt.Errorf("import everything: invalid extension source snapshot: %w", err)
+	}
+	return true, nil
+}
+
+func validateCatalogPluginState(catalog *zip.File) (bool, error) {
+	temporaryDirectory, err := os.MkdirTemp("", "mill-plugin-state-import-")
+	if err != nil {
+		return false, fmt.Errorf("import everything: prepare extension source snapshot: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(temporaryDirectory) }()
+	raw, err := readZipFile(catalog)
+	if err != nil {
+		return false, fmt.Errorf("import everything: read extension source snapshot: %w", err)
+	}
+	path := filepath.Join(temporaryDirectory, "catalog.sqlite")
+	// #nosec G703 -- path is a fixed basename under this function's temporary directory.
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		return false, fmt.Errorf("import everything: write extension source snapshot: %w", err)
+	}
+	if err := pluginsvc.ValidateStoredSnapshot(path, nil); err != nil {
+		return false, fmt.Errorf("import everything: invalid extension source snapshot: %w", err)
+	}
+	return true, nil
+}
+
+func readZipFile(file *zip.File) ([]byte, error) {
+	reader, err := file.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = reader.Close() }()
+	var output bytes.Buffer
+	if _, err := output.ReadFrom(reader); err != nil {
+		return nil, err
+	}
+	return output.Bytes(), nil
 }
 
 func applyFamily(zr *zip.Reader, fam FamilyBundle) (*FamilySummary, error) {

@@ -1344,6 +1344,54 @@
     "needs": "entity"
   },
   {
+    "id": "extension.addSource",
+    "label": "Add extension source",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "marketplaceSourceInput"
+  },
+  {
+    "id": "extension.browse.cancelInstall",
+    "label": "Cancel extension installation",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "extension.browse.clearFilters",
+    "label": "Clear extension filters",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "extension.browse.confirmInstall",
+    "label": "Install extension",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "marketplaceEntry"
+  },
+  {
+    "id": "extension.browse.previewInstall",
+    "label": "Review extension installation",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "marketplaceEntry"
+  },
+  {
+    "id": "extension.browse.retry",
+    "label": "Retry loading extensions",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "extension.checkUpdates",
     "label": "Check for updates",
     "binding": null,
@@ -1372,7 +1420,7 @@
     "label": "Extensions: refresh sources",
     "binding": null,
     "surface": null,
-    "enabled": false,
+    "enabled": true,
     "needs": null
   },
   {
@@ -1390,6 +1438,22 @@
     "surface": null,
     "enabled": true,
     "needs": "entity"
+  },
+  {
+    "id": "extension.source.remove",
+    "label": "Remove source",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "entity"
+  },
+  {
+    "id": "extension.sources.retry",
+    "label": "Retry sources",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
   },
   {
     "id": "extension.update",
@@ -1453,6 +1517,14 @@
     "binding": null,
     "surface": null,
     "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "extensions.viewInstalled",
+    "label": "Extensions: view installed",
+    "binding": null,
+    "surface": null,
+    "enabled": false,
     "needs": null
   },
   {
@@ -1676,6 +1748,14 @@
   {
     "id": "output.openFull",
     "label": "Open output in full",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "output.save",
+    "label": "Save output",
     "binding": null,
     "surface": null,
     "enabled": true,

@@ -8,6 +8,7 @@ export {
 
 export type {
     BrowseEntry,
+    BrowseResult,
     CanvasObjectContribution,
     CanvasObjectExample,
     CanvasObjectExampleFixture,
@@ -45,6 +46,8 @@ export type {
     SecretSourcePathContribution,
     SettingContribution,
     SettingOption,
+    SourceOrigin,
+    SourcePolicyRule,
     StepConfigContribution,
     StepContribution,
     ThemeContribution,

@@ -709,6 +709,15 @@ export function RestoreSummonHotkey(): $CancellablePromise<void> {
 }
 
 /**
+ * SaveBinaryFile is SaveTextFile's byte-preserving counterpart for native
+ * exports. The base64 wire value is decoded before opening the dialog so an
+ * invalid payload can never prompt for or create a destination.
+ */
+export function SaveBinaryFile(suggestedName: string, contentBase64: string): $CancellablePromise<string> {
+    return $Call.ByID(1903558466, suggestedName, contentBase64);
+}
+
+/**
  * SaveTextFile prompts with the OS-native save dialog (suggestedName
  * pre-filled) and writes content to whatever path the user picks --
  * the desktop-mode counterpart to a browser's own download prompt,

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -37,8 +38,10 @@ const PolicyPathEnv = "MILL_PLUGIN_POLICY"
 // policyFileName is the file's name under the system-wide directory.
 const policyFileName = "plugin-policy.json"
 
-// PolicyVersion is the only schema version this build reads.
-const PolicyVersion = 1
+const (
+	PolicyVersionLegacy = 1
+	PolicyVersion       = 2
+)
 
 // TierAny is the requiredTier value that accepts every tier.
 const TierAny = "any"
@@ -59,13 +62,21 @@ type PolicyRule struct {
 
 // Policy is the parsed file.
 type Policy struct {
-	Version             int          `json:"version"`
-	ManagedBy           string       `json:"managedBy"`
-	Allow               []PolicyRule `json:"allow"`
-	Block               []PolicyRule `json:"block"`
-	RequiredTier        string       `json:"requiredTier"`
-	BlockedCapabilities []string     `json:"blockedCapabilities"`
-	AllowedSources      []string     `json:"allowedSources"`
+	Version             int                `json:"version"`
+	ManagedBy           string             `json:"managedBy"`
+	Allow               []PolicyRule       `json:"allow"`
+	Block               []PolicyRule       `json:"block"`
+	RequiredTier        string             `json:"requiredTier"`
+	BlockedCapabilities []string           `json:"blockedCapabilities"`
+	AllowedSources      []string           `json:"allowedSources"`
+	Sources             []SourcePolicyRule `json:"sources"`
+}
+
+type SourcePolicyRule struct {
+	Kind            string   `json:"kind"`
+	Locator         string   `json:"locator,omitempty"`
+	Ref             string   `json:"ref,omitempty"`
+	ArtifactOrigins []string `json:"artifactOrigins,omitempty"`
 }
 
 // PolicyState is what a load answers: whether a file is present, where
@@ -143,6 +154,9 @@ func ParsePolicy(raw []byte) (Policy, error) {
 	if err := dec.Decode(&p); err != nil {
 		return Policy{}, fmt.Errorf("not a valid policy document: %w", err)
 	}
+	if err := dec.Decode(&struct{}{}); err != io.EOF {
+		return Policy{}, errors.New("not a valid policy document: trailing content")
+	}
 	if err := validatePolicyHeader(&p); err != nil {
 		return Policy{}, err
 	}
@@ -155,8 +169,8 @@ func ParsePolicy(raw []byte) (Policy, error) {
 // validatePolicyHeader checks the document's own fields: the schema
 // version and the organisation's name.
 func validatePolicyHeader(p *Policy) error {
-	if p.Version != PolicyVersion {
-		return fmt.Errorf("version must be %d, got %d", PolicyVersion, p.Version)
+	if p.Version != PolicyVersionLegacy && p.Version != PolicyVersion {
+		return fmt.Errorf("version must be %d or %d, got %d", PolicyVersionLegacy, PolicyVersion, p.Version)
 	}
 	p.ManagedBy = strings.TrimSpace(p.ManagedBy)
 	if p.ManagedBy == "" {
@@ -168,6 +182,12 @@ func validatePolicyHeader(p *Policy) error {
 // validatePolicyLists checks every list the document carries: the
 // rules, the tier, the blocked capabilities and the allowed sources.
 func validatePolicyLists(p *Policy) error {
+	if p.Version == PolicyVersionLegacy && p.Sources != nil {
+		return errors.New("version 1 uses allowedSources, not sources")
+	}
+	if p.Version == PolicyVersion && p.AllowedSources != nil {
+		return errors.New("version 2 uses sources, not allowedSources")
+	}
 	for i := range p.Allow {
 		if err := validatePolicyRule(&p.Allow[i]); err != nil {
 			return fmt.Errorf("allow[%d]: %w", i, err)
@@ -194,6 +214,53 @@ func validatePolicyLists(p *Policy) error {
 			return fmt.Errorf("allowedSources[%d]: empty", i)
 		}
 		p.AllowedSources[i] = s
+	}
+	for i := range p.Sources {
+		if err := validateSourcePolicyRule(&p.Sources[i]); err != nil {
+			return fmt.Errorf("sources[%d]: %w", i, err)
+		}
+	}
+	return nil
+}
+
+func validateSourcePolicyRule(rule *SourcePolicyRule) error {
+	rule.Kind = strings.ToLower(strings.TrimSpace(rule.Kind))
+	rule.Locator = strings.TrimSpace(rule.Locator)
+	rule.Ref = strings.TrimSpace(rule.Ref)
+	switch rule.Kind {
+	case "bundled", "theme-file":
+		if rule.Locator != "" || rule.Ref != "" || rule.ArtifactOrigins != nil {
+			return fmt.Errorf("%s rules cannot declare locator, ref, or artifactOrigins", rule.Kind)
+		}
+	case "github":
+		if !repoPattern.MatchString(rule.Locator) {
+			return errors.New("github locator must be owner/repository")
+		}
+		rule.Locator = strings.ToLower(rule.Locator)
+	case "url":
+		canonical, err := canonicalHTTPURL(rule.Locator, false)
+		if err != nil {
+			return err
+		}
+		rule.Locator = canonical
+	case "path":
+		if !filepath.IsAbs(rule.Locator) {
+			return errors.New("path locator must be absolute")
+		}
+		canonical, err := canonicalSource(MarketplaceSource{Kind: "path", Locator: rule.Locator})
+		if err != nil {
+			return err
+		}
+		rule.Locator = canonical.Locator
+	default:
+		return fmt.Errorf("unknown kind %q", rule.Kind)
+	}
+	for i, raw := range rule.ArtifactOrigins {
+		canonical, err := canonicalHTTPURL(raw, true)
+		if err != nil {
+			return fmt.Errorf("artifactOrigins[%d]: %w", i, err)
+		}
+		rule.ArtifactOrigins[i] = canonical
 	}
 	return nil
 }

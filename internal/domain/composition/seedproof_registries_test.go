@@ -140,10 +140,11 @@ var nodeTypeProofRegistry = map[string]seedProof{
 	// goal's own scope) -- proven at the unit layer instead
 	// (.claude/rules/testing.md's "never force the seed pattern onto
 	// everything"), covering schema-building, typed-Attribute writing,
-	// and the zero-value-on-missing-field fallback.
+	// and validation failure without a partial Attribute update.
 	"process-ai-extract-structured": proven(
 		"composition.TestAIExtractStructuredExec_WritesTypedAttributes",
-		"composition.TestAIExtractStructuredExec_MissingFieldGetsZeroValue",
+		"composition.TestAIExtractStructuredExec_MissingFieldFailsWithoutPartialWrite",
+		"composition.TestAIExtractStructuredExec_RealCompleteRejectsMissingField",
 		"composition.TestBuildExtractSchema_EveryFieldRequiredWithMappedType",
 	),
 }

@@ -12,7 +12,7 @@ import listStyles from '../shared/ListCard.module.css'
 // permission-prompt shape. The unverified tier adds one thing on top
 // of that list: an acknowledgment that nothing has reviewed this code,
 // which the Install button waits for.
-export function ExtensionsInstallDialog({ preview, busy, mode = 'install', refusal = '', onCancel, onInstall }: {
+export function ExtensionsInstallDialog({ preview, busy, mode = 'install', refusal = '', onCancel, onInstall, actionState }: {
   preview: InstallPreview
   busy: boolean
   // An update shows the same prompt with its own verbs; the unverified
@@ -24,22 +24,33 @@ export function ExtensionsInstallDialog({ preview, busy, mode = 'install', refus
   refusal?: string
   onCancel: () => void
   onInstall: () => void
+  actionState?: {
+    acknowledged: boolean
+    onAcknowledgedChange: (acknowledged: boolean) => void
+    confirmEnabled: boolean
+    cancelEnabled: boolean
+  }
 }) {
   const { t } = useTranslation('views')
-  const [acknowledged, setAcknowledged] = useState(false)
+  const [localAcknowledged, setLocalAcknowledged] = useState(false)
+  const acknowledged = actionState?.acknowledged ?? localAcknowledged
   const unverified = preview.Tier === 'unverified'
   const badgeKey = tierLabelKey(preview.Tier)
   const name = preview.Name || preview.ID
   const refused = refusal || preview.PolicyRefusal
-  const confirmDisabled = busy || !!refused || (unverified && !acknowledged)
+  const confirmDisabled = actionState ? !actionState.confirmEnabled : busy || !!refused || (unverified && !acknowledged)
+  const cancelDisabled = actionState ? !actionState.cancelEnabled : false
+  const cancel = () => {
+    if (!cancelDisabled) onCancel()
+  }
   const titleKey = unverified ? 'extensions.install.unreviewedTitle' : mode === 'update' ? 'extensions.install.updateTitle' : 'extensions.install.title'
 
   return (
     <Dialog
       title={t(titleKey, { name })}
-      onClose={onCancel}
+      onClose={cancel}
       footerButtons={[
-        { content: t('extensions.install.cancel'), onClick: onCancel, autoFocus: true },
+        { content: t('extensions.install.cancel'), onClick: cancel, autoFocus: true, disabled: cancelDisabled },
         {
           content: t(mode === 'update' ? 'extensions.install.updateConfirm' : 'extensions.install.confirm'),
           buttonType: unverified ? 'danger' : 'primary',
@@ -78,7 +89,9 @@ export function ExtensionsInstallDialog({ preview, busy, mode = 'install', refus
           <FormControl>
             <Checkbox
               checked={acknowledged}
-              onChange={(e) => setAcknowledged(e.target.checked)}
+              onChange={(e) => actionState
+                ? actionState.onAcknowledgedChange(e.target.checked)
+                : setLocalAcknowledged(e.target.checked)}
               data-testid="extensions-install-acknowledge"
             />
             <FormControl.Label>{t('extensions.install.acknowledge')}</FormControl.Label>

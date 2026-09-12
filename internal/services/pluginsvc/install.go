@@ -192,15 +192,19 @@ func (b *byteReaderAt) ReadAt(p []byte, off int64) (int, error) {
 // refusing symlinks -- a copied folder must be exactly what a
 // downloaded one would be.
 //
-// The walk PLANS and the copy acts, in that order: nothing is written
-// while the tree is still being read, so no entry's path can be
-// swapped between the stat that approved it and the write that used it.
+// The source stays behind one os.Root handle from planning through
+// copying, so a symlink change cannot redirect a later read outside it.
 func CopyPluginFolder(src, dest string) error {
-	root, err := filepath.Abs(src)
+	root, err := os.OpenRoot(src)
 	if err != nil {
 		return err
 	}
-	files, err := planFolderCopy(root)
+	defer func() { _ = root.Close() }()
+	return copyPluginFolderFS(root.FS(), dest)
+}
+
+func copyPluginFolderFS(source fs.FS, dest string) error {
+	files, err := planFolderCopy(source)
 	if err != nil {
 		return err
 	}
@@ -215,7 +219,7 @@ func CopyPluginFolder(src, dest string) error {
 		if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
 			return err
 		}
-		if err := copyFile(filepath.Join(root, rel), target); err != nil {
+		if err := copyFSFile(source, rel, target); err != nil {
 			return err
 		}
 	}
@@ -224,14 +228,14 @@ func CopyPluginFolder(src, dest string) error {
 
 // planFolderCopy lists the relative paths a copy will write, refusing
 // the whole folder when it carries a symlink.
-func planFolderCopy(root string) ([]string, error) {
+func planFolderCopy(root fs.FS) ([]string, error) {
 	var files []string
-	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, werr error) error {
+	err := fs.WalkDir(root, ".", func(path string, d fs.DirEntry, werr error) error {
 		if werr != nil {
 			return werr
 		}
 		if d.IsDir() {
-			if p == root {
+			if path == "." {
 				return nil
 			}
 			return skipDirIfHidden(d)
@@ -242,18 +246,14 @@ func planFolderCopy(root string) ([]string, error) {
 		if d.Type()&fs.ModeSymlink != 0 {
 			return fmt.Errorf("that folder contains a symbolic link, so Mill won't install it")
 		}
-		rel, relErr := filepath.Rel(root, p)
-		if relErr != nil {
-			return relErr
-		}
-		files = append(files, rel)
+		files = append(files, path)
 		return nil
 	})
 	return files, err
 }
 
-func copyFile(src, dest string) error {
-	in, err := os.Open(src) // #nosec G304 -- walked from the caller's own source folder
+func copyFSFile(source fs.FS, src, dest string) error {
+	in, err := source.Open(filepath.ToSlash(src))
 	if err != nil {
 		return err
 	}

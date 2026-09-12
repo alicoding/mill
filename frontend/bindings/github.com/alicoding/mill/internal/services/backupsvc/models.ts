@@ -35,6 +35,7 @@ export interface FamilySummary {
 export interface ImportEverythingSummary {
     "families": FamilySummary[] | null;
     "snapshotPresent": boolean;
+    "pluginStateSnapshotPresent": boolean;
     "snapshotTakenAt": string;
 }
 

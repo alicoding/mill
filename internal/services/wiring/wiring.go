@@ -48,27 +48,18 @@ import (
 // hang the process exit indefinitely.
 const shutdownTimeout = 5 * time.Second
 
-// RunShutdown runs every best-effort teardown step main.go's own
-// post-app.Run() sequence needs, in order, logging (never failing
+// RunShutdown runs every best-effort teardown step main.go's native
+// shutdown callback needs, in order, logging (never failing
 // loudly) on each step's own error -- a step's failure must never
 // block the rest, since the process is exiting either way.
-func RunShutdown(logger *slog.Logger, executionService *executionsvc.ExecutionService, backupService *backupsvc.BackupService, millMCPService *mcpsvc.MillMCPService, mcpAuditService *mcpauditsvc.MCPAuditService, atlasService *atlassvc.AtlasService, secretService *secretsvc.SecretService, bridgeService *bridgesvc.BridgeService, auditService *auditsvc.AuditService, configureService *configuresvc.ConfigureService) {
+func RunShutdown(logger *slog.Logger, executionService *executionsvc.ExecutionService, backupService *backupsvc.BackupService, millMCPService *mcpsvc.MillMCPService, pluginService *pluginsvc.PluginService, mcpAuditService *mcpauditsvc.MCPAuditService, atlasService *atlassvc.AtlasService, secretService *secretsvc.SecretService, bridgeService *bridgesvc.BridgeService, auditService *auditsvc.AuditService, configureService *configuresvc.ConfigureService) {
 	configuresvc.StopAIProviderChecks(configureService)
 	// Flush any in-flight step checkpoints before the process actually
 	// exits.
 	if err := executionService.Shutdown(shutdownTimeout); err != nil {
 		logger.Error("execution runtime shutdown", "error", err)
 	}
-	// docs/goals/0065 item 4: one last snapshot on a clean shutdown,
-	// skipped if a recent one already ran.
-	if err := backupService.BackupOnCleanShutdown(); err != nil {
-		logger.Error("clean-shutdown backup", "error", err)
-	}
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-	if err := millMCPService.Shutdown(shutdownCtx); err != nil {
-		logger.Error("mill MCP server shutdown", "error", err)
-	}
+	shutdownSnapshotServices(logger, backupService, millMCPService, pluginService)
 	if err := mcpAuditService.Close(); err != nil {
 		logger.Error("mcp audit service shutdown", "error", err)
 	}

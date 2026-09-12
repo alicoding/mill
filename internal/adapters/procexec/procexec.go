@@ -6,21 +6,19 @@
 // source; its own comment: executing steps are not interrupted).
 // Everything alive is internal/adapters/procexec's job, full stop."
 //
-// This package owns exactly that: starting a command in its own POSIX
-// process group (so a shell's grandchildren are reachable, not just the
-// direct child -- os.Process.Kill's own doc warns it "only kills the
+// This package owns exactly that on its supported execution platforms:
+// starting a command in its own POSIX process group (so a shell's
+// grandchildren are reachable, not just the direct child --
+// os.Process.Kill's own doc warns it "only kills the
 // Process itself"), streaming its combined stdout+stderr incrementally,
 // and killing the whole group on three distinct triggers -- an explicit
 // Cancel, a hard wall-clock timeout, or an idle (no-output-for-N)
 // timeout -- through one shared kill path (see kill.go's trigger/
 // escalate), never three separate ones.
 //
-// Deliberately build-tag-free: SysProcAttr.Setpgid and the negative-pid
-// signal convention are POSIX behavior present under the same field/
-// syscall names on both darwin and linux (Mill's only two supported
-// execution platforms per docs/SPEC.md -- Windows execution is an
-// explicit ADR-0026 non-goal), so no split is needed the way
-// internal/adapters/hotkey needs one for a genuinely OS-specific API.
+// Windows execution remains an explicit ADR-0026 non-goal. Start reports
+// ErrUnsupportedPlatform there before creating a process; the POSIX process
+// setup and signaling live behind platform build constraints.
 package procexec
 
 import (
@@ -53,6 +51,10 @@ const (
 	// writes in between (the timer resets on every chunk).
 	OutcomeIdleTimeout Outcome = "idle-timeout"
 )
+
+// ErrUnsupportedPlatform means process execution is unavailable on this
+// platform. Mill supports this supervisor on macOS and Linux only.
+var ErrUnsupportedPlatform = errors.New("procexec: unsupported platform")
 
 // defaultGrace is used when Spec.GracePeriod is zero -- the ADR names
 // 2s as Cancel's own default grace between SIGTERM and SIGKILL.
@@ -170,6 +172,9 @@ type Handle struct {
 // executable not found, is returned directly here with no Handle,
 // since there is nothing yet to supervise).
 func Start(spec Spec) (*Handle, error) {
+	if !platformSupported() {
+		return nil, ErrUnsupportedPlatform
+	}
 	if len(spec.Argv) == 0 {
 		return nil, errors.New("procexec: Spec.Argv must not be empty")
 	}
@@ -188,7 +193,7 @@ func Start(spec Spec) (*Handle, error) {
 	cmd := exec.Command(spec.Argv[0], spec.Argv[1:]...) //nolint:gosec,noctx // Argv is caller-controlled per Spec's own doc, and lifecycle is this package's own job (see comment above)
 	cmd.Dir = spec.Dir
 	cmd.Env = spec.Env
-	cmd.SysProcAttr = setpgidAttr()
+	configureProcess(cmd)
 
 	fw := newFanWriter(spec.Output)
 	cmd.Stdout = fw

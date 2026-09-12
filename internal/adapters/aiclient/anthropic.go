@@ -100,6 +100,9 @@ func completeAnthropic(req Request) (Result, error) {
 		} `json:"content"`
 	}
 	if err := json.Unmarshal([]byte(resp.Body), &parsed); err != nil {
+		if req.Schema != nil {
+			return Result{}, ErrInvalidStructuredResult
+		}
 		return Result{}, fmt.Errorf("anthropic: parse response: %w", err)
 	}
 
@@ -109,7 +112,7 @@ func completeAnthropic(req Request) (Result, error) {
 				return Result{Text: string(block.Input), JSON: block.Input}, nil
 			}
 		}
-		return Result{}, fmt.Errorf("anthropic: expected a tool_use block for structured output, got none")
+		return Result{}, ErrInvalidStructuredResult
 	}
 
 	var text strings.Builder

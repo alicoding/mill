@@ -132,6 +132,13 @@ export default defineConfig({
   },
   plugins: [react(), wails("./bindings"), goLivenessPlugin(), pluginFrameDevMiddleware()],
   test: {
+    // Primer ships component styles from its ESM package. Keep the real
+    // SegmentedControl regression inside Vite's transform pipeline so
+    // Vitest exercises Primer's controlled selection behavior instead
+    // of replacing it with a test-only button mock.
+    server: {
+      deps: { inline: [/@primer\/react/] },
+    },
     // e2e/**/*.spec.ts are Playwright tests (real browser + server),
     // not Vitest unit tests -- exclude them here or Vitest tries to run
     // them under its own runner and fails on @playwright/test's APIs.
