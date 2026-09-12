@@ -16,7 +16,7 @@ const MILL_BIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '.bu
 // its contributions come back from a freshly imported module -- with
 // no app reload. Dedicated server per test, the same reason every
 // runtime-plugin spec has one (MILL_PLUGINS_DIR is process-wide);
-// dedicated port pair, offsets 0/2/4 within it.
+// dedicated port pair, offsets 0/2/4/6 within it.
 
 // The marker is how "no app reload happened" is asserted: a value set
 // on window before the click survives a re-render and a route change,
@@ -100,6 +100,26 @@ test('a folder written by `mill plugin new` loads, allowed then reloaded from it
 		// The command the scaffolded main.js registers runs.
 		await runFromPalette(page, 'Scaffold Probe: say hello')
 		await expect(page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Hello from Scaffold Probe.' })).toBeVisible()
+	} finally {
+		await close()
+	}
+})
+
+test('the generated board-audit example runs its read-only command through the real palette', async () => {
+	const { page, close } = await launchWithPlugins(6, { extraExamples: ['board-audit'], ports: PORTS })
+	try {
+		await page.goto('/')
+		await page.getByRole('link', { name: 'Atlas' }).click()
+		await expect(page.getByTestId('atlas-board')).toBeVisible()
+		await runFromPalette(page, 'Audit this board')
+
+		const notice = page.locator('[data-testid^="notice-pushed-"]', { hasText: 'Board audit:' })
+		await expect(notice).toBeVisible()
+		await expect(notice).toHaveAttribute('data-notice-level', /success|warning/)
+		await expect(notice).toContainText('card')
+		await expect(notice).toContainText('note')
+		await expect(notice).toContainText('other object')
+		await expect(notice).toContainText('link')
 	} finally {
 		await close()
 	}

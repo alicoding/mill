@@ -1,0 +1,33 @@
+{
+  "id": "board-audit",
+  "name": "Board Audit",
+  "version": "0.1.0",
+  "description": "Summarizes board contents and reports links whose endpoints are missing.",
+  "author": "Mill examples",
+  "minMillVersion": "0.9.0",
+  "icon": "icon.png",
+  "capabilities": [],
+  "contributes": {
+    "commands": [
+      {
+        "id": "board-audit.summarize",
+        "label": "Audit this board"
+      }
+    ],
+    "tools": [
+      {
+        "name": "audit_board",
+        "description": "Summarizes board contents and reports links whose endpoints are missing.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "effect": "read",
+        "run": {
+          "kind": "command",
+          "commandId": "board-audit.summarize"
+        }
+      }
+    ]
+  }
+}
