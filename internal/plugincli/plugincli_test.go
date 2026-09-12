@@ -1,0 +1,109 @@
+package plugincli
+
+import (
+	"bytes"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/alicoding/mill/internal/pluginmigrate"
+	"github.com/alicoding/mill/internal/services/pluginsvc"
+)
+
+func TestRunPreservesPluginNew(t *testing.T) {
+	parent := t.TempDir()
+	var out, errOut bytes.Buffer
+	if code := Run([]string{"new", "Router Demo", "--dir", parent}, filepath.Join(t.TempDir(), "installed"), "0.5.0", &out, &errOut); code != 0 {
+		t.Fatalf("Run exit = %d, stderr = %s", code, errOut.String())
+	}
+	if problems := pluginsvc.ConformDir(filepath.Join(parent, "router-demo"), "0.5.0"); len(problems) > 0 {
+		t.Fatalf("routed scaffold does not conform: %v", problems)
+	}
+}
+
+func TestRunMigrateJSONEmitsRFC6902PlanWithoutWriting(t *testing.T) {
+	dir := copyHistoricalPlugin(t)
+	before := read(t, filepath.Join(dir, "manifest.json"))
+	var out, errOut bytes.Buffer
+	if code := Run([]string{"migrate", dir, "--json"}, filepath.Join(t.TempDir(), "installed"), "0.5.0", &out, &errOut); code != 0 {
+		t.Fatalf("Run exit = %d, stderr = %s", code, errOut.String())
+	}
+	var plan pluginmigrate.Plan
+	if err := json.Unmarshal(out.Bytes(), &plan); err != nil {
+		t.Fatalf("decode output: %v\n%s", err, out.String())
+	}
+	if plan.PluginID != "mill-bookmark" || plan.MigrationID != pluginmigrate.MigrationID || !plan.HasPatch() || plan.Applied {
+		t.Fatalf("plan = %+v", plan)
+	}
+	var operations []map[string]any
+	if err := json.Unmarshal(plan.Patch, &operations); err != nil || len(operations) != 2 {
+		t.Fatalf("patch = %s, error = %v", plan.Patch, err)
+	}
+	if after := read(t, filepath.Join(dir, "manifest.json")); !bytes.Equal(after, before) {
+		t.Fatal("JSON preview wrote the source")
+	}
+}
+
+func TestRunMigrateApplyAndCurrentOutput(t *testing.T) {
+	dir := copyHistoricalPlugin(t)
+	var out, errOut bytes.Buffer
+	if code := Run([]string{"migrate", "--apply", dir}, filepath.Join(t.TempDir(), "installed"), "0.5.0", &out, &errOut); code != 0 {
+		t.Fatalf("apply exit = %d, stderr = %s", code, errOut.String())
+	}
+	if !bytes.Contains(out.Bytes(), []byte("Applied to manifest.json.")) {
+		t.Fatalf("apply output = %q", out.String())
+	}
+	out.Reset()
+	if code := Run([]string{"migrate", dir}, filepath.Join(t.TempDir(), "installed"), "0.5.0", &out, &errOut); code != 0 {
+		t.Fatalf("second preview exit = %d, stderr = %s", code, errOut.String())
+	}
+	if !bytes.Contains(out.Bytes(), []byte("This plugin is current.")) {
+		t.Fatalf("second preview output = %q", out.String())
+	}
+}
+
+func TestRunMigrateBothKeysExitsTwo(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "both")
+	if err := os.Mkdir(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	manifest := []byte(`{"id":"both","contributes":{"settings":[],"configuration":[]}}`)
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), manifest, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out, errOut bytes.Buffer
+	if code := Run([]string{"migrate", dir, "--apply"}, filepath.Join(t.TempDir(), "installed"), "0.5.0", &out, &errOut); code != 2 {
+		t.Fatalf("Run exit = %d, want 2; stderr = %s", code, errOut.String())
+	}
+	if got := read(t, filepath.Join(dir, "manifest.json")); !bytes.Equal(got, manifest) {
+		t.Fatal("manual decision wrote the manifest")
+	}
+}
+
+func TestRunMigrateUsage(t *testing.T) {
+	for _, args := range [][]string{{"migrate"}, {"migrate", "a", "b"}, {"migrate", "a", "--force"}, {"unknown"}} {
+		var errOut bytes.Buffer
+		if code := Run(args, "/plugins", "0.5.0", &bytes.Buffer{}, &errOut); code != 1 || errOut.Len() == 0 {
+			t.Fatalf("Run(%v) = %d, stderr = %q", args, code, errOut.String())
+		}
+	}
+}
+
+func copyHistoricalPlugin(t *testing.T) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), "mill-bookmark")
+	if err := pluginsvc.CopyPluginFolder(filepath.Join("..", "..", "examples", "plugins", "mill-bookmark"), dir); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func read(t *testing.T, path string) []byte {
+	t.Helper()
+	raw, err := os.ReadFile(path) // #nosec G304 -- test helper reads its own temporary plugin
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}

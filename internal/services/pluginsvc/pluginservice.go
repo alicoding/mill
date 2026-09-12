@@ -37,9 +37,9 @@ import (
 // exception (docs/goals/0251) -- both ingestion chains must consult
 // them without running plugin code, so they live in Contributes.
 type Manifest struct {
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	Version        string `json:"version"`
+	ID             string `json:"id" jsonschema:"required"`
+	Name           string `json:"name" jsonschema:"required"`
+	Version        string `json:"version" jsonschema:"required"`
 	Description    string `json:"description"`
 	Author         string `json:"author"`
 	MinMillVersion string `json:"minMillVersion"`

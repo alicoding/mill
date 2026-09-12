@@ -19,7 +19,7 @@ import (
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/adapters/windowing"
 	"github.com/alicoding/mill/internal/domain/usererror"
-	"github.com/alicoding/mill/internal/pluginscaffold"
+	"github.com/alicoding/mill/internal/plugincli"
 	"github.com/alicoding/mill/internal/services/agentloopsvc"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/backupsvc"
@@ -111,11 +111,10 @@ func main() {
 	if settingsPath == "" {
 		settingsPath = defaultSettingsPath
 	}
-	// `mill plugin new <name>` (goal 0319): the scaffold is a subcommand
-	// of this one binary, routed here before any app state is opened so
-	// it never touches the settings store it only names.
+	// Plugin authoring commands are routed before any app state opens, so
+	// scaffolding and source-manifest migration never touch the settings store.
 	if len(os.Args) > 1 && os.Args[1] == "plugin" {
-		os.Exit(pluginscaffold.Run(os.Args[2:], pluginsvc.ResolveDir(settingsPath), millVersion, os.Stdout, os.Stderr))
+		os.Exit(plugincli.Run(os.Args[2:], pluginsvc.ResolveDir(settingsPath), millVersion, os.Stdout, os.Stderr))
 	}
 	executionDatabaseURL := os.Getenv("MILL_EXECUTION_DATABASE_URL")
 	if executionDatabaseURL == "" {

@@ -22,12 +22,19 @@ import (
 // one check (an author's machine has no Mill version to compare).
 // Returns the problems found, empty when the folder conforms.
 func ConformDir(dir, appVersion string) []string {
-	var problems []string
-	folder := filepath.Base(filepath.Clean(dir))
 	raw, err := os.ReadFile(filepath.Join(dir, "manifest.json")) // #nosec G304 -- the caller's own plugin folder
 	if err != nil {
 		return []string{"manifest.json is missing or unreadable"}
 	}
+	return ConformDirWithManifest(dir, raw, appVersion)
+}
+
+// ConformDirWithManifest checks a prospective manifest against the folder it
+// would govern, without writing it first. It shares every loader, standard and
+// cross-file rule with ConformDir.
+func ConformDirWithManifest(dir string, raw []byte, appVersion string) []string {
+	var problems []string
+	folder := filepath.Base(filepath.Clean(dir))
 	m, parseProblem := parseManifest(raw)
 	if parseProblem != "" {
 		return []string{parseProblem}

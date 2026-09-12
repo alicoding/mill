@@ -74,11 +74,11 @@ lockdir="$stale_dir/lock"
 MILL_INSTALL_LOCK_DIR="$lockdir" "$script" sleep 3 &
 holder_pid=$!
 waited=0
-while [ ! -d "$lockdir" ] && [ "$waited" -lt 50 ]; do
+while [ ! -f "$lockdir/pid" ] && [ "$waited" -lt 50 ]; do
   sleep 0.1
   waited=$((waited + 1))
 done
-[ -d "$lockdir" ] || fail "stale: holder never created the lock directory"
+[ -f "$lockdir/pid" ] || fail "stale: holder never recorded its PID"
 kill -9 "$holder_pid" 2>/dev/null || true
 wait "$holder_pid" 2>/dev/null || true
 start=$(date +%s)
@@ -89,6 +89,14 @@ elapsed=$(( $(date +%s) - start ))
 if [ "$elapsed" -ge 3 ]; then
   fail "stale: reclaim took ${elapsed}s -- expected an immediate reclaim, not a wait for the dead holder's own sleep"
 fi
+
+# --- an initializer killed between mkdir and pid write is reclaimable ------
+empty_dir="$work/empty"
+mkdir -p "$empty_dir/lock"
+if ! MILL_INSTALL_LOCK_DIR="$empty_dir/lock" "$script" true; then
+  fail "empty: an abandoned pre-PID lock directory should be reclaimed"
+fi
+[ -d "$empty_dir/lock" ] && fail "empty: reclaimed wrapped lock should be released"
 
 # --- the bounded wait exits 75 -----------------------------------------
 bounded_dir="$work/bounded"
