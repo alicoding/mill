@@ -51,6 +51,17 @@ examples, not the shared working discipline:
   children; honor any lower runtime limit and CLAUDE's heavy-gate lock.
 - Track canonical `maxTurns` and brief token ceilings when metrics exist;
   disclose unavailable metrics, never invent usage or budget compliance.
+- Work and Codex share one account allowance across sessions. Before every
+  child dispatch/resume and after a limit error, read current weekly usage and
+  reset time with the Codex usage tool or Settings; a task token counter is not
+  an allowance reading. Append timestamp, goal, weekly percent, reset, active
+  children and decision to local-only `docs/goals/USAGE-LEDGER.md`.
+- Budget at most 12 weekly-percentage points per local day account-wide. At 10
+  points, allow one live child and required delivery/review work only. At 12,
+  launch/resume no child; finish the bounded turn, checkpoint, and wait for the
+  next day unless the owner explicitly authorizes more after seeing the current
+  snapshot. Use the lowest sufficient configured role/model; agents never poll,
+  restate status, or reread known context. Stop idle children promptly.
 - Continue foreground commands using `exec_command`'s `session_id` and
   `write_stdin`, with bounded waits. No `nohup` or detached gates. A tool wait
   returning a running session is foreground continuation, not abandoned work.
