@@ -7,7 +7,7 @@ import (
 
 func TestPluginTrust_AllowedRoundTripsAndWithdraws(t *testing.T) {
 	set := newExtensionsHarness(t)
-	if got := set.GetAllowedPlugins(); len(got) != 0 {
+	if got, err := set.GetAllowedPlugins(); err != nil || len(got) != 0 {
 		t.Fatalf("unset = %v, want empty", got)
 	}
 	if err := set.SetPluginAllowed("mill-a", true); err != nil {
@@ -19,13 +19,13 @@ func TestPluginTrust_AllowedRoundTripsAndWithdraws(t *testing.T) {
 	if err := set.SetPluginAllowed("mill-a", true); err != nil { // idempotent
 		t.Fatal(err)
 	}
-	if got := set.GetAllowedPlugins(); !reflect.DeepEqual(got, []string{"mill-b", "mill-a"}) {
+	if got, err := set.GetAllowedPlugins(); err != nil || !reflect.DeepEqual(got, []string{"mill-b", "mill-a"}) {
 		t.Fatalf("allowed = %v, want [mill-b mill-a]", got)
 	}
 	if err := set.SetPluginAllowed("mill-b", false); err != nil {
 		t.Fatal(err)
 	}
-	if got := set.GetAllowedPlugins(); !reflect.DeepEqual(got, []string{"mill-a"}) {
+	if got, err := set.GetAllowedPlugins(); err != nil || !reflect.DeepEqual(got, []string{"mill-a"}) {
 		t.Fatalf("after withdraw = %v, want [mill-a]", got)
 	}
 }
@@ -42,7 +42,7 @@ func TestPluginTrust_RecordAllowedPluginsIfUnset_WritesOnce(t *testing.T) {
 	if err != nil || wrote {
 		t.Fatalf("second record: wrote=%v err=%v, want false/nil", wrote, err)
 	}
-	if got := set.GetAllowedPlugins(); !reflect.DeepEqual(got, []string{"mill-a", "mill-b"}) {
+	if got, err := set.GetAllowedPlugins(); err != nil || !reflect.DeepEqual(got, []string{"mill-a", "mill-b"}) {
 		t.Fatalf("allowed = %v, want the first write kept", got)
 	}
 

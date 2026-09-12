@@ -10,15 +10,17 @@ import (
 
 type fakeTrust struct{ allowed, disabled map[string]bool }
 
-func (f fakeTrust) Enabled(id string) bool                { return !f.disabled[id] }
-func (f fakeTrust) Allowed(id string) bool                { return f.allowed[id] }
-func (f fakeTrust) Allowlist() []string                   { return []string{"mill-a"} }
-func (f fakeTrust) GrantOf(id string) (PluginGrant, bool) { return PluginGrant{}, false }
-func (f fakeTrust) LockedHash(id string) string {
-	if id == "mill-a" {
-		return "sha256-stale"
+func (f fakeTrust) Enabled(id string) bool { return !f.disabled[id] }
+func (f fakeTrust) Allowlist() []string    { return []string{"mill-a"} }
+func (f fakeTrust) Approval() (PluginApproval, error) {
+	approval := PluginApproval{Locks: map[string]PluginApprovalLock{}}
+	for id, allowed := range f.allowed {
+		if allowed {
+			approval.Allowed = append(approval.Allowed, id)
+		}
 	}
-	return ""
+	approval.Locks["mill-a"] = PluginApprovalLock{Hash: "sha256-stale"}
+	return approval, nil
 }
 
 // The export lists every installed plugin with its declared reach and

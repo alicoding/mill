@@ -1,6 +1,6 @@
 import { chromium, expect, test, type Browser, type Page, type Request, type Route } from '@playwright/test'
 import { applyCpuThrottle } from './fixtures/throttle'
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -23,28 +23,28 @@ let server: SpawnedServer
 let browser: Browser
 let page: Page
 let dir: string
+let directPlugin: string
 
-// Mirrors the generated PluginService.PreviewInstall binding so unrelated
-// background RPCs keep flowing while this one controlled response is held.
-const PREVIEW_INSTALL_METHOD_ID = 611162871
-
-function isFixturePreviewInstall(request: Request): boolean {
+// Match the exact frozen marketplace candidate passed to PrepareInstall so
+// unrelated background RPCs keep flowing while this controlled response is held.
+function isFixturePrepareInstall(request: Request): boolean {
 	if (!request.url().endsWith('/wails/runtime')) return false
 	try {
 		const body = JSON.parse(request.postData() ?? '{}') as { args?: { methodID?: number; args?: unknown[] } }
-		return body.args?.methodID === PREVIEW_INSTALL_METHOD_ID &&
-			body.args.args?.[0] === 'fixture' && body.args.args[1] === 'fixture-notes'
+		const candidate = body.args?.args?.[1] as Record<string, unknown> | undefined
+		return candidate?.Kind === 'marketplace' && candidate.Marketplace === 'fixture' &&
+			candidate.ID === 'fixture-notes'
 	} catch {
 		return false
 	}
 }
 
-async function holdNextPreviewInstall(targetPage: Page) {
+async function holdNextPrepareInstall(targetPage: Page) {
 	let release!: () => void
 	const released = new Promise<void>((resolve) => { release = resolve })
 	let held = false
 	const handler = async (route: Route) => {
-		if (held || !isFixturePreviewInstall(route.request())) {
+		if (held || !isFixturePrepareInstall(route.request())) {
 			await route.continue()
 			return
 		}
@@ -63,6 +63,10 @@ test.beforeAll(async () => {
 	dir = mkdtempSync(path.join(tmpdir(), 'mill-extensions-store-'))
 	const pluginsDir = path.join(dir, 'plugins')
 	mkdirSync(pluginsDir, { recursive: true })
+	directPlugin = path.join(dir, 'direct-fixture')
+	mkdirSync(directPlugin)
+	writeFileSync(path.join(directPlugin, 'manifest.json'), JSON.stringify({ id: 'direct-fixture', name: 'Direct fixture', version: '1.0.0' }))
+	writeFileSync(path.join(directPlugin, 'main.js'), 'export function activate() {}\n')
 	server = await spawnMillServer({
 		port: EXTENSIONS_STORE_SERVER_BASE_PORT,
 		mcpPort: EXTENSIONS_STORE_MCP_BASE_PORT,
@@ -117,6 +121,18 @@ test('Browse offers the extensions Mill ships, before any source is added', asyn
 	await expect(rows.first().getByText('Verified')).toBeVisible()
 })
 
+test('A direct folder is prepared from the Browse source form', async () => {
+	await gotoAppReady(page)
+	await openExtensions(page, 'browse')
+	await page.getByTestId('extensions-install-locator').fill(`  ${directPlugin}  `)
+	await page.getByTestId('extensions-install-locator-submit').click()
+	const dialog = page.getByTestId('extensions-install-dialog')
+	await expect(dialog).toContainText('Direct fixture')
+	await expect(dialog).toContainText('Dev')
+	await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click()
+	await expect(dialog).toHaveCount(0)
+})
+
 test('A folder marketplace is added from Sources and its entries appear in Browse', async () => {
 	await gotoAppReady(page)
 	await openExtensions(page, 'browse')
@@ -145,11 +161,11 @@ test('A pending install preview can be cancelled without stale details reopening
 	const entry = page.locator('[data-testid="extensions-browse-row"][data-plugin-id="fixture-notes"]')
 	const loading = page.getByRole('dialog', { name: 'Review extension installation' })
 
-	const cancelledByButton = await holdNextPreviewInstall(page)
+	const cancelledByButton = await holdNextPrepareInstall(page)
 	try {
-		const firstRequest = page.waitForRequest(isFixturePreviewInstall)
+		const firstRequest = page.waitForRequest(isFixturePrepareInstall)
 		await entry.getByTestId('extensions-browse-install').click()
-		await expect(loading).toContainText('Loading installation details for Fixture notes…')
+		await expect(loading).toContainText('Reading the extension and its permissions…')
 		await expect(loading.getByRole('status')).toBeVisible()
 		await expect(loading.getByRole('button', { name: 'Cancel', exact: true })).toBeEnabled()
 		await expect(loading.getByRole('button', { name: 'Install', exact: true })).toHaveCount(0)
@@ -165,9 +181,9 @@ test('A pending install preview can be cancelled without stale details reopening
 		await cancelledByButton.stop()
 	}
 
-	const cancelledByEscape = await holdNextPreviewInstall(page)
+	const cancelledByEscape = await holdNextPrepareInstall(page)
 	try {
-		const secondRequest = page.waitForRequest(isFixturePreviewInstall)
+		const secondRequest = page.waitForRequest(isFixturePrepareInstall)
 		await entry.getByTestId('extensions-browse-install').click()
 		await expect(loading).toBeVisible()
 		const heldSecondRequest = await secondRequest

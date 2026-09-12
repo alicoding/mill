@@ -18,7 +18,7 @@ import (
 func TestInstallFromMarketplace_PolicyRefusalLeavesNoFolder(t *testing.T) {
 	writePolicy(t, `{"version": 1, "managedBy": "Example Bank", "block": [{"id": "mill-alpha"}]}`)
 	svc, dir := newStoreService(t, "mill-alpha")
-	_, err := svc.InstallFromMarketplace(ReservedMarketplaceName, "mill-alpha")
+	_, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, "mill-alpha")
 	if err == nil {
 		t.Fatal("install of a blocked id succeeded")
 	}
@@ -49,7 +49,7 @@ func TestInstallFromMarketplace_StaticRefusalLeavesNoFolder(t *testing.T) {
 	dir := t.TempDir()
 	svc := New(dir, nil, "")
 	svc.SetExampleMarketplace(fsys)
-	_, err := svc.InstallFromMarketplace(ReservedMarketplaceName, "mill-alpha")
+	_, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, "mill-alpha")
 	var ue *usererror.Error
 	if !errors.As(err, &ue) || ue.Code != InstallRefusedCode || !strings.Contains(ue.Message, "eval") {
 		t.Fatalf("err = %v, want the static-check refusal", err)
@@ -65,7 +65,7 @@ func TestInstallFromMarketplace_RecordsTheWarnings(t *testing.T) {
 	dir := t.TempDir()
 	svc := New(dir, nil, "")
 	svc.SetExampleMarketplace(fsys)
-	rec, err := svc.InstallFromMarketplace(ReservedMarketplaceName, "mill-alpha")
+	rec, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, "mill-alpha")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestInstallFromMarketplace_RecordsTheWarnings(t *testing.T) {
 func TestListPlugins_StampsThePolicyVerdict(t *testing.T) {
 	svc, _ := newStoreService(t, "mill-alpha", "mill-beta")
 	for _, id := range []string{"mill-alpha", "mill-beta"} {
-		if _, err := svc.InstallFromMarketplace(ReservedMarketplaceName, id); err != nil {
+		if _, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, id); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -113,7 +113,7 @@ func TestListPlugins_StampsThePolicyVerdict(t *testing.T) {
 
 func TestListPlugins_MalformedPolicyBlocksEveryNonBuiltIn(t *testing.T) {
 	svc, _ := newStoreService(t, "mill-alpha")
-	if _, err := svc.InstallFromMarketplace(ReservedMarketplaceName, "mill-alpha"); err != nil {
+	if _, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, "mill-alpha"); err != nil {
 		t.Fatal(err)
 	}
 	writePolicy(t, `not json at all`)
@@ -155,7 +155,7 @@ func TestAddMarketplaceSource_RefusedByAllowedSources(t *testing.T) {
 	if !errors.As(err, &ue) || ue.Code != PolicyRefusedCode {
 		t.Fatalf("err = %v, want the source refusal", err)
 	}
-	_, err = svc.InstallFromLink("someone/plugin")
+	_, err = installLinkForTest(t, svc, "someone/plugin")
 	if !errors.As(err, &ue) || ue.Code != PolicyRefusedCode {
 		t.Fatalf("link install err = %v, want the source refusal", err)
 	}

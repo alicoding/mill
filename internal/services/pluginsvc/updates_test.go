@@ -1,7 +1,6 @@
 package pluginsvc
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -122,7 +121,7 @@ func TestCheckForUpdates_MarketplaceEntryOffersOnlyANewerVersion(t *testing.T) {
 	if _, err := svc.AddMarketplaceSource(market); err != nil {
 		t.Fatalf("AddMarketplaceSource: %v", err)
 	}
-	if _, err := svc.InstallFromMarketplace("fx", "fx-notes"); err != nil {
+	if _, err := installMarketplaceForTest(t, svc, "fx", "fx-notes"); err != nil {
 		t.Fatalf("InstallFromMarketplace: %v", err)
 	}
 
@@ -169,7 +168,7 @@ func TestCheckForUpdates_MarketplaceEntryOffersOnlyANewerVersion(t *testing.T) {
 		t.Fatalf("PreviewUpdate = %+v, %v", pv, err)
 	}
 
-	rec, err := svc.UpdatePlugin("fx-notes")
+	rec, err := updatePluginForTest(t, svc, "fx-notes")
 	if err != nil {
 		t.Fatalf("UpdatePlugin: %v", err)
 	}
@@ -183,7 +182,7 @@ func TestCheckForUpdates_MarketplaceEntryOffersOnlyANewerVersion(t *testing.T) {
 	if len(listed.Candidates) != 0 {
 		t.Errorf("the applied update is still listed: %+v", listed.Candidates)
 	}
-	if _, err := svc.UpdatePlugin("fx-notes"); err == nil {
+	if _, err := updatePluginForTest(t, svc, "fx-notes"); err == nil {
 		t.Error("updating with no known candidate succeeded")
 	}
 }
@@ -234,7 +233,7 @@ func TestCheckForUpdates_RepositoryReleaseIsFetchedByAssetName(t *testing.T) {
 	if len(check.Candidates) != 1 || check.Candidates[0].Available != "2.0.0" || check.Candidates[0].Tier != TierUnverified {
 		t.Fatalf("candidates = %+v", check.Candidates)
 	}
-	if _, err := svc.UpdatePlugin("acme-notes"); err != nil {
+	if _, err := updatePluginForTest(t, svc, "acme-notes"); err != nil {
 		t.Fatalf("UpdatePlugin: %v", err)
 	}
 	if got := installedVersion(t, svc, "acme-notes"); got != "2.0.0" {
@@ -394,7 +393,7 @@ func TestApplyRepositoryUpdateRechecksPolicyBeforeNetwork(t *testing.T) {
 	}
 	requests := 0
 	svc.SetDownloader(func(string, int64) ([]byte, error) { requests++; return nil, nil })
-	if _, err := svc.UpdatePlugin("fixture"); err == nil {
+	if _, err := updatePluginForTest(t, svc, "fixture"); err == nil {
 		t.Fatal("policy-changing update succeeded")
 	}
 	if requests != 0 {
@@ -457,7 +456,7 @@ func TestMarketplaceUpdateRefreshRefusesChangedPolicyBeforeSourceRead(t *testing
 	if _, err := svc.AddMarketplaceSource(market); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.InstallFromMarketplace("fx", "fx-notes"); err != nil {
+	if _, err := installMarketplaceForTest(t, svc, "fx", "fx-notes"); err != nil {
 		t.Fatal(err)
 	}
 	writePolicy(t, fmt.Sprintf(`{"version":2,"managedBy":"Org","sources":[{"kind":"path","locator":%q}]}`, t.TempDir()))
@@ -474,27 +473,5 @@ func TestMarketplaceUpdateRefreshRefusesChangedPolicyBeforeSourceRead(t *testing
 	}
 	if joined := strings.Join(check.Problems, "\n"); !strings.Contains(joined, "does not allow this extension source") {
 		t.Fatalf("problems = %v", check.Problems)
-	}
-}
-
-// The persisted shape round-trips through the state file.
-func TestUpdateCheck_RoundTripsThroughState(t *testing.T) {
-	svc, _ := newStoreService(t)
-	want := UpdateCheck{CheckedAt: "2026-01-01T00:00:00Z", Candidates: []UpdateCandidate{{ID: "a", Installed: "1.0.0", Available: "1.2.0", Tier: TierHashPinned}}, Problems: []string{}}
-	_, err := svc.mutateState(func(st *marketplaceState) error {
-		st.Updates = want
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err := svc.ListUpdates()
-	if err != nil {
-		t.Fatal(err)
-	}
-	a, _ := json.Marshal(want)
-	b, _ := json.Marshal(got)
-	if string(a) != string(b) {
-		t.Errorf("round trip = %s, want %s", b, a)
 	}
 }

@@ -36,11 +36,18 @@ vi.mock('../shared/AdvancedDisclosure', () => ({
 }))
 vi.mock('../shared/noticeStore', () => ({ pushNotice: vi.fn() }))
 vi.mock('../shared/userError', () => ({ messageFor: (error: unknown) => error instanceof Error ? error.message : String(error) }))
+vi.mock('../shared/commands', () => ({
+  findCommand: vi.fn(() => ({ enabled: () => true })),
+  runCommand: vi.fn(() => Promise.resolve(true)),
+}))
 vi.mock('../../bindings/github.com/alicoding/mill/internal/services/pluginsvc', () => ({
-  PluginService: { PreviewThemeImport: vi.fn(), ImportTheme: vi.fn() },
+  PluginService: { PreviewThemeImport: vi.fn() },
 }))
 
 const { PluginService } = await import('../../bindings/github.com/alicoding/mill/internal/services/pluginsvc')
+const { runCommand } = await import('../shared/commands')
+const { useExtensionMarketplaceInstallStore } = await import('../shared/extensionMarketplaceInstallStore')
+const { useExtensionRecoveryStore } = await import('../shared/extensionRecoveryStore')
 const { ThemeImportDialog } = await import('./ThemeImportDialog')
 
 const preview = (name: string, family = '') => ({
@@ -62,17 +69,17 @@ function chosenFile(name: string, bytes: Uint8Array) {
 let container: HTMLDivElement
 let root: Root
 let onClose: ReturnType<typeof vi.fn<() => void>>
-let onImported: ReturnType<typeof vi.fn<(pluginID: string) => void>>
 
 beforeEach(() => {
   container = document.createElement('div')
   document.body.append(container)
   root = createRoot(container)
   onClose = vi.fn<() => void>()
-  onImported = vi.fn<(pluginID: string) => void>()
   vi.mocked(PluginService.PreviewThemeImport).mockReset()
-  vi.mocked(PluginService.ImportTheme).mockReset()
-  act(() => root.render(<ThemeImportDialog onClose={onClose} onImported={onImported} />))
+  vi.mocked(runCommand).mockClear()
+  useExtensionMarketplaceInstallStore.setState({ phase: 'idle' })
+  useExtensionRecoveryStore.setState({ unresolved: false, retrying: false, detail: '' })
+  act(() => root.render(<ThemeImportDialog onClose={onClose} />))
 })
 
 afterEach(() => {
@@ -124,20 +131,23 @@ describe('ThemeImportDialog', () => {
     expect((container.querySelector('[data-testid="theme-import-name"]') as HTMLInputElement).value).toBe('New theme')
   })
 
-  it('keeps the dialog closed to cancellation while the install write is busy', async () => {
-    const install = deferred<{ PluginID: string; NeedsAllow: boolean }>()
+  it('freezes the form into the shared preparation command and hides nested presentation', async () => {
     vi.mocked(PluginService.PreviewThemeImport).mockResolvedValue(preview('Ready', 'light'))
-    vi.mocked(PluginService.ImportTheme).mockReturnValue(install.promise as never)
     await selectFile(chosenFile('ready.json', new Uint8Array([3])))
 
-    await act(async () => { footerButton('extensions.themeImport.import').click(); await Promise.resolve() })
-    expect(footerButton('extensions.themeImport.cancel').disabled).toBe(true)
-    expect(footerButton('extensions.themeImport.import').disabled).toBe(true)
-    container.querySelector<HTMLButtonElement>('[data-testid="dialog-close"]')?.click()
+    await act(async () => footerButton('extensions.themeImport.import').click())
+    expect(runCommand).toHaveBeenCalledWith('extensions.install.prepare', {
+      kind: 'extensionInstallCandidate',
+      candidate: {
+        Kind: 'theme', Marketplace: '', Incarnation: '', ID: '', Version: '', Locator: '',
+        Encoded: 'Aw==', Basename: 'ready.json', DisplayName: 'Ready', Family: 'light',
+      },
+    })
     expect(onClose).not.toHaveBeenCalled()
-
-    await act(async () => { install.resolve({ PluginID: 'imported-theme-light-a', NeedsAllow: true }); await install.promise })
-    expect(onImported).toHaveBeenCalledWith('imported-theme-light-a')
+    await act(async () => useExtensionMarketplaceInstallStore.setState({ phase: 'preparing' }))
+    expect(container.querySelector('[data-testid="theme-import-dialog"]')).toBeNull()
+    await act(async () => useExtensionMarketplaceInstallStore.setState({ phase: 'idle' }))
+    expect((container.querySelector('[data-testid="theme-import-name"]') as HTMLInputElement).value).toBe('Ready')
   })
 
   it('shows a read error without closing', async () => {

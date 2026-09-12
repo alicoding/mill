@@ -94,22 +94,41 @@ export function permissionLines(preview: InstallPreview | null): PermissionLine[
   if (preview.CanvasHost) {
     lines.push({ key: 'extensions.can.canvasHost', captionKey: 'extensions.can.canvasHostCaption' })
   }
-  if (preview.AnyHost) {
-    lines.push({ key: 'extensions.can.reachAnyHost' })
+	lines.push(...networkPermissionLines(preview))
+	lines.push(...capabilityPermissionLines(preview))
+	lines.push(...contributionPermissionLines(preview))
+	if (lines.length === 0) lines.push({ key: 'extensions.can.nothing' })
+	return lines
+}
+
+function networkPermissionLines(preview: InstallPreview): PermissionLine[] {
+  const methods = preview.NetworkMethods ?? {}
+  const methodHosts = Object.keys(methods).sort((a, b) => a.localeCompare(b))
+  if (preview.NetworkGrantVersion === 1 && methodHosts.length > 0) {
+	return methodHosts.map((host) => {
+	  const methodList = [...(methods[host] ?? [])].sort().join(', ')
+	  return {
+		key: host === '*' ? 'extensions.can.reachAnyHostMethods' : 'extensions.can.reachHostMethods',
+		params: { host, methods: methodList },
+	  }
+	})
+  } else if (preview.AnyHost) {
+	return [{ key: 'extensions.can.reachAnyHost' }]
   } else if ((preview.NetworkHosts ?? []).length > 0) {
-    lines.push({ key: 'extensions.can.reachHosts', params: { list: (preview.NetworkHosts ?? []).join(', ') } })
+	return [{ key: 'extensions.can.reachHosts', params: { list: (preview.NetworkHosts ?? []).join(', ') } }]
   }
+	return []
+}
+
+function capabilityPermissionLines(preview: InstallPreview): PermissionLine[] {
   const declared = new Set(preview.Capabilities ?? [])
-  for (const capability of CAPABILITY_ORDER) {
-    if (declared.has(capability)) lines.push({ key: CAPABILITY_LINE[capability] })
-  }
-  if (preview.UsesSecrets) lines.push({ key: 'extensions.can.useSecrets' })
-  for (const kind of preview.Kinds ?? []) {
-    const key = ADDS_LINE[kind]
-    if (key) lines.push({ key })
-  }
-  if (lines.length === 0) lines.push({ key: 'extensions.can.nothing' })
-  return lines
+	const lines = CAPABILITY_ORDER.filter((capability) => declared.has(capability)).map((capability) => ({ key: CAPABILITY_LINE[capability] }))
+	if (preview.UsesSecrets) lines.push({ key: 'extensions.can.useSecrets' })
+	return lines
+}
+
+function contributionPermissionLines(preview: InstallPreview): PermissionLine[] {
+	return (preview.Kinds ?? []).flatMap((kind) => ADDS_LINE[kind] ? [{ key: ADDS_LINE[kind] }] : [])
 }
 
 // kindLabelKey names a contribution family in the user's words. The

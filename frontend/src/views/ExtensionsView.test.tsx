@@ -22,7 +22,7 @@ vi.mock('./ExtensionsUpdateDialogHost', () => ({ ExtensionsUpdateDialogHost: () 
 vi.mock('./ExtensionsPolicyBanner', () => ({ ExtensionsPolicyBanner: () => null }))
 vi.mock('./ThemeImportDialog', () => ({ ThemeImportDialog: () => null }))
 vi.mock('../shared/pluginRemoveSignal', () => ({ notifyPluginRemoved: vi.fn() }))
-vi.mock('../shared/commands', () => ({ runCommand: vi.fn() }))
+vi.mock('../shared/commands', () => ({ findCommand: vi.fn(() => undefined), runCommand: vi.fn() }))
 vi.mock('../shared/extensionUpdatesStore', () => ({
   refreshUpdates: vi.fn(),
   useExtensionUpdatesStore: (selector: (state: { candidates: unknown[] }) => unknown) => selector({ candidates: [] }),

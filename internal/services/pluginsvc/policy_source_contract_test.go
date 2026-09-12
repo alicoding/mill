@@ -1,6 +1,7 @@
 package pluginsvc
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +12,7 @@ func TestLegacyPolicyRuntimeUsesReceiptEvidence(t *testing.T) {
 	policyPath := filepath.Join(t.TempDir(), "plugin-policy.json")
 	t.Setenv(PolicyPathEnv, policyPath)
 	svc, dir := newStoreService(t, "mill-alpha")
-	if _, err := svc.InstallFromMarketplace(ReservedMarketplaceName, "mill-alpha"); err != nil {
+	if _, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, "mill-alpha"); err != nil {
 		t.Fatal(err)
 	}
 	write := func(body string) {
@@ -57,7 +58,7 @@ func TestLegacyPolicyRefusesCachedMarketplaceBeforeSourceAcquisition(t *testing.
 	if err != nil || !strings.Contains(pv.PolicyRefusal, "allows installs only") {
 		t.Fatalf("preview = %+v, %v", pv, err)
 	}
-	if _, err := svc.InstallFromMarketplace("fixture", "fixture-notes"); err == nil {
+	if _, err := installMarketplaceForTest(t, svc, "fixture", "fixture-notes"); err == nil {
 		t.Fatal("restricted source installed")
 	}
 	if reads != 0 {
@@ -70,7 +71,7 @@ func TestThemeImportRecordsAndEnforcesThemeFileOrigin(t *testing.T) {
 	t.Run("allowed and retained at runtime", func(t *testing.T) {
 		writePolicy(t, `{"version":2,"managedBy":"Org","sources":[{"kind":"theme-file"}]}`)
 		svc, dir := newStoreService(t)
-		result, err := svc.ImportTheme(encodedTheme(raw), "source.json", "Source theme", "dark")
+		result, err := importThemeForTest(t, svc, encodedTheme(raw), "source.json", "Source theme", "dark")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -91,7 +92,7 @@ func TestThemeImportRecordsAndEnforcesThemeFileOrigin(t *testing.T) {
 		t.Run(name+" refuses before files", func(t *testing.T) {
 			writePolicy(t, policy)
 			svc, dir := newStoreService(t)
-			if _, err := svc.ImportTheme(encodedTheme(raw), "source.json", "Source theme", "dark"); err == nil {
+			if _, err := importThemeForTest(t, svc, encodedTheme(raw), "source.json", "Source theme", "dark"); err == nil {
 				t.Fatal("theme import succeeded")
 			}
 			entries, err := os.ReadDir(dir)
@@ -143,7 +144,7 @@ func TestMarketplaceInstallRefusesSourceIdentityReplacementAfterStaging(t *testi
 			return nil
 		})
 	}
-	if _, err := svc.InstallFromMarketplace(first.Name, "fixture-notes"); err == nil || !strings.Contains(err.Error(), "registered source used") {
+	if _, err := installMarketplaceForTest(t, svc, first.Name, "fixture-notes"); err == nil || !strings.Contains(err.Error(), "registered source used") {
 		t.Fatalf("install error = %v", err)
 	}
 	if mutationErr != nil {
@@ -170,7 +171,7 @@ func TestMarketplaceInstallPropagatesStructuralFailureAtFinalIdentityLookup(t *t
 			t.Fatal(err)
 		}
 	}
-	if _, err := svc.InstallFromMarketplace("fixture", "fixture-notes"); err == nil || !strings.Contains(err.Error(), "closed") {
+	if _, err := installMarketplaceForTest(t, svc, "fixture", "fixture-notes"); err == nil || userErrorCode(err) != "install-recovery-required" || errors.Unwrap(err) == nil || !strings.Contains(errors.Unwrap(err).Error(), "closed") {
 		t.Fatalf("install error = %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "fixture-notes")); !os.IsNotExist(err) {
@@ -185,7 +186,7 @@ func TestMarketplaceResolutionDistinguishesCatalogFailureFromMissingSource(t *te
 	}
 	for name, call := range map[string]func() error{
 		"preview": func() error { _, err := svc.PreviewInstall("fixture", "fixture-notes"); return err },
-		"install": func() error { _, err := svc.InstallFromMarketplace("fixture", "fixture-notes"); return err },
+		"install": func() error { _, err := installMarketplaceForTest(t, svc, "fixture", "fixture-notes"); return err },
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := call(); err == nil || !strings.Contains(err.Error(), "not valid JSON") {

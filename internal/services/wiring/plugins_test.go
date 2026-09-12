@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/alicoding/mill/internal/adapters/credential"
@@ -107,7 +108,11 @@ func TestOrderPasteClaims(t *testing.T) {
 // enabled AND allowed after review (ADR-0051 §4).
 func TestSettingsTrust_MayRun(t *testing.T) {
 	set, store := newSettingsForTrust(t)
-	trust := settingsTrust{settings: set}
+	trust := settingsTrust{
+		settings:               set,
+		hashOf:                 func(id string) string { return "sha256-" + id },
+		packageApprovalMatches: func(id, hash string, _ pluginsvc.PluginGrant) bool { return hash == "sha256-"+id },
+	}
 	if trust.mayRun("mill-a", false) {
 		t.Fatal("an unreviewed plugin ran")
 	}
@@ -155,7 +160,43 @@ func newSettingsForTrust(t *testing.T) (*settingssvc.SettingsService, *servicete
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
 	trig := triggersvc.NewTriggerService(comp, slog.Default(), store)
-	return settingssvc.NewSettingsService(store, trig, false), store
+	settings := settingssvc.NewSettingsService(store, trig, false)
+	var mu sync.Mutex
+	var payload []byte
+	var revision int64
+	settingssvc.SetPluginApprovalStore(settings,
+		func() ([]byte, int64, bool, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			return append([]byte(nil), payload...), revision, payload != nil, nil
+		},
+		func(initializer settingssvc.PluginApprovalInitializer, change settingssvc.PluginApprovalChange) ([]byte, int64, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			current := append([]byte(nil), payload...)
+			if current == nil {
+				var err error
+				current, err = initializer()
+				if err != nil {
+					return nil, 0, err
+				}
+			}
+			next, err := change(current)
+			if err != nil {
+				return nil, 0, err
+			}
+			revision++
+			payload = append([]byte(nil), next...)
+			return append([]byte(nil), payload...), revision, nil
+		},
+	)
+	settingssvc.WirePluginRemoval(settings, func(_ string, action func(string, bool, bool) error) error {
+		return action("/installed/plugin", false, true)
+	})
+	settings.SetPluginHasher(func(id string) (settingssvc.PluginGrantSnapshot, error) {
+		return settingssvc.PluginGrantSnapshot{Version: "1.0.0", Hash: "sha256-" + id, NetworkGrantVersion: 1, NetworkMethods: map[string][]string{}}, nil
+	})
+	return settings, store
 }
 
 // setPluginAllowlist writes the administrator's policy the way policy
@@ -172,17 +213,21 @@ func setPluginAllowlist(t *testing.T, store *servicetest.FakeStore, raw string) 
 func TestSettingsTrust_LockRevokesChangedPlugins(t *testing.T) {
 	set, _ := newSettingsForTrust(t)
 	current := "sha256-aaa"
-	set.SetPluginHasher(func(id string) settingssvc.PluginGrantSnapshot {
-		return settingssvc.PluginGrantSnapshot{Version: "1.0.0", Hash: current}
+	set.SetPluginHasher(func(id string) (settingssvc.PluginGrantSnapshot, error) {
+		return settingssvc.PluginGrantSnapshot{Version: "1.0.0", Hash: current, NetworkGrantVersion: 1, NetworkMethods: map[string][]string{}}, nil
 	})
-	trust := settingsTrust{settings: set, hashOf: func(string) string { return current }}
+	trust := settingsTrust{settings: set, hashOf: func(string) string { return current }, packageApprovalMatches: func(_ string, hash string, _ pluginsvc.PluginGrant) bool { return hash == current }}
 	if err := set.SetPluginAllowed("mill-a", true); err != nil {
 		t.Fatal(err)
 	}
 	if !trust.mayRun("mill-a", false) {
 		t.Fatal("allowed plugin did not run")
 	}
-	if got := set.GetPluginLock()["mill-a"]; got.Hash != "sha256-aaa" || got.Version != "1.0.0" {
+	locks, err := set.GetPluginLock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := locks["mill-a"]; got.Hash != "sha256-aaa" || got.Version != "1.0.0" {
 		t.Fatalf("lock = %+v", got)
 	}
 	current = "sha256-bbb"
@@ -198,7 +243,11 @@ func TestSettingsTrust_LockRevokesChangedPlugins(t *testing.T) {
 	if err := set.SetPluginAllowed("mill-a", false); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := set.GetPluginLock()["mill-a"]; ok {
+	locks, err = set.GetPluginLock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := locks["mill-a"]; ok {
 		t.Fatal("withdrawing consent kept the lock entry")
 	}
 }
@@ -237,7 +286,7 @@ func TestWirePluginTrust_NarrowedOrUnrelatedManifestEditKeepsTheGrant(t *testing
 	if err := settings.SetPluginAllowed("widen-probe", true); err != nil {
 		t.Fatal(err)
 	}
-	trust := settingsTrust{settings: settings, hashOf: plugins.CodeHashOf, widenedOf: plugins.Widened}
+	trust := pluginSettingsTrust(plugins, settings)
 	if !trust.mayRun("widen-probe", false) {
 		t.Fatal("freshly allowed plugin did not run")
 	}
@@ -268,12 +317,11 @@ func TestWirePluginTrust_NarrowedOrUnrelatedManifestEditKeepsTheGrant(t *testing
 	}
 }
 
-// The lock's pre-#806 format (recorded against the whole-folder
-// ContentHash, before docs/goals/0375 S2 split CodeHash off it): an
-// upgraded instance must migrate it onto CodeHash rather than reading
-// every already-allowed plugin as changed the moment it boots, while a
-// genuinely changed plugin's entry stays untouched (docs/goals/0420).
-func TestWirePluginTrust_MigratesPreCodeHashLockFormat(t *testing.T) {
+// A pre-#806 lock names the whole-folder ContentHash and has no grant
+// shape. Transactional migration preserves those historical bytes; the
+// runtime validates the unchanged whole package instead of manufacturing a
+// current grant, while a genuinely changed package remains denied.
+func TestWirePluginTrust_PreservesPreCodeHashLockFormat(t *testing.T) {
 	root := t.TempDir()
 	unchangedDir := filepath.Join(root, "plugins", "old-format")
 	changedDir := filepath.Join(root, "plugins", "really-changed")
@@ -295,11 +343,7 @@ func TestWirePluginTrust_MigratesPreCodeHashLockFormat(t *testing.T) {
 	writePluginFiles(changedDir, "really-changed")
 
 	store := servicetest.NewFakeStore()
-	comp := compositionsvc.NewCompositionService(store)
-	trig := triggersvc.NewTriggerService(comp, slog.Default(), store)
-	settings := settingssvc.NewSettingsService(store, trig, false)
 	plugins := NewPluginService(filepath.Join(root, "settings.json"), nil, "source", "", "", nil)
-	secrets := secretsvc.NewSecretService(secretvault.New(filepath.Join(root, "secrets.kdbx")), credential.NewInMemory(), store)
 
 	oldFormatContentHash := plugins.ContentHashOf("old-format")
 	oldFormatCodeHash := plugins.CodeHashOf("old-format")
@@ -307,46 +351,39 @@ func TestWirePluginTrust_MigratesPreCodeHashLockFormat(t *testing.T) {
 		t.Fatal("test setup: manifest.json must make ContentHash and CodeHash differ")
 	}
 
-	if err := settings.SetPluginAllowed("old-format", true); err != nil {
-		t.Fatal(err)
-	}
-	if err := settings.SetPluginAllowed("really-changed", true); err != nil {
+	if err := store.Set("settings-allowed-plugins", `["old-format","really-changed"]`); err != nil {
 		t.Fatal(err)
 	}
 	// Seed the lock the way a pre-0375-S2 install already carries it:
 	// old-format recorded at its own ContentHash (the migration's
 	// target), really-changed recorded at a hash matching neither of
 	// its current hashes (a genuine file edit since it was allowed).
-	// Written before WirePluginTrust installs the hasher, so neither
-	// SetPluginAllowed call above touched the lock itself.
 	lockJSON := fmt.Sprintf(`{"old-format":{"version":"1.0.0","hash":%q},"really-changed":{"version":"1.0.0","hash":"sha256-stale"}}`, oldFormatContentHash)
 	if err := store.Set("settings-plugin-lock", lockJSON); err != nil {
 		t.Fatal(err)
 	}
+	comp := compositionsvc.NewCompositionService(store)
+	trig := triggersvc.NewTriggerService(comp, slog.Default(), store)
+	settings := settingssvc.NewSettingsService(store, trig, false)
+	secrets := secretsvc.NewSecretService(secretvault.New(filepath.Join(root, "secrets.kdbx")), credential.NewInMemory(), store)
 
 	WirePluginTrust(plugins, settings, secrets)
 
-	trust := settingsTrust{settings: settings, hashOf: plugins.CodeHashOf, widenedOf: plugins.Widened}
+	trust := pluginSettingsTrust(plugins, settings)
 	if !trust.mayRun("old-format", false) {
-		t.Fatal("a migrated pre-CodeHash lock entry re-entered review")
+		t.Fatal("an unchanged pre-CodeHash lock entry re-entered review")
 	}
-	if got := settings.GetPluginLock()["old-format"].Hash; got != oldFormatCodeHash {
-		t.Fatalf("migrated lock hash = %q, want the CodeHash %q", got, oldFormatCodeHash)
+	locks, err := settings.GetPluginLock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := locks["old-format"].Hash; got != oldFormatContentHash {
+		t.Fatalf("historical lock hash changed to %q, want %q", got, oldFormatContentHash)
 	}
 	if trust.mayRun("really-changed", false) {
 		t.Fatal("a genuinely changed plugin ran without review")
 	}
-	if got := settings.GetPluginLock()["really-changed"].Hash; got != "sha256-stale" {
+	if got := locks["really-changed"].Hash; got != "sha256-stale" {
 		t.Fatalf("a genuinely changed lock entry was rewritten to %q", got)
-	}
-
-	// Idempotent: running the migration again over an already-migrated
-	// (or never-matching) lock changes nothing.
-	migratePluginLockFormat(plugins, settings)
-	if got := settings.GetPluginLock()["old-format"].Hash; got != oldFormatCodeHash {
-		t.Fatalf("second migration pass changed the already-migrated hash to %q", got)
-	}
-	if got := settings.GetPluginLock()["really-changed"].Hash; got != "sha256-stale" {
-		t.Fatalf("second migration pass changed the still-stale hash to %q", got)
 	}
 }

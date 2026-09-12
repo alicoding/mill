@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/alicoding/mill/internal/adapters/osopen"
 	"io/fs"
@@ -20,7 +19,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 
 	"golang.org/x/mod/semver"
@@ -155,12 +153,21 @@ var pluginIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 // shell out to the real OS handler. appVersion is the build-stamped
 // Mill version minMillVersion enforcement compares against.
 type PluginService struct {
-	dir        string
-	installMu  sync.Mutex
-	state      *pluginstate.Store
-	guardrail  *guardrailsvc.GuardrailService
-	openURL    func(url string) error
-	appVersion string
+	dir                  string
+	installMu            sync.Mutex
+	preparationsMu       sync.Mutex
+	preparations         map[string]*installPreparation
+	preparationFailures  map[string]string
+	preparationsClosed   bool
+	preparationWG        sync.WaitGroup
+	state                pluginStateStore
+	installRename        func(string, string) error
+	installRemoveAll     func(string) error
+	installRootRemoveAll func(*os.Root, string) error
+	installRemove        func(string) error
+	guardrail            *guardrailsvc.GuardrailService
+	openURL              func(url string) error
+	appVersion           string
 	// content is the guarded content-write seam (docs/goals/0289),
 	// nil until the composition root wires it.
 	content ContentWriter
@@ -213,7 +220,22 @@ func New(dir string, guardrail *guardrailsvc.GuardrailService, appVersion string
 	// is a documented no-op (ErrUnsupportedInServerMode), so an approved
 	// open-url in server mode -- every e2e run of the plugin spec --
 	// never reaches the machine's real browser. The runtime opener did.
-	return &PluginService{dir: dir, state: pluginstate.New(dir), guardrail: guardrail, openURL: osopen.Open, appVersion: appVersion, runCommand: invokeCommandInWebview}
+	return &PluginService{
+		dir: dir, state: pluginstate.New(dir), preparations: make(map[string]*installPreparation), preparationFailures: make(map[string]string),
+		installRename: os.Rename, installRemoveAll: os.RemoveAll, installRootRemoveAll: (*os.Root).RemoveAll, installRemove: os.Remove,
+		guardrail: guardrail, openURL: osopen.Open, appVersion: appVersion, runCommand: invokeCommandInWebview,
+	}
+}
+
+type pluginStateStore interface {
+	Load(context.Context) ([]byte, int64, bool, error)
+	Update(context.Context, pluginstate.Initializer, pluginstate.Change) ([]byte, int64, error)
+	LoadApproval(context.Context) ([]byte, int64, bool, error)
+	UpdateApproval(context.Context, pluginstate.Initializer, pluginstate.Initializer, pluginstate.Change) ([]byte, int64, error)
+	ListInstallTransactions(context.Context) ([]pluginstate.InstallTransactionRecord, error)
+	CompareAndSwapInstallTransaction(context.Context, pluginstate.Initializer, string, int64, []byte) (int64, error)
+	DeleteInstallTransaction(context.Context, string, int64) error
+	Close() error
 }
 
 func (p *PluginService) openInOS(url string) error {
@@ -221,117 +243,6 @@ func (p *PluginService) openInOS(url string) error {
 		return fmt.Errorf("no URL opener available in this mode")
 	}
 	return p.openURL(url)
-}
-
-// ListPlugins scans the plugins directory fresh on every call (the
-// Extensions page's Rescan is just another call) and returns every
-// plugin folder with its manifest -- valid ones ready to load,
-// invalid ones carrying their human-readable Error.
-func (p *PluginService) ListPlugins() ([]PluginInfo, error) {
-	entries, err := os.ReadDir(p.dir)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("read plugins directory: %w", err)
-	}
-	// A missing plugins dir is normal (nothing installed yet) -- the
-	// built-ins below still list.
-	infos := make([]PluginInfo, 0, len(entries))
-	scanned := map[string]bool{}
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		infos = append(infos, p.scanOne(e.Name()))
-		scanned[e.Name()] = true
-	}
-	// Built-ins fill in behind the scanned directory: a user folder
-	// with the same id shadows its built-in entirely (even an invalid
-	// one -- its own error row is the honest state, and deleting the
-	// folder restores the built-in).
-	for _, id := range builtinPluginIDs() {
-		if !scanned[id] {
-			infos = append(infos, scanBuiltin(id, p.appVersion))
-		}
-	}
-	sort.Slice(infos, func(i, j int) bool { return infos[i].Manifest.ID < infos[j].Manifest.ID })
-	return infos, nil
-}
-
-// resolvePlugin is the by-id lookup every non-list path uses
-// (guarded actions, asset serving): the user's own folder first, the
-// built-in behind it -- the same shadowing rule ListPlugins applies.
-// The pattern gate up front makes the joined path traversal-safe for
-// a caller-supplied id (RequestGuardedAction's pluginID arrives
-// straight off the wire).
-func (p *PluginService) resolvePlugin(id string) PluginInfo {
-	if !pluginIDPattern.MatchString(id) {
-		return PluginInfo{Manifest: Manifest{ID: id}, Error: "the manifest id must be lowercase letters, digits, and hyphens"}
-	}
-	if _, err := os.Stat(filepath.Join(p.dir, id)); err == nil { // #nosec G703 -- id passed pluginIDPattern above (no separators, no dots)
-		return p.scanOne(id)
-	}
-	if isBuiltinPluginID(id) {
-		return scanBuiltin(id, p.appVersion)
-	}
-	return p.scanOne(id)
-}
-
-func (p *PluginService) scanOne(folder string) PluginInfo {
-	dir := filepath.Join(p.dir, folder)
-	info := PluginInfo{Dir: dir, Manifest: Manifest{ID: folder}}
-	raw, err := os.ReadFile(filepath.Join(dir, "manifest.json")) // #nosec G304 G703 -- dir is this service's own plugins root joined with a ReadDir entry name
-	if err != nil {
-		info.Error = "manifest.json is missing or unreadable"
-		return info
-	}
-	var m Manifest
-	if err := json.Unmarshal(raw, &m); err != nil {
-		info.Error = "manifest.json is not valid JSON"
-		return info
-	}
-	info.Manifest = m
-	info.Grants = pluginGrants(false, m)
-	info.Widened = widenedInfo(p.trust, m)
-	info.Warnings = manifestWarnings(m)
-	_, mainErr := os.Stat(filepath.Join(dir, "main.js")) // #nosec G703 -- folder passed pluginIDPattern (no separators, no dots)
-	info.Error = manifestProblem(m, folder, mainErr == nil, p.appVersion)
-	dataOnly := info.Error == "" && mainErr != nil && isDataOnlyManifest(m)
-	if dataOnly {
-		info.Error = dataOnlyFolderProblem(os.DirFS(dir))
-	}
-	if info.Error == "" {
-		info.Error = stepsFileProblem(dir, m)
-	}
-	if info.Error == "" {
-		info.Error = secretsFileProblem(dir, m)
-	}
-	if info.Error == "" {
-		info.Error = entryFileProblem(m, func(rel string) bool {
-			_, statErr := os.Stat(filepath.Join(dir, filepath.FromSlash(rel))) // #nosec G703 -- rel passed entryPathProblem (no traversal, no absolute path)
-			return statErr == nil
-		})
-	}
-	if info.Error == "" {
-		if h, err := ContentHash(dir); err == nil {
-			info.ContentHash = h
-		}
-		if h, err := CodeHash(dir); err == nil {
-			info.CodeHash = h
-		}
-	}
-	info.DataOnly = info.Error == "" && dataOnly
-	if keys := p.signingKeySet(); len(keys) > 0 {
-		info.SigningPolicy = true
-		info.Signed = SignatureVerified(dir, info.ContentHash, keys)
-	}
-	info.Tier = InstalledTier(dir, false)
-	if rec, ok := ReadInstallRecord(dir); ok {
-		info.Marketplace = rec.Marketplace
-		if info.Error == "" && rec.Source.Kind == "theme-file" && rec.ContentHash == info.ContentHash {
-			info.ThemeImport = readThemeImportMetadata(dir, m, rec)
-		}
-	}
-	p.applyPolicy(&info)
-	return info
 }
 
 // manifestProblem runs every load-blocking validation shared by the

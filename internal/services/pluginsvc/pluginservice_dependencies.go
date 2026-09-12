@@ -92,6 +92,15 @@ func validateExportsShape(exports []string) string {
 // "Built-ins may be depended on").
 func (p *PluginService) installedManifests() map[string]Manifest {
 	infos, _ := p.ListPlugins()
+	return manifestsFromPluginInfos(infos)
+}
+
+func (p *PluginService) installedManifestsLocked() map[string]Manifest {
+	infos, _ := p.listPluginsLocked()
+	return manifestsFromPluginInfos(infos)
+}
+
+func manifestsFromPluginInfos(infos []PluginInfo) map[string]Manifest {
 	out := make(map[string]Manifest, len(infos))
 	for _, info := range infos {
 		if info.Error == "" {

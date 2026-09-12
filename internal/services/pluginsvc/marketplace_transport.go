@@ -27,18 +27,28 @@ const maxIndexBytes int64 = 4 << 20
 const maxDownloadBytes int64 = maxArchiveBytes
 
 func (p *PluginService) httpGetBytesForOrigin(rawURL string, limit int64, origin SourceOrigin, artifact bool) ([]byte, string, error) {
+	return p.httpGetBytesForOriginContext(context.Background(), rawURL, limit, origin, artifact)
+}
+
+func (p *PluginService) httpGetBytesForOriginContext(ctx context.Context, rawURL string, limit int64, origin SourceOrigin, artifact bool) ([]byte, string, error) {
 	if err := policyRequestRefusal(origin, rawURL, artifact); err != nil {
+		return nil, "", err
+	}
+	if err := ctx.Err(); err != nil {
 		return nil, "", err
 	}
 	if p.download != nil {
 		data, err := p.download(rawURL, limit)
+		if err == nil {
+			err = ctx.Err()
+		}
 		return data, rawURL, err
 	}
-	return p.downloadHTTP(rawURL, limit, origin, artifact)
+	return p.downloadHTTPContext(ctx, rawURL, limit, origin, artifact)
 }
 
-func (p *PluginService) downloadHTTP(rawURL string, limit int64, origin SourceOrigin, artifact bool) ([]byte, string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), fetchTimeout)
+func (p *PluginService) downloadHTTPContext(parent context.Context, rawURL string, limit int64, origin SourceOrigin, artifact bool) ([]byte, string, error) {
+	ctx, cancel := context.WithTimeout(parent, fetchTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
@@ -62,7 +72,7 @@ func (p *PluginService) downloadHTTP(rawURL string, limit int64, origin SourceOr
 		return nil, "", fmt.Errorf("couldn't reach that address")
 	}
 	defer func() { _ = resp.Body.Close() }()
-	data, err := readHTTPResponse(resp, limit)
+	data, err := readHTTPResponseContext(ctx, resp, limit)
 	if err != nil {
 		return nil, "", err
 	}
@@ -70,10 +80,14 @@ func (p *PluginService) downloadHTTP(rawURL string, limit int64, origin SourceOr
 }
 
 func readHTTPResponse(resp *http.Response, limit int64) ([]byte, error) {
+	return readHTTPResponseContext(context.Background(), resp, limit)
+}
+
+func readHTTPResponseContext(ctx context.Context, resp *http.Response, limit int64) ([]byte, error) {
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return nil, &httpStatusError{status: resp.StatusCode}
 	}
-	data, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
+	data, err := io.ReadAll(io.LimitReader(&contextReader{ctx: ctx, reader: resp.Body}, limit+1))
 	if err != nil {
 		return nil, fmt.Errorf("that download stopped partway")
 	}
@@ -181,13 +195,13 @@ func (p *PluginService) readSourceFile(origin SourceOrigin, relative string) ([]
 	return raw, nil
 }
 
-func (p *PluginService) copySourceFolder(origin SourceOrigin, relative, destination string) error {
+func (p *PluginService) copySourceFolderContext(ctx context.Context, origin SourceOrigin, relative, destination string) error {
 	root, err := p.openSourceDirectory(origin, relative)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = root.Close() }()
-	return copyPluginFolderFS(root.FS(), destination)
+	return copyPluginFolderFSContext(ctx, root.FS(), destination)
 }
 
 func (p *PluginService) sourceInstallChecks(origin SourceOrigin, relative string, manifest Manifest) ([]string, []string, error) {

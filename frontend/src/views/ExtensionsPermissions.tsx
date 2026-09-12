@@ -13,7 +13,7 @@ function PermissionListItems({ lines, ariaLabel }: { lines: PermissionLine[]; ar
   return (
     <ul aria-label={ariaLabel} className={styles.plainList}>
       {lines.map((line) => (
-        <li key={`${line.key}:${line.params?.list ?? line.params?.kind ?? ''}`}>
+        <li key={`${line.key}:${line.params?.host ?? line.params?.list ?? line.params?.kind ?? ''}:${line.params?.methods ?? ''}`}>
           <Text size="small" className={listStyles.muted}>{t(line.key, line.params)}</Text>
           {line.captionKey && <Text as="p" size="small" className={listStyles.muted}>{t(line.captionKey)}</Text>}
         </li>

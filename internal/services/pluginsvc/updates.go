@@ -1,6 +1,7 @@
 package pluginsvc
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -51,14 +52,25 @@ type UpdateCheck struct {
 // ListUpdates answers the last check as it was recorded -- never a
 // fetch.
 func (p *PluginService) ListUpdates() (UpdateCheck, error) {
+	p.installMu.Lock()
+	defer p.installMu.Unlock()
+	if err := p.recoverInstallationsLocked(); err != nil {
+		return UpdateCheck{}, err
+	}
 	st, err := p.readState()
 	if err != nil {
 		return UpdateCheck{}, err
 	}
 	check := st.Updates
-	if check.Candidates == nil {
-		check.Candidates = []UpdateCandidate{}
+	current := make([]UpdateCandidate, 0, len(check.Candidates))
+	for _, candidate := range check.Candidates {
+		info, _ := p.resolvePluginLocked(candidate.ID)
+		if info.Error == "" && NewerVersion(candidate.Available, info.Manifest.Version) {
+			candidate.Installed = info.Manifest.Version
+			current = append(current, candidate)
+		}
 	}
+	check.Candidates = current
 	if check.Problems == nil {
 		check.Problems = []string{}
 	}
@@ -226,7 +238,11 @@ func (p *PluginService) folderManifestVersion(dir string, origin SourceOrigin) (
 
 // updateCandidate answers the recorded candidate for one extension.
 func (p *PluginService) updateCandidate(id string) (UpdateCandidate, bool, error) {
-	st, err := p.readState()
+	return p.updateCandidateContext(context.Background(), id)
+}
+
+func (p *PluginService) updateCandidateContext(ctx context.Context, id string) (UpdateCandidate, bool, error) {
+	st, err := p.readStateContext(ctx)
 	if err != nil {
 		return UpdateCandidate{}, false, err
 	}
@@ -258,6 +274,9 @@ func (p *PluginService) PreviewUpdate(id string) (InstallPreview, error) {
 		return pv, nil
 	}
 	info := p.resolvePlugin(id)
+	if info.Error != "" {
+		return InstallPreview{}, fmt.Errorf("%s", info.Error)
+	}
 	pv := InstallPreview{
 		ID: id, Name: info.Manifest.Name, Version: cand.Available, Author: info.Manifest.Author,
 		Description: info.Manifest.Description, Tier: cand.Tier, AlreadyInstalled: true,
@@ -265,69 +284,4 @@ func (p *PluginService) PreviewUpdate(id string) (InstallPreview, error) {
 	applyManifestToPreview(&pv, info.Manifest, info.Builtin)
 	pv.Version = cand.Available
 	return pv, nil
-}
-
-// UpdatePlugin applies one recorded candidate through the same install
-// door the extension first came through, then drops it from the list.
-func (p *PluginService) UpdatePlugin(id string) (InstallRecord, error) {
-	cand, ok, err := p.updateCandidate(id)
-	if err != nil {
-		return InstallRecord{}, err
-	}
-	if !ok {
-		return InstallRecord{}, fmt.Errorf("no update is known for %q; check for updates first", id)
-	}
-	rec, err := p.installCandidate(cand)
-	if err != nil {
-		return InstallRecord{}, err
-	}
-	_, err = p.mutateState(func(st *marketplaceState) error {
-		kept := make([]UpdateCandidate, 0, len(st.Updates.Candidates))
-		for _, c := range st.Updates.Candidates {
-			if c.ID != id {
-				kept = append(kept, c)
-			}
-		}
-		st.Updates.Candidates = kept
-		return nil
-	})
-	return rec, err
-}
-
-func (p *PluginService) installCandidate(cand UpdateCandidate) (InstallRecord, error) {
-	switch {
-	case cand.Marketplace != "":
-		return p.InstallFromMarketplace(cand.Marketplace, cand.ID)
-	case cand.Source.Kind == "github":
-		if err := policyUpdateDiscoveryRefusal(cand.Origin, cand.Marketplace, cand.Source); err != nil {
-			return InstallRecord{}, err
-		}
-		stage, cleanup, err := stageDir()
-		if err != nil {
-			return InstallRecord{}, err
-		}
-		defer cleanup()
-		tier, finalURL, err := p.stageRepo(stage, cand.Source.Repo, cand.Source.Ref, cand.ID, cand.Available, "", cand.Origin)
-		if err != nil {
-			return InstallRecord{}, err
-		}
-		return p.finishInstall(stage, InstallRecord{Source: cand.Source, Tier: tier, Origin: cand.Origin, FinalArtifactURL: finalURL})
-	case cand.Source.Kind == "path":
-		if cand.Origin.Kind == "" {
-			return p.InstallFromLink(cand.Source.Path)
-		}
-		if err := policyUpdateDiscoveryRefusal(cand.Origin, cand.Marketplace, cand.Source); err != nil {
-			return InstallRecord{}, err
-		}
-		stage, cleanup, err := stageDir()
-		if err != nil {
-			return InstallRecord{}, err
-		}
-		defer cleanup()
-		if err := p.copySourceFolder(cand.Origin, ".", stage); err != nil {
-			return InstallRecord{}, err
-		}
-		return p.finishInstall(stage, InstallRecord{Source: cand.Source, Tier: TierDev, Origin: cand.Origin})
-	}
-	return InstallRecord{}, fmt.Errorf("%q has no source an update can come from", cand.ID)
 }

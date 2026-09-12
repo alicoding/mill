@@ -4,16 +4,18 @@ import { Button, Dialog, FormControl, Select, Stack, Text, TextInput } from '@pr
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import type { ThemeImportPreview } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { AdvancedDisclosure } from '../shared/AdvancedDisclosure'
-import { pushNotice } from '../shared/noticeStore'
 import { messageFor } from '../shared/userError'
 import listStyles from '../shared/ListCard.module.css'
 import { bytesToBase64 } from './themeImportFile'
+import { findCommand, runCommand } from '../shared/commands'
+import type { CommandContext } from '../shared/commandContext'
+import { useExtensionMarketplaceInstallStore } from '../shared/extensionMarketplaceInstallStore'
+import { useExtensionRecoveryStore } from '../shared/extensionRecoveryStore'
 
 const MAX_THEME_BYTES = 2 * 1024 * 1024
 
-export function ThemeImportDialog({ onClose, onImported }: {
+export function ThemeImportDialog({ onClose }: {
   onClose: () => void
-  onImported: (pluginID: string) => void
 }) {
   const { t } = useTranslation('views')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -25,6 +27,8 @@ export function ThemeImportDialog({ onClose, onImported }: {
   const [family, setFamily] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const installPhase = useExtensionMarketplaceInstallStore((state) => state.phase)
+  useExtensionRecoveryStore((state) => state.unresolved)
 
   const chooseFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -55,17 +59,16 @@ export function ThemeImportDialog({ onClose, onImported }: {
     }
   }
 
+  const installContext: CommandContext = {
+    kind: 'extensionInstallCandidate',
+    candidate: { Kind: 'theme', Marketplace: '', Incarnation: '', ID: '', Version: '', Locator: '', Encoded: encoded, Basename: basename, DisplayName: name, Family: family },
+  }
   const install = async () => {
     if (!preview) return
     setBusy(true)
     setError('')
     try {
-      const result = await PluginService.ImportTheme(encoded, basename, name, family)
-      pushNotice({
-        level: 'success',
-        text: result.NeedsAllow ? t('extensions.themeImport.doneNeedsAllow') : t('extensions.themeImport.done'),
-      })
-      onImported(result.PluginID)
+      await runCommand('extensions.install.prepare', installContext)
     } catch (err) {
       setError(messageFor(err, t))
     } finally {
@@ -77,6 +80,9 @@ export function ThemeImportDialog({ onClose, onImported }: {
     if (!busy) onClose()
   }
   const valid = preview !== null && name.trim() !== '' && [...name.trim()].length <= 120 && (family === 'light' || family === 'dark')
+  const prepareCommand = findCommand('extensions.install.prepare')
+  const canPrepare = valid && prepareCommand !== undefined && (prepareCommand.enabled?.(installContext) ?? true)
+  if (installPhase !== 'idle') return null
 
   return (
     <Dialog
@@ -85,7 +91,7 @@ export function ThemeImportDialog({ onClose, onImported }: {
       width="large"
       footerButtons={[
         { content: t('extensions.themeImport.cancel'), onClick: close, autoFocus: true, disabled: busy },
-        { content: t('extensions.themeImport.import'), buttonType: 'primary', onClick: () => void install(), disabled: busy || !valid },
+        { content: t('extensions.themeImport.import'), buttonType: 'primary', onClick: () => void install(), disabled: busy || !canPrepare },
       ]}
     >
       <Stack direction="vertical" gap="condensed" data-testid="theme-import-dialog">

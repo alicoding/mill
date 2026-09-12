@@ -152,7 +152,21 @@
     "working-directory-relative": "The working directory must be an absolute path.",
     "dotenv-source-unreadable": "The file for this source can't be read.",
     "vault-locked-import": "Unlock the vault to import keys.",
-    "secret-reference-unresolved": "This reference's key isn't in its source anymore."
+    "secret-reference-unresolved": "This reference's key isn't in its source anymore.",
+    "install-preparation-limit": "Too many extension previews are open. Close one and try again.",
+    "install-preparation-invalid": "This extension preview is no longer available. Prepare it again to continue.",
+    "install-preparation-expired": "This preview has expired. Prepare the extension again to continue.",
+    "install-preparation-cancelled": "Extension preparation was cancelled.",
+    "install-preparation-not-ready": "This extension is still being prepared.",
+    "install-already-confirming": "This extension is already being installed.",
+    "install-candidate-changed": "This extension offer changed. Prepare it again to continue.",
+    "install-installed-changed": "This extension changed while you were reviewing it. Prepare it again to continue.",
+    "install-artifact-changed": "This extension preview changed. Prepare it again to continue.",
+    "install-recovery-required": "Mill could not finish restoring an extension. Its files have been kept.",
+    "plugin-approval-unavailable": "Extension approval state is unavailable.",
+    "plugin-approval-corrupt": "Extension approval state is unreadable.",
+    "plugin-approval-save-failed": "Mill could not save extension approval.",
+    "plugin-remove-trash-failed": "Extension approval was removed, but Mill could not move its folder to the Trash. Try removing it again."
   },
   "list": {
     "sort": "Sort",
@@ -465,7 +479,16 @@
       "viewInstalled": "Extensions: view installed",
       "importTheme": "Extensions: Import theme",
       "checkUpdates": "Extensions: check for updates",
-      "updateAll": "Extensions: update all"
+      "updateAll": "Extensions: update all",
+      "retryUpdates": "Extensions: retry loading updates",
+      "retryRecovery": "Extensions: retry recovery",
+      "cancelRemainingUpdates": "Extensions: cancel remaining updates",
+      "install": {
+        "prepare": "Prepare extension installation",
+        "confirm": "Confirm extension installation",
+        "dismiss": "Close extension installation",
+        "retry": "Retry extension preparation"
+      }
     },
     "audit": {
       "export": "Export audit trail"

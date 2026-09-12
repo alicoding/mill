@@ -137,7 +137,7 @@ func TestBrowseMarketplaces_ListsEveryBundledExample(t *testing.T) {
 
 func TestInstallFromMarketplace_CopiesABundledExampleOutOfTheBinary(t *testing.T) {
 	svc, dir := newStoreService(t, "mill-alpha")
-	rec, err := svc.InstallFromMarketplace(ReservedMarketplaceName, "mill-alpha")
+	rec, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, "mill-alpha")
 	if err != nil {
 		t.Fatalf("InstallFromMarketplace() = %v", err)
 	}
@@ -239,7 +239,7 @@ func TestInstallFromMarketplace_InstallsAPathEntryFromTheSourceFolder(t *testing
 	if err != nil || pv.ID != "fixture-notes" || pv.Version != "1.0.0" {
 		t.Fatalf("PreviewInstall() = %+v, %v", pv, err)
 	}
-	rec, err := svc.InstallFromMarketplace("fixture", "fixture-notes")
+	rec, err := installMarketplaceForTest(t, svc, "fixture", "fixture-notes")
 	if err != nil {
 		t.Fatalf("InstallFromMarketplace() = %v", err)
 	}
@@ -264,7 +264,7 @@ func TestInstallFromMarketplace_RefusesAnArchiveThatDoesNotMatchItsHash(t *testi
 	})
 	svc.SetDownloader(func(string, int64) ([]byte, error) { return archive, nil })
 	writeSourceIndex(t, svc, `{"name":"fixture","plugins":[{"id":"fixture-notes","name":"Notes","version":"1.0.0","sha256":"0000000000000000000000000000000000000000000000000000000000000000","source":{"kind":"archive","url":"https://example.test/notes.zip"}}]}`)
-	_, err := svc.InstallFromMarketplace("fixture", "fixture-notes")
+	_, err := installMarketplaceForTest(t, svc, "fixture", "fixture-notes")
 	if err == nil || !strings.Contains(err.Error(), "hash the source declared") {
 		t.Fatalf("err = %v, want a hash-mismatch refusal", err)
 	}
@@ -299,7 +299,7 @@ func TestInstallFromMarketplace_PinnedRepoRefusalPreservesInstalledPackageAndRec
 		return archive, nil
 	})
 	writeSourceIndex(t, svc, `{"name":"fixture","plugins":[{"id":"fixture-notes","name":"Notes","version":"1.0.0","sha256":"0000000000000000000000000000000000000000000000000000000000000000","source":{"kind":"github","repo":"acme/notes"}}]}`)
-	if _, err := svc.InstallFromMarketplace("fixture", "fixture-notes"); err == nil {
+	if _, err := installMarketplaceForTest(t, svc, "fixture", "fixture-notes"); err == nil {
 		t.Fatal("pinned mismatch installed")
 	}
 	manifestAfter, _ := os.ReadFile(filepath.Join(installed, "manifest.json"))  // #nosec G304 -- test-owned install path
@@ -320,7 +320,7 @@ func TestInstallFromMarketplace_EarnsHashPinnedWhenTheHashMatches(t *testing.T) 
 	})
 	svc.SetDownloader(func(string, int64) ([]byte, error) { return archive, nil })
 	writeSourceIndex(t, svc, fmt.Sprintf(`{"name":"fixture","plugins":[{"id":"fixture-notes","name":"Notes","version":"1.0.0","sha256":%q,"source":{"kind":"archive","url":"https://example.test/notes.zip"}}]}`, SHA256Hex(archive)))
-	rec, err := svc.InstallFromMarketplace("fixture", "fixture-notes")
+	rec, err := installMarketplaceForTest(t, svc, "fixture", "fixture-notes")
 	if err != nil {
 		t.Fatalf("InstallFromMarketplace() = %v", err)
 	}
@@ -347,7 +347,7 @@ func TestBrowseMarketplaces_PromisesTheTierTheInstallWillRecord(t *testing.T) {
 			t.Fatalf("browse tier = %q, want %q for a folder entry", e.Tier, TierDev)
 		}
 	}
-	rec, err := svc.InstallFromMarketplace("fixture", "fixture-notes")
+	rec, err := installMarketplaceForTest(t, svc, "fixture", "fixture-notes")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -378,7 +378,7 @@ func TestPreviewInstall_ReportsWhatTheExtensionCanDo(t *testing.T) {
 
 func TestPreviewInstalled_AnswersTheSameListForAnInstalledPlugin(t *testing.T) {
 	svc, _ := newStoreService(t, "mill-alpha")
-	if _, err := svc.InstallFromMarketplace(ReservedMarketplaceName, "mill-alpha"); err != nil {
+	if _, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, "mill-alpha"); err != nil {
 		t.Fatal(err)
 	}
 	pv, err := svc.PreviewInstalled("mill-alpha")

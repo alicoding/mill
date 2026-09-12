@@ -92,11 +92,8 @@ type settingsTrust struct {
 	signedOK func(id string) bool
 	// policyOK answers the organisation policy's verdict (goal 0349
 	// S6); nil in the paste-chain wiring's own tests.
-	policyOK func(id string) bool
-	// widenedOf answers whether id currently declares more than its
-	// recorded consent covers (docs/goals/0375 S2); nil in the
-	// paste-chain wiring's own tests.
-	widenedOf func(id string) bool
+	policyOK               func(id string) bool
+	packageApprovalMatches func(id, codeHash string, granted pluginsvc.PluginGrant) bool
 }
 
 func (t settingsTrust) Enabled(id string) bool {
@@ -108,31 +105,28 @@ func (t settingsTrust) Enabled(id string) bool {
 	return true
 }
 
-func (t settingsTrust) Allowed(id string) bool {
-	for _, a := range t.settings.GetAllowedPlugins() {
-		if a == id {
-			return true
-		}
-	}
-	return false
-}
-
 func (t settingsTrust) Allowlist() []string { return t.settings.GetPluginAllowlist() }
 
-func (t settingsTrust) LockedHash(id string) string { return t.settings.GetPluginLock()[id].Hash }
-
-// GrantOf adapts the settings service's recorded grant to the plugin
-// service's own shape (docs/goals/0375 S2) -- the pluginsvc package
-// never imports settingssvc, so this is the one conversion seam.
-func (t settingsTrust) GrantOf(id string) (pluginsvc.PluginGrant, bool) {
-	entry, ok := t.settings.PluginGrant(id)
-	if !ok {
-		return pluginsvc.PluginGrant{}, false
+func (t settingsTrust) Approval() (pluginsvc.PluginApproval, error) {
+	snapshot, err := settingssvc.ReadPluginApprovalSnapshot(t.settings)
+	if err != nil {
+		return pluginsvc.PluginApproval{}, err
 	}
-	return pluginsvc.PluginGrant{
-		Capabilities: entry.Capabilities, Hosts: entry.Hosts, AnyHost: entry.AnyHost,
-		Kinds: entry.Kinds, UsesSecrets: entry.UsesSecrets, CanvasHost: entry.CanvasHost,
-	}, true
+	out := pluginsvc.PluginApproval{
+		Revision: snapshot.Revision, Allowed: append([]string(nil), snapshot.Allowed...), Locks: make(map[string]pluginsvc.PluginApprovalLock, len(snapshot.Locks)),
+		LegacyUnpinned: append([]string(nil), snapshot.LegacyUnpinned...),
+	}
+	for id, entry := range snapshot.Locks {
+		out.Locks[id] = pluginsvc.PluginApprovalLock{
+			Version: entry.Version, Hash: entry.Hash,
+			Grant: pluginsvc.PluginGrant{
+				Capabilities: append([]string(nil), entry.Capabilities...), Hosts: append([]string(nil), entry.Hosts...), AnyHost: entry.AnyHost,
+				NetworkGrantVersion: entry.NetworkGrantVersion, NetworkMethods: cloneNetworkMethods(entry.NetworkMethods),
+				Kinds: append([]string(nil), entry.Kinds...), UsesSecrets: entry.UsesSecrets, CanvasHost: entry.CanvasHost,
+			},
+		}
+	}
+	return out, nil
 }
 
 // pluginGrantSnapshotter builds the hasher SetPluginHasher installs: a
@@ -142,33 +136,18 @@ func (t settingsTrust) GrantOf(id string) (pluginsvc.PluginGrant, bool) {
 // read off the SAME preview the Verification sheet shows -- there is
 // exactly one place that computes "what this manifest declares".
 func pluginGrantSnapshotter(plugins *pluginsvc.PluginService) settingssvc.PluginHasher {
-	return func(id string) settingssvc.PluginGrantSnapshot {
-		hash := plugins.CodeHashOf(id)
-		if hash == "" {
-			return settingssvc.PluginGrantSnapshot{}
-		}
-		version := plugins.VersionOf(id)
-		pv, err := plugins.PreviewInstalled(id)
+	return func(id string) (settingssvc.PluginGrantSnapshot, error) {
+		version, hash, grant, err := pluginsvc.CaptureGrantLocked(plugins, id)
 		if err != nil {
-			return settingssvc.PluginGrantSnapshot{Version: version, Hash: hash}
+			return settingssvc.PluginGrantSnapshot{}, err
 		}
 		return settingssvc.PluginGrantSnapshot{
 			Version: version, Hash: hash,
-			Capabilities: pv.Capabilities, Hosts: pv.NetworkHosts, AnyHost: pv.AnyHost,
-			Kinds: pv.Kinds, UsesSecrets: pv.UsesSecrets, CanvasHost: pv.CanvasHost,
-		}
+			Capabilities: grant.Capabilities, Hosts: grant.Hosts, AnyHost: grant.AnyHost,
+			NetworkGrantVersion: grant.NetworkGrantVersion, NetworkMethods: cloneNetworkMethods(grant.NetworkMethods),
+			Kinds: grant.Kinds, UsesSecrets: grant.UsesSecrets, CanvasHost: grant.CanvasHost,
+		}, nil
 	}
-}
-
-// unchanged reports whether the plugin's CodeHash still matches its
-// consent (ADR-0051 §4 slice 5, narrowed by docs/goals/0375 S2 to
-// exclude manifest.json -- a manifest edit is Widened's question, not
-// this one) -- true with no hasher wired or nothing recorded.
-func (t settingsTrust) unchanged(id string) bool {
-	if t.hashOf == nil {
-		return true
-	}
-	return t.settings.PluginLockMatches(id, t.hashOf(id))
 }
 
 // mayRun is the ONE run-policy predicate the Go side applies (the
@@ -201,10 +180,34 @@ func (t settingsTrust) mayRun(id string, builtin bool) bool {
 	if t.signedOK != nil && !t.signedOK(id) {
 		return false
 	}
-	if t.widenedOf != nil && t.widenedOf(id) {
+	approval, err := t.Approval()
+	if err != nil {
 		return false
 	}
-	return t.Allowed(id) && t.unchanged(id)
+	lock, locked := approval.Locks[id]
+	allowed := false
+	for _, approved := range approval.Allowed {
+		allowed = allowed || approved == id
+	}
+	if !allowed {
+		return false
+	}
+	if !locked {
+		return containsID(approval.LegacyUnpinned, id) && t.hashOf != nil && t.hashOf(id) != ""
+	}
+	if t.packageApprovalMatches == nil {
+		return false
+	}
+	return t.packageApprovalMatches(id, lock.Hash, lock.Grant)
+}
+
+func containsID(ids []string, id string) bool {
+	for _, candidate := range ids {
+		if candidate == id {
+			return true
+		}
+	}
+	return false
 }
 
 // WirePluginTrust grandfathers the plugins already installed the first
@@ -212,11 +215,16 @@ func (t settingsTrust) mayRun(id string, builtin bool) bool {
 // plugin present is recorded as allowed -- an upgrade never turns a
 // working plugin off), and installs the audit export's read seams.
 func WirePluginTrust(plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService, secrets *secretsvc.SecretService) {
+	settingssvc.SetPluginApprovalStore(settings,
+		func() ([]byte, int64, bool, error) { return pluginsvc.LoadApprovalState(plugins) },
+		func(initializer settingssvc.PluginApprovalInitializer, change settingssvc.PluginApprovalChange) ([]byte, int64, error) {
+			return pluginsvc.UpdateApprovalState(plugins, func() ([]byte, error) { return initializer() }, func(current []byte) ([]byte, error) { return change(current) })
+		},
+	)
 	settings.SetPluginHasher(pluginGrantSnapshotter(plugins))
 	plugins.SetSigningKeys(settings.GetPluginSigningKeys)
-	migratePluginLockFormat(plugins, settings)
 	grandfatherInstalledPlugins(plugins, settings)
-	trust := settingsTrust{settings: settings, hashOf: plugins.CodeHashOf, signedOK: plugins.SignedOK, policyOK: plugins.PolicyAllows, widenedOf: plugins.Widened}
+	trust := pluginSettingsTrust(plugins, settings)
 	plugins.WireAudit(trust, pluginSecretAccessReader(secrets))
 	// The step-pack door (ADR-0051 §5): every runnable plugin's declared
 	// steps join the catalog and the executor, read fresh per lookup.
@@ -232,52 +240,26 @@ func WirePluginTrust(plugins *pluginsvc.PluginService, settings *settingssvc.Set
 	// settings service already owns, so it holds the removal and this
 	// hands it only the folder lookup -- settingssvc never depends on
 	// pluginsvc.
-	settings.WirePluginRemoval(func(id string) (string, bool, bool) {
-		infos, err := plugins.ListPlugins()
-		if err != nil {
-			return "", false, false
-		}
-		for _, info := range infos {
-			if info.Manifest.ID == id {
-				return info.Dir, info.Builtin, true
-			}
-		}
-		return "", false, false
+	settingssvc.WirePluginRemoval(settings, func(id string, action func(string, bool, bool) error) error {
+		return pluginsvc.WithPluginMutation(plugins, id, action)
 	})
 }
 
-// migratePluginLockFormat re-baselines a lock entry recorded before
-// docs/goals/0375 S2 split CodeHash off the whole-folder ContentHash
-// (and introduced the capability-shaped grant fields in the same
-// change): back then, consent was recorded at ContentHash with no
-// grant shape at all, which now reads every entry as 'changed' AND
-// 'widened' the instant an upgraded instance boots, even though the
-// plugin's files never moved (docs/goals/0420). An entry whose Hash
-// equals the plugin's CURRENT ContentHash but not its CodeHash
-// predates the split; only the format changed, so the whole entry
-// (hash and grant shape alike) re-baselines onto what the plugin
-// currently declares. Anything else -- a genuine edit, a hasher
-// WirePluginTrust has not run for yet -- is left exactly as recorded.
-// Idempotent: once re-baselined, Hash equals CodeHash and the loop
-// skips it on the next boot.
-func migratePluginLockFormat(plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService) {
-	for id, entry := range settings.GetPluginLock() {
-		if entry.Hash == "" {
-			continue
-		}
-		codeHash := plugins.CodeHashOf(id)
-		if codeHash == "" || entry.Hash == codeHash {
-			continue
-		}
-		if entry.Hash != plugins.ContentHashOf(id) {
-			continue
-		}
-		if err := settings.RecordPluginLockNow(id); err != nil {
-			slog.Error("migrate plugin lock", "id", id, "error", err)
-			continue
-		}
-		slog.Info("migrated plugin lock to code hash", "id", id)
+func pluginSettingsTrust(plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService) settingsTrust {
+	return settingsTrust{
+		settings: settings, hashOf: plugins.CodeHashOf, signedOK: plugins.SignedOK, policyOK: plugins.PolicyAllows,
+		packageApprovalMatches: func(id, hash string, grant pluginsvc.PluginGrant) bool {
+			return pluginsvc.PackageApprovalMatches(plugins, id, hash, grant)
+		},
 	}
+}
+
+func cloneNetworkMethods(methods map[string][]string) map[string][]string {
+	out := make(map[string][]string, len(methods))
+	for host, values := range methods {
+		out[host] = append([]string(nil), values...)
+	}
+	return out
 }
 
 func grandfatherInstalledPlugins(plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService) {
@@ -366,7 +348,7 @@ func (r pluginSecretResolver) Resolve(id, pluginID string) (string, error) {
 // in precedence order: the user's preferred kind (Settings >
 // Extensions, ADR-0051 slice 2) first, then ListPlugins' id order.
 func WirePluginIngestion(atlas *atlassvc.AtlasService, plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService) {
-	trust := settingsTrust{settings: settings, hashOf: plugins.CodeHashOf, signedOK: plugins.SignedOK, policyOK: plugins.PolicyAllows, widenedOf: plugins.Widened}
+	trust := pluginSettingsTrust(plugins, settings)
 	atlas.WirePluginPasteClaims(func() []atlassvc.PluginPasteClaim {
 		return orderPasteClaims(plugins.URLPasteClaims(), func(c pluginsvc.IngestionClaim) bool { return trust.mayRun(c.PluginID, c.Builtin) }, settings.GetPreferredLinkPasteKind())
 	})

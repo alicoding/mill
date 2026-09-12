@@ -2,6 +2,7 @@ package pluginsvc
 
 import (
 	"archive/zip"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -27,7 +28,10 @@ import (
 
 // maxArchiveBytes caps what an extraction will write, so a malicious
 // or broken archive cannot fill the disk.
-const maxArchiveBytes = 200 << 20
+const (
+	maxArchiveBytes   = 200 << 20
+	maxPackageEntries = 65_536
+)
 
 // SHA256Hex is the bare hex digest of an archive's bytes -- what a
 // marketplace entry's `sha256` declares and what an install compares
@@ -46,14 +50,24 @@ func SHA256Hex(data []byte) string {
 // own branch and release archives produce -- is unwrapped by that one
 // level, so the manifest lands at the root of dest either way.
 func ExtractZip(data []byte, dest string) error {
+	return ExtractZipContext(context.Background(), data, dest)
+}
+
+func ExtractZipContext(ctx context.Context, data []byte, dest string) error {
 	zr, err := zip.NewReader(newByteReaderAt(data), int64(len(data)))
 	if err != nil {
 		return fmt.Errorf("that download is not a zip archive")
 	}
-	prefix := commonZipPrefix(zr.File)
+	prefix, err := validateArchiveIndex(zr.File)
+	if err != nil {
+		return err
+	}
 	var written int64
 	for _, f := range zr.File {
-		n, err := extractZipEntry(f, prefix, dest, maxArchiveBytes-written)
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		n, err := extractZipEntry(ctx, f, prefix, dest, maxArchiveBytes-written)
 		if err != nil {
 			return err
 		}
@@ -71,7 +85,7 @@ func ExtractZip(data []byte, dest string) error {
 // this exact shape (a bare `!strings.HasPrefix(dest, ...)` guard, no
 // compound condition) to credit the check as a sanitizer at all, same
 // pattern for every downstream write reached through dest.
-func extractZipEntry(f *zip.File, prefix, root string, budget int64) (int64, error) {
+func extractZipEntry(ctx context.Context, f *zip.File, prefix, root string, budget int64) (int64, error) {
 	name := strings.TrimPrefix(filepath.ToSlash(f.Name), prefix)
 	if name == "" {
 		return 0, nil
@@ -90,20 +104,20 @@ func extractZipEntry(f *zip.File, prefix, root string, budget int64) (int64, err
 	if err := os.MkdirAll(filepath.Dir(dest), 0o750); err != nil {
 		return 0, err
 	}
-	return copyZipEntry(f, dest, budget)
+	return copyZipEntry(ctx, f, dest, budget)
 }
 
-func copyZipEntry(f *zip.File, target string, budget int64) (int64, error) {
+func copyZipEntry(ctx context.Context, f *zip.File, target string, budget int64) (int64, error) {
 	rc, err := f.Open()
 	if err != nil {
 		return 0, fmt.Errorf("read %s from the archive", f.Name)
 	}
 	defer func() { _ = rc.Close() }()
-	out, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600) // #nosec G304 -- target passed safeJoin above
+	out, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, sanitizedFileMode(f.Mode())) // #nosec G304 -- target passed safeJoin above
 	if err != nil {
 		return 0, err
 	}
-	n, copyErr := io.Copy(out, io.LimitReader(rc, budget+1))
+	n, copyErr := io.Copy(out, io.LimitReader(&contextReader{ctx: ctx, reader: rc}, budget+1))
 	closeErr := out.Close()
 	if copyErr != nil {
 		return n, copyErr
@@ -113,6 +127,9 @@ func copyZipEntry(f *zip.File, target string, budget int64) (int64, error) {
 	}
 	if n > budget {
 		return n, fmt.Errorf("that archive is too large to install")
+	}
+	if err := os.Chmod(target, sanitizedFileMode(f.Mode())); err != nil {
+		return n, err
 	}
 	return n, nil
 }
@@ -195,79 +212,137 @@ func (b *byteReaderAt) ReadAt(p []byte, off int64) (int, error) {
 // The source stays behind one os.Root handle from planning through
 // copying, so a symlink change cannot redirect a later read outside it.
 func CopyPluginFolder(src, dest string) error {
+	return CopyPluginFolderContext(context.Background(), src, dest)
+}
+
+func CopyPluginFolderContext(ctx context.Context, src, dest string) error {
 	root, err := os.OpenRoot(src)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = root.Close() }()
-	return copyPluginFolderFS(root.FS(), dest)
+	return copyPluginFolderFSContext(ctx, root.FS(), dest)
 }
 
-func copyPluginFolderFS(source fs.FS, dest string) error {
-	files, err := planFolderCopy(source)
+func copyPluginFolderFSContext(ctx context.Context, source fs.FS, dest string) error {
+	entries, err := planFolderCopy(ctx, source)
 	if err != nil {
 		return err
 	}
 	if err := os.MkdirAll(dest, 0o750); err != nil {
 		return err
 	}
-	for _, rel := range files {
-		target, joinErr := safeJoin(dest, rel)
-		if joinErr != nil {
-			return joinErr
-		}
-		if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
+	var written int64
+	for _, entry := range entries {
+		n, err := copyFolderEntry(ctx, source, dest, entry, maxArchiveBytes-written)
+		if err != nil {
 			return err
 		}
-		if err := copyFSFile(source, rel, target); err != nil {
-			return err
-		}
+		written += n
 	}
 	return nil
 }
 
+func copyFolderEntry(ctx context.Context, source fs.FS, dest string, entry folderCopyEntry, budget int64) (int64, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	target, err := safeJoin(dest, entry.rel)
+	if err != nil {
+		return 0, err
+	}
+	if entry.directory {
+		return 0, os.MkdirAll(target, 0o750)
+	}
+	if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
+		return 0, err
+	}
+	return copyFSFile(ctx, source, entry.rel, target, entry.mode, budget)
+}
+
 // planFolderCopy lists the relative paths a copy will write, refusing
 // the whole folder when it carries a symlink.
-func planFolderCopy(root fs.FS) ([]string, error) {
-	var files []string
-	err := fs.WalkDir(root, ".", func(path string, d fs.DirEntry, werr error) error {
+func planFolderCopy(ctx context.Context, root fs.FS) ([]folderCopyEntry, error) {
+	var entries []folderCopyEntry
+	index := newPortablePathIndex()
+	err := fs.WalkDir(root, ".", func(entryPath string, d fs.DirEntry, werr error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if werr != nil {
 			return werr
 		}
-		if d.IsDir() {
-			if path == "." {
-				return nil
-			}
-			return skipDirIfHidden(d)
+		entry, include, err := plannedFolderEntry(entryPath, d, index)
+		if err != nil {
+			return err
 		}
-		if strings.HasPrefix(d.Name(), ".") {
+		if !include {
 			return nil
 		}
-		if d.Type()&fs.ModeSymlink != 0 {
-			return fmt.Errorf("that folder contains a symbolic link, so Mill won't install it")
-		}
-		files = append(files, path)
-		return nil
+		entries = append(entries, entry)
+		return entryLimitError(len(entries))
 	})
-	return files, err
+	return entries, err
 }
 
-func copyFSFile(source fs.FS, src, dest string) error {
+func plannedFolderEntry(entryPath string, entry fs.DirEntry, index *portablePathIndex) (folderCopyEntry, bool, error) {
+	if entry.IsDir() {
+		if entryPath == "." {
+			return folderCopyEntry{}, false, nil
+		}
+		if skipped := skipDirIfHidden(entry); skipped != nil {
+			return folderCopyEntry{}, false, skipped
+		}
+		if err := index.add(filepath.ToSlash(entryPath), true); err != nil {
+			return folderCopyEntry{}, false, err
+		}
+		return folderCopyEntry{rel: entryPath, directory: true}, true, nil
+	}
+	if strings.HasPrefix(entry.Name(), ".") {
+		return folderCopyEntry{}, false, nil
+	}
+	if entry.Type()&fs.ModeSymlink != 0 {
+		return folderCopyEntry{}, false, fmt.Errorf("that folder contains a symbolic link, so Mill won't install it")
+	}
+	info, err := entry.Info()
+	if err != nil {
+		return folderCopyEntry{}, false, err
+	}
+	if !info.Mode().IsRegular() {
+		return folderCopyEntry{}, false, fmt.Errorf("that folder contains an unsupported special file, so Mill won't install it")
+	}
+	if err := index.add(filepath.ToSlash(entryPath), false); err != nil {
+		return folderCopyEntry{}, false, err
+	}
+	return folderCopyEntry{rel: entryPath, mode: info.Mode()}, true, nil
+}
+
+func copyFSFile(ctx context.Context, source fs.FS, src, dest string, sourceMode fs.FileMode, budget int64) (int64, error) {
 	in, err := source.Open(filepath.ToSlash(src))
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer func() { _ = in.Close() }()
-	out, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600) // #nosec G304 -- dest passed safeJoin
+	mode := sanitizedFileMode(sourceMode)
+	out, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode) // #nosec G304 -- dest passed safeJoin
 	if err != nil {
-		return err
+		return 0, err
 	}
-	_, copyErr := io.Copy(out, in)
+	n, copyErr := io.Copy(out, io.LimitReader(&contextReader{ctx: ctx, reader: in}, budget+1))
 	closeErr := out.Close()
 	if copyErr != nil {
-		return copyErr
+		return n, copyErr
 	}
-	return closeErr
+	if closeErr != nil {
+		return n, closeErr
+	}
+	if n > budget {
+		return n, fmt.Errorf("that folder is too large to install")
+	}
+	if err := os.Chmod(dest, mode); err != nil {
+		return n, err
+	}
+	return n, nil
 }
 
 // CopyEmbeddedPlugin copies one folder out of an embedded filesystem

@@ -122,7 +122,7 @@ func TestImportTheme_PreservesBytesAndSurvivesRestart(t *testing.T) {
 	t.Setenv(PolicyPathEnv, filepath.Join(t.TempDir(), "absent.json"))
 	raw := append([]byte{0xef, 0xbb, 0xbf}, []byte(`{"name":"BOM theme","type":"light","colors":{"editor.background":"#fff","foreground":"#111"}}`)...)
 	p := New(root, nil, "1.0.0")
-	result, err := p.ImportTheme(encodedTheme(raw), "source.json", "Chosen theme", "light")
+	result, err := importThemeForTest(t, p, encodedTheme(raw), "source.json", "Chosen theme", "light")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestImportTheme_PreservesBytesAndSurvivesRestart(t *testing.T) {
 		t.Fatalf("restarted info = %+v", found)
 	}
 	before, _ := os.ReadFile(filepath.Join(installed, "theme.css")) // #nosec G304 -- test temp directory
-	if _, err := p.ImportTheme(encodedTheme(raw), "source.json", "Overwrite", "light"); err == nil {
+	if _, err := importThemeForTest(t, p, encodedTheme(raw), "source.json", "Overwrite", "light"); err == nil {
 		t.Fatal("duplicate import overwrote the package")
 	}
 	after, _ := os.ReadFile(filepath.Join(installed, "theme.css")) // #nosec G304 -- test temp directory
@@ -168,7 +168,7 @@ func TestImportTheme_PolicyRefusalLeavesNoFolder(t *testing.T) {
 	writePolicy(t, `{"version":1,"managedBy":"Org","requiredTier":"verified","allowedSources":["theme-file"]}`)
 	p := New(root, nil, "1.0.0")
 	raw := []byte(`{"colors":{"foreground":"#fff"}}`)
-	if _, err := p.ImportTheme(encodedTheme(raw), "theme.json", "Theme", "dark"); err == nil {
+	if _, err := importThemeForTest(t, p, encodedTheme(raw), "theme.json", "Theme", "dark"); err == nil {
 		t.Fatal("managed tier refusal was ignored")
 	}
 	entries, err := os.ReadDir(root)
@@ -195,7 +195,7 @@ func TestImportTheme_ConcurrentCallsNeverReplace(t *testing.T) {
 	for _, name := range []string{"First", "Second"} {
 		go func(name string) {
 			<-start
-			result, err := p.ImportTheme(encodedTheme(raw), "theme.json", name, "dark")
+			result, err := importThemeForTest(t, p, encodedTheme(raw), "theme.json", name, "dark")
 			results <- outcome{name: name, id: result.PluginID, err: err}
 		}(name)
 	}
@@ -274,7 +274,7 @@ func TestScanOne_ThemeImportEvidenceRequiresMatchingHostReceipt(t *testing.T) {
 	t.Setenv(PolicyPathEnv, filepath.Join(t.TempDir(), "absent.json"))
 	p := New(root, nil, "1.0.0")
 	raw := []byte(`{"name":"Receipt theme","colors":{"foreground":"#123456"}}`)
-	result, err := p.ImportTheme(encodedTheme(raw), "receipt.json", "Receipt theme", "dark")
+	result, err := importThemeForTest(t, p, encodedTheme(raw), "receipt.json", "Receipt theme", "dark")
 	if err != nil {
 		t.Fatal(err)
 	}

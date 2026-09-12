@@ -107,6 +107,8 @@ export function ExtensionsInstalledPlugins({ plugins, allowedIds, selectedId, on
   const effectiveStatus = (plugin: PluginInfo): string | undefined => {
     const runtime = states.get(plugin.Manifest.id)?.status
     if (runtime) return runtime
+    if (!plugin.Builtin && (plugin.ApprovalState === 'unallowed' || plugin.ApprovalState === 'changed')) return plugin.ApprovalState
+    if (!plugin.Builtin && plugin.ApprovalState !== 'allowed') return 'error'
     if (plugin.ThemeImport && !allowedIds.includes(plugin.Manifest.id)) return 'unallowed'
     return undefined
   }
@@ -156,7 +158,7 @@ export function ExtensionsInstalledPlugins({ plugins, allowedIds, selectedId, on
     const name = p.Manifest.name || id
     const runtime = states.get(id)
     const status = effectiveStatus(p)
-    const error = p.Error || (runtime?.status === 'error' ? runtime.error : '')
+    const error = p.Error || (runtime?.status === 'error' ? runtime.error : '') || (status === 'error' ? t('settings.extensions.reloadRefusal.unavailable') : '')
     const badgeKey = tierLabelKey(p.Tier ?? '')
     const policyBlocked = status === 'policy'
     const canvasHost = hasCanvasHostGrant(p)

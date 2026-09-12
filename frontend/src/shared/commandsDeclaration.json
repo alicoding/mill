@@ -1352,36 +1352,12 @@
     "needs": "marketplaceSourceInput"
   },
   {
-    "id": "extension.browse.cancelInstall",
-    "label": "Cancel extension installation",
-    "binding": null,
-    "surface": null,
-    "enabled": true,
-    "needs": null
-  },
-  {
     "id": "extension.browse.clearFilters",
     "label": "Clear extension filters",
     "binding": null,
     "surface": null,
     "enabled": true,
     "needs": null
-  },
-  {
-    "id": "extension.browse.confirmInstall",
-    "label": "Install extension",
-    "binding": null,
-    "surface": null,
-    "enabled": true,
-    "needs": "marketplaceEntry"
-  },
-  {
-    "id": "extension.browse.previewInstall",
-    "label": "Review extension installation",
-    "binding": null,
-    "surface": null,
-    "enabled": true,
-    "needs": "marketplaceEntry"
   },
   {
     "id": "extension.browse.retry",
@@ -1464,11 +1440,19 @@
     "needs": "entity"
   },
   {
+    "id": "extensions.cancelRemainingUpdates",
+    "label": "Extensions: cancel remaining updates",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
     "id": "extensions.checkUpdates",
     "label": "Extensions: check for updates",
     "binding": null,
     "surface": null,
-    "enabled": false,
+    "enabled": true,
     "needs": null
   },
   {
@@ -1484,8 +1468,40 @@
     "label": "Extensions: Import theme",
     "binding": null,
     "surface": null,
-    "enabled": false,
+    "enabled": true,
     "needs": null
+  },
+  {
+    "id": "extensions.install.confirm",
+    "label": "Confirm extension installation",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "extensionInstallAttempt"
+  },
+  {
+    "id": "extensions.install.dismiss",
+    "label": "Close extension installation",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "extensionInstallAttempt"
+  },
+  {
+    "id": "extensions.install.prepare",
+    "label": "Prepare extension installation",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "extensionInstallCandidate"
+  },
+  {
+    "id": "extensions.install.retry",
+    "label": "Retry extension preparation",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": "extensionInstallAttempt"
   },
   {
     "id": "extensions.open",
@@ -1493,6 +1509,22 @@
     "binding": "⌘⇧X",
     "surface": null,
     "enabled": false,
+    "needs": null
+  },
+  {
+    "id": "extensions.retryRecovery",
+    "label": "Extensions: retry recovery",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
+    "needs": null
+  },
+  {
+    "id": "extensions.retryUpdates",
+    "label": "Extensions: retry loading updates",
+    "binding": null,
+    "surface": null,
+    "enabled": true,
     "needs": null
   },
   {
