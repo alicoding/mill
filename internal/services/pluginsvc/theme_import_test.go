@@ -37,7 +37,7 @@ func TestPreviewThemeImport_RealFixtures(t *testing.T) {
 		{"vitesse-1.0.0/vitesse-light.json", "54c567a98b10a499b5302a53bb8aae2b0ef1ae03abdcfd1448e8617a4d3ae451", "", 184, 13},
 		{"vitesse-1.0.0/vitesse-dark.json", "4c0d1ea6503bf17599fe1d615232ebae972028b93470f95431e8b61cc647e4f4", "", 186, 13},
 	}
-	p := New(t.TempDir(), nil, "1.0.0")
+	p := newTestPluginService(t, t.TempDir(), nil, "1.0.0")
 	for _, tc := range tests {
 		t.Run(tc.file, func(t *testing.T) {
 			raw := themeFixture(t, tc.file)
@@ -82,7 +82,7 @@ func TestPreviewThemeImport_JSONCAndFallbacks(t *testing.T) {
 }
 
 func TestPreviewThemeImport_Refusals(t *testing.T) {
-	p := New(t.TempDir(), nil, "1.0.0")
+	p := newTestPluginService(t, t.TempDir(), nil, "1.0.0")
 	tests := []struct {
 		name string
 		raw  []byte
@@ -121,7 +121,7 @@ func TestImportTheme_PreservesBytesAndSurvivesRestart(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv(PolicyPathEnv, filepath.Join(t.TempDir(), "absent.json"))
 	raw := append([]byte{0xef, 0xbb, 0xbf}, []byte(`{"name":"BOM theme","type":"light","colors":{"editor.background":"#fff","foreground":"#111"}}`)...)
-	p := New(root, nil, "1.0.0")
+	p := newTestPluginService(t, root, nil, "1.0.0")
 	result, err := importThemeForTest(t, p, encodedTheme(raw), "source.json", "Chosen theme", "light")
 	if err != nil {
 		t.Fatal(err)
@@ -139,7 +139,7 @@ func TestImportTheme_PreservesBytesAndSurvivesRestart(t *testing.T) {
 	if problems := ConformDir(installed, "1.0.0"); len(problems) > 0 {
 		t.Fatalf("conformance = %v", problems)
 	}
-	infos, err := New(root, nil, "1.0.0").ListPlugins()
+	infos, err := newTestPluginService(t, root, nil, "1.0.0").ListPlugins()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +166,7 @@ func TestImportTheme_PreservesBytesAndSurvivesRestart(t *testing.T) {
 func TestImportTheme_PolicyRefusalLeavesNoFolder(t *testing.T) {
 	root := t.TempDir()
 	writePolicy(t, `{"version":1,"managedBy":"Org","requiredTier":"verified","allowedSources":["theme-file"]}`)
-	p := New(root, nil, "1.0.0")
+	p := newTestPluginService(t, root, nil, "1.0.0")
 	raw := []byte(`{"colors":{"foreground":"#fff"}}`)
 	if _, err := importThemeForTest(t, p, encodedTheme(raw), "theme.json", "Theme", "dark"); err == nil {
 		t.Fatal("managed tier refusal was ignored")
@@ -183,7 +183,7 @@ func TestImportTheme_PolicyRefusalLeavesNoFolder(t *testing.T) {
 func TestImportTheme_ConcurrentCallsNeverReplace(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv(PolicyPathEnv, filepath.Join(t.TempDir(), "absent.json"))
-	p := New(root, nil, "1.0.0")
+	p := newTestPluginService(t, root, nil, "1.0.0")
 	raw := []byte(`{"colors":{"foreground":"#123456"}}`)
 	type outcome struct {
 		name string
@@ -255,14 +255,14 @@ func TestScanOne_DataOnlyRejectsShippedJavaScript(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	info := New(root, nil, "1.0.0").scanOne(id)
+	info := newTestPluginService(t, root, nil, "1.0.0").scanOne(id)
 	if info.DataOnly || !strings.Contains(info.Error, "cannot contain JavaScript") {
 		t.Fatalf("scripted data-only theme = %+v", info)
 	}
 	if problems := ConformDir(dir, "1.0.0"); !strings.Contains(strings.Join(problems, "\n"), "cannot contain JavaScript") {
 		t.Fatalf("conformance = %v", problems)
 	}
-	if _, err := New(t.TempDir(), nil, "1.0.0").stagedChecks(dir, InstallRecord{Source: PluginSource{Kind: "theme-file"}, Tier: TierDev}); err == nil {
+	if _, err := newTestPluginService(t, t.TempDir(), nil, "1.0.0").stagedChecks(dir, InstallRecord{Source: PluginSource{Kind: "theme-file"}, Tier: TierDev}); err == nil {
 		t.Fatal("staged install admitted JavaScript in a data-only theme")
 	} else if got, ok := usererror.Of(err); !ok || got.Code != InstallRefusedCode {
 		t.Fatalf("staged error = %#v, want %s", err, InstallRefusedCode)
@@ -272,7 +272,7 @@ func TestScanOne_DataOnlyRejectsShippedJavaScript(t *testing.T) {
 func TestScanOne_ThemeImportEvidenceRequiresMatchingHostReceipt(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv(PolicyPathEnv, filepath.Join(t.TempDir(), "absent.json"))
-	p := New(root, nil, "1.0.0")
+	p := newTestPluginService(t, root, nil, "1.0.0")
 	raw := []byte(`{"name":"Receipt theme","colors":{"foreground":"#123456"}}`)
 	result, err := importThemeForTest(t, p, encodedTheme(raw), "receipt.json", "Receipt theme", "dark")
 	if err != nil {
@@ -322,7 +322,7 @@ func TestScanOne_ThemeWithMainRemainsExecutable(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	info := New(root, nil, "1.0.0").scanOne(id)
+	info := newTestPluginService(t, root, nil, "1.0.0").scanOne(id)
 	if info.Error != "" || info.DataOnly {
 		t.Fatalf("theme with main.js = %+v", info)
 	}

@@ -127,7 +127,7 @@ func TestInstallFromMarketplace_RefusesADependencyOutOfRange(t *testing.T) {
 			`"dependencies":[{"id":"mill-alpha","version":">=2.0.0"}]}`)}
 	fsys[exampleMarketplaceRoot+"/mill-beta/main.js"] = &fstest.MapFile{Data: []byte("export function activate() {}")}
 	dir := t.TempDir()
-	svc := New(dir, nil, "")
+	svc := newTestPluginService(t, dir, nil, "")
 	svc.SetExampleMarketplace(fsys)
 	if _, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, "mill-alpha"); err != nil {
 		t.Fatalf("installing the dependency: %v", err)
@@ -155,7 +155,7 @@ func TestInstallFromMarketplace_RefusesAMutualDependencyCycle(t *testing.T) {
 			`"dependencies":[{"id":"mill-alpha","version":">=1.0.0"}]}`)}
 	fsys[exampleMarketplaceRoot+"/mill-beta/main.js"] = &fstest.MapFile{Data: []byte("export function activate() {}")}
 	dir := t.TempDir()
-	svc := New(dir, nil, "")
+	svc := newTestPluginService(t, dir, nil, "")
 	svc.SetExampleMarketplace(fsys)
 	if _, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, "mill-alpha"); err != nil {
 		t.Fatalf("installing mill-alpha: %v", err)

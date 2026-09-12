@@ -15,7 +15,7 @@ const textcaseSteps = `registerStep('shout', { perform: function (i) { return { 
 func TestStepNodeTypes_SynthesizeRunAndObeyPolicy(t *testing.T) {
 	root := t.TempDir()
 	writePlugin(t, root, "tc", textcaseManifest, map[string]string{"steps.js": textcaseSteps})
-	p := New(root, nil, "")
+	p := newTestPluginService(t, root, nil, "")
 	types := p.StepNodeTypes()
 	if len(types) != 1 {
 		t.Fatalf("StepNodeTypes = %d types, want 1", len(types))
@@ -51,7 +51,7 @@ func TestSteps_ProblemsAreStated(t *testing.T) {
 	writePlugin(t, root, "nofile", `{"id":"nofile","name":"N","version":"1","contributes":{"steps":[{"id":"a","label":"A"}]}}`, nil)
 	writePlugin(t, root, "mismatch", `{"id":"mismatch","name":"M","version":"1","contributes":{"steps":[{"id":"a","label":"A"}]}}`, map[string]string{"steps.js": `registerStep('b', { perform: function () { return '' } })`})
 	writePlugin(t, root, "badtype", `{"id":"badtype","name":"B","version":"1","contributes":{"steps":[{"id":"a","label":"A","config":[{"key":"k","label":"K","type":"number"}]}]}}`, map[string]string{"steps.js": `registerStep('a', { perform: function () { return '' } })`})
-	p := New(root, nil, "")
+	p := newTestPluginService(t, root, nil, "")
 	infos, err := p.ListPlugins()
 	if err != nil {
 		t.Fatal(err)

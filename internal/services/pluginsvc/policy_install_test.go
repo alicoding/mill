@@ -47,7 +47,7 @@ func TestInstallFromMarketplace_StaticRefusalLeavesNoFolder(t *testing.T) {
 	fsys := exampleFS("mill-alpha")
 	fsys[exampleMarketplaceRoot+"/mill-alpha/main.js"] = &fstest.MapFile{Data: []byte("export function activate() { eval('1') }")}
 	dir := t.TempDir()
-	svc := New(dir, nil, "")
+	svc := newTestPluginService(t, dir, nil, "")
 	svc.SetExampleMarketplace(fsys)
 	_, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, "mill-alpha")
 	var ue *usererror.Error
@@ -63,7 +63,7 @@ func TestInstallFromMarketplace_RecordsTheWarnings(t *testing.T) {
 	fsys := exampleFS("mill-alpha")
 	fsys[exampleMarketplaceRoot+"/mill-alpha/main.js"] = &fstest.MapFile{Data: []byte("export function activate() {}\n" + strings.Repeat("function a(){return 1}\n", minifiedScriptBytes/20))}
 	dir := t.TempDir()
-	svc := New(dir, nil, "")
+	svc := newTestPluginService(t, dir, nil, "")
 	svc.SetExampleMarketplace(fsys)
 	rec, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, "mill-alpha")
 	if err != nil {

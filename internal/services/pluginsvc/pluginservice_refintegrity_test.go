@@ -6,7 +6,7 @@ func TestPluginsReferencing_FindsAnEntityRefSettingHoldingID(t *testing.T) {
 	root := t.TempDir()
 	writePlugin(t, root, "live-view-like", `{"id":"live-view-like","name":"Live","version":"1","contributes":{"settings":[{"key":"integrationId","type":"entityRef","label":"Integration","description":"d","entityKind":"request"}]}}`, nil)
 	writePlugin(t, root, "other", `{"id":"other","name":"Other","version":"1"}`, nil)
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 	values := map[string]map[string]string{"live-view-like": {"integrationId": `"req-1"`}}
 	svc.readSetting = func(pluginID, key string) (string, bool) {
 		v, ok := values[pluginID][key]
@@ -34,7 +34,7 @@ func TestEntityRefEntityKind_ResolvesTheDeclaredSettingOnly(t *testing.T) {
 		{"key":"integrationId","type":"entityRef","label":"Integration","description":"d","entityKind":"request"},
 		{"key":"flag","type":"boolean","label":"F","description":"d","default":true}
 	]}}`, nil)
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 
 	if kind, ok := svc.EntityRefEntityKind("live-view-like", "integrationId"); !ok || kind != "request" {
 		t.Fatalf("EntityRefEntityKind(integrationId) = %q, %v", kind, ok)

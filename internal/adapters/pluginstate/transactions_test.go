@@ -11,7 +11,7 @@ import (
 
 func TestTransactionReadsDoNotCreateOrMigrateState(t *testing.T) {
 	dir := t.TempDir()
-	store := New(dir)
+	store := newTestStore(t, New(dir))
 	if payload, revision, present, err := store.LoadApproval(context.Background()); err != nil || present || revision != 0 || payload != nil {
 		t.Fatalf("LoadApproval = %q, %d, %v, %v", payload, revision, present, err)
 	}
@@ -25,7 +25,7 @@ func TestTransactionReadsDoNotCreateOrMigrateState(t *testing.T) {
 
 func TestTransactionWriteMigratesSchemaOneAndPreservesCatalog(t *testing.T) {
 	ctx := context.Background()
-	store := New(t.TempDir())
+	store := newTestStore(t, New(t.TempDir()))
 	if _, _, err := store.Update(ctx, bytesInitializer("catalog"), identityChange); err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestTransactionWriteMigratesSchemaOneAndPreservesCatalog(t *testing.T) {
 
 func TestInstallTransactionCompareAndSwapAndDelete(t *testing.T) {
 	ctx := context.Background()
-	store := New(t.TempDir())
+	store := newTestStore(t, New(t.TempDir()))
 	initializer := bytesInitializer("catalog")
 	revision, err := store.CompareAndSwapInstallTransaction(ctx, initializer, "bbb", 0, []byte("one"))
 	if err != nil || revision != 1 {
@@ -116,7 +116,7 @@ func TestSchemaTwoRefusesUnexpectedObjectsBeforeCallbacks(t *testing.T) {
 		t.Fatal(err)
 	}
 	callbacks := 0
-	store := NewAt(path)
+	store := newTestStore(t, NewAt(path))
 	_, _, err = store.UpdateApproval(ctx, func() ([]byte, error) {
 		callbacks++
 		return []byte("catalog"), nil
@@ -138,7 +138,7 @@ func TestSchemaTwoRefusesUnexpectedObjectsBeforeCallbacks(t *testing.T) {
 func TestSchemaTwoCommitReadbackClassifiesIntendedPriorAndInterveningState(t *testing.T) {
 	ctx := context.Background()
 	commitErr := errors.New("injected commit acknowledgement failure")
-	store := New(t.TempDir())
+	store := newTestStore(t, New(t.TempDir()))
 	if _, _, err := store.UpdateApproval(ctx, bytesInitializer("catalog"), bytesInitializer("prior"), identityChange); err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func TestSchemaTwoCommitReadbackClassifiesIntendedPriorAndInterveningState(t *te
 
 func TestConcurrentApprovalWritersSerializeOverCommittedState(t *testing.T) {
 	ctx := context.Background()
-	store := New(t.TempDir())
+	store := newTestStore(t, New(t.TempDir()))
 	entered := make(chan struct{})
 	release := make(chan struct{})
 	firstDone := make(chan error, 1)

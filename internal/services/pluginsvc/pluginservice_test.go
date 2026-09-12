@@ -38,7 +38,7 @@ func TestListPlugins_ValidAndInvalidRows(t *testing.T) {
 	writePlugin(t, root, "wrong-id", `{"id":"other","name":"X","version":"1"}`, nil)
 	writePlugin(t, root, "bad-cap", `{"id":"bad-cap","name":"X","version":"1","capabilities":["format-disk"]}`, nil)
 
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 	infos, err := svc.ListPlugins()
 	if err != nil {
 		t.Fatal(err)
@@ -62,7 +62,7 @@ func TestListPlugins_ValidAndInvalidRows(t *testing.T) {
 }
 
 func TestListPlugins_MissingDirIsBuiltinsOnlyNotError(t *testing.T) {
-	svc := New(filepath.Join(t.TempDir(), "never-created"), nil, "1.0.0")
+	svc := newTestPluginService(t, filepath.Join(t.TempDir(), "never-created"), nil, "1.0.0")
 	infos, err := svc.ListPlugins()
 	if err != nil {
 		t.Fatal(err)
@@ -82,7 +82,7 @@ func TestListPlugins_MissingDirIsBuiltinsOnlyNotError(t *testing.T) {
 // embedded bundle -- and a user folder with the same id shadows it,
 // which is what makes a built-in replaceable.
 func TestBuiltinDrawingPlugin_ListsValidAndServes(t *testing.T) {
-	svc := New(filepath.Join(t.TempDir(), "never-created"), nil, "1.0.0")
+	svc := newTestPluginService(t, filepath.Join(t.TempDir(), "never-created"), nil, "1.0.0")
 	infos, err := svc.ListPlugins()
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +113,7 @@ func TestBuiltinDrawingPlugin_ListsValidAndServes(t *testing.T) {
 func TestBuiltinPlugin_UserFolderShadowsIt(t *testing.T) {
 	root := t.TempDir()
 	writePlugin(t, root, "mill-drawing", `{"id":"mill-drawing","name":"My Drawing","version":"9.9.9"}`, map[string]string{"main.js": "export function activate() { /* user copy */ }"})
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 	infos, err := svc.ListPlugins()
 	if err != nil {
 		t.Fatal(err)
@@ -153,7 +153,7 @@ func TestAssetMiddleware_ServesOnlyValidPluginAllowlistedFiles(t *testing.T) {
 		"secret.txt": "nope",
 	})
 	writePlugin(t, root, "broken", `{not json`, nil)
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 
 	if rec := serveThrough(t, svc, "/plugins/good-one/main.js"); rec.Code != http.StatusOK || !strings.Contains(rec.Header().Get("Content-Type"), "javascript") {
 		t.Fatalf("main.js: code %d type %q", rec.Code, rec.Header().Get("Content-Type"))
@@ -180,7 +180,7 @@ func TestRequestGuardedAction_UndeclaredCapabilityRefusedBeforeRules(t *testing.
 	writePlugin(t, root, "quiet-one", `{"id":"quiet-one","name":"Q","version":"1","capabilities":[]}`, nil)
 	// guardrail nil: proves the refusal happens BEFORE any rule
 	// evaluation could run (a nil-deref here would fail the test).
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 	_, err := svc.RequestGuardedAction("quiet-one", "open-url", map[string]string{"url": "https://example.com"}, "test")
 	if err == nil || !strings.Contains(err.Error(), "does not declare") {
 		t.Fatalf("want undeclared-capability refusal, got %v", err)
@@ -188,7 +188,7 @@ func TestRequestGuardedAction_UndeclaredCapabilityRefusedBeforeRules(t *testing.
 }
 
 func TestPerform_OpenURLRejectsNonHTTP(t *testing.T) {
-	svc := New(t.TempDir(), nil, "1.0.0")
+	svc := newTestPluginService(t, t.TempDir(), nil, "1.0.0")
 	var opened string
 	svc.openURL = func(u string) error { opened = u; return nil }
 	if _, err := svc.perform("open-url", map[string]string{"url": "file:///etc/passwd"}); err == nil {
@@ -209,7 +209,7 @@ func TestListPlugins_ValidatesContributes(t *testing.T) {
 	writePlugin(t, root, "bad-kind", `{"id":"bad-kind","name":"C","version":"1","contributes":{"canvasObjects":[{"kind":"Not A Slug"}]}}`, nil)
 	writePlugin(t, root, "bad-ext", `{"id":"bad-ext","name":"C","version":"1","contributes":{"canvasObjects":[{"kind":"thing","fileExtensions":["webloc"]}]}}`, nil)
 
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 	infos, err := svc.ListPlugins()
 	if err != nil {
 		t.Fatal(err)
@@ -237,7 +237,7 @@ func TestURLPasteClaims_ValidClaimersOnly(t *testing.T) {
 	writePlugin(t, root, "no-claim", `{"id":"no-claim","name":"N","version":"1"}`, nil)
 	writePlugin(t, root, "broken-claimer", `{"id":"broken-claimer","name":"X","version":"1","capabilities":["format-disk"],"contributes":{"canvasObjects":[{"kind":"thing","pastesURLs":true}]}}`, nil)
 
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 	claims := svc.URLPasteClaims()
 	if len(claims) != 1 || claims[0].PluginID != "bookmarker" || claims[0].Kind != "bookmark" {
 		t.Fatalf("URLPasteClaims() = %+v, want exactly bookmarker/bookmark", claims)
@@ -278,7 +278,7 @@ func TestCheckMinMillVersion(t *testing.T) {
 func TestListPlugins_EnforcesMinMillVersion(t *testing.T) {
 	root := t.TempDir()
 	writePlugin(t, root, "too-new", `{"id":"too-new","name":"T","version":"1","minMillVersion":"99.0.0"}`, nil)
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 	infos, err := svc.ListPlugins()
 	if err != nil {
 		t.Fatal(err)
@@ -331,7 +331,7 @@ func TestListPlugins_ValidatesContributedSettings(t *testing.T) {
 		writePlugin(t, root, id, base(id, c.settings), nil)
 	}
 
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 	infos, err := svc.ListPlugins()
 	if err != nil {
 		t.Fatal(err)
@@ -373,7 +373,7 @@ func TestListPlugins_CanvasObjectGrantsCanvasHost(t *testing.T) {
 	writePlugin(t, root, "tool-no-entry", `{"id":"tool-no-entry","name":"Tool no entry","version":"1.0.0","contributes":{"canvasObjects":[{"kind":"pencil","tool":true}]}}`, nil)
 	writePlugin(t, root, "entry-no-tool", `{"id":"entry-no-tool","name":"Entry no tool","version":"1.0.0","contributes":{"canvasObjects":[{"kind":"note","entry":"face.html"}]}}`, nil)
 
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 	infos, err := svc.ListPlugins()
 	if err != nil {
 		t.Fatal(err)

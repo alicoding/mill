@@ -13,7 +13,7 @@ import (
 )
 
 func TestInstallPreparationCapacityRefusesWithoutEvictingVisibleHandles(t *testing.T) {
-	service := New(t.TempDir(), nil, "")
+	service := newTestPluginService(t, t.TempDir(), nil, "")
 	handles := make([]string, 0, maxInstallPreparations)
 	for range maxInstallPreparations {
 		reservation, err := service.ReserveInstallPreparation()
@@ -45,7 +45,7 @@ func TestInstallPreparationCapacityRefusesWithoutEvictingVisibleHandles(t *testi
 }
 
 func TestExpiredPreparedInstallCleansItsOwnedStage(t *testing.T) {
-	service := New(t.TempDir(), nil, "")
+	service := newTestPluginService(t, t.TempDir(), nil, "")
 	service.SetExampleMarketplace(exampleFS("mill-alpha"))
 	reservation, err := service.ReserveInstallPreparation()
 	if err != nil {
@@ -70,7 +70,7 @@ func TestExpiredPreparedInstallCleansItsOwnedStage(t *testing.T) {
 
 func TestCancelDuringPreparationDiscardsLateResultAndStage(t *testing.T) {
 	source := writeDirectPlugin(t, "late-source", "before")
-	service := New(t.TempDir(), nil, "")
+	service := newTestPluginService(t, t.TempDir(), nil, "")
 	stagesBefore := stageDirectories(t)
 	started := make(chan struct{})
 	release := make(chan struct{})
@@ -112,7 +112,7 @@ func TestCancelDuringPreparationDiscardsLateResultAndStage(t *testing.T) {
 func TestConfirmUsesReviewedFolderBytesOnce(t *testing.T) {
 	source := writeDirectPlugin(t, "reviewed-source", "reviewed bytes")
 	destination := t.TempDir()
-	service := New(destination, nil, "")
+	service := newTestPluginService(t, destination, nil, "")
 	reads := 0
 	service.sourceRead = func(string) { reads++ }
 	reservation, err := service.ReserveInstallPreparation()
@@ -149,7 +149,7 @@ func TestConfirmUsesReviewedFolderBytesOnce(t *testing.T) {
 
 func TestClosePreparationsCancelsInFlightOwnerAndIsIdempotent(t *testing.T) {
 	source := writeDirectPlugin(t, "closing-source", "before")
-	service := New(t.TempDir(), nil, "")
+	service := newTestPluginService(t, t.TempDir(), nil, "")
 	started := make(chan struct{})
 	release := make(chan struct{})
 	var once sync.Once

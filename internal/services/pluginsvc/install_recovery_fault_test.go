@@ -69,7 +69,7 @@ func TestInitialPublicationUncertaintyCreatesNoWorkspaceBeforeAuthoritativeSucce
 		{name: "committed", committed: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			service := New(t.TempDir(), nil, "")
+			service := newTestPluginService(t, t.TempDir(), nil, "")
 			faults := &faultPluginState{pluginStateStore: service.state}
 			if test.committed {
 				faults.uncertainAt = map[int64]bool{0: true}
@@ -321,7 +321,7 @@ func TestChangedRetainedEvidenceRefusesDestructiveRecovery(t *testing.T) {
 
 func installedReplacementFixture(t *testing.T) (*PluginService, string) {
 	t.Helper()
-	service := New(t.TempDir(), nil, "")
+	service := newTestPluginService(t, t.TempDir(), nil, "")
 	source := writeDirectPlugin(t, "replace-me", "old bytes")
 	if _, err := prepareAndConfirmForTest(t, service, InstallCandidate{Kind: "link", Locator: source}); err != nil {
 		t.Fatal(err)

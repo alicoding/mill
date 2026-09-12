@@ -30,7 +30,7 @@ func TestExportPluginAudit_ListsReachTrustAndSecretReads(t *testing.T) {
 	root := t.TempDir()
 	writePlugin(t, root, "mill-a", `{"id":"mill-a","name":"A","version":"1.0.0","capabilities":["fetch"],"contributes":{"canvasObjects":[{"kind":"a","pastesURLs":true,"fileExtensions":[".a"]}],"network":[{"host":"example.com"}]}}`, nil)
 	writePlugin(t, root, "mill-b", `{"id":"mill-b","name":"B","version":"2.0.0"}`, nil)
-	p := New(root, nil, "0.9.0")
+	p := newTestPluginService(t, root, nil, "0.9.0")
 	p.WireAudit(fakeTrust{allowed: map[string]bool{"mill-a": true}, disabled: map[string]bool{"mill-b": true}}, func(prefix string) ([]PluginSecretAccess, error) {
 		if prefix != "plugin:" {
 			t.Fatalf("secret access prefix = %q, want plugin:", prefix)

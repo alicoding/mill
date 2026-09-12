@@ -191,7 +191,7 @@ func TestScanOne_StampsWidenedFromTrustReader(t *testing.T) {
 	writePlugin(t, root, "mill-b", `{"id":"mill-b","name":"B","version":"1.0.0","capabilities":["open-url"]}`, nil)
 	writePlugin(t, root, "mill-c", `{"id":"mill-c","name":"C","version":"1.0.0","capabilities":["open-url"]}`, nil)
 
-	p := New(root, nil, "")
+	p := newTestPluginService(t, root, nil, "")
 	p.WireAudit(grantTrust{grants: map[string]PluginGrant{
 		// mill-a: granted only open-url, manifest now also declares
 		// fetch -- widened.

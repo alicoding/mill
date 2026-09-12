@@ -38,7 +38,7 @@ func newGuardedWriteHarness(t *testing.T) (*PluginService, *guardrailsvc.Guardra
 	writePlugin(t, root, "plain", `{"id":"plain","name":"Plain","version":"1"}`, nil)
 	store := servicetest.NewFakeStore()
 	guard := guardrailsvc.NewGuardrailService(store, compositionsvc.NewCompositionService(store))
-	svc := New(root, guard, "1.0.0")
+	svc := newTestPluginService(t, root, guard, "1.0.0")
 	exec := &fakeIntegrationExecutor{}
 	svc.WireIntegrations(exec.Execute)
 	return svc, guard, exec

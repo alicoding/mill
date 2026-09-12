@@ -44,7 +44,7 @@ func newSecretHarness(t *testing.T, host string) (*PluginService, *guardrailsvc.
 	writePlugin(t, root, "tester", fmt.Sprintf(testerManifestJSON, host), nil)
 	store := servicetest.NewFakeStore()
 	guard := guardrailsvc.NewGuardrailService(store, compositionsvc.NewCompositionService(store))
-	svc := New(root, guard, "1.0.0")
+	svc := newTestPluginService(t, root, guard, "1.0.0")
 	refs := &fakeSecretRefs{titles: map[string]string{"vault-1": "Jira PAT"}, values: map[string]string{"vault-1": "s3cr3t-token-value"}}
 	settings := map[string]string{}
 	svc.WireSecretRefs(refs, func(pluginID, key string) (string, bool) {
@@ -192,7 +192,7 @@ func TestListPlugins_ValidatesSecretRefSettings(t *testing.T) {
 	root := t.TempDir()
 	writePlugin(t, root, "ok", `{"id":"ok","name":"N","version":"1","contributes":{"settings":[{"key":"auth","type":"secretRef","label":"Auth","description":""}]}}`, nil)
 	writePlugin(t, root, "with-default", `{"id":"with-default","name":"N","version":"1","contributes":{"settings":[{"key":"auth","type":"secretRef","label":"Auth","default":"x"}]}}`, nil)
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 	infos, err := svc.ListPlugins()
 	if err != nil {
 		t.Fatal(err)

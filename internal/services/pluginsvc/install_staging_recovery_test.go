@@ -222,7 +222,7 @@ func TestStagingRecoveryPreservesUnexpectedEvidence(t *testing.T) {
 }
 
 func TestUnknownWorkspaceWithoutRowIsPreserved(t *testing.T) {
-	service := New(t.TempDir(), nil, "")
+	service := newTestPluginService(t, t.TempDir(), nil, "")
 	root, err := service.canonicalPluginRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -334,7 +334,7 @@ func restartPluginService(t *testing.T, service *PluginService) *PluginService {
 	if err := service.state.Close(); err != nil {
 		t.Fatal(err)
 	}
-	return New(dir, nil, "")
+	return newTestPluginService(t, dir, nil, "")
 }
 
 func writeApprovalSentinel(t *testing.T, service *PluginService) []byte {

@@ -104,7 +104,7 @@ func exampleFS(ids ...string) fstest.MapFS {
 func newStoreService(t *testing.T, ids ...string) (*PluginService, string) {
 	t.Helper()
 	dir := t.TempDir()
-	svc := New(dir, nil, "")
+	svc := newTestPluginService(t, dir, nil, "")
 	closeTestPluginState(t, svc)
 	if len(ids) > 0 {
 		svc.SetExampleMarketplace(exampleFS(ids...))

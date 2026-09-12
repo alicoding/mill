@@ -39,7 +39,7 @@ func TestListDirForPlugin_NeedsCapabilityAndAbsolutePath(t *testing.T) {
 	root := t.TempDir()
 	writePlugin(t, root, "nocap", `{"id":"nocap","name":"N","version":"1"}`, nil)
 	writePlugin(t, root, "lister", `{"id":"lister","name":"L","version":"1","capabilities":["list-files"]}`, nil)
-	p := New(root, nil, "")
+	p := newTestPluginService(t, root, nil, "")
 	if _, err := p.ListDirForPlugin("nocap", root); err == nil || !strings.Contains(err.Error(), "list-files") {
 		t.Fatalf("no capability err = %v", err)
 	}

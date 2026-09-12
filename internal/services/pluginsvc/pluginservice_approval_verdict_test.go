@@ -44,7 +44,7 @@ func TestListPlugins_UsesOneApprovalRevisionForTheWholeScan(t *testing.T) {
 		}},
 		{Revision: 2, Allowed: []string{}, Locks: map[string]PluginApprovalLock{}},
 	}}
-	svc := New(root, nil, "")
+	svc := newTestPluginService(t, root, nil, "")
 	svc.WireAudit(trust, nil)
 
 	infos, err := svc.ListPlugins()
@@ -67,7 +67,7 @@ func TestListPlugins_ApprovalVerdictsAreFailClosedAndPreserveLegacyMarker(t *tes
 	trust := &approvalVerdictTrust{approvals: []PluginApproval{{
 		Revision: 1, Allowed: []string{"mill-a", "mill-b"}, Locks: map[string]PluginApprovalLock{}, LegacyUnpinned: []string{"mill-a"},
 	}}}
-	svc := New(root, nil, "")
+	svc := newTestPluginService(t, root, nil, "")
 	svc.WireAudit(trust, nil)
 
 	infos, err := svc.ListPlugins()
@@ -114,7 +114,7 @@ func TestListPlugins_DistinguishesWidenedChangedAndAllowed(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			trust := &approvalVerdictTrust{approvals: []PluginApproval{{Allowed: []string{"mill-a"}, Locks: map[string]PluginApprovalLock{"mill-a": test.lock}}}}
-			svc := New(root, nil, "")
+			svc := newTestPluginService(t, root, nil, "")
 			svc.WireAudit(trust, nil)
 			infos, err := svc.ListPlugins()
 			if err != nil {
