@@ -82,7 +82,7 @@ func TestListPlugins_ConfigurationSettingsAlias(t *testing.T) {
 
 	t.Run("both keys present refuses to load", func(t *testing.T) {
 		got := byID["uses-both"]
-		if got.Error != "Use configuration or settings, not both" {
+		if got.Error != "Use configuration or settings, not both (standard rule 1)" {
 			t.Fatalf("Error = %q, want the both-keys refusal", got.Error)
 		}
 	})
@@ -135,7 +135,7 @@ func TestValidateContributes_SettingsAliasAndMenus(t *testing.T) {
 		{
 			name:       "declaring both is refused",
 			contribute: ManifestContributes{Configuration: []SettingContribution{demoSetting()}, Settings: []SettingContribution{demoSetting()}},
-			want:       "Use configuration or settings, not both",
+			want:       "Use configuration or settings, not both (standard rule 1)",
 		},
 		{
 			name:       "an empty configuration array with no settings key is not \"both\"",

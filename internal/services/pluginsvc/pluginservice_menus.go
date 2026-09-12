@@ -63,7 +63,7 @@ func (c ManifestContributes) EffectiveSettings() []SettingContribution {
 // an author mistake, never a silent pick.
 func settingsAliasProblem(c ManifestContributes) string {
 	if c.Configuration != nil && c.Settings != nil {
-		return "Use configuration or settings, not both"
+		return "Use configuration or settings, not both (standard rule 1)"
 	}
 	return ""
 }
@@ -72,7 +72,7 @@ func settingsAliasProblem(c ManifestContributes) string {
 // loads, but says once that it will stop.
 func settingsAliasWarning(c ManifestContributes) string {
 	if c.Configuration == nil && c.Settings != nil {
-		return "Rename settings to configuration; settings stops loading in a future version"
+		return "Rename settings to configuration; settings stops loading in a future version (standard rule 1)"
 	}
 	return ""
 }
