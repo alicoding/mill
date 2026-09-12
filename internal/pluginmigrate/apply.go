@@ -27,7 +27,7 @@ func (p *Prepared) Apply() error {
 	if !bytes.Equal(current, p.original) {
 		return fmt.Errorf("manifest.json changed after preview; run migrate again")
 	}
-	if problems := pluginsvc.ConformDirWithManifest(p.root, p.candidate, ""); len(problems) > 0 {
+	if problems := pluginsvc.ConformDirWithManifest(p.root, p.candidate, p.appVersion); len(problems) > 0 {
 		return fmt.Errorf("migrated plugin no longer conforms: %v", problems)
 	}
 	if err := replaceFile(path, p.candidate); err != nil {

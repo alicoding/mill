@@ -11,6 +11,8 @@ import (
 	"github.com/alicoding/mill/internal/services/pluginsvc"
 )
 
+const testMillVersion = "1.0.0"
+
 func TestRunPreservesPluginNew(t *testing.T) {
 	parent := t.TempDir()
 	var out, errOut bytes.Buffer
@@ -26,7 +28,7 @@ func TestRunMigrateJSONEmitsRFC6902PlanWithoutWriting(t *testing.T) {
 	dir := copyHistoricalPlugin(t)
 	before := read(t, filepath.Join(dir, "manifest.json"))
 	var out, errOut bytes.Buffer
-	if code := Run([]string{"migrate", dir, "--json"}, filepath.Join(t.TempDir(), "installed"), "0.5.0", &out, &errOut); code != 0 {
+	if code := Run([]string{"migrate", dir, "--json"}, filepath.Join(t.TempDir(), "installed"), testMillVersion, &out, &errOut); code != 0 {
 		t.Fatalf("Run exit = %d, stderr = %s", code, errOut.String())
 	}
 	var plan pluginmigrate.Plan
@@ -48,18 +50,42 @@ func TestRunMigrateJSONEmitsRFC6902PlanWithoutWriting(t *testing.T) {
 func TestRunMigrateApplyAndCurrentOutput(t *testing.T) {
 	dir := copyHistoricalPlugin(t)
 	var out, errOut bytes.Buffer
-	if code := Run([]string{"migrate", "--apply", dir}, filepath.Join(t.TempDir(), "installed"), "0.5.0", &out, &errOut); code != 0 {
+	if code := Run([]string{"migrate", "--apply", dir}, filepath.Join(t.TempDir(), "installed"), testMillVersion, &out, &errOut); code != 0 {
 		t.Fatalf("apply exit = %d, stderr = %s", code, errOut.String())
 	}
 	if !bytes.Contains(out.Bytes(), []byte("Applied to manifest.json.")) {
 		t.Fatalf("apply output = %q", out.String())
 	}
 	out.Reset()
-	if code := Run([]string{"migrate", dir}, filepath.Join(t.TempDir(), "installed"), "0.5.0", &out, &errOut); code != 0 {
+	if code := Run([]string{"migrate", dir}, filepath.Join(t.TempDir(), "installed"), testMillVersion, &out, &errOut); code != 0 {
 		t.Fatalf("second preview exit = %d, stderr = %s", code, errOut.String())
 	}
 	if !bytes.Contains(out.Bytes(), []byte("This plugin is current.")) {
 		t.Fatalf("second preview output = %q", out.String())
+	}
+}
+
+func TestRunMigrateUsesMillVersionForProspectiveValidation(t *testing.T) {
+	dir := copyHistoricalPlugin(t)
+	path := filepath.Join(dir, "manifest.json")
+	before := read(t, path)
+	tooNew := bytes.Replace(before, []byte(`"minMillVersion": "0.9.0"`), []byte(`"minMillVersion": "99.0.0"`), 1)
+	if bytes.Equal(tooNew, before) {
+		t.Fatal("historical fixture has no minMillVersion to replace")
+	}
+	if err := os.WriteFile(path, tooNew, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var out, errOut bytes.Buffer
+	if code := Run([]string{"migrate", dir, "--apply"}, filepath.Join(t.TempDir(), "installed"), testMillVersion, &out, &errOut); code != 1 {
+		t.Fatalf("Run exit = %d, want 1; stderr = %s", code, errOut.String())
+	}
+	if !bytes.Contains(errOut.Bytes(), []byte("needs Mill 99.0.0 or newer")) {
+		t.Fatalf("stderr = %q", errOut.String())
+	}
+	if after := read(t, path); !bytes.Equal(after, tooNew) {
+		t.Fatal("failed version validation wrote the source")
 	}
 }
 
@@ -73,7 +99,7 @@ func TestRunMigrateBothKeysExitsTwo(t *testing.T) {
 		t.Fatal(err)
 	}
 	var out, errOut bytes.Buffer
-	if code := Run([]string{"migrate", dir, "--apply"}, filepath.Join(t.TempDir(), "installed"), "0.5.0", &out, &errOut); code != 2 {
+	if code := Run([]string{"migrate", dir, "--apply"}, filepath.Join(t.TempDir(), "installed"), testMillVersion, &out, &errOut); code != 2 {
 		t.Fatalf("Run exit = %d, want 2; stderr = %s", code, errOut.String())
 	}
 	if got := read(t, filepath.Join(dir, "manifest.json")); !bytes.Equal(got, manifest) {

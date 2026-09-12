@@ -12,10 +12,12 @@ import (
 	"github.com/tailscale/hujson"
 )
 
+const testMillVersion = "1.0.0"
+
 func TestPrepareApplyAndSecondPlanOnHistoricalSettingsManifest(t *testing.T) {
 	dir := copyRealPlugin(t, "mill-bookmark")
 	before := readManifest(t, dir)
-	prepared, err := Prepare(dir, filepath.Join(t.TempDir(), "installed"))
+	prepared, err := Prepare(dir, filepath.Join(t.TempDir(), "installed"), testMillVersion)
 	if err != nil {
 		t.Fatalf("Prepare: %v", err)
 	}
@@ -62,7 +64,7 @@ func assertMigratedManifest(t *testing.T, dir string, before []byte, plan Plan) 
 
 func assertSecondPlanIsEmpty(t *testing.T, dir string, after []byte) {
 	t.Helper()
-	second, err := Prepare(dir, filepath.Join(t.TempDir(), "installed"))
+	second, err := Prepare(dir, filepath.Join(t.TempDir(), "installed"), testMillVersion)
 	if err != nil {
 		t.Fatalf("second Prepare: %v", err)
 	}
@@ -81,7 +83,7 @@ func TestPrepareReportsCurrentRealPluginManifests(t *testing.T) {
 	for _, id := range []string{"mill-textcase", "mill-scribble"} {
 		t.Run(id, func(t *testing.T) {
 			dir := copyRealPlugin(t, id)
-			prepared, err := Prepare(dir, filepath.Join(t.TempDir(), "installed"))
+			prepared, err := Prepare(dir, filepath.Join(t.TempDir(), "installed"), testMillVersion)
 			if err != nil {
 				t.Fatalf("Prepare: %v", err)
 			}
@@ -101,7 +103,7 @@ func TestPrepareReportsBothKeysAsManualAndDoesNotWrite(t *testing.T) {
   }
 }`)
 	before := readManifest(t, dir)
-	prepared, err := Prepare(dir, filepath.Join(t.TempDir(), "installed"))
+	prepared, err := Prepare(dir, filepath.Join(t.TempDir(), "installed"), testMillVersion)
 	if err != nil {
 		t.Fatalf("Prepare: %v", err)
 	}
@@ -124,7 +126,7 @@ func TestPrepareRefusesMalformedJSON(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), []byte(`{"id":"malformed",`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Prepare(dir, filepath.Join(t.TempDir(), "installed")); err == nil {
+	if _, err := Prepare(dir, filepath.Join(t.TempDir(), "installed"), testMillVersion); err == nil {
 		t.Fatal("Prepare accepted malformed JSON")
 	}
 }
@@ -133,7 +135,7 @@ func TestPrepareRefusesInstalledLocationsAndReceipts(t *testing.T) {
 	t.Run("installed directory descendant", func(t *testing.T) {
 		installed := t.TempDir()
 		dir := copyRealPluginInto(t, "mill-bookmark", installed)
-		if _, err := Prepare(dir, installed); err == nil || !strings.Contains(err.Error(), "installed plugin directory") {
+		if _, err := Prepare(dir, installed, testMillVersion); err == nil || !strings.Contains(err.Error(), "installed plugin directory") {
 			t.Fatalf("Prepare error = %v", err)
 		}
 	})
@@ -142,7 +144,7 @@ func TestPrepareRefusesInstalledLocationsAndReceipts(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(dir, pluginsvc.InstallRecordFile), []byte(`{}`), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := Prepare(dir, filepath.Join(t.TempDir(), "installed")); err == nil || !strings.Contains(err.Error(), "receipt") {
+		if _, err := Prepare(dir, filepath.Join(t.TempDir(), "installed"), testMillVersion); err == nil || !strings.Contains(err.Error(), "receipt") {
 			t.Fatalf("Prepare error = %v", err)
 		}
 	})
@@ -153,7 +155,7 @@ func TestFailedProspectiveValidationLeavesSourceUnchanged(t *testing.T) {
 	dir := filepath.Join(parent, "wrong-folder")
 	copyPlugin(t, "mill-bookmark", dir)
 	before := readManifest(t, dir)
-	if _, err := Prepare(dir, filepath.Join(t.TempDir(), "installed")); err == nil || !strings.Contains(err.Error(), "does not conform") {
+	if _, err := Prepare(dir, filepath.Join(t.TempDir(), "installed"), testMillVersion); err == nil || !strings.Contains(err.Error(), "does not conform") {
 		t.Fatalf("Prepare error = %v", err)
 	}
 	if after := readManifest(t, dir); !bytes.Equal(after, before) {
@@ -188,7 +190,7 @@ func TestHuJSONPatchPreservesOwnedCommentsAndUnrelatedLayout(t *testing.T) {
 
 func TestApplyRefusesAChangedSource(t *testing.T) {
 	dir := copyRealPlugin(t, "mill-bookmark")
-	prepared, err := Prepare(dir, filepath.Join(t.TempDir(), "installed"))
+	prepared, err := Prepare(dir, filepath.Join(t.TempDir(), "installed"), testMillVersion)
 	if err != nil {
 		t.Fatal(err)
 	}

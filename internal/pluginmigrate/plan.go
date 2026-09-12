@@ -40,14 +40,15 @@ func (p Plan) HasPatch() bool { return !bytes.Equal(p.Patch, noPatch) }
 // Prepared holds the checked prospective bytes until the caller explicitly
 // applies them.
 type Prepared struct {
-	Plan      Plan
-	root      string
-	original  []byte
-	candidate []byte
+	Plan       Plan
+	root       string
+	appVersion string
+	original   []byte
+	candidate  []byte
 }
 
 // Prepare validates the source boundary and builds the one supported patch.
-func Prepare(sourceDir, installedDir string) (*Prepared, error) {
+func Prepare(sourceDir, installedDir, appVersion string) (*Prepared, error) {
 	id, root, raw, value, err := loadSource(sourceDir, installedDir)
 	if err != nil {
 		return nil, err
@@ -60,13 +61,13 @@ func Prepare(sourceDir, installedDir string) (*Prepared, error) {
 			ID: MigrationID, Path: "manifest.json",
 			Summary: "Both contributes.settings and contributes.configuration exist; choose the canonical value.",
 		})
-		return &Prepared{Plan: plan, root: root, original: raw}, nil
+		return &Prepared{Plan: plan, root: root, appVersion: appVersion, original: raw}, nil
 	}
 	if !hasSettings {
-		if problems := pluginsvc.ConformDirWithManifest(root, raw, ""); len(problems) > 0 {
+		if problems := pluginsvc.ConformDirWithManifest(root, raw, appVersion); len(problems) > 0 {
 			return nil, fmt.Errorf("plugin does not conform: %s", strings.Join(problems, "; "))
 		}
-		return &Prepared{Plan: plan, root: root, original: raw}, nil
+		return &Prepared{Plan: plan, root: root, appVersion: appVersion, original: raw}, nil
 	}
 
 	patch := configurationPatch(settings)
@@ -74,12 +75,12 @@ func Prepare(sourceDir, installedDir string) (*Prepared, error) {
 	if err != nil {
 		return nil, err
 	}
-	if problems := pluginsvc.ConformDirWithManifest(root, candidate, ""); len(problems) > 0 {
+	if problems := pluginsvc.ConformDirWithManifest(root, candidate, appVersion); len(problems) > 0 {
 		return nil, fmt.Errorf("migrated plugin does not conform: %s", strings.Join(problems, "; "))
 	}
 	plan.MigrationID = MigrationID
 	plan.Patch = patch
-	return &Prepared{Plan: plan, root: root, original: raw, candidate: candidate}, nil
+	return &Prepared{Plan: plan, root: root, appVersion: appVersion, original: raw, candidate: candidate}, nil
 }
 
 func loadSource(sourceDir, installedDir string) (string, string, []byte, hujson.Value, error) {

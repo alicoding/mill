@@ -72,15 +72,6 @@ wait_for_lock() {
   local waited=0 holder
   while ! mkdir "$lock" 2>/dev/null; do
     holder="$(cat "$lock/pid" 2>/dev/null || true)"
-    if [ -z "$holder" ]; then
-      # mkdir and writing pid are separate operations. If the creator dies
-      # between them, rmdir reclaims the still-empty directory atomically; if
-      # the creator writes first, rmdir fails and this contender keeps waiting.
-      if rmdir "$lock" 2>/dev/null; then
-        continue
-      fi
-      holder="$(cat "$lock/pid" 2>/dev/null || true)"
-    fi
     if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; then
       rm -rf "$lock"
       continue

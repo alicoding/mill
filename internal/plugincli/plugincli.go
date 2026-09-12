@@ -34,7 +34,7 @@ func Run(args []string, pluginsDir, millVersion string, out, errOut io.Writer) i
 		_, _ = fmt.Fprintf(errOut, "%s\n\n%s", problem, usage)
 		return 1
 	}
-	prepared, err := pluginmigrate.Prepare(dir, pluginsDir)
+	prepared, err := pluginmigrate.Prepare(dir, pluginsDir, millVersion)
 	if err != nil {
 		_, _ = fmt.Fprintln(errOut, err)
 		return 1
