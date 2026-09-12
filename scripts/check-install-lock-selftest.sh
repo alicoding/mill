@@ -74,11 +74,11 @@ lockdir="$stale_dir/lock"
 MILL_INSTALL_LOCK_DIR="$lockdir" "$script" sleep 3 &
 holder_pid=$!
 waited=0
-while [ ! -d "$lockdir" ] && [ "$waited" -lt 50 ]; do
+while [ ! -f "$lockdir/pid" ] && [ "$waited" -lt 50 ]; do
   sleep 0.1
   waited=$((waited + 1))
 done
-[ -d "$lockdir" ] || fail "stale: holder never created the lock directory"
+[ -f "$lockdir/pid" ] || fail "stale: holder never recorded its PID"
 kill -9 "$holder_pid" 2>/dev/null || true
 wait "$holder_pid" 2>/dev/null || true
 start=$(date +%s)

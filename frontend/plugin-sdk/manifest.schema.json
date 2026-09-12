@@ -1,0 +1,536 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mill://schema/plugin-manifest/v1",
+  "$defs": {
+    "CanvasObjectContribution": {
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "fileExtensions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "pastesURLs": {
+          "type": "boolean"
+        },
+        "entry": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "boolean"
+        },
+        "example": {
+          "$ref": "#/$defs/CanvasObjectExample"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "CanvasObjectExample": {
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "revision": {
+          "type": "integer"
+        },
+        "fixtures": {
+          "items": {
+            "$ref": "#/$defs/CanvasObjectExampleFixture"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "CanvasObjectExampleFixture": {
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "payloadKey": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "CaptureContribution": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "entry": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "CommandContribution": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "enablement": {
+          "type": "string"
+        },
+        "menu": {
+          "$ref": "#/$defs/CommandMenuContribution"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "CommandMenuContribution": {
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "group": {
+          "type": "integer"
+        },
+        "order": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "DependencyContribution": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "MCPServerContribution": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "command": {
+          "type": "string"
+        },
+        "args": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "env": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "ManifestContributes": {
+      "properties": {
+        "canvasObjects": {
+          "items": {
+            "$ref": "#/$defs/CanvasObjectContribution"
+          },
+          "type": "array"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/StepContribution"
+          },
+          "type": "array"
+        },
+        "captures": {
+          "items": {
+            "$ref": "#/$defs/CaptureContribution"
+          },
+          "type": "array"
+        },
+        "settings": {
+          "items": {
+            "$ref": "#/$defs/SettingContribution"
+          },
+          "type": "array"
+        },
+        "configuration": {
+          "items": {
+            "$ref": "#/$defs/SettingContribution"
+          },
+          "type": "array"
+        },
+        "menus": {
+          "additionalProperties": {
+            "items": {
+              "$ref": "#/$defs/MenuItemContribution"
+            },
+            "type": "array"
+          },
+          "type": "object"
+        },
+        "network": {
+          "items": {
+            "$ref": "#/$defs/NetworkContribution"
+          },
+          "type": "array"
+        },
+        "views": {
+          "items": {
+            "$ref": "#/$defs/ViewContribution"
+          },
+          "type": "array"
+        },
+        "commands": {
+          "items": {
+            "$ref": "#/$defs/CommandContribution"
+          },
+          "type": "array"
+        },
+        "themes": {
+          "items": {
+            "$ref": "#/$defs/ThemeContribution"
+          },
+          "type": "array"
+        },
+        "secretSources": {
+          "items": {
+            "$ref": "#/$defs/SecretSourceContribution"
+          },
+          "type": "array"
+        },
+        "tools": {
+          "items": {
+            "$ref": "#/$defs/ToolContribution"
+          },
+          "type": "array"
+        },
+        "mcpServers": {
+          "items": {
+            "$ref": "#/$defs/MCPServerContribution"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "MenuItemContribution": {
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "when": {
+          "type": "string"
+        },
+        "group": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "NetworkContribution": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "methods": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "SecretSourceContribution": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "path": {
+          "$ref": "#/$defs/SecretSourcePathContribution"
+        },
+        "capabilities": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "SecretSourcePathContribution": {
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "default": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "SettingContribution": {
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "default": true,
+        "options": {
+          "items": {
+            "$ref": "#/$defs/SettingOption"
+          },
+          "type": "array"
+        },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "entityKind": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "SettingOption": {
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "StepConfigContribution": {
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "default": {
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "StepContribution": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "config": {
+          "items": {
+            "$ref": "#/$defs/StepConfigContribution"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "ThemeContribution": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "family": {
+          "type": "string"
+        },
+        "file": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "ToolContribution": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "inputSchema": true,
+        "effect": {
+          "type": "string"
+        },
+        "run": {
+          "$ref": "#/$defs/ToolRun"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "ToolRun": {
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "commandId": {
+          "type": "string"
+        },
+        "stepId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "ViewContribution": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "entry": {
+          "type": "string"
+        },
+        "placement": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    }
+  },
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "author": {
+      "type": "string"
+    },
+    "minMillVersion": {
+      "type": "string"
+    },
+    "icon": {
+      "type": "string"
+    },
+    "capabilities": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "dependencies": {
+      "items": {
+        "$ref": "#/$defs/DependencyContribution"
+      },
+      "type": "array"
+    },
+    "exports": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "contributes": {
+      "$ref": "#/$defs/ManifestContributes"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "version"
+  ]
+}

@@ -558,6 +558,24 @@ Nothing is compiled — the types are read by your editor, and Mill
 loads the same plain file either way. Every type is listed in the
 [plugin API reference](plugin-api/index.md).
 
+The SDK also publishes `manifest.schema.json`. Point your editor or
+manifest-checking tool at that JSON Schema for field completion and structural
+errors. Run the loader's checks below for semantic rules and files named by the
+manifest.
+
+To preview the automatic rename from the deprecated
+`contributes.settings` key to `contributes.configuration`, run:
+
+```sh
+mill plugin migrate path/to/your-source-plugin
+```
+
+The preview prints the RFC 6902 patch and writes nothing. Add `--json` for a
+machine-readable plan, or `--apply` to replace `manifest.json` after the full
+plugin validates. A manifest containing both keys needs your decision and is
+left unchanged. The command refuses installed plugin folders and install
+receipts; run it only against the source folder you author.
+
 ## Reloading one plugin while you work
 
 Each installed plugin's page has a **Reload** button, and the command
