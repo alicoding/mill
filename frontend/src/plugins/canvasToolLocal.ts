@@ -35,6 +35,7 @@ function localCtx(door: CanvasToolDoorContext, decl: CanvasToolDecl, event: Tool
 export function registerLocalCanvasTool(pluginId: string, manifest: Manifest, decl: CanvasToolDecl): void {
   const descriptor = parseRegisterTool(toolWireDescriptor(decl))
   const canErase = (manifest.capabilities ?? []).includes('erase-board-items')
+  let pointerQueue = Promise.resolve()
   const door: CanvasToolDoorContext = {
     pluginId,
     manifest,
@@ -44,8 +45,10 @@ export function registerLocalCanvasTool(pluginId: string, manifest: Manifest, de
     post: (event, payload) => {
       if (event !== 'tool.pointer') return
       const pointer = payload as ToolPointerPayload
-      void Promise.resolve(decl.onPointer(pointer as unknown as CanvasToolPointerEvent, localCtx(door, decl, pointer, canErase)))
+      pointerQueue = pointerQueue
+        .then(() => decl.onPointer(pointer as unknown as CanvasToolPointerEvent, localCtx(door, decl, pointer, canErase)))
         .catch((err: unknown) => console.error(`plugin ${pluginId}: tool "${decl.kind}" failed`, err))
+      return pointerQueue
     },
   }
   seatCanvasTool(pluginId, buildFramedTool(pluginId, manifest, descriptor, door.post, decl.renderFace), descriptor.styleFields)

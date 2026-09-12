@@ -266,6 +266,7 @@ async function drawShape(page: Page, responses: ObjectsResponseOrder): Promise<s
   await expect(shapeObjects(page)).toHaveCount(1)
   const wrapper = nonSeededBoardObjectWrapper(page, 'shape')
   await expect(wrapper).toHaveCount(1)
+  await expect(wrapper).toHaveClass(/selected/)
   const id = await wrapper.getAttribute('data-id')
   if (!id) throw new Error('drawn shape wrapper has no data-id')
   responses.record('shape.drawn', { objectID: id })

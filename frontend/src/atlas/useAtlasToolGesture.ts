@@ -231,11 +231,19 @@ export function useAtlasToolGesture({ tool, readOnly, isFree, ctx, wrapperRef }:
     // onEnd stays SYNCHRONOUS (its ctx reads scratchRef/points state
     // that this function clears right below -- deferring the call
     // would read already-cleared state). The mark only needs to stay
-    // open until onEnd's own AtlasService calls are ISSUED, which
-    // happens synchronously within this call; EndUndoMark fires right
-    // after, once BeginUndoMark's own open has resolved.
-    g?.onEnd(clientPoints, buildCtx())
-    void markOpenRef.current?.then(() => AtlasService.EndUndoMark())
+    // Keep the mark open until onEnd's AtlasService work settles. Local
+    // plugin tools can complete asynchronously; framed tools still return
+    // synchronously after posting their pointer-up event.
+    const mark = markOpenRef.current
+    try {
+      const completion = g?.onEnd(clientPoints, buildCtx())
+      void Promise.resolve(completion)
+        .catch((error: unknown) => console.error('atlas tool gesture failed', error))
+        .finally(() => { void mark?.then(() => AtlasService.EndUndoMark()) })
+    } catch (error) {
+      void mark?.then(() => AtlasService.EndUndoMark())
+      throw error
+    }
     markOpenRef.current = null
     clientPointsRef.current = []
     scratchRef.current = null

@@ -282,7 +282,7 @@ export interface AtlasGestureCtx {
 // distance).
 export interface AtlasToolGesture {
   onPoint?: (pt: AtlasGesturePoint, ctx: AtlasGestureCtx) => void
-  onEnd: (points: AtlasGesturePoint[], ctx: AtlasGestureCtx) => void
+  onEnd: (points: AtlasGesturePoint[], ctx: AtlasGestureCtx) => void | Promise<void>
   // Rendered generically by AtlasBoard.tsx in ONE overlay slot, wrapper-
   // spanning, fed the engine's own wrapper-local point accumulation.
   preview?: ComponentType<{ points: AtlasGesturePoint[]; now: number }>
