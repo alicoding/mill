@@ -37,6 +37,8 @@ function callSimpleDoor(api: MillPluginAPI, method: string, args: unknown[]): Pr
     case 'storage.delete': return api.storage.delete(String(first))
     case 'query': return api.query(first as Parameters<MillPluginAPI['query']>[0])
     case 'kinds': return api.kinds()
+    case 'links': return api.links(first as Parameters<MillPluginAPI['links']>[0])
+    case 'linkKinds': return api.linkKinds()
     case 'open': { api.open(String(first)); return undefined }
     case 'fetch': return api.fetch(String(first), second as Parameters<MillPluginAPI['fetch']>[1])
     case 'content.createNote': return api.content.createNote(first as Parameters<MillPluginAPI['content']['createNote']>[0])
@@ -59,7 +61,7 @@ function callSimpleDoor(api: MillPluginAPI, method: string, args: unknown[]): Pr
 // this SAME list instead of drifting from it by hand -- the byte-
 // parity test a hand-copied frame runtime used to need.
 export const SIMPLE_DOORS = new Set<string>([
-  'notify', 'storage.set', 'storage.delete', 'query', 'kinds', 'open', 'fetch',
+  'notify', 'storage.set', 'storage.delete', 'query', 'kinds', 'links', 'linkKinds', 'open', 'fetch',
   'content.createNote', 'content.createCard', 'content.updateCard', 'content.appendListRow', 'content.createList', 'content.setCardFields',
   'files.list', 'convert.htmlToMarkdown', 'convert.markdownToHtml', 'requestGuardedAction', 'context.set',
 ])
