@@ -348,6 +348,26 @@
       "address": "Checked address:",
       "copyAddress": "Copy address",
       "copied": "Copied",
+      "metadata": "Metadata:",
+      "metadataState": {
+        "notChecked": "Not checked",
+        "available": "Model discovery available",
+        "unavailable": "Model discovery unavailable",
+        "failed": "Model discovery unreadable"
+      },
+      "authorization": "Authorization:",
+      "authorizationState": {
+        "notRequired": "Not required",
+        "unknown": "Unknown",
+        "authorized": "Metadata request accepted",
+        "rejected": "Metadata request rejected"
+      },
+      "permission": "Permission:",
+      "permissionState": {
+        "unchecked": "Not checked",
+        "allowed": "Allowed",
+        "denied": "Not allowed"
+      },
       "defaultAddress": "Provider default",
       "model": "Configured model:",
       "chooseModel": "Choose model",
@@ -374,6 +394,30 @@
         "advertised": "Advertised by provider",
         "unverified": "Unverified"
       },
+      "reason": {
+        "metadataUnavailable": "This service does not provide model discovery.",
+        "metadataUnreadable": "The model discovery response could not be read.",
+        "metadataRejected": "The service rejected this metadata request. Review the address, secret, and service permissions.",
+        "metadataRateLimited": "The service limited the metadata request.",
+        "metadataRedirectRefused": "The metadata address redirected to a different destination and was not followed.",
+        "metadataFailed": "The service could not complete model discovery.",
+        "invalidEndpoint": "Review this connection address and protocol.",
+        "unknownProtocol": "This protocol cannot be checked.",
+        "permissionDenied": "The current policy does not allow this check.",
+        "permissionUnavailable": "Mill could not determine whether this check is allowed.",
+        "secretUnavailable": "Review this connection’s secret in Secrets, then check again.",
+        "configurationChanged": "This result belongs to a previous connection configuration.",
+        "secretChanged": "This result belongs to a previous secret configuration.",
+        "checkCancelled": "The check was cancelled.",
+        "checkTimedOut": "The check timed out.",
+        "serviceStopped": "The check stopped when Mill closed.",
+        "modelNotListed": "The configured model was not returned by model discovery.",
+        "modelUnverified": "The configured model could not be verified from the available inventory.",
+        "inventoryIncomplete": "The returned model inventory may be incomplete.",
+        "operationUnverified": "Model discovery does not prove this feature.",
+        "other": "Additional provider evidence is available."
+      },
+      "sampleScope": "Sample {{version}} only",
       "testFeature": "Test feature",
       "sampleModified": "This workflow has changed. Restore the sample to test this feature.",
       "restoreSample": "Restore sample",
@@ -387,6 +431,8 @@
       "provider-use-indeterminate": "Mill cannot confirm that this connection is unused. Review unfinished runs before changing it.",
       "provider-ownership-unestablished": "Connection changes require exclusive access to the execution database.",
       "provider-check-unavailable": "Mill cannot verify whether this connection is currently in use.",
+      "run": "Affected run: {{runID}}",
+      "workflow": "Affected workflow: {{workflowID}}",
       "viewRuns": "View runs",
       "dataHelp": "Data access help"
     },
@@ -396,7 +442,12 @@
       "current": "Current",
       "imported": "Imported",
       "noSecretReference": "No secret reference",
-      "usedBy": "Used by {{count}} items"
+      "secretUnverified": "Secret reference: {{reference}} · Unverified",
+      "usedBy": "Used by",
+      "workflowConsumer": "Workflow: {{workflow}}",
+      "boardConsumer": "Board object: {{label}} (board {{board}})",
+      "pluginConsumer": "Extension: {{label}} (setting {{setting}})",
+      "noConsumers": "No authored consumers"
     }
   },
   "configureStepTypes": {
@@ -463,9 +514,18 @@
     "createNewEntity": "+ Create new {{noun}}…",
     "noCallableWorkflowsHint": "No callable workflows yet. Give a workflow a \"callable by another workflow\" trigger, then pick it here.",
     "aiTested": "Tested",
+    "aiTestedReason": "Verified by a successful sample.",
     "aiUnsupported": "Not supported for this feature",
+    "aiUnsupportedReason": "The provider reports that this operation is unavailable.",
     "aiUnverified": "Unverified",
+    "aiUnverifiedReason": "No successful sample has verified this operation.",
     "aiProviderOption": "{{label}} · {{evidence}}",
+    "aiRequiredState": "Required feature: {{operation}} · {{evidence}} · {{reason}}",
+    "aiOperation": {
+      "text": "Generate text",
+      "structured": "Extract fields",
+      "classification": "Classify text"
+    },
     "aiExecutionLocation": "Execution location:",
     "aiExecutionLocationUnknown": "Unknown",
     "aiMayForward": "This address may forward requests to another machine.",

@@ -92,10 +92,14 @@ export function useAIProviderImport(onImported: () => void) {
             <Text size="small">{value.label}</Text>
             <Text size="small">{value.kind} · {value.model}</Text>
             <Text size="small" className={styles.muted}>{value.endpoint}</Text>
-            <Text size="small" className={styles.muted}>{value.keyRef || t('configureAIProviders.import.noSecretReference')}</Text>
+            <Text size="small" className={styles.muted}>{value.keyRef ? t('configureAIProviders.import.secretUnverified', { reference: value.keyRef }) : t('configureAIProviders.import.noSecretReference')}</Text>
           </Stack>
         ))}
-        <Text size="small">{t('configureAIProviders.import.usedBy', { count: (pending.preview.references?.Workflows?.length ?? 0) + (pending.preview.references?.Boards?.length ?? 0) })}</Text>
+        <Text size="small" weight="semibold">{t('configureAIProviders.import.usedBy')}</Text>
+        {(pending.preview.references?.Workflows ?? []).map((workflow) => <Text size="small" key={"workflow-" + workflow}>{t('configureAIProviders.import.workflowConsumer', { workflow })}</Text>)}
+        {(pending.preview.references?.Boards ?? []).map((board) => <Text size="small" key={"board-" + board.BoardID + "-" + board.ObjectID}>{t('configureAIProviders.import.boardConsumer', { label: board.Label, board: board.BoardID })}</Text>)}
+        {(pending.preview.references?.Plugins ?? []).map((plugin) => <Text size="small" key={"plugin-" + plugin.PluginID + "-" + plugin.SettingKey}>{t('configureAIProviders.import.pluginConsumer', { label: plugin.Label, setting: plugin.SettingKey })}</Text>)}
+        {(pending.preview.references?.Workflows?.length ?? 0) + (pending.preview.references?.Boards?.length ?? 0) + (pending.preview.references?.Plugins?.length ?? 0) === 0 && <Text size="small" className={styles.muted}>{t('configureAIProviders.import.noConsumers')}</Text>}
       </Stack>
     </Dialog>
   )

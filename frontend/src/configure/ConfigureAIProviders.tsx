@@ -30,7 +30,6 @@ import { AIProviderAvailabilityPanel } from './AIProviderAvailabilityPanel'
 import styles from '../shared/ListCard.module.css'
 import { background } from '../shared/background'
 import { aiProviderConnectionState } from './aiProviderConnectionState'
-import { useAppStore } from '../shared/store'
 import { messageFor } from '../shared/userError'
 import { Events } from '@wailsio/runtime'
 
@@ -255,11 +254,13 @@ export function ConfigureAIProviders() {
               {(impact.blockerCodes ?? []).map((code) => (
                 <Text as="p" size="small" key={code}>{t(`configureAIProviders.blocker.${code}`)}</Text>
               ))}
+              {(impact.runIDs ?? []).map((runID) => <Text as="p" size="small" key={runID}>{t('configureAIProviders.blocker.run', { runID })}</Text>)}
+              {(impact.workflowIDs ?? []).map((workflowID) => <Text as="p" size="small" key={workflowID}>{t('configureAIProviders.blocker.workflow', { workflowID })}</Text>)}
               {(impact.blockerCodes ?? []).some((code) => code === ChangeBlockerCode.ChangeBlockerProviderInUse || code === ChangeBlockerCode.ChangeBlockerProviderUseIndeterminate) && (
-                <Button size="small" variant="invisible" onClick={() => useAppStore.getState().setView({ kind: 'activity' })}>{t('configureAIProviders.blocker.viewRuns')}</Button>
+                <Button size="small" variant="invisible" onClick={() => void runCommand('view.activity')}>{t('configureAIProviders.blocker.viewRuns')}</Button>
               )}
               {(impact.blockerCodes ?? []).includes(ChangeBlockerCode.ChangeBlockerProviderOwnershipUnestablished) && (
-                <Button size="small" variant="invisible" onClick={() => useAppStore.getState().setView({ kind: 'docs', page: 'trust/data-and-safety.md' })}>{t('configureAIProviders.blocker.dataHelp')}</Button>
+                <Button size="small" variant="invisible" onClick={() => void runCommand('configure.aiprovider.dataHelp', entityRowContext('aiprovider', editingID ?? ''))}>{t('configureAIProviders.blocker.dataHelp')}</Button>
               )}
             </Stack>
           )}

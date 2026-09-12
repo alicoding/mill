@@ -39,6 +39,9 @@ test('A saved provider exposes connection evidence and operation-scoped tests wi
 
   await expect(page.getByLabel('Protocol')).toBeVisible()
   await page.getByTestId('aiprovider-availability-summary').click()
+  await expect(page.getByText('Metadata: Not checked')).toBeVisible()
+  await expect(page.getByText('Authorization: Unknown')).toBeVisible()
+  await expect(page.getByText('Permission: Not checked')).toBeVisible()
   await expect(page.getByText('Execution location:')).toBeVisible()
   await expect(page.getByText('This address may forward requests to another machine.')).toBeVisible()
   await expect(page.getByText('Generate text')).toBeVisible()

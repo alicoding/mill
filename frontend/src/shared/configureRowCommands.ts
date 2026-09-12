@@ -1,15 +1,18 @@
 import type { Command } from './commands'
+import type { AIProvider } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 import { entityRowCommands, type EntityRowFamily, type EntityRowItem } from './entityRowCommands'
-import { ConfigureService } from './bindings'
+import { ConfigureService, CompositionService } from './bindings'
+import { CheckStatus, Operation, PermissionStatus, SampleStatus } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 import { listMCPServerTools } from './mcpToolsStore'
 import {
-  refreshAIProviders, refreshClientCerts, refreshConversionProfiles, refreshDecisions, refreshDeclaredStepTypes,
+  refreshAIProviderAvailability, refreshAIProviders, refreshClientCerts, refreshConversionProfiles, refreshDecisions, refreshDeclaredStepTypes,
   refreshEnvironments, refreshExecEnvs, refreshLists, refreshMCPServers, refreshSecretSources,
   useConfigureEntityStore,
 } from './configureEntityStore'
 import { refreshRequests, useAppStore } from './store'
 import { refreshSeedRevisions, shippedRevision } from './seedRevisionStore'
 import { useUISignalStore } from './uiSignalStore'
+import { writeClipboardText } from './clipboardWrite'
 import type { SeedLike } from './seedLifecycle'
 
 // One descriptor per Configure entity family (goal 0346), minted into
@@ -131,6 +134,57 @@ const aiProviders = seeded({
   namespace: 'configure.aiprovider',
   load: () => useConfigureEntityStore.getState().aiProviders,
   refetch: refetchWith(refreshAIProviders),
+  extras: [
+    {
+      suffix: 'check', label: 'commands.configure.aiprovider.check',
+      enabled: (item) => {
+        const report = useConfigureEntityStore.getState().aiProviderAvailability[item.ID]
+        return report?.permission.status !== PermissionStatus.PermissionDenied && report?.lifecycle !== CheckStatus.CheckAwaitingApproval && report?.lifecycle !== CheckStatus.CheckChecking
+      },
+      run: async (item) => { await ConfigureService.StartAIProviderCheck(item.ID); await refreshAIProviderAvailability() },
+    },
+    {
+      suffix: 'cancelCheck', label: 'commands.configure.aiprovider.cancelCheck',
+      enabled: (item) => {
+        const report = useConfigureEntityStore.getState().aiProviderAvailability[item.ID]
+        return !!report?.checkId && (report.lifecycle === CheckStatus.CheckAwaitingApproval || report.lifecycle === CheckStatus.CheckChecking)
+      },
+      run: async (item) => {
+        const report = useConfigureEntityStore.getState().aiProviderAvailability[item.ID]
+        await ConfigureService.CancelAIProviderCheck(item.ID, report?.checkId ?? '')
+        await refreshAIProviderAvailability()
+      },
+    },
+    ...([Operation.OperationText, Operation.OperationStructured, Operation.OperationClassification] as const).flatMap((operation) => [
+      {
+        suffix: `test.${operation}`, label: 'commands.configure.aiprovider.testFeature',
+        run: async (item: AIProvider) => {
+          const preview = await CompositionService.PrepareAIProviderFeatureSample(item.ID, operation)
+          useConfigureEntityStore.getState().setAIProviderSamplePreview(item.ID, preview)
+          if (preview.status !== SampleStatus.SampleStatusModified) useAppStore.getState().requestOpenWorkflow(preview.workflowID)
+        },
+      },
+      {
+        suffix: `restore.${operation}`, label: 'commands.configure.aiprovider.restoreSample',
+        run: async (item: AIProvider) => {
+          const preview = await CompositionService.RestoreAIProviderFeatureSample(item.ID, operation)
+          useConfigureEntityStore.getState().setAIProviderSamplePreview(item.ID, preview)
+          useAppStore.getState().requestOpenWorkflow(preview.workflowID)
+        },
+      },
+    ]),
+    {
+      suffix: 'copyAddress', label: 'commands.configure.aiprovider.copyAddress',
+      run: async (item) => {
+        const report = useConfigureEntityStore.getState().aiProviderAvailability[item.ID]
+        await writeClipboardText(report?.checkedEndpoint || item.BaseURL)
+      },
+    },
+    {
+      suffix: 'dataHelp', label: 'commands.configure.aiprovider.dataHelp',
+      run: () => useAppStore.getState().setView({ kind: 'docs', page: 'trust/data-and-safety.md' }),
+    },
+  ],
   exportEntity: (id) => ConfigureService.ExportAIProvider(id),
   reset: (id) => ConfigureService.ResetAIProviderToSeed(id),
   remove: (id) => ConfigureService.DeleteAIProvider(id),

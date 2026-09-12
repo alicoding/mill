@@ -9,6 +9,7 @@ import type { Workflow } from '../../bindings/github.com/alicoding/mill/internal
 import { Category } from '../../bindings/github.com/alicoding/mill/internal/domain/decision/models'
 import { Shell, ProfileMode } from '../../bindings/github.com/alicoding/mill/internal/domain/execenv/models'
 import { Kind as AIProviderKind, Operation, Support } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
+import type { OperationFeature } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 import { decisionCategoryLabelFor } from './entityRefFieldLogic'
 import { useConfigureEntityStore } from '../shared/configureEntityStore'
 
@@ -84,6 +85,18 @@ function selectEntityKeyFor(noun: string | undefined): string {
   return noun !== undefined && /^[aeiou]/i.test(noun) ? 'entityRefField.selectEntityVowel' : 'entityRefField.selectEntity'
 }
 
+function aiEvidenceKey(feature?: OperationFeature): string {
+  if (feature?.lastSampleSuccess?.freshness === 'fresh') return 'entityRefField.aiTested'
+  if (feature?.support === Support.SupportUnsupported) return 'entityRefField.aiUnsupported'
+  return 'entityRefField.aiUnverified'
+}
+
+function aiEvidenceReasonKey(feature?: OperationFeature): string {
+  if (feature?.lastSampleSuccess?.freshness === 'fresh') return 'entityRefField.aiTestedReason'
+  if (feature?.support === Support.SupportUnsupported) return 'entityRefField.aiUnsupportedReason'
+  return 'entityRefField.aiUnverifiedReason'
+}
+
 function kindNounFor(t: (key: string) => string): Record<string, string> {
   return {
     request: t('entityRefField.kindNoun.request'),
@@ -141,6 +154,11 @@ export function EntityRefField({ refKind, value, onChange, readOnly, requiredOpe
   if (readOnly) {
     return <ReadOnlyReference refKind={refKind} value={value} entities={entities} noun={KIND_NOUN[refKind]} />
   }
+  const selectedProviderFeature = refKind === 'aiprovider' && requiredOperation
+    ? providerAvailability[value]?.operations?.find((item) => item.operation === requiredOperation)
+    : undefined
+  const selectedProviderEvidence = t(aiEvidenceKey(selectedProviderFeature))
+  const selectedProviderReason = t(aiEvidenceReasonKey(selectedProviderFeature))
   return (
     <>
       <Select
@@ -181,9 +199,12 @@ export function EntityRefField({ refKind, value, onChange, readOnly, requiredOpe
       {error && <span>{error}</span>}
       <ReferencePeek refKind={refKind} id={entities?.some((e) => e.ID === value) ? value : ''} noun={KIND_NOUN[refKind] ?? refKind} />
       {refKind === 'aiprovider' && value && (
-        <Text as="p" size="small" data-testid="aiprovider-reference-location">
-          {t('entityRefField.aiExecutionLocation')} {t('entityRefField.aiExecutionLocationUnknown')} · {t('entityRefField.aiMayForward')}
-        </Text>
+        <>
+          {requiredOperation && <Text as="p" size="small" data-testid="aiprovider-reference-feature">{t('entityRefField.aiRequiredState', { operation: t(`entityRefField.aiOperation.${requiredOperation}`), evidence: selectedProviderEvidence, reason: selectedProviderReason })}</Text>}
+          <Text as="p" size="small" data-testid="aiprovider-reference-location">
+            {t('entityRefField.aiExecutionLocation')} {t('entityRefField.aiExecutionLocationUnknown')} · {t('entityRefField.aiMayForward')}
+          </Text>
+        </>
       )}
       {/* An empty callable-workflow list is a dead end without saying
           how to fix it (reported from live use: "Select a callable

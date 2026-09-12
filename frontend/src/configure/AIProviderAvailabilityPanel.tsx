@@ -4,16 +4,14 @@ import { ActionList, Button, SelectPanel, Stack, Text } from '@primer/react'
 import type { SelectPanelItemInput } from '@primer/react'
 import { PlayIcon, TriangleDownIcon } from '@primer/octicons-react'
 import { AdvancedDisclosure } from '../shared/AdvancedDisclosure'
-import { ConfigureService, CompositionService } from '../shared/bindings'
 import { StatusStamp, type StatusStampVariant } from '../shared/StatusStamp'
-import { useAppStore } from '../shared/store'
-import { refreshAIProviderAvailability } from '../shared/configureEntityStore'
+import { useConfigureEntityStore } from '../shared/configureEntityStore'
 import type { AIProvider, OperationFeature, Report, SamplePreview } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
-import { CheckStatus, EvidenceSource, Freshness, Operation, SampleStatus, Support } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
+import { AuthenticationStatus, CheckStatus, EvidenceSource, Freshness, InspectionStatus, Operation, PermissionStatus, SampleStatus, Support } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 import { aiProviderConnectionState } from './aiProviderConnectionState'
 import styles from '../shared/ListCard.module.css'
-import { messageFor } from '../shared/userError'
-import { writeClipboardText } from '../shared/clipboardWrite'
+import { runCommand } from '../shared/commands'
+import { entityRowContext } from '../shared/entityRowCommands'
 
 const operationKeys: Record<Operation, string> = {
   [Operation.$zero]: 'text',
@@ -31,7 +29,54 @@ function stampFor(feature?: OperationFeature): { variant: StatusStampVariant; ke
   return { variant: 'neutral', key: 'unverified' }
 }
 
+function metadataKeyFor(report?: Report): string {
+  if (report?.inspection === InspectionStatus.InspectionAvailable) return 'available'
+  if (report?.inspection === InspectionStatus.InspectionUnsupported) return 'unavailable'
+  if (report?.inspection === InspectionStatus.InspectionFailed) return 'failed'
+  return 'notChecked'
+}
+
+function authorizationKeyFor(report?: Report): string {
+  if (report?.authentication === AuthenticationStatus.AuthenticationNotRequired) return 'notRequired'
+  if (report?.authentication === AuthenticationStatus.AuthenticationRejected) return 'rejected'
+  if (report?.authentication === AuthenticationStatus.AuthenticationMetadataAuthorized || report?.authentication === AuthenticationStatus.AuthenticationOperationTested) return 'authorized'
+  return 'unknown'
+}
+
+function permissionKeyFor(report?: Report): string {
+  if (report?.permission.status === PermissionStatus.PermissionAllowed) return 'allowed'
+  if (report?.permission.status === PermissionStatus.PermissionDenied) return 'denied'
+  return 'unchecked'
+}
+
 const operations = [Operation.OperationText, Operation.OperationStructured, Operation.OperationClassification]
+
+const reasonKeys: Record<string, string> = {
+  'metadata-api-unsupported': 'metadataUnavailable',
+  'metadata-response-malformed': 'metadataUnreadable',
+  'metadata-response-too-large': 'metadataUnreadable',
+  'metadata-auth-rejected': 'metadataRejected',
+  'metadata-rate-limited': 'metadataRateLimited',
+  'metadata-redirect-refused': 'metadataRedirectRefused',
+  'metadata-service-failed': 'metadataFailed',
+  'metadata-http-failed': 'metadataFailed',
+  'invalid-endpoint': 'invalidEndpoint',
+  'unknown-provider-kind': 'unknownProtocol',
+  'permission-denied': 'permissionDenied',
+  'policy-service-unwired': 'permissionUnavailable',
+  'policy-check-failed': 'permissionUnavailable',
+  'secret-resolution-failed': 'secretUnavailable',
+  'configuration-changed': 'configurationChanged',
+  'secret-source-changed': 'secretChanged',
+  'check-cancelled': 'checkCancelled',
+  'check-timed-out': 'checkTimedOut',
+  'service-stopped': 'serviceStopped',
+  'selected-model-not-listed': 'modelNotListed',
+  'selected-model-missing': 'modelNotListed',
+  'selected-model-unverified': 'modelUnverified',
+  'metadata-inventory-incomplete': 'inventoryIncomplete',
+  'operation-not-proven-by-metadata': 'operationUnverified',
+}
 
 export function AIProviderAvailabilityPanel({ provider, report, dirty, choicesCurrent, model, onModelChange }: {
   provider: AIProvider
@@ -43,12 +88,10 @@ export function AIProviderAvailabilityPanel({ provider, report, dirty, choicesCu
 }) {
   const { t } = useTranslation('configure')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const [sample, setSample] = useState<SamplePreview | null>(null)
+  const sample: SamplePreview | undefined = useConfigureEntityStore((s) => s.aiProviderSamplePreviews[provider.ID])
   const [modelPickerOpen, setModelPickerOpen] = useState(false)
   const [modelFilter, setModelFilter] = useState('')
   const [copied, setCopied] = useState(false)
-  const requestOpenWorkflow = useAppStore((s) => s.requestOpenWorkflow)
   const state = aiProviderConnectionState(report)
   const active = report?.lifecycle === CheckStatus.CheckAwaitingApproval || report?.lifecycle === CheckStatus.CheckChecking
   const modelItems: SelectPanelItemInput[] = (report?.modelChoices ?? []).map((choice) => ({ id: choice.id, text: choice.id }))
@@ -56,34 +99,19 @@ export function AIProviderAvailabilityPanel({ provider, report, dirty, choicesCu
   const selectedModel = modelItems.find((item) => item.id === model)
   const hasCheckedAt = report?.lifecycle !== CheckStatus.CheckNotStarted && !!report?.checkedAt && !report.checkedAt.startsWith('0001-')
 
-  const run = async (work: () => Promise<unknown>) => {
+  const run = async (commandId: string) => {
     setBusy(true)
-    setError('')
     try {
-      await work()
-      await refreshAIProviderAvailability()
-    } catch (err) {
-      setError(messageFor(err, t))
+      await runCommand(commandId, entityRowContext('aiprovider', provider.ID))
     } finally {
       setBusy(false)
     }
   }
 
-  const prepareSample = async (operation: Operation, restore = false) => {
-    setBusy(true)
-    setError('')
-    try {
-      const preview = restore
-        ? await CompositionService.RestoreAIProviderFeatureSample(provider.ID, operation)
-        : await CompositionService.PrepareAIProviderFeatureSample(provider.ID, operation)
-      setSample(preview)
-      if (preview.status !== SampleStatus.SampleStatusModified) requestOpenWorkflow(preview.workflowID)
-    } catch (err) {
-      setError(messageFor(err, t))
-    } finally {
-      setBusy(false)
-    }
-  }
+  const reportReasons = (report?.reasonCodes ?? []).map((code) => t(`configureAIProviders.availability.reason.${reasonKeys[code] ?? 'other'}`))
+  const metadataKey = metadataKeyFor(report)
+  const authKey = authorizationKeyFor(report)
+  const permissionKey = permissionKeyFor(report)
 
   return (
     <AdvancedDisclosure open={false} testId="aiprovider-availability" summary={t('configureAIProviders.availability.heading')}>
@@ -97,8 +125,12 @@ export function AIProviderAvailabilityPanel({ provider, report, dirty, choicesCu
         </Stack>
         <Stack direction="horizontal" gap="condensed" align="center">
           <Text as="p" size="small"><strong>{t('configureAIProviders.availability.address')}</strong> {report?.checkedEndpoint || provider.BaseURL || t('configureAIProviders.availability.defaultAddress')}</Text>
-          <Button size="small" variant="invisible" onClick={() => void writeClipboardText(report?.checkedEndpoint || provider.BaseURL).then(() => setCopied(true)).catch((err) => setError(messageFor(err, t)))}>{copied ? t('configureAIProviders.availability.copied') : t('configureAIProviders.availability.copyAddress')}</Button>
+          <Button size="small" variant="invisible" onClick={() => void runCommand('configure.aiprovider.copyAddress', entityRowContext('aiprovider', provider.ID)).then((ok) => setCopied(ok))}>{copied ? t('configureAIProviders.availability.copied') : t('configureAIProviders.availability.copyAddress')}</Button>
         </Stack>
+        <Text as="p" size="small"><strong>{t('configureAIProviders.availability.metadata')}</strong> {t(`configureAIProviders.availability.metadataState.${metadataKey}`)}</Text>
+        <Text as="p" size="small"><strong>{t('configureAIProviders.availability.authorization')}</strong> {t(`configureAIProviders.availability.authorizationState.${authKey}`)}</Text>
+        <Text as="p" size="small"><strong>{t('configureAIProviders.availability.permission')}</strong> {report?.permission.ruleLabel || t(`configureAIProviders.availability.permissionState.${permissionKey}`)}</Text>
+        {reportReasons.map((reason, index) => <Text as="p" size="small" className={styles.muted} key={`${reason}-${index}`}>{reason}</Text>)}
         <Text as="p" size="small"><strong>{t('configureAIProviders.availability.model')}</strong> {model}</Text>
         <SelectPanel
           title={t('configureAIProviders.availability.chooseModel')}
@@ -117,9 +149,9 @@ export function AIProviderAvailabilityPanel({ provider, report, dirty, choicesCu
         <Text as="p" size="small" className={styles.muted}>{t('configureAIProviders.availability.forwarding')}</Text>
         {dirty && <Text as="p" size="small" className={styles.attention}>{t('configureAIProviders.availability.saveBeforeCheck')}</Text>}
         <Stack direction="horizontal" gap="condensed">
-          {!active && <Button size="small" disabled={dirty || busy || state === 'notAllowed'} onClick={() => void run(() => ConfigureService.StartAIProviderCheck(provider.ID))}>{t('configureAIProviders.availability.check')}</Button>}
-          {active && <Button size="small" disabled={busy} onClick={() => void run(() => ConfigureService.CancelAIProviderCheck(provider.ID, report?.checkId ?? ''))}>{t('configureAIProviders.availability.cancelCheck')}</Button>}
-          {report?.lifecycle === CheckStatus.CheckAwaitingApproval && <Button size="small" variant="invisible" onClick={() => useAppStore.getState().setView({ kind: 'review' })}>{t('configureAIProviders.availability.review')}</Button>}
+          {!active && <Button size="small" disabled={dirty || busy || state === 'notAllowed'} onClick={() => void run('configure.aiprovider.check')}>{t('configureAIProviders.availability.check')}</Button>}
+          {active && <Button size="small" disabled={busy} onClick={() => void run('configure.aiprovider.cancelCheck')}>{t('configureAIProviders.availability.cancelCheck')}</Button>}
+          {report?.lifecycle === CheckStatus.CheckAwaitingApproval && <Button size="small" variant="invisible" onClick={() => void runCommand('view.review')}>{t('configureAIProviders.availability.review')}</Button>}
         </Stack>
         <Text size="small" weight="semibold">{t('configureAIProviders.availability.features')}</Text>
         <ActionList data-testid="aiprovider-features">
@@ -133,8 +165,10 @@ export function AIProviderAvailabilityPanel({ provider, report, dirty, choicesCu
                 <ActionList.Description variant="block">
                   <StatusStamp variant={stamp.variant}>{t(`configureAIProviders.availability.evidence.${stamp.key}`)}</StatusStamp>
                   {feature?.lastSampleSuccess?.checkedAt && ` ${new Date(feature.lastSampleSuccess.checkedAt).toLocaleString()}`}
+                  {(feature?.reasonCodes ?? []).map((code) => <Text as="span" size="small" className={styles.muted} key={code}> · {t(`configureAIProviders.availability.reason.${reasonKeys[code] ?? 'other'}`)}</Text>)}
+                  {feature?.lastSampleSuccess && <Text as="span" size="small" className={styles.muted}> · {t('configureAIProviders.availability.sampleScope', { version: feature.lastSampleSuccess.sampleVersion })}</Text>}
                 </ActionList.Description>
-                <ActionList.TrailingAction as="button" icon={PlayIcon} label={t('configureAIProviders.availability.testFeature')} aria-disabled={dirty || busy} onClick={(event: React.MouseEvent) => { event.stopPropagation(); if (!dirty && !busy) void prepareSample(operation) }} />
+                <ActionList.TrailingAction as="button" icon={PlayIcon} label={t('configureAIProviders.availability.testFeature')} aria-disabled={dirty || busy} onClick={(event: React.MouseEvent) => { event.stopPropagation(); if (!dirty && !busy) void run(`configure.aiprovider.test.${operation}`) }} />
               </ActionList.Item>
             )
           })}
@@ -145,7 +179,7 @@ export function AIProviderAvailabilityPanel({ provider, report, dirty, choicesCu
             {sample.status === SampleStatus.SampleStatusModified ? (
               <>
                 <Text as="p" size="small">{t('configureAIProviders.availability.sampleModified')}</Text>
-                <Button size="small" disabled={busy} onClick={() => void prepareSample(sample.operation, true)}>{t('configureAIProviders.availability.restoreSample')}</Button>
+                <Button size="small" disabled={busy} onClick={() => void run(`configure.aiprovider.restore.${sample.operation}`)}>{t('configureAIProviders.availability.restoreSample')}</Button>
               </>
             ) : (
               <>
@@ -157,7 +191,6 @@ export function AIProviderAvailabilityPanel({ provider, report, dirty, choicesCu
             )}
           </Stack>
         )}
-        {error && <Text as="p" size="small" className={styles.error}>{error}</Text>}
       </Stack>
     </AdvancedDisclosure>
   )

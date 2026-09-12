@@ -7,7 +7,7 @@ import type { ExecEnv } from '../../bindings/github.com/alicoding/mill/internal/
 import type { Environment } from '../../bindings/github.com/alicoding/mill/internal/domain/environment/models'
 import type { Source as SecretSource } from '../../bindings/github.com/alicoding/mill/internal/domain/secretsource/models'
 import type { Profile as ConversionProfile } from '../../bindings/github.com/alicoding/mill/internal/domain/conversionprofile/models'
-import type { AIProvider, Report as AIProviderReport } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
+import type { AIProvider, Report as AIProviderReport, SamplePreview as AIProviderSamplePreview } from '../../bindings/github.com/alicoding/mill/internal/domain/aiprovider/models'
 import type { ClientCertificate, Status as ClientCertStatus } from '../../bindings/github.com/alicoding/mill/internal/domain/clientcert/models'
 import type { DeclaredStepType } from '../../bindings/github.com/alicoding/mill/internal/domain/declaredsteptype/models'
 import type { ListUsage } from '../../bindings/github.com/alicoding/mill/internal/services/configuresvc/models'
@@ -37,6 +37,7 @@ interface ConfigureEntityState {
   conversionProfiles: ConversionProfile[] | null
   aiProviders: AIProvider[] | null
   aiProviderAvailability: Record<string, AIProviderReport>
+  aiProviderSamplePreviews: Record<string, AIProviderSamplePreview>
   clientCerts: ClientCertificate[] | null
   clientCertStatuses: Record<string, ClientCertStatus>
   declaredStepTypes: DeclaredStepType[] | null
@@ -52,6 +53,7 @@ interface ConfigureEntityState {
   setConversionProfiles: (conversionProfiles: ConversionProfile[]) => void
   setAIProviders: (aiProviders: AIProvider[]) => void
   setAIProviderAvailability: (reports: AIProviderReport[]) => void
+  setAIProviderSamplePreview: (providerId: string, preview: AIProviderSamplePreview) => void
   setClientCerts: (clientCerts: ClientCertificate[], statuses: ClientCertStatus[]) => void
   setDeclaredStepTypes: (declaredStepTypes: DeclaredStepType[]) => void
   setListUsage: (listUsage: ListUsage[]) => void
@@ -67,6 +69,7 @@ export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => (
   conversionProfiles: null,
   aiProviders: null,
   aiProviderAvailability: {},
+  aiProviderSamplePreviews: {},
   clientCerts: null,
   clientCertStatuses: {},
   declaredStepTypes: null,
@@ -80,6 +83,7 @@ export const useConfigureEntityStore = create<ConfigureEntityState>()((set) => (
   setConversionProfiles: (conversionProfiles) => set({ conversionProfiles }),
   setAIProviders: (aiProviders) => set({ aiProviders }),
   setAIProviderAvailability: (reports) => set({ aiProviderAvailability: Object.fromEntries(reports.map((report) => [report.providerId, report])) }),
+  setAIProviderSamplePreview: (providerId, preview) => set((state) => ({ aiProviderSamplePreviews: { ...state.aiProviderSamplePreviews, [providerId]: preview } })),
   setClientCerts: (clientCerts, statuses) => set({ clientCerts, clientCertStatuses: Object.fromEntries(statuses.map((s) => [s.id, s])) }),
   setDeclaredStepTypes: (declaredStepTypes) => set({ declaredStepTypes }),
   setListUsage: (listUsage) => set({ listUsage: Object.fromEntries(listUsage.map((u) => [u.ListID, u])) }),

@@ -77,6 +77,22 @@ describe('useAIProviderImport', () => {
     expect(applyImport).not.toHaveBeenCalled()
   })
 
+  it('shows secret verification state and every affected consumer', async () => {
+    const preview = replacePreview('r1')
+    preview.references = {
+      Workflows: ['workflow-1'],
+      Boards: [{ BoardID: 'board-1', ObjectID: 'object-1', Label: 'Board object' }],
+      Plugins: [{ PluginID: 'plugin-1', SettingKey: 'provider', Label: 'Plugin setting' }],
+    }
+    previewImport.mockResolvedValue(preview)
+    await choose('file-a')
+    const text = container.textContent ?? ''
+    expect(text).toContain('configureAIProviders.import.secretUnverified')
+    expect(text).toContain('configureAIProviders.import.workflowConsumer')
+    expect(text).toContain('configureAIProviders.import.boardConsumer')
+    expect(text).toContain('configureAIProviders.import.pluginConsumer')
+  })
+
   it('ignores a slow preview when a newer file is selected', async () => {
     const slow = deferred<ImportPreview>()
     previewImport.mockReturnValueOnce(slow.promise).mockResolvedValueOnce(replacePreview('new'))
