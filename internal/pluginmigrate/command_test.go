@@ -197,6 +197,28 @@ func TestCommandMigrationReportsManualDecisionsWithoutWriting(t *testing.T) {
 	}
 }
 
+func TestPatchOperationsEncodeQuotedFields(t *testing.T) {
+	path := `/contributes/menus/view"quoted\\slash/0/command`
+	oldValue := `refresh"old\\value`
+	newValue := `mill-index.refresh"new\\value`
+	operations := testReplaceOperations(path, oldValue, newValue)
+	wantOps := []string{"test", "replace"}
+	wantValues := []string{oldValue, newValue}
+	for i, raw := range operations {
+		var operation struct {
+			Op    string `json:"op"`
+			Path  string `json:"path"`
+			Value string `json:"value"`
+		}
+		if err := json.Unmarshal(raw, &operation); err != nil {
+			t.Fatalf("operation %d is not JSON: %v", i, err)
+		}
+		if operation.Op != wantOps[i] || operation.Path != path || operation.Value != wantValues[i] {
+			t.Fatalf("operation %d = %+v", i, operation)
+		}
+	}
+}
+
 func assertHistoricalFixtureProvenance(t *testing.T, dir string, manifest, main []byte) {
 	t.Helper()
 	if got := fmt.Sprintf("%x", sha256.Sum256(main)); got != pre643MainSHA256 {

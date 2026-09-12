@@ -152,13 +152,22 @@ func sortedMenuIDs(manifest pluginsvc.Manifest) []string {
 }
 
 func testReplaceOperations(path, oldValue, newValue string) [][]byte {
-	pathJSON, _ := json.Marshal(path)
-	oldJSON, _ := json.Marshal(oldValue)
-	newJSON, _ := json.Marshal(newValue)
 	return [][]byte{
-		[]byte(fmt.Sprintf(`{"op":"test","path":%s,"value":%s}`, pathJSON, oldJSON)),
-		[]byte(fmt.Sprintf(`{"op":"replace","path":%s,"value":%s}`, pathJSON, newJSON)),
+		marshalPatchOperation("test", path, oldValue),
+		marshalPatchOperation("replace", path, newValue),
 	}
+}
+
+func marshalPatchOperation(op, path, value string) []byte {
+	raw, err := json.Marshal(struct {
+		Op    string `json:"op"`
+		Path  string `json:"path"`
+		Value string `json:"value"`
+	}{Op: op, Path: path, Value: value})
+	if err != nil {
+		panic(fmt.Sprintf("marshal RFC 6902 operation: %v", err))
+	}
+	return raw
 }
 
 func jsonPointerToken(value string) string {
