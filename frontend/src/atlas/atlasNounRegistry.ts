@@ -283,8 +283,8 @@ export interface AtlasGestureCtx {
 export interface AtlasToolGesture {
   onPoint?: (pt: AtlasGesturePoint, ctx: AtlasGestureCtx) => void
   onEnd: (points: AtlasGesturePoint[], ctx: AtlasGestureCtx) => void | Promise<void>
-  // Rendered generically by AtlasBoard.tsx in ONE overlay slot, wrapper-
-  // spanning, fed the engine's own wrapper-local point accumulation.
+  ownsUndo?: boolean // Canvas-draft commits own their actor mark; the engine must not nest one.
+  // AtlasBoard renders this from the engine's wrapper-local points in its one overlay slot.
   preview?: ComponentType<{ points: AtlasGesturePoint[]; now: number }>
   // Ephemeral tools (laser) never commit -- their accumulated points
   // fade out on their own timer instead of clearing at pointerup, the

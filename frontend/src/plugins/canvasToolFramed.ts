@@ -254,6 +254,7 @@ function declFromDescriptor(d: CanvasToolDescriptor, renderFace?: CanvasObjectDe
 // gated on the shared drag threshold exactly as it is there.
 function framedGesture(runtime: FramedToolRuntime, sticky: boolean): AtlasToolGesture {
   return {
+    ownsUndo: true,
     onPoint: (pt, ctx) => {
       const point = boardPoint(ctx, pt)
       if (!runtime.session) {
