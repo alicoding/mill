@@ -25,7 +25,9 @@ const { PluginService } = await import('../../bindings/github.com/alicoding/mill
 const { findCommand, runCommand } = await import('./commands')
 const { useExtensionMarketplaceInstallStore } = await import('./extensionMarketplaceInstallStore')
 const { useExtensionRecoveryStore } = await import('./extensionRecoveryStore')
+const { useExtensionSourcesStore } = await import('./extensionSourcesStore')
 const { useExtensionUpdatesStore } = await import('./extensionUpdatesStore')
+const { usePluginPolicyStore } = await import('./pluginPolicyStore')
 const { useUISignalStore } = await import('./uiSignalStore')
 
 function deferred<T>() {
@@ -51,6 +53,12 @@ const candidate: InstallCandidate = {
 
 const candidateContext: CommandContext = { kind: 'extensionInstallCandidate', candidate }
 const emptyBrowse: BrowseResult = { Entries: [], Sources: [], InstalledStateReady: true, InstalledStateError: '' }
+const actionableBrowse = {
+  Entries: [{ Marketplace: 'source', ID: 'plugin', Version: '1.0.0', Installed: false, PolicyReason: '' }],
+  Sources: [{ name: 'source', incarnation: 'source-one' }],
+  InstalledStateReady: true,
+  InstalledStateError: '',
+} as BrowseResult
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -60,6 +68,8 @@ beforeEach(() => {
   })
   useExtensionUpdatesStore.setState({ bulkActive: false, canCancelRemaining: false, cancelRemaining: false, currentHandle: '', candidates: [], itemPhases: {} })
   useExtensionRecoveryStore.setState({ unresolved: false, retrying: false, detail: '' })
+  useExtensionSourcesStore.setState({ browse: actionableBrowse, browseLoading: false, browseError: '' })
+  usePluginPolicyStore.setState({ policy: { Error: '' } as never })
   useUISignalStore.setState({ extensionInstalledRequest: 0 })
   vi.mocked(PluginService.ReserveInstallPreparation).mockResolvedValue({ Handle: 'handle-one', ExpiresAt: '2099-01-01T00:00:00Z' } as never)
   vi.mocked(PluginService.PrepareInstall).mockResolvedValue({ Handle: 'handle-one', ExpiresAt: '2099-01-01T00:00:00Z', Preview: preview(), RequiresReview: true } as never)
@@ -88,6 +98,15 @@ describe('prepared extension install commands', () => {
     }
     expect(findCommand('extensions.install.prepare')?.enabled?.(mixed)).toBe(false)
     expect(await runCommand('extensions.install.prepare', mixed)).toBe(false)
+    expect(PluginService.ReserveInstallPreparation).not.toHaveBeenCalled()
+  })
+
+  it('refuses a marketplace row whose cached authority no longer permits preparation', async () => {
+    useExtensionSourcesStore.setState({
+      browse: { ...actionableBrowse, Entries: [{ ...actionableBrowse.Entries![0]!, PolicyReason: 'Blocked by policy' }] },
+    })
+    expect(findCommand('extensions.install.prepare')?.enabled?.(candidateContext)).toBe(false)
+    expect(await runCommand('extensions.install.prepare', candidateContext)).toBe(false)
     expect(PluginService.ReserveInstallPreparation).not.toHaveBeenCalled()
   })
 
@@ -132,6 +151,28 @@ describe('prepared extension install commands', () => {
     expect(useExtensionMarketplaceInstallStore.getState().phase).toBe('idle')
     expect(signalMocks.notifyPluginRemoved).toHaveBeenCalledOnce()
     expect(useUISignalStore.getState().extensionInstalledRequest).toBe(1)
+  })
+
+  it('reloads the authoritative update list after an individual update commits', async () => {
+    useExtensionUpdatesStore.setState({
+      candidates: [{ ID: 'plugin', Name: 'Plugin', Installed: '1.0.0', Available: '1.1.0' }] as never,
+    })
+    vi.mocked(PluginService.PrepareInstall).mockResolvedValueOnce({
+      Handle: 'handle-one', ExpiresAt: '2099-01-01T00:00:00Z',
+      Preview: preview({ Version: '1.1.0', AlreadyInstalled: true }), RequiresReview: true,
+    } as never)
+    vi.mocked(PluginService.ConfirmInstall).mockResolvedValueOnce({
+      Record: { version: '1.1.0' }, PluginID: 'plugin', NeedsAllow: false, CatalogWarningCode: '', RecoveryRequired: false,
+    } as never)
+    vi.mocked(PluginService.ListUpdates).mockResolvedValueOnce({ checkedAt: 'now', candidates: [], problems: [] } as never)
+
+    expect(await runCommand('extension.update', { kind: 'entity', entity: 'plugin', id: 'plugin' })).toBe(true)
+    const attempt: CommandContext = { kind: 'extensionInstallAttempt', operationId: useExtensionMarketplaceInstallStore.getState().operationId! }
+    expect(await runCommand('extensions.install.confirm', attempt)).toBe(true)
+
+    expect(PluginService.ListUpdates).toHaveBeenCalledOnce()
+    expect(useExtensionUpdatesStore.getState()).toMatchObject({ checkedAt: 'now', candidates: [], loadError: '' })
+    expect(useUISignalStore.getState().extensionInstalledRequest).toBe(0)
   })
 
   it('keeps a retryable artifact-change refusal visible and prepares a new handle', async () => {

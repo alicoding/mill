@@ -10,8 +10,9 @@ import { notifyPluginRemoved } from './pluginRemoveSignal'
 import { pushNotice } from './noticeStore'
 import { useUISignalStore } from './uiSignalStore'
 import { appTranslate, messageFor, userErrorFrom } from './userError'
-import { useExtensionUpdatesStore } from './extensionUpdatesStore'
+import { refreshUpdates, useExtensionUpdatesStore } from './extensionUpdatesStore'
 import { useExtensionRecoveryStore } from './extensionRecoveryStore'
+import { usePluginPolicyStore } from './pluginPolicyStore'
 
 export type InstallPhase = 'idle' | 'reserved' | 'preparing' | 'ready' | 'committing' | 'error'
 export type InstallMode = 'install' | 'update' | 'import'
@@ -86,10 +87,21 @@ function validInstallCandidate(candidate: InstallCandidate): boolean {
   }
 }
 
+function marketplaceCandidateIsActionable(candidate: InstallCandidate): boolean {
+  if (candidate.Kind !== 'marketplace') return true
+  const sources = useExtensionSourcesStore.getState()
+  const policy = usePluginPolicyStore.getState().policy
+  if (sources.browseLoading || sources.browseError || !sources.browse?.InstalledStateReady || !policy || policy.Error) return false
+  const source = sources.browse.Sources?.find((item) => item.name === candidate.Marketplace)
+  const entry = sources.browse.Entries?.find((item) => item.Marketplace === candidate.Marketplace && item.ID === candidate.ID)
+  return source?.incarnation === candidate.Incarnation && entry?.Version === candidate.Version && !entry.Installed && !entry.PolicyReason
+}
+
 export function extensionInstallPrepareEnabled(ctx: CommandContext | undefined): boolean {
   const state = useExtensionMarketplaceInstallStore.getState()
   const target = extensionInstallCandidateContext(ctx)
-  return state.phase === 'idle' && !useExtensionUpdatesStore.getState().bulkActive && !useExtensionRecoveryStore.getState().unresolved && target !== null && validInstallCandidate(target.candidate)
+  return state.phase === 'idle' && !useExtensionUpdatesStore.getState().bulkActive && !useExtensionRecoveryStore.getState().unresolved &&
+    target !== null && validInstallCandidate(target.candidate) && marketplaceCandidateIsActionable(target.candidate)
 }
 
 export function extensionInstallConfirmEnabled(ctx: CommandContext | undefined): boolean {
@@ -113,7 +125,7 @@ export const useExtensionMarketplaceInstallStore = create<ExtensionInstallState>
   ...emptyState,
   prepare: async (ctx) => {
     const target = extensionInstallCandidateContext(ctx)
-    if (!target || !validInstallCandidate(target.candidate) || get().phase !== 'idle') return
+    if (!target || !validInstallCandidate(target.candidate) || !marketplaceCandidateIsActionable(target.candidate) || get().phase !== 'idle') return
     const operationId = newLocalID()
     const candidate = { ...target.candidate }
     set({ ...emptyState, operationId, candidate, phase: 'reserved', mode: installMode(candidate), visible: true })
@@ -203,7 +215,8 @@ async function finishSuccessfulInstall(mode: InstallMode, name: string, result: 
   if (result.RecoveryRequired) useExtensionRecoveryStore.getState().require()
   notifyPluginRemoved()
   await useExtensionSourcesStore.getState().loadBrowse()
-  useUISignalStore.getState().requestExtensionInstalled()
+  if (mode === 'update' && !result.RecoveryRequired) await refreshUpdates()
+  if (mode !== 'update') useUISignalStore.getState().requestExtensionInstalled()
   const key = mode === 'update' ? 'views:extensions.updates.updated' : mode === 'import' && result.NeedsAllow
     ? 'views:extensions.themeImport.doneNeedsAllow'
     : mode === 'import' ? 'views:extensions.themeImport.done' : 'views:extensions.install.done'

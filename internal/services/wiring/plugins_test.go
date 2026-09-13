@@ -199,6 +199,33 @@ func newSettingsForTrust(t *testing.T) (*settingssvc.SettingsService, *servicete
 	return settings, store
 }
 
+func TestWirePluginTrust_GrandfathersExistingPluginThroughMutationPort(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "plugins", "existing-plugin")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), []byte(`{"id":"existing-plugin","name":"Existing","version":"1.0.0"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "main.js"), []byte("export function activate() {}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	store := servicetest.NewFakeStore()
+	comp := compositionsvc.NewCompositionService(store)
+	trig := triggersvc.NewTriggerService(comp, slog.Default(), store)
+	settings := settingssvc.NewSettingsService(store, trig, false)
+	plugins := NewPluginService(filepath.Join(root, "settings.json"), nil, "source", "", "", nil)
+	secrets := secretsvc.NewSecretService(secretvault.New(filepath.Join(root, "secrets.kdbx")), credential.NewInMemory(), store)
+
+	WirePluginTrust(plugins, settings, secrets)
+
+	if !pluginSettingsTrust(plugins, settings).mayRun("existing-plugin", false) {
+		t.Fatal("a plugin present before approval initialization did not retain permission to run")
+	}
+}
+
 // setPluginAllowlist writes the administrator's policy the way policy
 // tooling does -- straight into the settings store, never through a UI.
 func setPluginAllowlist(t *testing.T, store *servicetest.FakeStore, raw string) {

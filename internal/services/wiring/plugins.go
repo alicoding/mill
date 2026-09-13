@@ -223,6 +223,12 @@ func WirePluginTrust(plugins *pluginsvc.PluginService, settings *settingssvc.Set
 	)
 	settings.SetPluginHasher(pluginGrantSnapshotter(plugins))
 	plugins.SetSigningKeys(settings.GetPluginSigningKeys)
+	// Settings owns the approval transition and PluginService owns package
+	// mutation, so grandfathering needs this shared lock seam before it records
+	// the packages that were already present at upgrade time.
+	settingssvc.WirePluginRemoval(settings, func(id string, action func(string, bool, bool) error) error {
+		return pluginsvc.WithPluginMutation(plugins, id, action)
+	})
 	grandfatherInstalledPlugins(plugins, settings)
 	trust := pluginSettingsTrust(plugins, settings)
 	plugins.WireAudit(trust, pluginSecretAccessReader(secrets))
@@ -236,13 +242,6 @@ func WirePluginTrust(plugins *pluginsvc.PluginService, settings *settingssvc.Set
 	// path. Behind the same run policy, so a source stops answering the
 	// moment its extension is turned off.
 	secrets.SetPluginSources(plugins)
-	// Uninstall (goal 0321) belongs to the same consent lifecycle the
-	// settings service already owns, so it holds the removal and this
-	// hands it only the folder lookup -- settingssvc never depends on
-	// pluginsvc.
-	settingssvc.WirePluginRemoval(settings, func(id string, action func(string, bool, bool) error) error {
-		return pluginsvc.WithPluginMutation(plugins, id, action)
-	})
 }
 
 func pluginSettingsTrust(plugins *pluginsvc.PluginService, settings *settingssvc.SettingsService) settingsTrust {
