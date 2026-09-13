@@ -47,8 +47,9 @@ brief carries more, not less, than an Opus one would need.
 - **Adoption comparison**: quote the goal's record required by
   `adopt-converged-patterns.md`: chosen solution/version/highest-level API,
   full capability/upstream comparison, actual mismatch if rejected, and the
-  remaining Mill adapter/domain boundary. Unresolved fit → stop, research,
-  no dispatch.
+  remaining Mill adapter/domain boundary for implementation and verification.
+  The chosen abstraction owns the relevant lifecycle without parallel homemade
+  machinery. Unresolved fit → stop, research, no dispatch.
 - **Model**: Sonnet unless the brief carries a one-sentence Opus
   justification; never Fable; at most one Opus builder live.
 - **Sized to ≤3 contract items.** A fourth item is the next slice, not
