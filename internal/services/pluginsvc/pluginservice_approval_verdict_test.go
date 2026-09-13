@@ -101,6 +101,10 @@ func TestListPlugins_DistinguishesWidenedChangedAndAllowed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	contentHash, err := ContentHash(root + "/mill-a")
+	if err != nil {
+		t.Fatal(err)
+	}
 	tests := []struct {
 		name    string
 		lock    PluginApprovalLock
@@ -108,6 +112,7 @@ func TestListPlugins_DistinguishesWidenedChangedAndAllowed(t *testing.T) {
 		widened bool
 	}{
 		{name: "allowed", lock: PluginApprovalLock{Hash: hash, Grant: PluginGrant{Capabilities: []string{"open-url"}}}, want: pluginApprovalAllowed},
+		{name: "legacy whole package", lock: PluginApprovalLock{Hash: contentHash, Grant: PluginGrant{}}, want: pluginApprovalAllowed},
 		{name: "widened", lock: PluginApprovalLock{Hash: hash, Grant: PluginGrant{}}, want: pluginApprovalUnallowed, widened: true},
 		{name: "changed", lock: PluginApprovalLock{Hash: "sha256-stale", Grant: PluginGrant{Capabilities: []string{"open-url"}}}, want: pluginApprovalChanged},
 	}

@@ -208,6 +208,13 @@ func applyApprovalVerdict(info *PluginInfo, approval PluginApproval, approvalErr
 	if lock.Hash == "" {
 		return
 	}
+	// A pre-CodeHash lock covers the whole package and predates the grant
+	// shape. Matching those same bytes is the legacy authorization itself;
+	// do not reinterpret the absent grant fields as newly widened authority.
+	if legacyGrantShape(lock.Grant) && info.ContentHash != "" && info.ContentHash == lock.Hash {
+		info.ApprovalState = pluginApprovalAllowed
+		return
+	}
 	diff, widened := widenedFrom(lock.Grant, currentGrant(info.Manifest))
 	if widened {
 		info.Widened = diffPreview(diff)
@@ -215,10 +222,6 @@ func applyApprovalVerdict(info *PluginInfo, approval PluginApproval, approvalErr
 		return
 	}
 	if info.CodeHash == lock.Hash {
-		info.ApprovalState = pluginApprovalAllowed
-		return
-	}
-	if legacyGrantShape(lock.Grant) && info.ContentHash != "" && info.ContentHash == lock.Hash {
 		info.ApprovalState = pluginApprovalAllowed
 		return
 	}

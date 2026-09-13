@@ -99,6 +99,10 @@ test('an unchanged theme file imports as data, waits for Allow, and follows the 
 		await page.setViewportSize({ width: 1280, height: 720 })
 		await dialog.getByRole('button', { name: 'Import', exact: true }).click()
 		await expect(dialog).toHaveCount(0)
+		const installDialog = page.getByRole('dialog', { name: 'Import Catppuccin Latte?' })
+		await expect(installDialog).toBeVisible()
+		await installDialog.getByRole('button', { name: 'Import', exact: true }).click()
+		await expect(installDialog).toHaveCount(0)
 		await expect(page.getByText('Theme imported. Allow it in Extensions to make it available in Appearance.')).toBeVisible()
 		expect(existsSync(path.join(importedDir, 'source.json'))).toBe(true)
 
