@@ -105,7 +105,7 @@ type UpdateNotice struct {
 	StateReason string `json:"stateReason"`
 	// StateReasonStage classifies StateReason (classifyUpdateFailureStage's
 	// UpdateFailureStage) when it came from a DownloadAndInstallUpdate
-	// failure -- "download", "install", or "unknown". Empty for a check
+	// failure -- "backup", "download", "install", or "unknown". Empty for a check
 	// failure (checkForUpdates has only the one stage, so nothing to
 	// classify) and for every non-error state.
 	StateReasonStage string `json:"stateReasonStage"`

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/wailsapp/wails/v3/pkg/updater"
 	updaterGithub "github.com/wailsapp/wails/v3/pkg/updater/providers/github"
 )
@@ -333,7 +334,7 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 	s.mu.Lock()
 	if s.updateDownloading {
 		s.mu.Unlock()
-		return fmt.Errorf("the update is already downloading -- the Relaunch button appears when it's ready")
+		return usererror.New(updateInProgressCode, updateInProgressMessage)
 	}
 	s.updateDownloading = true
 	s.resignWarning = ""
@@ -359,7 +360,9 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 	}()
 	channel := s.UpdateChannel()
 	if channel != "release" && channel != "beta" {
-		return s.failInstall(wasReady, false, fmt.Errorf("updates only install on the release or beta channel -- this copy was built from source"))
+		cause := fmt.Errorf("updates only install on the release or beta channel -- this copy was built from source")
+		return s.failInstall(wasReady, false, UpdateFailureStageUnknown, cause,
+			usererror.Wrap(updateChannelUnavailableCode, updateChannelUnavailableMessage, cause))
 	}
 	if fake := os.Getenv(testUpdateFakeVersionEnv); fake != "" {
 		if ms, err := strconv.Atoi(os.Getenv(testUpdateDownloadDelayEnv)); err == nil && ms > 0 {
@@ -369,7 +372,9 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 		// blocked-network case (a corporate proxy answering the asset
 		// fetch with 403/timeout), so its error must classify the same
 		// way a genuine download failure does.
-		return s.failInstall(wasReady, false, fmt.Errorf("github: download: no release asset in test mode"))
+		cause := fmt.Errorf("github: download: no release asset in test mode")
+		return s.failInstall(wasReady, false, UpdateFailureStageDownload, cause,
+			updaterBoundaryError(UpdateFailureStageDownload, cause))
 	}
 	s.mu.Lock()
 	backupRunner := s.backupRunner
@@ -377,14 +382,20 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 	s.mu.Unlock()
 
 	if backupRunner == nil {
-		return s.failInstall(wasReady, false, fmt.Errorf("update aborted: no pre-update backup available"))
+		cause := fmt.Errorf("update aborted: no pre-update backup available")
+		return s.failInstall(wasReady, false, UpdateFailureStageBackup, cause,
+			usererror.Wrap(updateBackupFailedCode, updateBackupFailedMessage, cause))
 	}
 	if _, err := backupRunner(0); err != nil {
-		return s.failInstall(wasReady, false, fmt.Errorf("update aborted: pre-update backup failed: %w", err))
+		cause := fmt.Errorf("update aborted: pre-update backup failed: %w", err)
+		return s.failInstall(wasReady, false, UpdateFailureStageBackup, cause,
+			usererror.Wrap(updateBackupFailedCode, updateBackupFailedMessage, cause))
 	}
 
 	if u == nil {
-		return s.failInstall(wasReady, false, fmt.Errorf("updater not configured"))
+		cause := fmt.Errorf("updater not configured")
+		return s.failInstall(wasReady, false, UpdateFailureStageUnknown, cause,
+			usererror.Wrap(updaterUnavailableCode, updaterUnavailableMessage, cause))
 	}
 	finalVersion, err := s.downloadWithStaleAssetRetry(u, version)
 	if err != nil {
@@ -396,7 +407,9 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 		// on disk regardless of this call's own outcome, and
 		// failInstall(true) below reflects that instead of continuing
 		// to claim it's still ready.
-		return s.failInstall(wasReady, true, sanitizeUpdaterError(err))
+		cause := sanitizeUpdaterError(err)
+		stage := classifyUpdateFailureStage(cause)
+		return s.failInstall(wasReady, true, stage, cause, updaterBoundaryError(stage, cause))
 	}
 	// u.DownloadAndInstall already verified the staged download
 	// against the published SHA256 digest before returning -- signing
@@ -411,9 +424,7 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 	return nil
 }
 
-// failInstall records a DownloadAndInstallUpdate failure into the
-// state machine and returns err unchanged, so every failure path above
-// can just `return s.failInstall(...)`.
+// failInstall records update state and returns the projected boundary error.
 //
 // destroyedPriorStaging is true only for the one failure path past
 // u.DownloadAndInstall itself -- every earlier failure (channel gate,
@@ -428,7 +439,11 @@ func (s *SettingsService) DownloadAndInstallUpdate() error {
 // ("a newer update couldn't download") rather than the fresh-install
 // error path, since the story from the user's side is the same
 // regardless of which failure destroyed the in-flight download.
-func (s *SettingsService) failInstall(wasReady, destroyedPriorStaging bool, err error) error {
+func (s *SettingsService) failInstall(wasReady, destroyedPriorStaging bool, stage UpdateFailureStage, cause, boundaryErr error) error {
+	s.mu.Lock()
+	s.lastInstallError = cause.Error()
+	s.lastInstallStage = stage
+	s.mu.Unlock()
 	if wasReady {
 		if destroyedPriorStaging {
 			s.mu.Lock()
@@ -436,14 +451,10 @@ func (s *SettingsService) failInstall(wasReady, destroyedPriorStaging bool, err 
 			s.stagedUpdateVersion = ""
 			s.mu.Unlock()
 		}
-		s.recordCheckOutcome(UpdateCheckOutcomeFailed, "a newer update couldn't download: "+err.Error())
-		return err
+		s.recordCheckOutcome(UpdateCheckOutcomeFailed, "a newer update couldn't download: "+cause.Error())
+		return boundaryErr
 	}
-	s.mu.Lock()
-	s.lastInstallError = err.Error()
-	s.lastInstallStage = classifyUpdateFailureStage(err)
-	s.mu.Unlock()
-	return err
+	return boundaryErr
 }
 
 // inAppNotesEndMarker splits a release body's two audiences (goal
