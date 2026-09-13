@@ -55,11 +55,19 @@ function fakeApi(overrides: Partial<MillPluginAPI> = {}): MillPluginAPI {
 
 describe('callActivationMethod', () => {
   it('routes a reused simple door onto the plugin api', async () => {
-    const api = fakeApi()
+    const links = vi.fn(async () => [{ id: 'l1', kind: 'related', source: 'a', target: 'b' }])
+    const linkKinds = vi.fn(async () => [{ id: 'related', label: 'Related' }])
+    const api = fakeApi({ links, linkKinds })
     const { frame } = fakeFrame()
     const ctx = createActivationFrameContext(frame, 'framed-probe', [], PROBE_MANIFEST)
     await expect(callActivationMethod(ctx, api, 'kinds', [])).resolves.toEqual([])
     expect(api.kinds).toHaveBeenCalled()
+    await expect(callActivationMethod(ctx, api, 'links', [{ kind: 'related' }])).resolves.toEqual([
+      { id: 'l1', kind: 'related', source: 'a', target: 'b' },
+    ])
+    expect(links).toHaveBeenCalledWith({ kind: 'related' })
+    await expect(callActivationMethod(ctx, api, 'linkKinds', [])).resolves.toEqual([{ id: 'related', label: 'Related' }])
+    expect(linkKinds).toHaveBeenCalled()
   })
 
   it('routes context.set onto the plugin api (goal 0349 S2c)', async () => {

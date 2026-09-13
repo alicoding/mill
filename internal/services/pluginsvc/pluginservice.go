@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/alicoding/mill/internal/adapters/osopen"
 	"io/fs"
@@ -37,9 +36,9 @@ import (
 // exception (docs/goals/0251) -- both ingestion chains must consult
 // them without running plugin code, so they live in Contributes.
 type Manifest struct {
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	Version        string `json:"version"`
+	ID             string `json:"id" jsonschema:"required"`
+	Name           string `json:"name" jsonschema:"required"`
+	Version        string `json:"version" jsonschema:"required"`
 	Description    string `json:"description"`
 	Author         string `json:"author"`
 	MinMillVersion string `json:"minMillVersion"`
@@ -283,8 +282,8 @@ func (p *PluginService) scanOne(folder string) PluginInfo {
 		info.Error = "manifest.json is missing or unreadable"
 		return info
 	}
-	var m Manifest
-	if err := json.Unmarshal(raw, &m); err != nil {
+	m, err := DecodeManifest(raw)
+	if err != nil {
 		info.Error = "manifest.json is not valid JSON"
 		return info
 	}

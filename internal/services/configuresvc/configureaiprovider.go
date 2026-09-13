@@ -2,16 +2,14 @@ package configuresvc
 
 import (
 	"fmt"
-	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"time"
 
+	"github.com/alicoding/mill/internal/adapters/secretaudit"
 	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/composition"
 	"github.com/alicoding/mill/internal/domain/seedorigin"
 	"github.com/alicoding/mill/internal/domain/typedfield"
-	"github.com/alicoding/mill/internal/services/dataevent"
 	"github.com/alicoding/mill/internal/services/entitystore"
-	"github.com/alicoding/mill/internal/services/seeding"
 )
 
 // aiProviderDescriptor is AIProvider's entitystore.Descriptor (goal
@@ -111,77 +109,18 @@ func (c *ConfigureService) AIProviders() []aiprovider.AIProvider {
 	return out
 }
 
-// aiProviderExistsLocked reports whether id names a real local
-// AIProvider -- callers must hold c.mu. ImportAIProvider's own
-// create-vs-update check (configureservice_export.go).
-func (c *ConfigureService) aiProviderExistsLocked(id string) bool {
-	for _, p := range c.aiProviders {
-		if p.ID == id {
-			return true
-		}
-	}
-	return false
-}
-
 func (c *ConfigureService) CreateAIProvider(label string, kind aiprovider.Kind, baseURL, model, keyRef string) (aiprovider.AIProvider, error) {
-	return c.createAIProviderWithID(seeding.NewSlugID(label, "aiprovider"), label, kind, baseURL, model, keyRef)
-}
-
-// createAIProviderWithID is CreateAIProvider's own logic, parameterized
-// on the new provider's id -- the seam ImportAIProvider uses to
-// preserve a caller-supplied id (ADR-0036 decision 3).
-func (c *ConfigureService) createAIProviderWithID(id, label string, kind aiprovider.Kind, baseURL, model, keyRef string) (aiprovider.AIProvider, error) {
-	now := time.Now()
-	p := aiprovider.AIProvider{
-		ID: id, Label: label, Kind: kind, BaseURL: baseURL, Model: model, KeyRef: keyRef,
-		CreatedAt: now, UpdatedAt: now,
-	}
-	if err := aiprovider.Validate(p); err != nil {
-		return aiprovider.AIProvider{}, err
-	}
-
-	if err := entitystore.Insert(&c.mu, &c.aiProviders, c.persistAIProviders, aiProviderDescriptor, p); err != nil {
-		return aiprovider.AIProvider{}, err
-	}
-	InvalidateAIProviderAvailability(c, p.ID)
-	dataevent.Emit("aiprovider", p.ID) // goal 0017: live-sync every open surface
-	return p, nil
+	return c.createAIProviderCoordinated(label, kind, baseURL, model, keyRef)
 }
 
 func (c *ConfigureService) UpdateAIProvider(id, label string, kind aiprovider.Kind, baseURL, model, keyRef string) (aiprovider.AIProvider, error) {
-	p := aiprovider.AIProvider{ID: id, Label: label, Kind: kind, BaseURL: baseURL, Model: model, KeyRef: keyRef}
-	if err := aiprovider.Validate(p); err != nil {
-		return aiprovider.AIProvider{}, err
-	}
-
-	updated, err := entitystore.Update(&c.mu, &c.aiProviders, c.persistAIProviders, aiProviderDescriptor, id, func(existing aiprovider.AIProvider) (aiprovider.AIProvider, error) {
-		p.BuiltIn = existing.BuiltIn
-		p.CreatedAt = existing.CreatedAt
-		p.UpdatedAt = time.Now()
-		p.Seed = existing.Seed.Touch() // docs/goals/0037 item 2
-		return p, nil
-	})
-	if err != nil {
-		return aiprovider.AIProvider{}, err
-	}
-	InvalidateAIProviderAvailability(c, updated.ID)
-	dataevent.Emit("aiprovider", updated.ID) // goal 0017: live-sync every open surface
-	return updated, nil
+	return c.updateAIProviderCoordinated(id, label, kind, baseURL, model, keyRef)
 }
 
-// DeleteAIProvider also removes any keychain secret for id -- best-
-// effort (a delete on an id with no stored secret is a harmless no-op-
-// shaped error, not surfaced), same reasoning DeleteHTTPRequest's own
-// c.credentials.Delete call already documents.
+// DeleteAIProvider removes a provider after authored-reference and active-run
+// safety checks. Its key reference names separately managed secret material.
 func (c *ConfigureService) DeleteAIProvider(id string) error {
-	announce := func(id string) { dataevent.Emit("aiprovider", id) }
-	err := deleteEntity(c, "aiprovider", &c.aiProviders, c.persistAIProviders, aiProviderDescriptor,
-		func(id string) error { return c.refIntegrityError("aiprovider", "AI provider", id) },
-		func(p aiprovider.AIProvider) string { return p.Label }, announce, id)
-	if err == nil {
-		InvalidateAIProviderAvailability(c, id)
-	}
-	return err
+	return c.deleteAIProviderCoordinated(id)
 }
 
 // --- persistence ---

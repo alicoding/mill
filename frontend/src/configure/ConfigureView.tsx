@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Heading } from '@primer/react'
 import PageContainer from '../shared/PageContainer'
-import { useIsNarrowViewport } from '../shared/useNarrowViewport'
+import { useHasSidePane } from '../shared/useNarrowViewport'
 import { CONFIGURE_KINDS, resolveConfigureKind, type ConfigureKindID } from '../shared/configureKinds'
 import { ConfigureRequests } from './ConfigureRequests'
 import { ConfigureClientCerts } from './ConfigureClientCerts'
@@ -55,7 +55,7 @@ const PANES: Record<ConfigureKindID, () => ReactNode> = {
 
 function ConfigureView({ initialTab }: { initialTab?: string }) {
   const { t } = useTranslation('configure')
-  const isNarrowViewport = useIsNarrowViewport()
+  const isNarrowViewport = !useHasSidePane()
 
   // ⌘Z/⇧⌘Z here walk the app's ONE undo journal (ADR-0044, goal 0352):
   // a List cell/row/column edit and any Configure entity delete are

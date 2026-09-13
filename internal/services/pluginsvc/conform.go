@@ -22,12 +22,19 @@ import (
 // one check (an author's machine has no Mill version to compare).
 // Returns the problems found, empty when the folder conforms.
 func ConformDir(dir, appVersion string) []string {
-	var problems []string
-	folder := filepath.Base(filepath.Clean(dir))
 	raw, err := os.ReadFile(filepath.Join(dir, "manifest.json")) // #nosec G304 -- the caller's own plugin folder
 	if err != nil {
 		return []string{"manifest.json is missing or unreadable"}
 	}
+	return ConformDirWithManifest(dir, raw, appVersion)
+}
+
+// ConformDirWithManifest checks a prospective manifest against the folder it
+// would govern, without writing it first. It shares every loader, standard and
+// cross-file rule with ConformDir.
+func ConformDirWithManifest(dir string, raw []byte, appVersion string) []string {
+	var problems []string
+	folder := filepath.Base(filepath.Clean(dir))
 	m, parseProblem := parseManifest(raw)
 	if parseProblem != "" {
 		return []string{parseProblem}
@@ -118,9 +125,19 @@ func entryProblem(root, path, rel string, d fs.DirEntry) (problem string, skipDi
 }
 
 func parseManifest(raw []byte) (Manifest, string) {
-	var m Manifest
-	if err := json.Unmarshal(raw, &m); err != nil {
+	m, err := DecodeManifest(raw)
+	if err != nil {
 		return m, "manifest.json is not valid JSON"
 	}
 	return m, ""
+}
+
+// DecodeManifest applies the strict JSON syntax contract shared by the plugin
+// loader, conformance checks, and source migrations.
+func DecodeManifest(raw []byte) (Manifest, error) {
+	var manifest Manifest
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		return Manifest{}, err
+	}
+	return manifest, nil
 }

@@ -111,6 +111,15 @@ export function AddListRowAt(listID: string, values: { [_ in string]?: string } 
 }
 
 /**
+ * ApplyAIProviderImport compares the preview revision and performs the import
+ * within the ordinary mutation coordinator. The preview's impact is never
+ * reused as authorization.
+ */
+export function ApplyAIProviderImport(jsonData: string, expectedRevision: string): $CancellablePromise<aiprovider$0.AIProvider> {
+    return $Call.ByID(4128193150, jsonData, expectedRevision);
+}
+
+/**
  * ApplyListRow implements composition.go's applyListRowFn seam
  * (docs/goals/0070's write path): creates a new Active row when no
  * existing row's keyColumn value matches the resolved key, otherwise
@@ -234,10 +243,8 @@ export function DeclaredStepTypes(): $CancellablePromise<declaredsteptype$0.Decl
 }
 
 /**
- * DeleteAIProvider also removes any keychain secret for id -- best-
- * effort (a delete on an id with no stored secret is a harmless no-op-
- * shaped error, not surfaced), same reasoning DeleteHTTPRequest's own
- * c.credentials.Delete call already documents.
+ * DeleteAIProvider removes a provider after authored-reference and active-run
+ * safety checks. Its key reference names separately managed secret material.
  */
 export function DeleteAIProvider(id: string): $CancellablePromise<void> {
     return $Call.ByID(2537752540, id);
@@ -396,6 +403,15 @@ export function ExportSecretSource(id: string): $CancellablePromise<string> {
  */
 export function GetAIProviderAvailability(id: string): $CancellablePromise<aiprovider$0.Report> {
     return $Call.ByID(1518058696, id);
+}
+
+/**
+ * GetAIProviderChangeImpact is a passive read. The revision reader executes
+ * after Execution has acquired its genesis lock, so the returned revision and
+ * run evidence describe one ordered snapshot.
+ */
+export function GetAIProviderChangeImpact(id: string): $CancellablePromise<aiprovider$0.ChangeImpact> {
+    return $Call.ByID(3890194361, id);
 }
 
 /**
@@ -596,6 +612,15 @@ export function MatchClientCertificate(rawURL: string): $CancellablePromise<[$mo
  */
 export function ParseXlsxFile(base64Data: string): $CancellablePromise<$models.ParsedXlsxFile> {
     return $Call.ByID(552870390, base64Data);
+}
+
+/**
+ * PreviewAIProviderImport validates an import and returns passive, credential-
+ * free review data. It neither resolves the key reference nor contacts the
+ * configured endpoint.
+ */
+export function PreviewAIProviderImport(jsonData: string): $CancellablePromise<aiprovider$0.ImportPreview> {
+    return $Call.ByID(3888530286, jsonData);
 }
 
 /**

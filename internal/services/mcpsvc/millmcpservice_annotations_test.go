@@ -38,6 +38,7 @@ var readOnlyToolNames = map[string]bool{
 	"list_step_types": true, "list_node_types": true, "list_runs": true, "get_run": true,
 	"validate_workflow": true, "list_plugins": true,
 	"export_workflow": true, "export_request": true, "export_list": true, "export_mcpserver": true,
+	"export_aiprovider": true, "get_aiprovider_change_impact": true, "preview_aiprovider_import": true,
 	"secrets_list_references":      true,
 	"get_ai_provider_availability": true,
 }
@@ -75,6 +76,8 @@ var destructiveToolNames = map[string]bool{
 	"run_workflow": true, "run_workflow_stepped": true, "step_run": true, "resume_run": true, "stop_run": true,
 	"test_request":            true,
 	"start_ai_provider_check": true,
+	"import_aiprovider":       true, "apply_aiprovider_import": true,
+	"restore_ai_provider_feature_sample": true,
 }
 
 func TestBuiltInTools_DestructiveToolsAreMarkedDestructive(t *testing.T) {
@@ -103,7 +106,8 @@ func TestBuiltInTools_DestructiveToolsAreMarkedDestructive(t *testing.T) {
 // repeated call (same arguments) must leave the same end state.
 var idempotentEditToolNames = map[string]bool{
 	"atlas_diagram_edit_cells": true, "atlas_sheet_edit_cells": true, "atlas_xlsx_edit_cells": true,
-	"cancel_ai_provider_check": true,
+	"cancel_ai_provider_check":           true,
+	"prepare_ai_provider_feature_sample": true, "restore_ai_provider_feature_sample": true,
 }
 
 // nonIdempotentAppendToolNames names tools that add a new row/cell

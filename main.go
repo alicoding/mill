@@ -18,8 +18,9 @@ import (
 	"github.com/alicoding/mill/internal/adapters/launchatlogin"
 	"github.com/alicoding/mill/internal/adapters/settings"
 	"github.com/alicoding/mill/internal/adapters/windowing"
+	"github.com/alicoding/mill/internal/domain/aiprovider"
 	"github.com/alicoding/mill/internal/domain/usererror"
-	"github.com/alicoding/mill/internal/pluginscaffold"
+	"github.com/alicoding/mill/internal/plugincli"
 	"github.com/alicoding/mill/internal/services/agentloopsvc"
 	"github.com/alicoding/mill/internal/services/atlassvc"
 	"github.com/alicoding/mill/internal/services/backupsvc"
@@ -111,11 +112,10 @@ func main() {
 	if settingsPath == "" {
 		settingsPath = defaultSettingsPath
 	}
-	// `mill plugin new <name>` (goal 0319): the scaffold is a subcommand
-	// of this one binary, routed here before any app state is opened so
-	// it never touches the settings store it only names.
+	// Plugin authoring commands are routed before any app state opens, so
+	// scaffolding and source-manifest migration never touch the settings store.
 	if len(os.Args) > 1 && os.Args[1] == "plugin" {
-		os.Exit(pluginscaffold.Run(os.Args[2:], pluginsvc.ResolveDir(settingsPath), millVersion, os.Stdout, os.Stderr))
+		os.Exit(plugincli.Run(os.Args[2:], pluginsvc.ResolveDir(settingsPath), millVersion, os.Stdout, os.Stderr))
 	}
 	executionDatabaseURL := os.Getenv("MILL_EXECUTION_DATABASE_URL")
 	if executionDatabaseURL == "" {
@@ -218,43 +218,34 @@ func main() {
 	// docs/goals/0240 S1: the coding loop's Confirm-screen preview --
 	// read-only over guardrailService.Rules(). Its ExecutionService
 	// dependency (goal 0240 S2, RunCommandBlock's own doc comment) is
-	// late-bound below via SetExecutionService, same shape
-	// TriggerService.SetExecutionService already uses just after this,
-	// since ExecutionService itself isn't constructed yet at this point.
+	// wired after the durable runtime is prepared below.
 	codeLoopService := codeloopsvc.NewCodeLoopService(guardrailService)
-	executionService, err := executionsvc.NewExecutionService(executionDatabaseURL, compositionService, guardrailService)
+	executionService, err := executionsvc.PrepareExecutionServiceWithOwnership(
+		executionDatabaseURL, dataOwner.ExecutionOwnership(), compositionService, guardrailService,
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
+	triggerService.SetExecutionService(executionService)
+	wiring.WireSystemEventNotifications(executionService, triggerService, notificationService)
+	wiring.WireAtlasWorkflowRunners(executionService, atlasService)
+	executionService.SetVersion(millVersion)
+	executionService.SetEnvironmentLabelLookup(configureService.EnvironmentLabel)
+	configuresvc.SetAIProviderMutationCoordinator(
+		configureService,
+		func(mutate func(assertUnused func(id string) error) error) error {
+			return executionsvc.WithAIProviderMutations(executionService, mutate)
+		},
+		func(id string, revision func() string) aiprovider.ChangeImpact {
+			return executionsvc.AIProviderChangeImpact(executionService, id, revision)
+		},
+	)
+	wiring.WireAIProviderSamples(compositionService, configureService, executionService)
 	codeLoopService.SetExecutionService(executionService)
 	wiring.WireCodingLoopSecrets(codeLoopService, secretService)
 	wiring.WireVaultWaits(executionService, secretService)                                 // goal 0360 S2
 	wiring.WireCodingLoopEnvPreview(codeLoopService, compositionService, configureService) // docs/goals/0240 S4
-	// Single execution path (docs/adr/0008): a headless trigger fire now
-	// runs through the same durable ExecutionService.RunWorkflow every
-	// other entrypoint uses, tagged RunKindTriggered -- constructed after
-	// TriggerService (which needs comp at construction time for Sync's
-	// own workflow lookups) since ExecutionService itself depends on
-	// compositionService, so this can't be a constructor parameter
-	// without a cycle; same late-bound-setter shape as SetReservedCombo
-	// below.
-	triggerService.SetExecutionService(executionService)
-	// docs/adr/0010: a child-workflow node's real DBOS parent/child
-	// invocation, wired the same late-bound way for the same reason.
-	executionService.WireChildWorkflowRunner()
-	// docs/adr/0035's system-event dispatch seam, plus the notification
-	// spine's second consumer of it (docs/goals/0171-notification-spine.md).
-	wiring.WireSystemEventNotifications(executionService, triggerService, notificationService)
-	// goal 0052 slice 3: the version a run receipt's Build field stamps.
-	executionService.SetVersion(millVersion)
-	// goal 0306 S5: a run summary and receipt name the Environment the
-	// run executed in; the labels live in Configure.
-	executionService.SetEnvironmentLabelLookup(configureService.EnvironmentLabel)
-
-	// atlassvc's own run/action/completion seams onto executionService --
-	// composition-root code split out of this file at the 500-line limit.
-	wiring.WireAtlasWorkflowRunners(executionService, atlasService)
-	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange) // goal 0066
+	atlasService.WireCompositionSeams(triggerService.DispatchAtlasCardChange)              // goal 0066
 	// Cross-service seam adapters (recognition, List projection) live in the wiring package -- composition-root code split out of this file at the 500-line limit.
 	wiring.WireAtlasProjections(atlasService, configureService, compositionService)
 	wiring.WireValidationSeams(configureService)
@@ -298,6 +289,12 @@ func main() {
 	// SettingsService exists, same late-bound-setter shape as
 	// SetReservedCombo just above.
 	executionService.SetMinutesSavedLookup(settingsService.GetWorkflowMinutesSaved)
+	if err := executionsvc.LaunchExecutionService(executionService); err != nil {
+		log.Fatal(err)
+	}
+	if err := configuresvc.ReconcileBuiltInAIProviders(configureService); err != nil {
+		logger.Error("reconcile built-in AI providers", "error", err)
+	}
 
 	// docs/SPEC.md §11 (task #12): Mill as MCP server, exposing its own
 	// workflows/Configure data as read-only Resources. Bind-address

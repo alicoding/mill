@@ -7,6 +7,11 @@ a dependency your plugin loads at runtime.
 The version tracks Mill's own version, the same number your manifest's
 `minMillVersion` names.
 
+`manifest.schema.json` is the generated JSON Schema 2020-12 description of
+Mill's manifest structure. Point an editor or manifest-checking tool at it for
+completion and structural errors. Mill's loader and conformance command remain
+the authority for semantic and cross-file rules.
+
 ## Install
 
 From the repository, pinned to a tag or a branch:

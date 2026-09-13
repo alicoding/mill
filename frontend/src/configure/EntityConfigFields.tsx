@@ -17,6 +17,9 @@ export interface EntityConfigFieldsProps {
   // current value (e.g. AI Provider's Base URL caption following the
   // selected Kind), which a static Field can't express.
   captionOverrides?: Record<string, React.ReactNode>
+  // Localized display labels keyed by stable descriptor field Key. Other
+  // consumers keep their descriptor label when no override is supplied.
+  labelOverrides?: Record<string, React.ReactNode>
   // Per-option display text for a TypeOptions field, keyed by field Key
   // then by the option's own wire value -- typedfield.Field's Options
   // carry only the wire value, no separate display label (unlike
@@ -36,7 +39,7 @@ export interface EntityConfigFieldsProps {
 // NodeConfigFields' defaultValue+onBlur), matching how a Configure
 // entity form already behaves: every keystroke updates its Save-button-
 // gated draft immediately, not on blur.
-export function EntityConfigFields({ fields, values, onChange, placeholders, captionOverrides, optionLabels, testIds }: EntityConfigFieldsProps) {
+export function EntityConfigFields({ fields, values, onChange, placeholders, captionOverrides, labelOverrides, optionLabels, testIds }: EntityConfigFieldsProps) {
   return (
     <>
       {fields.map((field) => {
@@ -45,7 +48,7 @@ export function EntityConfigFields({ fields, values, onChange, placeholders, cap
         const value = values[field.Key] ?? ''
         return (
           <FormControl key={field.Key}>
-            <FormControl.Label>{field.Label}</FormControl.Label>
+            <FormControl.Label>{labelOverrides?.[field.Key] ?? field.Label}</FormControl.Label>
             {caption && <FormControl.Caption>{caption}</FormControl.Caption>}
             {field.RefKind ? (
               <EntityRefField refKind={field.RefKind} value={value} onChange={(id) => onChange(field.Key, id)} />

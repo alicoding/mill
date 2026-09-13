@@ -3,21 +3,30 @@
 
 export {
     AuthenticationStatus,
+    ChangeBlockerCode,
     CheckStatus,
     EvidenceSource,
     Freshness,
+    ImportMode,
     InspectionStatus,
     Kind,
     Operation,
     PermissionStatus,
+    SampleOutcome,
+    SampleStatus,
     Support,
     TransportStatus
 } from "./models.js";
 
 export type {
     AIProvider,
+    ChangeImpact,
+    ImportPreview,
+    ImportProjection,
     ModelChoice,
     OperationFeature,
     PermissionResult,
-    Report
+    Report,
+    SampleEvidence,
+    SamplePreview
 } from "./models.js";

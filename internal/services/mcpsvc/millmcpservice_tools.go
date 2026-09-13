@@ -127,6 +127,8 @@ func (m *MillMCPService) registerTools() {
 	m.registerPluginTools()
 	m.registerSecretsTools()
 	m.registerAIProviderAvailabilityTools()
+	m.registerAIProviderTools()
+	m.registerAIProviderSampleTools(m.comp)
 	m.registerContentContracts()
 
 	mcp.AddTool(m.server, &mcp.Tool{

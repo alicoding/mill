@@ -9,6 +9,33 @@ import (
 	"time"
 )
 
+func TestPrepareDefersWorkflowGenesisUntilLaunch(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "prepared.db")
+	workflow := func(_ Context, input string) (string, error) { return input, nil }
+	runtime, err := Prepare("mill-prepare-test", "1", "sqlite:"+dbPath, func(ctx Context) {
+		RegisterWorkflow(ctx, workflow)
+	})
+	if err != nil {
+		t.Fatalf("Prepare: %v", err)
+	}
+	t.Cleanup(func() { _ = Shutdown(runtime, 5*time.Second) })
+
+	if _, err := RunWorkflow(runtime, workflow, "before launch"); err == nil {
+		t.Fatal("RunWorkflow before Launch returned nil error")
+	}
+	if err := Launch(runtime); err != nil {
+		t.Fatalf("Launch: %v", err)
+	}
+	handle, err := RunWorkflow(runtime, workflow, "after launch")
+	if err != nil {
+		t.Fatalf("RunWorkflow after Launch: %v", err)
+	}
+	result, err := handle.GetResult()
+	if err != nil || result != "after launch" {
+		t.Fatalf("GetResult = %q, %v; want after launch", result, err)
+	}
+}
+
 // Real spike from docs/adr/0004, now a permanent regression test per
 // .claude/rules/testing.md: a workflow's first step must not re-execute
 // on resume once it's already been checkpointed -- the exact failure

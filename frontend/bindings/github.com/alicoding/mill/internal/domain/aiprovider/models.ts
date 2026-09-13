@@ -3,6 +3,9 @@
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as reference$0 from "../reference/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as seedorigin$0 from "../seedorigin/models.js";
 
 /**
@@ -66,6 +69,32 @@ export enum AuthenticationStatus {
     AuthenticationRejected = "rejected",
 };
 
+export enum ChangeBlockerCode {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    ChangeBlockerProviderInUse = "provider-in-use",
+    ChangeBlockerProviderUseIndeterminate = "provider-use-indeterminate",
+    ChangeBlockerProviderOwnershipUnestablished = "provider-ownership-unestablished",
+    ChangeBlockerProviderCheckUnavailable = "provider-check-unavailable",
+};
+
+/**
+ * ChangeImpact reports execution evidence separately from authored consumers.
+ * RunIDs and WorkflowIDs contain only confirmed provider references; a safety
+ * check that cannot prove absence is represented by its blocker code.
+ */
+export interface ChangeImpact {
+    "providerId": string;
+    "configRevision": string;
+    "runIDs": string[] | null;
+    "workflowIDs": string[] | null;
+    "mutationAllowed": boolean;
+    "blockerCodes": ChangeBlockerCode[] | null;
+}
+
 export enum CheckStatus {
     /**
      * The Go zero value for the underlying type of the enum.
@@ -101,6 +130,41 @@ export enum Freshness {
     FreshnessFresh = "fresh",
     FreshnessStale = "stale",
 };
+
+export enum ImportMode {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    ImportModeCreate = "create",
+    ImportModeReplace = "replace",
+};
+
+/**
+ * ImportPreview is a compare-and-apply token plus the information needed to
+ * review a provider import without resolving a secret or contacting its host.
+ */
+export interface ImportPreview {
+    "providerId": string;
+    "mode": ImportMode;
+    "expectedRevision": string;
+    "current"?: ImportProjection | null;
+    "proposed": ImportProjection;
+    "references": reference$0.Refs;
+    "impact": ChangeImpact;
+}
+
+/**
+ * ImportProjection is the credential-free subset shown before an import.
+ */
+export interface ImportProjection {
+    "label": string;
+    "kind": Kind;
+    "endpoint": string;
+    "model": string;
+    "keyRef": string;
+}
 
 export enum InspectionStatus {
     /**
@@ -158,6 +222,8 @@ export interface OperationFeature {
     "evidence": EvidenceSource;
     "wireOperation": string;
     "reasonCodes": string[] | null;
+    "lastSampleAttempt"?: SampleEvidence | null;
+    "lastSampleSuccess"?: SampleEvidence | null;
 }
 
 export interface PermissionResult {
@@ -205,6 +271,59 @@ export interface Report {
     "freshness": Freshness;
     "lifecycle": CheckStatus;
 }
+
+/**
+ * SampleEvidence is operation-scoped evidence produced by an ordinary sample
+ * run. The containing OperationFeature supplies the operation identity.
+ */
+export interface SampleEvidence {
+    "runID": string;
+    "sampleVersion": string;
+    "schemaDigest": string;
+    "configRevision": string;
+    "checkedAt": string;
+    "outcome": SampleOutcome;
+    "freshness": Freshness;
+    "authentication": AuthenticationStatus;
+}
+
+export enum SampleOutcome {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    SampleOutcomeSucceeded = "succeeded",
+    SampleOutcomeFailed = "failed",
+    SampleOutcomeCancelled = "cancelled",
+};
+
+/**
+ * SamplePreview describes an ordinary, visible workflow prepared for one
+ * provider operation. It contains configuration metadata only, never a key or
+ * raw provider response.
+ */
+export interface SamplePreview {
+    "workflowID": string;
+    "operation": Operation;
+    "sampleVersion": string;
+    "status": SampleStatus;
+    "syntheticInput": string;
+    "safeDestination": string;
+    "model": string;
+    "configRevision": string;
+}
+
+export enum SampleStatus {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    SampleStatusCreated = "created",
+    SampleStatusExisting = "existing",
+    SampleStatusModified = "modified",
+};
 
 export enum Support {
     /**
