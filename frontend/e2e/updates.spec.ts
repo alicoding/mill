@@ -137,14 +137,15 @@ test('Release-channel build offers to download, and a failed install surfaces th
     // longer swallows the rejection into console.error -- runCommand
     // (shared/commands.ts) catches it and posts the SAME failure a
     // second time, as the footer's own error pill, independent of this
-    // page's own local card state above.
+    // page's own local card state above. The typed updater boundary keeps
+    // that command notice specific to the failed download.
     // goal 0339: the pill carries the command's label and ONE sentence.
     // The Go `%w` chain behind the failure ("github: download: no
     // release asset in test mode") reaches the log and the card's own
     // copyable diagnosis above, never the pill.
     const errorPill = page.locator('[data-notice-level="error"]').filter({ hasText: 'Download the update and install' })
     await expect(errorPill).toBeVisible()
-    await expect(errorPill).toHaveText('Download the update and install: Something went wrong. Try again.×')
+    await expect(errorPill).toHaveText('Download the update and install: The update could not be downloaded.×')
     // The whole sentence is visible, not clipped by the pill's width.
     const clipped = await errorPill.getByTestId('notice-text').evaluate((el) => el.scrollWidth > el.clientWidth)
     expect(clipped).toBe(false)
