@@ -19,7 +19,7 @@ import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
 import { background } from '../shared/background'
 import { useBuildInfoStore } from '../shared/buildInfoStore'
-import { automaticUpdatesCaptionKey, buildOriginKey, installFailureKey } from './updatesDisplay'
+import { automaticUpdatesCaptionKey, buildOriginKey, installFailureKey, isUpdateFailure } from './updatesDisplay'
 
 // Keeps a rendered error to one humane line (goal 0127's rider: GitHub's
 // own HTML error page, base64 image included, once rendered whole here)
@@ -65,6 +65,27 @@ function LastCheckStatus({ outcome, text, error }: { outcome: LastCheckOutcome; 
     <Text size="small" className={styles.muted} data-testid="last-check-status">
       {text}
     </Text>
+  )
+}
+
+export function UpdateFailureStatus({ stage, error, t }: { stage: string; error: string; t: TFunc }) {
+  return (
+    <>
+      <Stack direction="horizontal" gap="condensed" align="center">
+        <Text size="small" className={styles.error} data-testid="update-install-error">
+          {t(installFailureKey(stage))}
+        </Text>
+        <CopyDiagnosisButton error={error} testId="update-error-copy" />
+      </Stack>
+      <Stack direction="horizontal" gap="condensed" align="center">
+        <Text size="small" className={styles.muted}>
+          {t('settings.updates.installFallbackHint')}
+        </Text>
+        <Button size="small" onClick={() => openExternalUrl(RELEASES_URL)} data-testid="open-releases-page">
+          {t('settings.updates.openReleasesButton')}
+        </Button>
+      </Stack>
+    </>
   )
 }
 
@@ -284,12 +305,10 @@ function UpdatesSection() {
   const lastCheckRelative = lastCheckAt ? formatUpdated(lastCheckAt) : ''
   const lastCheckDisplay = lastCheckText(lastCheckOutcome, lastCheckRelative, lastCheckError, t)
   const primary = primaryActionFor(state, canInstall, updateResult?.version ?? '', checkForUpdates, t)
-  // A non-supersede install failure is the only path that sets
-  // stateReason while a version is still known locally (see
-  // failInstall's own comment, settingsservice_updates.go) -- every
-  // other error reading (a plain failed check) leaves updateResult
-  // null, so this can't misfire onto the check-only failure line below.
-  const installFailed = state === UpdateState.UpdateStateError && updateResult !== null && canInstall
+  // The backend supplies a stage only for DownloadAndInstallUpdate;
+  // check failures leave it empty. That distinction survives a fresh
+  // mount after a background download failed without local updateResult.
+  const installFailed = isUpdateFailure(state, stateReasonStage)
 
   return (
     <Stack gap="condensed">
@@ -419,13 +438,17 @@ function UpdatesSection() {
 
       <LastCheckStatus outcome={lastCheckOutcome} text={lastCheckDisplay} error={lastCheckError} />
 
-      {state === UpdateState.UpdateStateError && updateResult === null && (
+      {state === UpdateState.UpdateStateError && stateReasonStage === '' && (
         <Stack direction="horizontal" gap="condensed" align="center">
           <Text size="small" className={styles.error} data-testid="update-check-error">
             {t('settings.updates.checkFailed', { error: truncate(stateReason, 200) })}
           </Text>
           <CopyDiagnosisButton error={stateReason} testId="update-check-error-copy" />
         </Stack>
+      )}
+
+      {installFailed && updateResult === null && (
+        <UpdateFailureStatus stage={stateReasonStage} error={stateReason} t={t} />
       )}
 
       {updateResult && (
@@ -448,22 +471,7 @@ function UpdatesSection() {
             )}
 
             {installFailed && (
-              <>
-                <Stack direction="horizontal" gap="condensed" align="center">
-                  <Text size="small" className={styles.error}>
-                    {t(installFailureKey(stateReasonStage))}
-                  </Text>
-                  <CopyDiagnosisButton error={stateReason} testId="update-error-copy" />
-                </Stack>
-                <Stack direction="horizontal" gap="condensed" align="center">
-                  <Text size="small" className={styles.muted}>
-                    {t('settings.updates.installFallbackHint')}
-                  </Text>
-                  <Button size="small" onClick={() => openExternalUrl(RELEASES_URL)} data-testid="open-releases-page">
-                    {t('settings.updates.openReleasesButton')}
-                  </Button>
-                </Stack>
-              </>
+              <UpdateFailureStatus stage={stateReasonStage} error={stateReason} t={t} />
             )}
           </Stack>
         </div>

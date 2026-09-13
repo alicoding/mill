@@ -200,7 +200,10 @@ var downloadStageMarkers = []string{
 // completed to the swap the story is the same: the update didn't apply.
 var installStageMarkers = []string{
 	"updater: digest",
+	"updater: no digest available",
+	"updater: unknown digest algorithm",
 	"updater: signature",
+	"updater: unsupported signature algorithm",
 	"updater: ed25519",
 	"updater: ecdsa",
 	"updater: extract",

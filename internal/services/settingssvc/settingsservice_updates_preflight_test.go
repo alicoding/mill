@@ -178,3 +178,38 @@ func TestDownloadAndInstallUpdate_ProviderFailureReturnsDownloadCode(t *testing.
 		t.Fatalf("notice = %+v, want error stage download", n)
 	}
 }
+
+func TestDownloadAndInstallUpdate_VerificationFailureReturnsInstallCode(t *testing.T) {
+	tests := []struct {
+		name  string
+		cause string
+		alter func(*updater.Release)
+	}{
+		{"unknown digest algorithm", "unknown digest algorithm", func(rel *updater.Release) {
+			rel.Verification.DigestAlgo = "sha999"
+		}},
+		{"incomplete signature metadata", "signatureAlgo missing", func(rel *updater.Release) {
+			rel.Verification.Signature = []byte("signature")
+		}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			body := []byte("mill-artifact")
+			rel := releaseFor("0.4.0-beta.900", body)
+			tc.alter(rel)
+			provider := &fakeUpdaterProvider{rel: rel, body: body}
+			s := newTestSettingsService(t)
+			s.SetUpdater(updaterForPreflightTest(t, provider))
+			s.SetUpdateChannel("beta")
+			s.SetBackupRunner(func(int) (string, error) { return "/backups/ok", nil })
+			if _, err := s.CheckForUpdates(); err != nil {
+				t.Fatal(err)
+			}
+			err := s.DownloadAndInstallUpdate()
+			assertUpdateUserError(t, err, updateInstallFailedCode, updateInstallFailedMessage, tc.cause)
+			if n := s.UpdateNoticeState(); n.State != UpdateStateError || n.StateReasonStage != string(UpdateFailureStageInstall) {
+				t.Fatalf("notice = %+v, want error stage install", n)
+			}
+		})
+	}
+}

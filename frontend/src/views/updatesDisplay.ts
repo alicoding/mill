@@ -1,5 +1,9 @@
 import type { BuildInfo } from '../shared/bindings'
 
+export function isUpdateFailure(state: string, stage: string): boolean {
+  return state === 'error' && stage !== ''
+}
+
 export function installFailureKey(stage: string): string {
   if (stage === 'backup') return 'settings.updates.installFailedBackup'
   if (stage === 'download') return 'settings.updates.installFailedDownload'

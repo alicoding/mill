@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import views from '../locales/en/views.json'
-import { installFailureKey } from './updatesDisplay'
+import { installFailureKey, isUpdateFailure } from './updatesDisplay'
+
+describe('isUpdateFailure', () => {
+  it('recognizes a background install failure without a local check result', () => {
+    expect(isUpdateFailure('error', 'backup')).toBe(true)
+    expect(isUpdateFailure('error', '')).toBe(false)
+  })
+})
 
 describe('installFailureKey', () => {
   it('projects preflight backup failures to the dedicated Updates copy', () => {
