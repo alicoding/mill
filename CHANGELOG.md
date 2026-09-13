@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.135.3-beta.3206](https://github.com/millhq/mill/compare/v0.135.2-beta.3206...v0.135.3-beta.3206) (2026-09-13)
+
+
+### Bug Fixes
+
+* surface updater preflight failures ([#918](https://github.com/millhq/mill/issues/918)) ([68b5859](https://github.com/millhq/mill/commit/68b58598d1aaa08785d60dae6070cb82b7d88ee1))
+
 ## [0.5.0](https://github.com/alicoding/mill/compare/v0.4.0...v0.5.0) (2026-08-22)
 
 
