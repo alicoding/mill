@@ -44,7 +44,7 @@ func TestListPlugins_ConfigurationSettingsAlias(t *testing.T) {
 	writePlugin(t, root, "uses-settings", `{"id":"uses-settings","name":"Uses settings","version":"1.0.0","contributes":{"settings":[{"key":"apiKey","type":"string","label":"API key","description":"d","default":"x"}]}}`, nil)
 	writePlugin(t, root, "uses-both", `{"id":"uses-both","name":"Uses both","version":"1.0.0","contributes":{"settings":[{"key":"apiKey","type":"string","label":"API key","description":"d","default":"x"}],"configuration":[{"key":"apiKey","type":"string","label":"API key","description":"d","default":"x"}]}}`, nil)
 
-	svc := New(root, nil, "")
+	svc := newTestPluginService(t, root, nil, "")
 	infos, err := svc.ListPlugins()
 	if err != nil {
 		t.Fatal(err)
@@ -92,7 +92,7 @@ func TestListPlugins_MenusLandInTheRightSeat(t *testing.T) {
 	root := t.TempDir()
 	writePlugin(t, root, "menu-demo", `{"id":"menu-demo","name":"Menu demo","version":"1.0.0","contributes":{"commands":[{"id":"menu-demo.run","label":"Run"}],"menus":{"editor/context":[{"command":"menu-demo.run"}],"some/unknown/id":[{"command":"menu-demo.run"}]}}}`, nil)
 
-	svc := New(root, nil, "")
+	svc := newTestPluginService(t, root, nil, "")
 	infos, err := svc.ListPlugins()
 	if err != nil {
 		t.Fatal(err)

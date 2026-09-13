@@ -9,7 +9,7 @@ func TestCaptures_ListDeclaredOnesForRunnablePlugins(t *testing.T) {
 	root := t.TempDir()
 	writePlugin(t, root, "cap", `{"id":"cap","name":"Capturer","version":"1","contributes":{"captures":[{"id":"quick","label":"Quick thing","description":"One line."}]}}`, nil)
 	writePlugin(t, root, "bad", `{"id":"bad","name":"B","version":"1","contributes":{"captures":[{"id":"Bad Id","label":"x"}]}}`, nil)
-	p := New(root, nil, "")
+	p := newTestPluginService(t, root, nil, "")
 	got := p.Captures()
 	if len(got) != 1 || got[0].PluginID != "cap" || got[0].ID != "quick" || got[0].Label != "Quick thing" || got[0].PluginName != "Capturer" {
 		t.Fatalf("Captures = %+v", got)

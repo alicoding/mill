@@ -131,7 +131,7 @@ func TestPreviewAndInstallRefusePathPackageSymlinkEscape(t *testing.T) {
 	if _, err := svc.PreviewInstall("fx", "fx-notes"); err == nil {
 		t.Fatal("PreviewInstall read a package outside the allowed root")
 	}
-	if _, err := svc.InstallFromMarketplace("fx", "fx-notes"); err == nil {
+	if _, err := installMarketplaceForTest(t, svc, "fx", "fx-notes"); err == nil {
 		t.Fatal("InstallFromMarketplace copied a package outside the allowed root")
 	}
 	if attempts != 2 {

@@ -55,7 +55,9 @@ type SettingsService struct {
 	store settings.Store
 	// pluginHasher is the plugin lock's hash source
 	// (settingsservice_pluginlock.go), nil until wired.
-	pluginHasher PluginHasher
+	pluginHasher   PluginHasher
+	approvalRead   PluginApprovalRead
+	approvalUpdate PluginApprovalUpdate
 	// pluginPolicyChanged runs after a change to which plugins may run
 	// (turned on/off, consent granted/withdrawn), so host-side
 	// consumers of the plugin catalog re-read it -- the MCP plane's
@@ -71,8 +73,11 @@ type SettingsService struct {
 	// pluginLocator answers where an installed plugin's folder is --
 	// set by the composition root, nil on a build with no plugin
 	// service (settingsservice_pluginremove.go).
-	pluginLocator PluginLocator
-	window        *windowing.Window
+	pluginMutation PluginMutation
+	// pluginTrash is the per-service filetrash adapter seam. nil selects
+	// filetrash.Trash; tests replace it without mutating process globals.
+	pluginTrash PluginTrash
+	window      *windowing.Window
 	// leave is the quit gate's state (settingsservice_flush.go).
 	leave leaveGate
 	// panel is the Quick Panel window (docs/adr/0033) -- a second,

@@ -21,17 +21,21 @@ import (
 // settings service, wired by the composition root).
 type PluginTrustReader interface {
 	Enabled(id string) bool
-	Allowed(id string) bool
 	Allowlist() []string
-	// LockedHash is the content hash the plugin's consent covers ("" when
-	// none recorded).
-	LockedHash(id string) string
-	// GrantOf answers the capability-shaped set id's consent currently
-	// covers, and whether one is recorded at all (docs/goals/0375 S2):
-	// false for a plugin never allowed, or one whose consent predates
-	// this record -- widen detection then has nothing to compare and
-	// reports no widen.
-	GrantOf(id string) (PluginGrant, bool)
+	Approval() (PluginApproval, error)
+}
+
+type PluginApproval struct {
+	Revision       int64
+	Allowed        []string
+	Locks          map[string]PluginApprovalLock
+	LegacyUnpinned []string
+}
+
+type PluginApprovalLock struct {
+	Version string
+	Hash    string
+	Grant   PluginGrant
 }
 
 // PluginSecretAccess is one secret-read row as the export carries it.
@@ -121,8 +125,15 @@ func (p *PluginService) ExportPluginAudit() (string, error) {
 		doc.Allowlist = append(doc.Allowlist, p.trust.Allowlist()...)
 	}
 	doc.SigningPolicy = p.SigningPolicyActive()
+	var approval PluginApproval
+	if p.trust != nil {
+		approval, err = p.trust.Approval()
+		if err != nil {
+			return "", fmt.Errorf("plugin audit: approval state: %w", err)
+		}
+	}
 	for _, info := range infos {
-		doc.Plugins = append(doc.Plugins, p.auditRow(info))
+		doc.Plugins = append(doc.Plugins, p.auditRow(info, approval))
 	}
 	if p.guardrail != nil {
 		store := p.guardrail.PendingActionStore()
@@ -144,7 +155,7 @@ func (p *PluginService) ExportPluginAudit() (string, error) {
 	return string(out), nil
 }
 
-func (p *PluginService) auditRow(info PluginInfo) PluginAuditPlugin {
+func (p *PluginService) auditRow(info PluginInfo, approval PluginApproval) PluginAuditPlugin {
 	m := info.Manifest
 	row := PluginAuditPlugin{
 		ID: m.ID, Name: m.Name, Version: m.Version, Builtin: info.Builtin,
@@ -166,12 +177,12 @@ func (p *PluginService) auditRow(info PluginInfo) PluginAuditPlugin {
 	}
 	if p.trust != nil && !info.Builtin {
 		row.Enabled = p.trust.Enabled(m.ID)
-		row.Allowed = p.trust.Allowed(m.ID)
-		row.LockedHash = p.trust.LockedHash(m.ID)
+		row.Allowed = containsString(approval.Allowed, m.ID)
+		row.LockedHash = approval.Locks[m.ID].Hash
 		// Changed compares like for like: LockedHash is a CodeHash
 		// (docs/goals/0375 S2), so the comparison reads info.CodeHash,
 		// never the wider ContentHash the row also reports.
-		row.Changed = row.LockedHash != "" && info.CodeHash != "" && row.LockedHash != info.CodeHash
+		row.Changed = row.LockedHash != "" && info.CodeHash != "" && row.LockedHash != info.CodeHash && row.LockedHash != info.ContentHash
 	}
 	return row
 }

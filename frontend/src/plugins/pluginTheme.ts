@@ -126,7 +126,7 @@ export async function installPluginThemes(): Promise<boolean> {
 		const id = info.Manifest.id
 		const themes = (info.Manifest.contributes?.themes ?? []) as ThemeDecl[]
 		if (themes.length === 0) continue
-		const state = pluginRunState(id, !!info.Builtin, policy, { contentHash: info.CodeHash ?? '', signingPolicy: !!info.SigningPolicy, signed: !!info.Signed, widened: !!info.Widened })
+		const state = pluginRunState(id, !!info.Builtin, policy, { signingPolicy: !!info.SigningPolicy, signed: !!info.Signed, policyBlocked: info.PolicyBlocked ?? '', approvalState: info.ApprovalState })
 		if (state !== 'run') {
 			removePluginThemeStyles(id)
 			continue

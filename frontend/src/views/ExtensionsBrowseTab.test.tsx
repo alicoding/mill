@@ -7,7 +7,7 @@ import type { BrowseEntry, BrowseResult, MarketplaceSource, PolicyView } from '.
 type Props = Record<string, unknown> & { children?: ReactNode }
 const strip = (props: Props) => {
   const next = { ...props }
-  for (const key of ['direction', 'gap', 'align', 'justify', 'size', 'variant', 'as', 'weight', 'showPages', 'currentPage', 'pageCount', 'primaryAction']) delete next[key]
+  for (const key of ['direction', 'gap', 'align', 'justify', 'size', 'variant', 'as', 'weight', 'block', 'showPages', 'currentPage', 'pageCount', 'primaryAction']) delete next[key]
   return next
 }
 
@@ -25,13 +25,20 @@ vi.mock('@primer/react', () => {
     </div>
   )
   const Label = ({ children, ...props }: Props) => <span {...strip(props)}>{children}</span>
+  const FormLabel = ({ children, ...props }: Props) => <label {...strip(props)}>{children}</label>
+  const FormCaption = ({ children, ...props }: Props) => <span {...strip(props)}>{children}</span>
+  const FormControl = Object.assign(({ children, ...props }: Props) => <div {...strip(props)}>{children}</div>, {
+    Label: FormLabel,
+    Caption: FormCaption,
+  })
+  const TextInput = (props: Props) => <input {...strip(props)} />
   const Spinner = (props: Props) => <span {...strip(props)}>spinner</span>
   const Pagination = () => <div data-testid="pagination" />
   const BannerPrimaryAction = ({ children, ...props }: Props) => <button {...strip(props)}>{children}</button>
   const Banner = Object.assign(({ title, description, primaryAction, ...props }: Props) => (
     <div {...strip(props)}><strong>{title as ReactNode}</strong><span>{description as ReactNode}</span>{primaryAction as ReactNode}</div>
   ), { PrimaryAction: BannerPrimaryAction })
-  return { Banner, Button, Dialog, Label, Pagination, Spinner, Stack, Text }
+  return { Banner, Button, Dialog, FormControl, Label, Pagination, Spinner, Stack, Text, TextInput }
 })
 
 vi.mock('@primer/react/experimental', () => {
@@ -59,11 +66,12 @@ vi.mock('./ExtensionsSourcesDialog', () => ({
   ),
 }))
 vi.mock('../shared/commands', () => ({
-  findCommand: vi.fn((id: string) => id === 'extension.browse.previewInstall' ? {
-    enabled: (ctx?: { marketplace?: string; pluginId?: string }) => {
+  findCommand: vi.fn((id: string) => id === 'extensions.install.prepare' ? {
+    enabled: (ctx?: { candidate?: { Kind?: string; Marketplace?: string; ID?: string; Locator?: string } }) => {
+      if (ctx?.candidate?.Kind === 'link') return Boolean(ctx.candidate.Locator?.trim())
       const sources = useExtensionSourcesStore.getState()
       const currentPolicy = usePluginPolicyStore.getState().policy
-      const row = sources.browse?.Entries?.find((entry) => entry.Marketplace === ctx?.marketplace && entry.ID === ctx.pluginId)
+      const row = sources.browse?.Entries?.find((entry) => entry.Marketplace === ctx?.candidate?.Marketplace && entry.ID === ctx.candidate.ID)
       return Boolean(sources.browse?.InstalledStateReady && !sources.browseLoading && !sources.browseError && currentPolicy && !currentPolicy.Error && row && !row.Installed && !row.PolicyReason)
     },
   } : { enabled: () => true }),
@@ -73,7 +81,7 @@ vi.mock('../shared/noticeStore', () => ({ pushNotice: vi.fn() }))
 vi.mock('../shared/userError', () => ({ appTranslate: vi.fn(), messageFor: (error: unknown) => String(error), userErrorFrom: () => ({ code: '' }) }))
 vi.mock('../shared/pluginRemoveSignal', () => ({ notifyPluginRemoved: vi.fn() }))
 vi.mock('../../bindings/github.com/alicoding/mill/internal/services/pluginsvc', () => ({
-  PluginService: { BrowseMarketplaces: vi.fn(), PluginPolicy: vi.fn(), PreviewInstall: vi.fn(), InstallFromMarketplace: vi.fn() },
+  PluginService: { BrowseMarketplaces: vi.fn(), PluginPolicy: vi.fn() },
 }))
 
 const { PluginService } = await import('../../bindings/github.com/alicoding/mill/internal/services/pluginsvc')
@@ -128,8 +136,8 @@ beforeEach(() => {
   })
   useUISignalStore.setState({ extensionSourcesRequest: 0, extensionInstalledRequest: 0 })
   useExtensionMarketplaceInstallStore.setState({
-    target: null, preview: null, phase: 'idle', refusal: '', acknowledged: false,
-    requestRevision: 0, ownerToken: null, nextOwnerToken: 0,
+    operationId: null, candidate: null, handle: '', expiresAt: '', preview: null, phase: 'idle', mode: 'install',
+  visible: false, error: '', errorCode: '', retryable: false, acknowledged: false,
   })
 })
 
@@ -297,25 +305,21 @@ describe('ExtensionsBrowseTab states', () => {
     expect(container.textContent).not.toContain('extensions.browse.noMatchesHeading')
   })
 
-  it('renders the Primer loading dialog with one enabled Cancel action', async () => {
+  it('routes an exact cached selection through the shared preparation command', async () => {
     vi.mocked(PluginService.BrowseMarketplaces).mockResolvedValueOnce(result([entry('plugin')], [source()]) as never)
     await render()
     await act(async () => {})
-    await act(async () => useExtensionMarketplaceInstallStore.setState({
-      target: {
-        marketplace: 'source', pluginId: 'plugin', name: 'Plugin', sourceIncarnation: 'one', ownerToken: 1,
+    const install = container.querySelector('[data-testid="extensions-browse-install"]') as HTMLButtonElement
+    expect(install.disabled).toBe(false)
+    await act(async () => install.click())
+    expect(runCommand).toHaveBeenCalledWith('extensions.install.prepare', {
+      kind: 'extensionInstallCandidate',
+      candidate: {
+        Kind: 'marketplace', Marketplace: 'source', Incarnation: 'one', ID: 'plugin', Version: '1.0.0',
+        Locator: '', Encoded: '', Basename: '', DisplayName: '', Family: '',
       },
-      preview: null,
-      phase: 'previewing',
-    }))
-
-    const dialog = document.body.querySelector('[role="dialog"]')
-    expect(dialog?.textContent).toContain('extensions.install.loadingTitle')
-    expect(dialog?.textContent).toContain('extensions.install.loadingBody')
-    expect(dialog?.querySelector('[data-testid="extensions-install-loading"]')).not.toBeNull()
-    expect(dialog?.querySelector('[data-testid="install-dialog"]')).toBeNull()
-    const buttons = [...dialog!.querySelectorAll('button')]
-    expect(buttons.map((button) => button.textContent)).toEqual(['extensions.install.cancel'])
-    expect(buttons[0]?.disabled).toBe(false)
+    })
   })
+
+
 })

@@ -90,6 +90,8 @@ export interface PluginLockEntry {
     "capabilities"?: string[] | null;
     "hosts"?: string[] | null;
     "anyHost"?: boolean;
+    "networkGrantVersion"?: number;
+    "networkMethods"?: { [_ in string]?: string[] | null } | null;
     "kinds"?: string[] | null;
     "usesSecrets"?: boolean;
     "canvasHost"?: boolean;

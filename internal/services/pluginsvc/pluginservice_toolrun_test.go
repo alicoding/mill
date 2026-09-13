@@ -23,7 +23,7 @@ func newToolPlugin(t *testing.T) *PluginService {
 	t.Helper()
 	root := t.TempDir()
 	writePlugin(t, root, "tc", toolPluginManifest, map[string]string{"steps.js": textcaseSteps})
-	return New(root, nil, "")
+	return newTestPluginService(t, root, nil, "")
 }
 
 // summaryOf picks one plugin out of a listing that always also carries

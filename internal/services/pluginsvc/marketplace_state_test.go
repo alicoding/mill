@@ -32,7 +32,7 @@ func TestMarketplaceStateMigratesLegacyExactlyOnceAndPreservesEvidence(t *testin
 	if err := os.WriteFile(legacyPath, legacy, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	svc := New(dir, nil, "")
+	svc := newTestPluginService(t, dir, nil, "")
 	closeTestPluginState(t, svc)
 	before, err := svc.readState()
 	if err != nil || before.Updates.CheckedAt == "" || len(before.Sources) != 1 || before.Sources[0].LastSuccessAt != "" {
@@ -72,7 +72,7 @@ func TestMarketplaceStateRefusesMalformedAndVersionedLegacyWithoutMigration(t *t
 			if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			svc := New(dir, nil, "")
+			svc := newTestPluginService(t, dir, nil, "")
 			closeTestPluginState(t, svc)
 			if _, err := svc.readState(); err == nil {
 				t.Fatal("readState succeeded")
@@ -97,7 +97,7 @@ func TestMarketplaceStateFailedFirstMutationCanRetryPreparedLegacy(t *testing.T)
 	if err := os.WriteFile(filepath.Join(dir, marketplacesFile), []byte(legacy), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	svc := New(dir, nil, "")
+	svc := newTestPluginService(t, dir, nil, "")
 	closeTestPluginState(t, svc)
 	if _, err := svc.mutateState(func(*marketplaceState) error { return os.ErrPermission }); err == nil {
 		t.Fatal("failed mutation succeeded")

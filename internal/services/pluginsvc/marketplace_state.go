@@ -39,7 +39,11 @@ func emptyMarketplaceState() marketplaceState {
 }
 
 func (p *PluginService) readState() (marketplaceState, error) {
-	payload, _, present, err := p.state.Load(context.Background())
+	return p.readStateContext(context.Background())
+}
+
+func (p *PluginService) readStateContext(ctx context.Context) (marketplaceState, error) {
+	payload, _, present, err := p.state.Load(ctx)
 	if err != nil {
 		return marketplaceState{}, err
 	}

@@ -29,6 +29,7 @@ import { ShortcutsHelpDialog } from "./ShortcutsHelpDialog";
 import { WhatsNewDialog } from "./WhatsNewDialog";
 import { ClipboardHistoryDialog } from "./ClipboardHistoryDialog";
 import { CodingLoopDialog } from "./CodingLoopDialog";
+import { ExtensionsInstallDialogHost } from "../views/ExtensionsInstallDialogHost";
 import { DocsSearchDialog } from "./DocsSearchDialog";
 import { BuildIdentityBadge } from "./BuildIdentityBadge";
 import { NoticePill } from "./NoticePill";
@@ -404,6 +405,7 @@ function App() {
           once shape, renders off the store's codingLoopOpen flag --
           opened via the codingLoop.run command. */}
       <CodingLoopDialog />
+      <ExtensionsInstallDialogHost />
 
       {/* Every capability gets a nav entry, built or not (docs/SPEC.md
           §2.2) -- driven by CapabilitiesService's own data so the sidebar

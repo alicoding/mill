@@ -91,6 +91,9 @@ func (p *PluginService) applyPolicy(info *PluginInfo) {
 //wails:ignore
 func (p *PluginService) PolicyAllows(id string) bool {
 	info := p.resolvePlugin(id)
+	if info.Error != "" {
+		return false
+	}
 	return info.Builtin || info.PolicyBlocked == ""
 }
 

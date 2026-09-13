@@ -22,6 +22,7 @@ import type { AtlasNounGroup } from '../atlas/atlasNounRegistry'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './ExtensionsSection.module.css'
 import { background } from '../shared/background'
+import { useExtensionRecoveryStore } from '../shared/extensionRecoveryStore'
 
 // Every canvas tool is an Atlas object -- ONE docs link for the whole
 // page, never a per-row URL guess.
@@ -80,7 +81,15 @@ export default function ExtensionsSection() {
   }, [])
 
   useEffect(() => {
-    PluginService.ListPlugins().then((p) => setPlugins(p ?? [])).catch(() => setPlugins([]))
+    PluginService.ListPlugins().then((result) => {
+      const scanned = result ?? []
+      setPlugins(scanned)
+      setAllowedNow(scanned.filter((plugin) => plugin.ApprovalState === 'allowed').map((plugin) => plugin.Manifest.id))
+    }).catch((error) => {
+      useExtensionRecoveryStore.getState().observe(error)
+      setPlugins([])
+      setAllowedNow([])
+    })
   }, [removeVersion])
 
   // A removed plugin's detail pane has nothing left to show.

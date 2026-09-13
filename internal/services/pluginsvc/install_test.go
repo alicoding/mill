@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -111,6 +112,36 @@ func TestExtractZip_RefusesASymbolicLink(t *testing.T) {
 	}
 }
 
+func TestExtractZipPreservesOnlyTheExecutableProperty(t *testing.T) {
+	var buffer bytes.Buffer
+	writer := zip.NewWriter(&buffer)
+	header := &zip.FileHeader{Name: "pkg/server"}
+	header.SetMode(0o775)
+	entry, err := writer.CreateHeader(header)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := entry.Write([]byte("fixture")); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	destination := t.TempDir()
+	if err := ExtractZip(buffer.Bytes(), destination); err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(filepath.Join(destination, "server"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o700 {
+			t.Fatalf("extracted executable mode = %o, want 700", info.Mode().Perm())
+		}
+	}
+}
+
 func TestExtractZip_RefusesSomethingThatIsNotAZip(t *testing.T) {
 	if err := ExtractZip([]byte("not a zip at all"), t.TempDir()); err == nil {
 		t.Fatal("ExtractZip() = nil error, want a refusal")
@@ -150,10 +181,11 @@ func TestInstallFromLink_StagesAHostNativeAbsoluteFolder(t *testing.T) {
 		t.Fatal(err)
 	}
 	svc, installedRoot := newStoreService(t)
-	record, err := svc.InstallFromLink(source)
+	result, err := prepareAndConfirmForTest(t, svc, InstallCandidate{Kind: "link", Locator: source})
 	if err != nil {
 		t.Fatal(err)
 	}
+	record := result.Record
 	if record.Tier != TierDev || record.Source.Kind != "path" || record.Source.Path != source {
 		t.Fatalf("InstallFromLink(%q) = %+v", source, record)
 	}
@@ -192,6 +224,30 @@ func TestCopyPluginFolder_SkipsHiddenEntriesAndDependencyFolders(t *testing.T) {
 	for _, rel := range []string{".DS_Store", "node_modules"} {
 		if _, err := os.Stat(filepath.Join(dest, rel)); err == nil {
 			t.Errorf("%s was copied, want it skipped", rel)
+		}
+	}
+}
+
+func TestCopyPluginFolderPreservesOnlyTheExecutableProperty(t *testing.T) {
+	source := t.TempDir()
+	path := filepath.Join(source, "server")
+	if err := os.WriteFile(path, []byte("fixture"), 0o775); err != nil { // #nosec G306 -- executable metadata is the property under test
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o775); err != nil { // #nosec G302 -- executable metadata is the property under test
+		t.Fatal(err)
+	}
+	destination := t.TempDir()
+	if err := CopyPluginFolder(source, destination); err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(filepath.Join(destination, "server"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o700 {
+			t.Fatalf("copied executable mode = %o, want 700", info.Mode().Perm())
 		}
 	}
 }

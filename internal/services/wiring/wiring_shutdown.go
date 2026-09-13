@@ -20,6 +20,9 @@ func shutdownSnapshotServices(logger *slog.Logger, backupService *backupsvc.Back
 	if err := millMCPService.Shutdown(shutdownCtx); err != nil {
 		logger.Error("mill MCP server shutdown", "error", err)
 	}
+	if err := pluginsvc.ClosePreparations(pluginService); err != nil {
+		logger.Error("extension installation shutdown", "error", err)
+	}
 	if err := pluginService.CloseState(); err != nil {
 		logger.Error("extension source state shutdown", "error", err)
 	}

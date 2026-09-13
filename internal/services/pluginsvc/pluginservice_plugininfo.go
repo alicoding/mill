@@ -32,6 +32,11 @@ type PluginInfo struct {
 	// Marketplace names the index this folder was installed from, ""
 	// when it arrived some other way.
 	Marketplace string
+	// ApprovalState is the consent verdict calculated for this scanned
+	// package from one detached approval revision. Non-built-in values
+	// are exactly allowed, unallowed, changed, or unavailable. Built-ins
+	// leave it empty because package approval does not apply to them.
+	ApprovalState string
 	// PolicyBlocked is the organisation policy's refusal sentence
 	// (policy_match.go), "" when no policy refuses this folder. A
 	// refused plugin stays listed and never runs.

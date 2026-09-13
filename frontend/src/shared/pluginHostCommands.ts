@@ -6,6 +6,7 @@ import { pushNotice } from './noticeStore'
 import { notifyPluginRemoved } from './pluginRemoveSignal'
 import { pluginLoadStates } from '../plugins/loader'
 import { drainedPluginCommands } from '../plugins/pluginCommands'
+import { appTranslate, messageFor } from './userError'
 
 // Uninstall, as an ordinary registry command (goal 0321): one
 // `plugin.remove.<id>` per scanned plugin, the id-carries-the-argument
@@ -37,7 +38,7 @@ export function removePluginNow(id: string, name: string): void {
     .catch((err) => {
       pushNotice({
         level: 'error',
-        text: i18n.t('views:settings.extensions.removeFailed', { name, error: String(err) }),
+        text: i18n.t('views:settings.extensions.removeFailed', { name, error: messageFor(err, appTranslate) }),
       })
     })
 }

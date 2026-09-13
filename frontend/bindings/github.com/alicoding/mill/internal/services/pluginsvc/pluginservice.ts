@@ -63,6 +63,10 @@ export function CallIntegrationForPlugin(pluginID: string, integrationID: string
     return $Call.ByID(4147776926, pluginID, integrationID, path, method, values);
 }
 
+export function CancelInstallPreparation(handle: string): $CancellablePromise<void> {
+    return $Call.ByID(1499736270, handle);
+}
+
 /**
  * Captures lists every runnable plugin's declared captures, by plugin
  * then capture id.
@@ -87,6 +91,10 @@ export function CheckForUpdates(): $CancellablePromise<$models.UpdateCheck> {
  */
 export function CodeHashOf(id: string): $CancellablePromise<string> {
     return $Call.ByID(3603175340, id);
+}
+
+export function ConfirmInstall(handle: string): $CancellablePromise<$models.InstallCommitResult> {
+    return $Call.ByID(3424431739, handle);
 }
 
 /**
@@ -164,30 +172,6 @@ export function FetchForPlugin(pluginID: string, req: $models.PluginFetchRequest
 }
 
 /**
- * ImportTheme re-runs the authoritative parser and mapping before staging a
- * data-only extension through the same policy and static checks as any other
- * local install.
- */
-export function ImportTheme(encoded: string, basename: string, displayName: string, family: string): $CancellablePromise<$models.ThemeImportResult> {
-    return $Call.ByID(3015988770, encoded, basename, displayName, family);
-}
-
-/**
- * InstallFromLink installs from whatever the user pasted: a
- * repository, an archive address, or a folder on this Mac.
- */
-export function InstallFromLink(input: string): $CancellablePromise<$models.InstallRecord> {
-    return $Call.ByID(2627079723, input);
-}
-
-/**
- * InstallFromMarketplace installs one index entry.
- */
-export function InstallFromMarketplace(marketplace: string, id: string): $CancellablePromise<$models.InstallRecord> {
-    return $Call.ByID(4085175482, marketplace, id);
-}
-
-/**
  * ListDirForPlugin lists dir for pluginID under the "list-files"
  * capability.
  */
@@ -258,6 +242,10 @@ export function PluginsDir(): $CancellablePromise<string> {
     return $Call.ByID(1345088799);
 }
 
+export function PrepareInstall(handle: string, candidate: $models.InstallCandidate): $CancellablePromise<$models.PreparedInstall> {
+    return $Call.ByID(4153107754, handle, candidate);
+}
+
 /**
  * PreviewInstall answers the prompt's contents for a marketplace
  * entry. Folder sources are read through their confined acquisition
@@ -311,6 +299,10 @@ export function ReadPluginDoc(id: string, name: string): $CancellablePromise<str
     return $Call.ByID(947921979, id, name);
 }
 
+export function RecoverInstallations(): $CancellablePromise<void> {
+    return $Call.ByID(3089690429);
+}
+
 /**
  * RefreshMarketplaceSources re-reads every source's index. A source
  * that cannot be read keeps the index it had, and its reason is
@@ -339,6 +331,10 @@ export function RemoveMarketplaceSource(name: string, expectedIncarnation: strin
  */
 export function RequestGuardedAction(pluginID: string, kind: string, attributes: { [_ in string]?: string } | null, description: string): $CancellablePromise<$models.GuardedActionDecision> {
     return $Call.ByID(2237721377, pluginID, kind, attributes, description);
+}
+
+export function ReserveInstallPreparation(): $CancellablePromise<$models.InstallReservation> {
+    return $Call.ByID(3468171596);
 }
 
 /**
@@ -410,14 +406,6 @@ export function StepNodeTypes(): $CancellablePromise<composition$0.ExternalNodeT
  */
 export function StepPackProblem(id: string): $CancellablePromise<string> {
     return $Call.ByID(3840929602, id);
-}
-
-/**
- * UpdatePlugin applies one recorded candidate through the same install
- * door the extension first came through, then drops it from the list.
- */
-export function UpdatePlugin(id: string): $CancellablePromise<$models.InstallRecord> {
-    return $Call.ByID(1395208446, id);
 }
 
 /**

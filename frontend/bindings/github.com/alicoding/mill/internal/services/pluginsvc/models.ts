@@ -224,6 +224,27 @@ export interface GuardedActionEvaluation {
     "RuleLabel": string;
 }
 
+export interface InstallCandidate {
+    "Kind": string;
+    "Marketplace": string;
+    "Incarnation": string;
+    "ID": string;
+    "Version": string;
+    "Locator": string;
+    "Encoded": string;
+    "Basename": string;
+    "DisplayName": string;
+    "Family": string;
+}
+
+export interface InstallCommitResult {
+    "Record": InstallRecord;
+    "PluginID": string;
+    "NeedsAllow": boolean;
+    "CatalogWarningCode": string;
+    "RecoveryRequired": boolean;
+}
+
 /**
  * InstallPreview is what the user is shown BEFORE anything downloads:
  * who the extension is, what installing it would earn for trust, and
@@ -252,6 +273,8 @@ export interface InstallPreview {
      */
     "NetworkHosts": string[] | null;
     "AnyHost": boolean;
+    "NetworkGrantVersion": number;
+    "NetworkMethods": { [_ in string]?: string[] | null } | null;
 
     /**
      * Kinds are the contribution families the manifest fills.
@@ -315,6 +338,11 @@ export interface InstallRecord {
      * the install prompt showed.
      */
     "warnings"?: string[] | null;
+}
+
+export interface InstallReservation {
+    "Handle": string;
+    "ExpiresAt": string;
 }
 
 /**
@@ -690,6 +718,14 @@ export interface PluginInfo {
     "Marketplace": string;
 
     /**
+     * ApprovalState is the consent verdict calculated for this scanned
+     * package from one detached approval revision. Non-built-in values
+     * are exactly allowed, unallowed, changed, or unavailable. Built-ins
+     * leave it empty because package approval does not apply to them.
+     */
+    "ApprovalState": string;
+
+    /**
      * PolicyBlocked is the organisation policy's refusal sentence
      * (policy_match.go), "" when no policy refuses this folder. A
      * refused plugin stays listed and never runs.
@@ -803,6 +839,13 @@ export interface PolicyView {
      * cannot be read; "" otherwise.
      */
     "Error": string;
+}
+
+export interface PreparedInstall {
+    "Handle": string;
+    "ExpiresAt": string;
+    "Preview": InstallPreview;
+    "RequiresReview": boolean;
 }
 
 /**
@@ -982,11 +1025,6 @@ export interface ThemeImportPreview {
     "InvalidKeys": string[] | null;
 }
 
-export interface ThemeImportResult {
-    "PluginID": string;
-    "NeedsAllow": boolean;
-}
-
 /**
  * ToolContribution declares one agent-reachable tool. InputSchema is
  * the tool's own JSON Schema, carried verbatim to the MCP tool list --
@@ -1024,6 +1062,7 @@ export interface UpdateCandidate {
     "Installed": string;
     "Available": string;
     "Marketplace": string;
+    "Incarnation": string;
 
     /**
      * Tier is what applying the update would earn, before any

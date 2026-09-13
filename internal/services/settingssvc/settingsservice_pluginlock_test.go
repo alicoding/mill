@@ -11,41 +11,47 @@ import (
 
 func TestPluginLock_RecordsOnConsentAndCompares(t *testing.T) {
 	set := newExtensionsHarness(t)
-	if len(set.GetPluginLock()) != 0 {
+	if lock, err := set.GetPluginLock(); err != nil || len(lock) != 0 {
 		t.Fatal("fresh lock is not empty")
 	}
-	// Without a hasher, consent records nothing and every hash matches.
-	if err := set.SetPluginAllowed("mill-a", true); err != nil {
-		t.Fatal(err)
+	// An unreadable package identity cannot become approved.
+	set.SetPluginHasher(nil)
+	if err := set.SetPluginAllowed("mill-a", true); err == nil {
+		t.Fatal("consent succeeded without a package inspector")
 	}
-	if len(set.GetPluginLock()) != 0 || !set.PluginLockMatches("mill-a", "sha256-x") {
-		t.Fatal("no hasher: expected no entry and a permissive match")
+	if lock, err := set.GetPluginLock(); err != nil || len(lock) != 0 {
+		t.Fatal("failed capture wrote a partial lock")
 	}
-	set.SetPluginHasher(func(id string) PluginGrantSnapshot {
+	set.SetPluginHasher(func(id string) (PluginGrantSnapshot, error) {
 		if id == "mill-b" {
 			return PluginGrantSnapshot{
 				Version: "2.0.0", Hash: "sha256-b",
 				Capabilities: []string{"open-url"}, Hosts: []string{"api.example.test"},
+				NetworkGrantVersion: 1, NetworkMethods: map[string][]string{"api.example.test": {"GET", "POST"}},
 				Kinds: []string{"views"}, UsesSecrets: true, CanvasHost: true,
-			}
+			}, nil
 		}
-		return PluginGrantSnapshot{}
+		return PluginGrantSnapshot{}, nil
 	})
 	wrote, err := set.RecordAllowedPluginsIfUnset([]string{"mill-b"})
-	if err != nil || wrote {
-		t.Fatalf("already recorded: wrote=%v err=%v", wrote, err)
+	if err != nil || !wrote {
+		t.Fatalf("initial record: wrote=%v err=%v", wrote, err)
 	}
 	if err := set.SetPluginAllowed("mill-b", true); err != nil {
 		t.Fatal(err)
 	}
-	if got := set.GetPluginLock()["mill-b"]; got.Version != "2.0.0" || got.Hash != "sha256-b" {
+	locks, err := set.GetPluginLock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := locks["mill-b"]; got.Version != "2.0.0" || got.Hash != "sha256-b" || got.NetworkGrantVersion != 1 || len(got.NetworkMethods["api.example.test"]) != 2 {
 		t.Fatalf("lock = %+v", got)
 	}
 	if !set.PluginLockMatches("mill-b", "sha256-b") || set.PluginLockMatches("mill-b", "sha256-c") {
 		t.Fatal("match compares the recorded hash")
 	}
-	if !set.PluginLockMatches("mill-b", "") {
-		t.Fatal("an unreadable current hash must not revoke consent")
+	if set.PluginLockMatches("mill-b", "") {
+		t.Fatal("an unreadable current package identity matched approval")
 	}
 }
 
@@ -61,13 +67,19 @@ func TestPluginLock_RecordNow(t *testing.T) {
 	comp := compositionsvc.NewCompositionService(store)
 	trig := triggersvc.NewTriggerService(comp, slog.Default(), store)
 	set := NewSettingsService(store, trig, false)
-	set.SetPluginHasher(func(id string) PluginGrantSnapshot {
-		return PluginGrantSnapshot{Version: "1.0.0", Hash: "sha256-new", Capabilities: []string{"open-url"}}
+	wireApprovalMemory(set)
+	WirePluginRemoval(set, func(id string, action func(string, bool, bool) error) error { return action("", false, true) })
+	set.SetPluginHasher(func(id string) (PluginGrantSnapshot, error) {
+		return PluginGrantSnapshot{Version: "1.0.0", Hash: "sha256-new", Capabilities: []string{"open-url"}, NetworkGrantVersion: 1, NetworkMethods: map[string][]string{}}, nil
 	})
 	if err := set.RecordPluginLockNow("mill-a"); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := set.GetPluginLock()["mill-a"]; ok {
+	locks, err := set.GetPluginLock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := locks["mill-a"]; ok {
 		t.Fatal("re-baselining an unrecorded plugin created an entry")
 	}
 	// Seed a pre-#806 entry directly: hash only, no capability-shaped
@@ -75,10 +87,20 @@ func TestPluginLock_RecordNow(t *testing.T) {
 	if err := store.Set("settings-plugin-lock", `{"mill-a":{"version":"0.9.0","hash":"sha256-old"}}`); err != nil {
 		t.Fatal(err)
 	}
+	set = NewSettingsService(store, trig, false)
+	wireApprovalMemory(set)
+	WirePluginRemoval(set, func(id string, action func(string, bool, bool) error) error { return action("", false, true) })
+	set.SetPluginHasher(func(id string) (PluginGrantSnapshot, error) {
+		return PluginGrantSnapshot{Version: "1.0.0", Hash: "sha256-new", Capabilities: []string{"open-url"}, NetworkGrantVersion: 1, NetworkMethods: map[string][]string{}}, nil
+	})
 	if err := set.RecordPluginLockNow("mill-a"); err != nil {
 		t.Fatal(err)
 	}
-	got := set.GetPluginLock()["mill-a"]
+	locks, err = set.GetPluginLock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := locks["mill-a"]
 	if got.Hash != "sha256-new" || got.Version != "1.0.0" || len(got.Capabilities) != 1 || got.Capabilities[0] != "open-url" {
 		t.Fatalf("lock after re-baseline = %+v, want the hasher's current snapshot whole", got)
 	}
@@ -89,26 +111,28 @@ func TestPluginLock_RecordNow(t *testing.T) {
 // against (docs/goals/0375 S2).
 func TestPluginLock_GrantRecordRoundTrips(t *testing.T) {
 	set := newExtensionsHarness(t)
-	if _, ok := set.PluginGrant("mill-a"); ok {
+	if _, ok, err := set.PluginGrant("mill-a"); err != nil || ok {
 		t.Fatal("nothing recorded yet")
 	}
-	set.SetPluginHasher(func(id string) PluginGrantSnapshot {
+	set.SetPluginHasher(func(id string) (PluginGrantSnapshot, error) {
 		return PluginGrantSnapshot{
 			Version: "1.0.0", Hash: "sha256-a",
 			Capabilities: []string{"open-url", "fetch"}, Hosts: []string{"api.example.test"}, AnyHost: false,
+			NetworkGrantVersion: 1, NetworkMethods: map[string][]string{"api.example.test": {"GET", "POST"}},
 			Kinds: []string{"steps", "views"}, UsesSecrets: true, CanvasHost: true,
-		}
+		}, nil
 	})
 	if err := set.SetPluginAllowed("mill-a", true); err != nil {
 		t.Fatal(err)
 	}
-	got, ok := set.PluginGrant("mill-a")
-	if !ok {
+	got, ok, err := set.PluginGrant("mill-a")
+	if err != nil || !ok {
 		t.Fatal("expected a recorded grant")
 	}
 	want := PluginLockEntry{
 		Version: "1.0.0", Hash: "sha256-a",
 		Capabilities: []string{"open-url", "fetch"}, Hosts: []string{"api.example.test"},
+		NetworkGrantVersion: 1, NetworkMethods: map[string][]string{"api.example.test": {"GET", "POST"}},
 		Kinds: []string{"steps", "views"}, UsesSecrets: true, CanvasHost: true,
 	}
 	if got.Version != want.Version || got.Hash != want.Hash || got.UsesSecrets != want.UsesSecrets || got.CanvasHost != want.CanvasHost ||
@@ -119,7 +143,7 @@ func TestPluginLock_GrantRecordRoundTrips(t *testing.T) {
 	if err := set.SetPluginAllowed("mill-a", false); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := set.PluginGrant("mill-a"); ok {
+	if _, ok, err := set.PluginGrant("mill-a"); err != nil || ok {
 		t.Fatal("expected the grant to be forgotten with consent")
 	}
 }

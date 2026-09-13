@@ -11,7 +11,7 @@ func TestWriteContentForPlugin_RefusesBeforeRules(t *testing.T) {
 	root := t.TempDir()
 	writePlugin(t, root, "reader", `{"id":"reader","name":"R","version":"1"}`, nil)
 	writePlugin(t, root, "writer", `{"id":"writer","name":"W","version":"1","capabilities":["write-content"]}`, nil)
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 	cases := []struct {
 		plugin string
 		req    PluginContentWrite

@@ -1,6 +1,6 @@
 import i18n from 'i18next'
 import type { Command } from './commands'
-import { entityContext, marketplaceEntryContext, marketplaceSourceInputContext } from './commandContext'
+import { entityContext, extensionInstallAttemptContext, extensionInstallCandidateContext, marketplaceSourceInputContext } from './commandContext'
 import { useAppStore } from './store'
 import { useUISignalStore } from './uiSignalStore'
 import { SettingsService } from './bindings'
@@ -12,15 +12,17 @@ import { refreshDisabledExtensions, useExtensionEnablementStore } from './extens
 import { pluginLoadStates, pluginsAwaitingReview, pluginsAwaitingReviewIds } from '../plugins/loader'
 import { ConfigureService } from './bindings'
 import { appTranslate, messageFor } from './userError'
-import { checkForUpdatesWithNotice, updateAllWithNotice, updateCandidateFor, useExtensionUpdatesStore } from './extensionUpdatesStore'
+import { cancelRemainingUpdates, checkForUpdatesWithNotice, clearRecoveryBlockedUpdates, refreshUpdates, updateAllWithNotice, updateCandidateFor, useExtensionUpdatesStore } from './extensionUpdatesStore'
 import { useExtensionSourcesStore } from './extensionSourcesStore'
 import { usePluginPolicyStore } from './pluginPolicyStore'
 import {
-  marketplaceCancelEnabled,
-  marketplaceConfirmEnabled,
-  marketplacePreviewEnabled,
+  extensionInstallConfirmEnabled,
+  extensionInstallDismissEnabled,
+  extensionInstallPrepareEnabled,
+  extensionInstallRetryEnabled,
   useExtensionMarketplaceInstallStore,
 } from './extensionMarketplaceInstallStore'
+import { useExtensionRecoveryStore } from './extensionRecoveryStore'
 
 // The Extensions surface's own commands (docs/goals/0349). The page
 // itself is one nav command; every ROW action is a command taking the
@@ -78,6 +80,7 @@ const EXTENSION_ROW_COMMANDS: Command[] = entityRowCommands<{ ID: string; Label:
       body: 'views:settings.extensions.removeConfirmBody',
       confirmLabel: 'views:settings.extensions.removeConfirmButton',
     },
+    enabled: (item) => !builtIn(item.ID) && !useExtensionRecoveryStore.getState().unresolved && useExtensionMarketplaceInstallStore.getState().phase === 'idle' && !useExtensionUpdatesStore.getState().bulkActive,
     run: (item) => removePluginNow(item.ID, item.Label),
   },
 }).map((command) => ({ ...command, paletteHidden: true }))
@@ -215,42 +218,81 @@ export const EXTENSIONS_COMMANDS: Command[] = [
     run: () => useExtensionSourcesStore.getState().clearBrowseFilters(),
   },
   {
-    id: 'extension.browse.previewInstall',
-    label: 'commands.extension.browse.previewInstall',
+    id: 'extensions.install.prepare',
+    label: 'commands.extensions.install.prepare',
     defaultBinding: null,
-    needs: 'marketplaceEntry',
+    needs: 'extensionInstallCandidate',
     paletteHidden: true,
-    enabled: marketplacePreviewEnabled,
+    enabled: extensionInstallPrepareEnabled,
     run: (ctx) => {
-      if (!marketplaceEntryContext(ctx)) return
-      return useExtensionMarketplaceInstallStore.getState().previewInstall(ctx!)
+      if (!extensionInstallCandidateContext(ctx)) return
+      return useExtensionMarketplaceInstallStore.getState().prepare(ctx!)
     },
   },
   {
-    id: 'extension.browse.confirmInstall',
-    label: 'commands.extension.browse.confirmInstall',
+    id: 'extensions.install.confirm',
+    label: 'commands.extensions.install.confirm',
     defaultBinding: null,
-    needs: 'marketplaceEntry',
+    needs: 'extensionInstallAttempt',
     paletteHidden: true,
-    enabled: marketplaceConfirmEnabled,
+    enabled: extensionInstallConfirmEnabled,
     run: (ctx) => {
-      if (!marketplaceEntryContext(ctx)) return
-      return useExtensionMarketplaceInstallStore.getState().confirmInstall(ctx!)
+      if (!extensionInstallAttemptContext(ctx)) return
+      return useExtensionMarketplaceInstallStore.getState().confirm(ctx!)
     },
   },
   {
-    id: 'extension.browse.cancelInstall',
-    label: 'commands.extension.browse.cancelInstall',
+    id: 'extensions.install.dismiss',
+    label: 'commands.extensions.install.dismiss',
+    defaultBinding: null,
+    needs: 'extensionInstallAttempt',
+    paletteHidden: true,
+    enabled: extensionInstallDismissEnabled,
+    run: (ctx) => {
+      if (!extensionInstallAttemptContext(ctx)) return
+      useExtensionMarketplaceInstallStore.getState().dismiss(ctx!)
+    },
+  },
+  {
+    id: 'extensions.install.retry',
+    label: 'commands.extensions.install.retry',
+    defaultBinding: null,
+    needs: 'extensionInstallAttempt',
+    paletteHidden: true,
+    enabled: extensionInstallRetryEnabled,
+    run: (ctx) => {
+      if (!extensionInstallAttemptContext(ctx)) return
+      return useExtensionMarketplaceInstallStore.getState().retry(ctx!)
+    },
+  },
+  {
+    id: 'extensions.retryUpdates',
+    label: 'commands.extensions.retryUpdates',
     defaultBinding: null,
     paletteHidden: true,
-    enabled: marketplaceCancelEnabled,
-    run: () => useExtensionMarketplaceInstallStore.getState().cancelInstall(),
+    enabled: () => useExtensionUpdatesStore.getState().loadError !== '' && !useExtensionUpdatesStore.getState().checking &&
+      !useExtensionUpdatesStore.getState().bulkActive && useExtensionMarketplaceInstallStore.getState().phase === 'idle' &&
+      !useExtensionRecoveryStore.getState().unresolved,
+    run: () => refreshUpdates(),
+  },
+  {
+    id: 'extensions.retryRecovery',
+    label: 'commands.extensions.retryRecovery',
+    defaultBinding: null,
+    paletteHidden: true,
+    enabled: () => useExtensionRecoveryStore.getState().unresolved && !useExtensionRecoveryStore.getState().retrying &&
+      !useExtensionUpdatesStore.getState().bulkActive && useExtensionMarketplaceInstallStore.getState().phase === 'idle',
+    run: async () => {
+      await useExtensionRecoveryStore.getState().retry()
+      if (await refreshUpdates()) clearRecoveryBlockedUpdates()
+    },
   },
   {
     id: 'extensions.importTheme',
     label: 'commands.extensions.importTheme',
     defaultBinding: null,
     keywords: ['extensions', 'theme', 'color', 'import'],
+    enabled: () => !useExtensionRecoveryStore.getState().unresolved && !useExtensionUpdatesStore.getState().bulkActive && useExtensionMarketplaceInstallStore.getState().phase === 'idle',
     run: () => {
       const app = useAppStore.getState()
       if (app.view.kind !== 'extensions') app.setView({ kind: 'extensions' })
@@ -270,6 +312,7 @@ export const EXTENSIONS_COMMANDS: Command[] = [
     label: 'commands.extensions.checkUpdates',
     defaultBinding: null,
     keywords: ['update', 'upgrade', 'extensions', 'check'],
+    enabled: () => !useExtensionUpdatesStore.getState().bulkActive && useExtensionMarketplaceInstallStore.getState().phase === 'idle' && !useExtensionRecoveryStore.getState().unresolved,
     run: () => checkForUpdatesWithNotice(),
   },
   {
@@ -280,7 +323,7 @@ export const EXTENSIONS_COMMANDS: Command[] = [
     paletteHidden: true,
     enabled: (ctx) => {
       const target = entityContext(ctx, EXTENSION_ENTITY)
-      return !!target && !builtIn(target.id)
+      return !!target && !builtIn(target.id) && !useExtensionRecoveryStore.getState().unresolved && !useExtensionUpdatesStore.getState().bulkActive && useExtensionMarketplaceInstallStore.getState().phase === 'idle'
     },
     run: () => checkForUpdatesWithNotice(),
   },
@@ -289,8 +332,16 @@ export const EXTENSIONS_COMMANDS: Command[] = [
     label: 'commands.extensions.updateAll',
     defaultBinding: null,
     keywords: ['update all', 'upgrade', 'extensions'],
-    enabled: () => useExtensionUpdatesStore.getState().candidates.length > 0,
+    enabled: () => useExtensionUpdatesStore.getState().candidates.length > 0 && !useExtensionUpdatesStore.getState().bulkActive && useExtensionMarketplaceInstallStore.getState().phase === 'idle' && !useExtensionRecoveryStore.getState().unresolved,
     run: () => updateAllWithNotice(),
+  },
+  {
+    id: 'extensions.cancelRemainingUpdates',
+    label: 'commands.extensions.cancelRemainingUpdates',
+    defaultBinding: null,
+    paletteHidden: true,
+    enabled: () => useExtensionUpdatesStore.getState().bulkActive && useExtensionUpdatesStore.getState().canCancelRemaining && !useExtensionUpdatesStore.getState().cancelRemaining,
+    run: () => cancelRemainingUpdates(),
   },
   {
     // Applying one update confirms through the Extensions page's own
@@ -302,12 +353,17 @@ export const EXTENSIONS_COMMANDS: Command[] = [
     paletteHidden: true,
     enabled: (ctx) => {
       const target = entityContext(ctx, EXTENSION_ENTITY)
-      return !!target && updateCandidateFor(target.id) !== undefined
+      return !!target && updateCandidateFor(target.id) !== undefined && !useExtensionUpdatesStore.getState().bulkActive && useExtensionMarketplaceInstallStore.getState().phase === 'idle' && !useExtensionRecoveryStore.getState().unresolved
     },
     run: (ctx) => {
       const target = entityContext(ctx, EXTENSION_ENTITY)
       if (!target) return
-      useUISignalStore.getState().requestExtensionUpdate(target.id)
+      const candidate = updateCandidateFor(target.id)
+      if (!candidate) return
+      return useExtensionMarketplaceInstallStore.getState().prepare({
+        kind: 'extensionInstallCandidate',
+        candidate: { Kind: 'update', Marketplace: '', Incarnation: '', ID: candidate.ID, Version: candidate.Available, Locator: '', Encoded: '', Basename: '', DisplayName: '', Family: '' },
+      })
     },
   },
   {

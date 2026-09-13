@@ -594,10 +594,9 @@ export function PendingMCPWrites(): $CancellablePromise<mcpsvc$0.MCPWriteRequest
 }
 
 /**
- * PluginLockMatches reports whether id's recorded hash equals current
- * -- true as well when nothing was ever recorded for it (an instance
- * from before the lock existed, or a plugin without a readable
- * folder), so the lock only ever REVOKES consent it saw granted.
+ * PluginLockMatches reports whether id's recorded hash equals current.
+ * A missing lock matches only the validated legacy-unpinned marker
+ * created while migrating an explicitly persisted historical grant.
  */
 export function PluginLockMatches(id: string, current: string): $CancellablePromise<boolean> {
     return $Call.ByID(3689995257, id, current);

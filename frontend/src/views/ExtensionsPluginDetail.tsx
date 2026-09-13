@@ -40,11 +40,11 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
 }) {
   const { t } = useTranslation('views')
   const [tab, setTab] = useState<ExtensionDetailTab>('overview')
-  const id = plugin.Manifest.id
-  const name = plugin.Manifest.name || id
-  const runtime = pluginLoadStates().get(id)
-  const status = runtime?.status ?? (plugin.ThemeImport && !allowed ? 'unallowed' : undefined)
-  const error = plugin.Error || (runtime?.status === 'error' ? runtime.error : '')
+	const id = plugin.Manifest.id
+	const name = plugin.Manifest.name || id
+	const runtime = pluginLoadStates().get(id)
+	const status = pluginStatus(plugin, allowed, runtime)
+	const error = pluginError(plugin, status, runtime, t)
   const contributes = plugin.Manifest.contributes
 
   const adds = pluginAdds(id, contributes)
@@ -56,10 +56,7 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
     plugin.Builtin ? t('settings.extensions.pluginBuiltIn') : '',
   ].filter(Boolean).join(' · ')
 
-  const reloadCommand = findCommand(`plugin.reload.${id}`)
-  const removeCommand = findCommand(`plugin.remove.${id}`)
-
-  const detail: ExtensionDetail = {
+	const detail: ExtensionDetail = {
     id,
     icon: PlugIcon,
     name,
@@ -87,17 +84,8 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
         warnings={[...(plugin.Warnings ?? []), ...missingExampleWarnings(contributes?.canvasObjects)]}
       />
     ),
-    actions: reloadCommand?.enabled?.() ? (
-      <Button
-        size="small"
-        onClick={() => void runCommand(reloadCommand.id)}
-        aria-label={t('settings.extensions.pluginReloadAria', { name })}
-        data-testid="extensions-plugin-reload"
-      >
-        {t('settings.extensions.pluginReload')}
-      </Button>
-    ) : undefined,
-    onRemove: removeCommand?.enabled?.() ? () => void runCommand(removeCommand.id) : undefined,
+		actions: reloadAction(id, name, t),
+		onRemove: removeAction(id),
   }
   // A built-in has nothing installed to verify and no folder to read a
   // changelog from, so it keeps the single-pane form.
@@ -117,6 +105,40 @@ export default function ExtensionsPluginDetail({ plugin, allowed, onAllow, showB
       )}
     />
   )
+}
+
+function pluginStatus(plugin: PluginInfo, allowed: boolean, runtime: PluginRuntimeState | undefined): string | undefined {
+	if (runtime?.status) return runtime.status
+	if (!plugin.Builtin && (plugin.ApprovalState === 'unallowed' || plugin.ApprovalState === 'changed')) return plugin.ApprovalState
+	if (!plugin.Builtin && plugin.ApprovalState !== 'allowed') return 'error'
+	if (plugin.ThemeImport && !allowed) return 'unallowed'
+	return undefined
+}
+
+function pluginError(plugin: PluginInfo, status: string | undefined, runtime: PluginRuntimeState | undefined, t: Translate): string {
+	if (plugin.Error) return plugin.Error
+	if (runtime?.status === 'error') return runtime.error ?? ''
+	return status === 'error' ? t('settings.extensions.reloadRefusal.unavailable') : ''
+}
+
+function reloadAction(id: string, name: string, t: Translate): ExtensionDetail['actions'] {
+	const command = findCommand(`plugin.reload.${id}`)
+	if (!command?.enabled?.()) return undefined
+	return (
+		<Button
+			size="small"
+			onClick={() => void runCommand(command.id)}
+			aria-label={t('settings.extensions.pluginReloadAria', { name })}
+			data-testid="extensions-plugin-reload"
+		>
+			{t('settings.extensions.pluginReload')}
+		</Button>
+	)
+}
+
+function removeAction(id: string): ExtensionDetail['onRemove'] {
+	const command = findCommand(`plugin.remove.${id}`)
+	return command?.enabled?.() ? () => void runCommand(command.id) : undefined
 }
 
 // One switch over the tabs whose body is not the pane's own default
@@ -153,6 +175,7 @@ function TabBody({ tab, plugin, changed }: { tab: ExtensionDetailTab; plugin: Pl
 
 type Contributes = PluginInfo['Manifest']['contributes']
 type Translate = (key: string, options?: Record<string, unknown>) => string
+type PluginRuntimeState = ReturnType<typeof pluginLoadStates> extends Map<string, infer State> ? State : never
 
 function pluginExtra(id: string, contributes: Contributes, themeImport: PluginInfo['ThemeImport']) {
   const servers = contributes?.mcpServers ?? []
