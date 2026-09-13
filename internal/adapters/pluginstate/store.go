@@ -20,9 +20,12 @@ import (
 )
 
 const (
-	FileName      = ".plugin-state.sqlite"
-	schemaVersion = 1
-	catalogSchema = "CREATE TABLE catalog_state(singleton INTEGER PRIMARY KEY CHECK(singleton=1), revision INTEGER NOT NULL, payload BLOB NOT NULL)"
+	FileName                  = ".plugin-state.sqlite"
+	catalogSchemaVersion      = 1
+	transactionSchemaVersion  = 2
+	catalogSchema             = "CREATE TABLE catalog_state(singleton INTEGER PRIMARY KEY CHECK(singleton=1), revision INTEGER NOT NULL, payload BLOB NOT NULL)"
+	installTransactionsSchema = "CREATE TABLE install_transactions(transaction_id TEXT PRIMARY KEY, revision INTEGER NOT NULL, payload BLOB NOT NULL)"
+	approvalSchema            = "CREATE TABLE approval_state(singleton INTEGER PRIMARY KEY CHECK(singleton=1), revision INTEGER NOT NULL, payload BLOB NOT NULL)"
 )
 
 type schemaQueryer interface {
@@ -252,8 +255,8 @@ func validateSchemaObjects(ctx context.Context, db schemaQueryer) (bool, error) 
 	switch version {
 	case 0:
 		return validatePristineSchema(ctx, db)
-	case schemaVersion:
-		return false, validateCatalogSchema(ctx, db)
+	case catalogSchemaVersion, transactionSchemaVersion:
+		return false, validateVersionedSchema(ctx, db, version)
 	default:
 		return false, fmt.Errorf("extension source database schema %d is not supported", version)
 	}
@@ -281,7 +284,7 @@ func validatePristineSchema(ctx context.Context, db schemaQueryer) (bool, error)
 	return true, nil
 }
 
-func validateCatalogSchema(ctx context.Context, db schemaQueryer) error {
+func validateVersionedSchema(ctx context.Context, db schemaQueryer, version int) error {
 	rows, err := db.QueryContext(ctx, "SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY type, name")
 	if err != nil {
 		return fmt.Errorf("inspect extension source schema: %w", err)
@@ -304,13 +307,22 @@ func validateCatalogSchema(ctx context.Context, db schemaQueryer) error {
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("inspect extension source schema: %w", err)
 	}
-	if len(objects) != 1 {
+	want := []schemaObject{{typeName: "table", name: "catalog_state", table: "catalog_state", sql: sql.NullString{String: catalogSchema, Valid: true}}}
+	if version == transactionSchemaVersion {
+		want = []schemaObject{
+			schemaObject{typeName: "index", name: "sqlite_autoindex_install_transactions_1", table: "install_transactions"},
+			schemaObject{typeName: "table", name: "approval_state", table: "approval_state", sql: sql.NullString{String: approvalSchema, Valid: true}},
+			schemaObject{typeName: "table", name: "catalog_state", table: "catalog_state", sql: sql.NullString{String: catalogSchema, Valid: true}},
+			schemaObject{typeName: "table", name: "install_transactions", table: "install_transactions", sql: sql.NullString{String: installTransactionsSchema, Valid: true}},
+		}
+	}
+	if len(objects) != len(want) {
 		return fmt.Errorf("extension source database schema has unexpected objects: %v", objects)
 	}
-	object := objects[0]
-	if object.typeName != "table" || object.name != "catalog_state" || object.table != "catalog_state" ||
-		!object.sql.Valid || object.sql.String != catalogSchema {
-		return errors.New("extension source database schema is incompatible")
+	for i := range objects {
+		if objects[i] != want[i] {
+			return errors.New("extension source database schema is incompatible")
+		}
 	}
 	return nil
 }

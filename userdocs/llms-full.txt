@@ -3136,10 +3136,7 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `edit.saveAll` | Save all changes | — | Global | Conditional — available only in a matching state |
 | `extension.addMcpServer` | Add to Configure | — | Global | Acts on the selected entity |
 | `extension.addSource` | Add extension source | — | Global | Acts on the selected marketplaceSourceInput |
-| `extension.browse.cancelInstall` | Cancel extension installation | — | Global | Conditional — available only in a matching state |
 | `extension.browse.clearFilters` | Clear extension filters | — | Global | Conditional — available only in a matching state |
-| `extension.browse.confirmInstall` | Install extension | — | Global | Acts on the selected marketplaceEntry |
-| `extension.browse.previewInstall` | Review extension installation | — | Global | Acts on the selected marketplaceEntry |
 | `extension.browse.retry` | Retry loading extensions | — | Global | Conditional — available only in a matching state |
 | `extension.checkUpdates` | Check for updates | — | Global | Acts on the selected entity |
 | `extension.disable` | Turn off | — | Global | Acts on the selected entity |
@@ -3150,10 +3147,17 @@ rather than shown disabled, whenever its state doesn't currently apply.
 | `extension.source.remove` | Remove source | — | Global | Acts on the selected entity |
 | `extension.sources.retry` | Retry sources | — | Global | Conditional — available only in a matching state |
 | `extension.update` | Update | — | Global | Acts on the selected entity |
-| `extensions.checkUpdates` | Extensions: check for updates | — | Global | Always available |
+| `extensions.cancelRemainingUpdates` | Extensions: cancel remaining updates | — | Global | Conditional — available only in a matching state |
+| `extensions.checkUpdates` | Extensions: check for updates | — | Global | Conditional — available only in a matching state |
 | `extensions.exportAudit` | Export plugin audit | — | Global | Always available |
-| `extensions.importTheme` | Extensions: Import theme | — | Global | Always available |
+| `extensions.importTheme` | Extensions: Import theme | — | Global | Conditional — available only in a matching state |
+| `extensions.install.confirm` | Confirm extension installation | — | Global | Acts on the selected extensionInstallAttempt |
+| `extensions.install.dismiss` | Close extension installation | — | Global | Acts on the selected extensionInstallAttempt |
+| `extensions.install.prepare` | Prepare extension installation | — | Global | Acts on the selected extensionInstallCandidate |
+| `extensions.install.retry` | Retry extension preparation | — | Global | Acts on the selected extensionInstallAttempt |
 | `extensions.open` | Extensions | `⌘⇧X` | Global | Always available |
+| `extensions.retryRecovery` | Extensions: retry recovery | — | Global | Conditional — available only in a matching state |
+| `extensions.retryUpdates` | Extensions: retry loading updates | — | Global | Conditional — available only in a matching state |
 | `extensions.review` | Review extensions waiting for you | — | Global | Conditional — available only in a matching state |
 | `extensions.sources` | Extensions: marketplace sources | — | Global | Always available |
 | `extensions.updateAll` | Extensions: update all | — | Global | Conditional — available only in a matching state |

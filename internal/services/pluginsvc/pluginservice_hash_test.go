@@ -35,7 +35,7 @@ func TestContentHash_TracksFileContent(t *testing.T) {
 	if changed == first {
 		t.Fatal("an edited file kept the hash")
 	}
-	p := New(root, nil, "")
+	p := newTestPluginService(t, root, nil, "")
 	if got := p.ContentHashOf("a"); got != changed {
 		t.Fatalf("ContentHashOf = %q, want %q", got, changed)
 	}

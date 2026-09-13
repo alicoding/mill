@@ -2,6 +2,8 @@ package pluginsvc
 
 import (
 	"os"
+	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -76,17 +78,108 @@ func TestWidenedFrom_DiffCarriesOnlyNewElements(t *testing.T) {
 	}
 }
 
-// grantTrust is a PluginTrustReader test double whose GrantOf answers a
-// fixed table -- the shape scanOne's widen detection reads.
+func TestNetworkMethodGrantPreservesExactRuntimeAuthority(t *testing.T) {
+	grant := func(entries ...NetworkContribution) PluginGrant {
+		return currentGrant(Manifest{Contributes: ManifestContributes{Network: entries}})
+	}
+	for _, test := range []struct {
+		name        string
+		granted     PluginGrant
+		current     PluginGrant
+		wantWidened bool
+		wantMethods map[string][]string
+	}{
+		{
+			name: "same host GET to POST", granted: grant(NetworkContribution{Host: "api.example.test"}),
+			current:     grant(NetworkContribution{Host: "api.example.test", Methods: []string{"GET", "POST"}}),
+			wantWidened: true, wantMethods: map[string][]string{"api.example.test": {"POST"}},
+		},
+		{
+			name: "POST removal narrows", granted: grant(NetworkContribution{Host: "api.example.test", Methods: []string{"GET", "POST"}}),
+			current: grant(NetworkContribution{Host: "api.example.test"}),
+		},
+		{
+			name: "empty methods equal GET", granted: grant(NetworkContribution{Host: "api.example.test"}),
+			current: grant(NetworkContribution{Host: "api.example.test", Methods: []string{"get"}}),
+		},
+		{
+			name: "duplicates union deterministically", granted: grant(NetworkContribution{Host: "api.example.test", Methods: []string{"GET"}}),
+			current: grant(
+				NetworkContribution{Host: "api.example.test", Methods: []string{"post", "GET"}},
+				NetworkContribution{Host: "api.example.test", Methods: []string{"POST", "delete"}},
+			),
+			wantWidened: true, wantMethods: map[string][]string{"api.example.test": {"DELETE", "POST"}},
+		},
+		{
+			name: "one host cannot authorize another", granted: grant(NetworkContribution{Host: "one.example.test", Methods: []string{"POST"}}),
+			current:     grant(NetworkContribution{Host: "two.example.test", Methods: []string{"POST"}}),
+			wantWidened: true, wantMethods: map[string][]string{"two.example.test": {"POST"}},
+		},
+		{
+			name: "wildcard does not cover explicit host", granted: grant(NetworkContribution{Host: "*", Methods: []string{"POST"}}),
+			current:     grant(NetworkContribution{Host: "api.example.test", Methods: []string{"POST"}}),
+			wantWidened: true, wantMethods: map[string][]string{"api.example.test": {"POST"}},
+		},
+		{
+			name: "explicit host does not cover wildcard", granted: grant(NetworkContribution{Host: "api.example.test", Methods: []string{"POST"}}),
+			current:     grant(NetworkContribution{Host: "*", Methods: []string{"POST"}}),
+			wantWidened: true, wantMethods: map[string][]string{"*": {"POST"}},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			diff, widened := widenedFrom(test.granted, test.current)
+			if widened != test.wantWidened {
+				t.Fatalf("widened = %v, want %v (diff %+v)", widened, test.wantWidened, diff)
+			}
+			if !reflect.DeepEqual(diff.NetworkMethods, test.wantMethods) {
+				t.Fatalf("network method diff = %#v, want %#v", diff.NetworkMethods, test.wantMethods)
+			}
+		})
+	}
+}
+
+func TestHistoricalNetworkGrantCannotQualifyBulkUpdate(t *testing.T) {
+	service, source := installedReplacementFixture(t)
+	installed := service.scanOneWithoutApproval("replace-me")
+	record, ok := ReadInstallRecord(installed.Dir)
+	if !ok {
+		t.Fatal("installed fixture has no receipt")
+	}
+	service.WireAudit(fixedGrantTrust{approval: PluginApproval{
+		Allowed: []string{"replace-me"},
+		Locks:   map[string]PluginApprovalLock{"replace-me": {Hash: installed.CodeHash, Grant: PluginGrant{NetworkGrantVersion: 0}}},
+	}}, nil)
+	manifest, err := readStagedManifest(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Tier = TierHashPinned
+	artifact := preparedArtifact{update: true, installedPresent: true, record: record}
+	if !service.requiresReviewLocked(artifact, manifest) {
+		t.Fatal("historical network grant qualified an update for automatic bulk installation")
+	}
+}
+
+type fixedGrantTrust struct{ approval PluginApproval }
+
+func (f fixedGrantTrust) Enabled(string) bool               { return true }
+func (f fixedGrantTrust) Allowlist() []string               { return nil }
+func (f fixedGrantTrust) Approval() (PluginApproval, error) { return f.approval, nil }
+
+// grantTrust is a PluginTrustReader test double whose approval snapshot
+// carries a fixed grant table.
 type grantTrust struct{ grants map[string]PluginGrant }
 
-func (g grantTrust) Enabled(string) bool      { return true }
-func (g grantTrust) Allowed(string) bool      { return true }
-func (g grantTrust) Allowlist() []string      { return nil }
-func (g grantTrust) LockedHash(string) string { return "" }
-func (g grantTrust) GrantOf(id string) (PluginGrant, bool) {
-	grant, ok := g.grants[id]
-	return grant, ok
+func (g grantTrust) Enabled(string) bool { return true }
+func (g grantTrust) Allowlist() []string { return nil }
+func (g grantTrust) Approval() (PluginApproval, error) {
+	approval := PluginApproval{Locks: map[string]PluginApprovalLock{}}
+	for id, grant := range g.grants {
+		approval.Allowed = append(approval.Allowed, id)
+		approval.Locks[id] = PluginApprovalLock{Hash: "test-hash", Grant: grant}
+	}
+	sort.Strings(approval.Allowed)
+	return approval, nil
 }
 
 // scanOne stamps PluginInfo.Widened from the wired trust reader: a
@@ -98,7 +191,7 @@ func TestScanOne_StampsWidenedFromTrustReader(t *testing.T) {
 	writePlugin(t, root, "mill-b", `{"id":"mill-b","name":"B","version":"1.0.0","capabilities":["open-url"]}`, nil)
 	writePlugin(t, root, "mill-c", `{"id":"mill-c","name":"C","version":"1.0.0","capabilities":["open-url"]}`, nil)
 
-	p := New(root, nil, "")
+	p := newTestPluginService(t, root, nil, "")
 	p.WireAudit(grantTrust{grants: map[string]PluginGrant{
 		// mill-a: granted only open-url, manifest now also declares
 		// fetch -- widened.

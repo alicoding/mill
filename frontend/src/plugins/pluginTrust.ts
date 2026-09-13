@@ -6,49 +6,45 @@
 // plugin never reviewed waits for the user to allow it. Built-ins skip
 // the two trust gates, never the user's own switch.
 // 'unsigned': an administrator pinned signing keys and this folder's
-// signature did not verify; 'changed': the folder's CodeHash (every
-// file except manifest.json, docs/goals/0375 S2 -- a manifest edit is
-// 'widened's question, not this one) no longer matches the one its
-// consent covered (slice 5's lock) -- both stop the plugin until an
-// administrator or the user acts.
+// signature did not verify. Package approval comes from the backend's
+// one-revision ApprovalState verdict; the browser never reconstructs
+// consent from separately-read settings.
 // 'policy': the organisation's policy file refuses it (goal 0349 S6)
 // -- judged first, because nothing the user can set on this Mac moves
 // it; the reason rides PluginIntegrity.policyBlocked.
-export type PluginRunState = 'run' | 'policy' | 'blocked' | 'disabled' | 'unsigned' | 'unallowed' | 'changed'
+export type PluginRunState = 'run' | 'policy' | 'blocked' | 'disabled' | 'unsigned' | 'unallowed' | 'changed' | 'error'
 
 export interface PluginRunPolicy {
-	disabled: readonly string[]
-	allowed: readonly string[]
-	allowlist: readonly string[]
-	// lock maps a plugin id to the CodeHash its consent covered.
-	lock: Readonly<Record<string, string>>
+	// undefined means the settings read failed. It is kept distinct from
+	// an explicitly empty list so activation fails closed and visibly.
+	disabled?: readonly string[]
+	allowlist?: readonly string[]
 }
 
 export interface PluginIntegrity {
-	// contentHash is the plugin's CURRENT CodeHash, compared against
-	// PluginRunPolicy.lock -- named generically since the caller is the
-	// one that knows which hash the lock represents.
-	contentHash: string
 	signingPolicy: boolean
 	signed: boolean
 	// The policy's refusal sentence, '' when it allows the plugin.
 	policyBlocked?: string
-	// widened is true when the manifest currently declares more than
-	// the grant its consent covered (docs/goals/0375 S2, MV3's
-	// re-consent-on-widen rule): the extension returns to 'unallowed',
-	// the same state a fresh install shows, even though it was allowed
-	// before. A narrowed or unchanged set leaves this false.
-	widened?: boolean
+	approvalState?: string
 }
 
-export function pluginRunState(id: string, builtin: boolean, policy: PluginRunPolicy, integrity: PluginIntegrity = { contentHash: '', signingPolicy: false, signed: false }): PluginRunState {
+export function pluginRunState(id: string, builtin: boolean, policy: PluginRunPolicy, integrity: PluginIntegrity = { signingPolicy: false, signed: false }): PluginRunState {
+	const allowlist = policy.allowlist
+	const disabled = policy.disabled
 	if (!builtin && integrity.policyBlocked) return 'policy'
-	if (!builtin && policy.allowlist.length > 0 && !policy.allowlist.includes(id)) return 'blocked'
-	if (policy.disabled.includes(id)) return 'disabled'
+	if (!builtin) {
+		if (allowlist === undefined) return 'error'
+		if (allowlist.length > 0 && !allowlist.includes(id)) return 'blocked'
+	}
+	if (disabled === undefined) return 'error'
+	if (disabled.includes(id)) return 'disabled'
 	if (!builtin && integrity.signingPolicy && !integrity.signed) return 'unsigned'
-	if (!builtin && !policy.allowed.includes(id)) return 'unallowed'
-	if (!builtin && integrity.widened) return 'unallowed'
-	const locked = policy.lock[id]
-	if (!builtin && locked && integrity.contentHash && locked !== integrity.contentHash) return 'changed'
-	return 'run'
+	if (builtin) return 'run'
+	switch (integrity.approvalState) {
+		case 'allowed': return 'run'
+		case 'unallowed': return 'unallowed'
+		case 'changed': return 'changed'
+		default: return 'error'
+	}
 }

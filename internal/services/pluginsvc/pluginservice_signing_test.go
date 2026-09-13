@@ -21,7 +21,7 @@ func TestSigning_PinnedKeyGatesUnsignedAndTamperedPlugins(t *testing.T) {
 		t.Fatal(err)
 	}
 	pubText, _ := pub.MarshalText()
-	p := New(root, nil, "")
+	p := newTestPluginService(t, root, nil, "")
 	if !p.SignedOK("unsigned") {
 		t.Fatal("no policy: every plugin must pass")
 	}

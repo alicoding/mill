@@ -48,7 +48,7 @@ func TestSecretSourceManifest_FailsClosedOnEveryMalformedDeclaration(t *testing.
 	for name, tc := range cases {
 		root := t.TempDir()
 		writePlugin(t, root, "a", tc.manifest, map[string]string{"secrets.js": netrcSecretsJS})
-		info := New(root, nil, "1.0.0").resolvePlugin("a")
+		info := newTestPluginService(t, root, nil, "1.0.0").resolvePlugin("a")
 		if !strings.Contains(info.Error, tc.want) {
 			t.Errorf("%s: error = %q, want %q", name, info.Error, tc.want)
 		}
@@ -58,12 +58,12 @@ func TestSecretSourceManifest_FailsClosedOnEveryMalformedDeclaration(t *testing.
 func TestSecretSourceManifest_ValidDeclarationLoadsAndNeedsItsPack(t *testing.T) {
 	root := t.TempDir()
 	writePlugin(t, root, "a", sourceManifest("a", fileSourceDecl, ""), map[string]string{"secrets.js": netrcSecretsJS})
-	if info := New(root, nil, "1.0.0").resolvePlugin("a"); info.Error != "" {
+	if info := newTestPluginService(t, root, nil, "1.0.0").resolvePlugin("a"); info.Error != "" {
 		t.Fatalf("a valid declaration must load: %q", info.Error)
 	}
 	bare := t.TempDir()
 	writePlugin(t, bare, "a", sourceManifest("a", fileSourceDecl, ""), nil)
-	if info := New(bare, nil, "1.0.0").resolvePlugin("a"); !strings.Contains(info.Error, "secrets.js is missing") {
+	if info := newTestPluginService(t, bare, nil, "1.0.0").resolvePlugin("a"); !strings.Contains(info.Error, "secrets.js is missing") {
 		t.Fatalf("a declared family needs its pack: %q", info.Error)
 	}
 }
@@ -90,7 +90,7 @@ func newSourceService(t *testing.T, id, decl, pack string) *PluginService {
 	t.Helper()
 	root := t.TempDir()
 	writePlugin(t, root, id, sourceManifest(id, decl, ""), map[string]string{"secrets.js": pack})
-	return New(root, nil, "1.0.0")
+	return newTestPluginService(t, root, nil, "1.0.0")
 }
 
 func TestSecretSourceKinds_ListsRunnableDeclarations(t *testing.T) {

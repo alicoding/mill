@@ -106,61 +106,46 @@ func (p *PluginService) PreviewThemeImport(encoded, basename string) (ThemeImpor
 	return parsed, err
 }
 
-// ImportTheme re-runs the authoritative parser and mapping before staging a
-// data-only extension through the same policy and static checks as any other
-// local install.
-func (p *PluginService) ImportTheme(encoded, basename, displayName, family string) (ThemeImportResult, error) {
-	raw, err := decodeThemeImport(encoded)
+func prepareThemeCandidate(stage string, candidate InstallCandidate) (InstallRecord, string, error) {
+	raw, err := decodeThemeImport(candidate.Encoded)
 	if err != nil {
-		return ThemeImportResult{}, err
+		return InstallRecord{}, "", err
 	}
-	preview, css, err := parseThemeImport(raw, basename)
+	preview, css, err := parseThemeImport(raw, candidate.Basename)
 	if err != nil {
-		return ThemeImportResult{}, err
+		return InstallRecord{}, "", err
 	}
-	name := strings.TrimSpace(displayName)
+	name := strings.TrimSpace(candidate.DisplayName)
 	if name == "" {
-		return ThemeImportResult{}, usererror.New("theme-import-name-required", "Enter a name for this theme.")
+		return InstallRecord{}, "", usererror.New("theme-import-name-required", "Enter a name for this theme.")
 	}
 	if len([]rune(name)) > 120 {
-		return ThemeImportResult{}, usererror.New("theme-import-name-too-long", "Keep the theme name to 120 characters or fewer.")
+		return InstallRecord{}, "", usererror.New("theme-import-name-too-long", "Keep the theme name to 120 characters or fewer.")
 	}
-	if family != "light" && family != "dark" {
-		return ThemeImportResult{}, usererror.New("theme-import-family-required", "Choose a light or dark appearance.")
+	if candidate.Family != "light" && candidate.Family != "dark" {
+		return InstallRecord{}, "", usererror.New("theme-import-family-required", "Choose a light or dark appearance.")
 	}
-	id := "imported-theme-" + family + "-" + preview.SourceSHA256[:24]
-	if p.installedFolderExists(id) {
-		return ThemeImportResult{}, usererror.New("theme-import-duplicate", "This theme is already imported. Remove it from Extensions before importing it again.")
-	}
+	id := "imported-theme-" + candidate.Family + "-" + preview.SourceSHA256[:24]
 	manifest := Manifest{
 		ID: id, Name: name, Version: "1.0.0",
 		Description: "Imported color theme", Icon: "icon.png", Contributes: ManifestContributes{
-			Themes: []ThemeContribution{{ID: "theme", Label: name, Family: family, File: "theme.css"}},
+			Themes: []ThemeContribution{{ID: "theme", Label: name, Family: candidate.Family, File: "theme.css"}},
 		},
 	}
 	themeOrigin := SourceOrigin{Kind: "theme-file"}
 	if err := policyInstallRefusalOriginAt(manifest, TierDev, themeOrigin, "", "", ""); err != nil {
-		return ThemeImportResult{}, err
+		return InstallRecord{}, "", err
 	}
-	stage, cleanup, err := stageDir()
-	if err != nil {
-		return ThemeImportResult{}, err
-	}
-	defer cleanup()
 	metadata := ThemeImportMetadata{
 		SourceName: preview.SourceName, SourceSHA256: preview.SourceSHA256,
 		MapperVersion: themeMapperVersion, SourceTheme: preview.sourceTheme,
-		Family: family, Mapped: preview.Mapped, Total: preview.Total,
+		Family: candidate.Family, Mapped: preview.Mapped, Total: preview.Total,
 		MappedKeys: preview.MappedKeys, UnmappedKeys: preview.UnmappedKeys, InvalidKeys: preview.InvalidKeys,
 	}
 	if err := writeThemeImportStage(stage, manifest, metadata, raw, css); err != nil {
-		return ThemeImportResult{}, err
+		return InstallRecord{}, "", err
 	}
-	_, err = p.finishThemeInstall(stage, InstallRecord{Source: PluginSource{Kind: "theme-file", Name: preview.SourceName}, Origin: themeOrigin, Tier: TierDev})
-	if err != nil {
-		return ThemeImportResult{}, err
-	}
-	return ThemeImportResult{PluginID: id, NeedsAllow: true}, nil
+	return InstallRecord{Source: PluginSource{Kind: "theme-file", Name: preview.SourceName}, Origin: themeOrigin, Tier: TierDev}, id, nil
 }
 
 func decodeThemeImport(encoded string) ([]byte, error) {

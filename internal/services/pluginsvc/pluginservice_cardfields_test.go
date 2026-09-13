@@ -59,7 +59,7 @@ func newCardFieldsHarness(t *testing.T) (*PluginService, *guardrailsvc.Guardrail
 	writePlugin(t, root, "plain", `{"id":"plain","name":"Plain","version":"1"}`, nil)
 	store := servicetest.NewFakeStore()
 	guard := guardrailsvc.NewGuardrailService(store, compositionsvc.NewCompositionService(store))
-	svc := New(root, guard, "1.0.0")
+	svc := newTestPluginService(t, root, guard, "1.0.0")
 	writer := &fakeFieldWriter{}
 	svc.WireContentWrites(writer)
 	return svc, guard, writer
@@ -124,7 +124,7 @@ func TestSetCardFieldsForPlugin_BuiltInPluginAllowedBySeededRule(t *testing.T) {
 	root := t.TempDir()
 	store := servicetest.NewFakeStore()
 	guard := guardrailsvc.NewGuardrailService(store, compositionsvc.NewCompositionService(store))
-	svc := New(root, guard, "1.0.0")
+	svc := newTestPluginService(t, root, guard, "1.0.0")
 	writer := &fakeFieldWriter{}
 	svc.WireContentWrites(writer)
 
@@ -192,7 +192,7 @@ func TestKnownCapabilities_RegistersEditCardFields(t *testing.T) {
 	}
 	root := t.TempDir()
 	writePlugin(t, root, "declares", `{"id":"declares","name":"D","version":"1","capabilities":["edit-card-fields"]}`, nil)
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 	infos, err := svc.ListPlugins()
 	if err != nil {
 		t.Fatal(err)

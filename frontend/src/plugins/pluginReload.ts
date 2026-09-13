@@ -7,7 +7,7 @@ import { SettingsService } from '../shared/bindings'
 import { resetLazyArrays } from '../shared/lazySnapshot'
 import { unregisterThirdPartyNouns } from '../atlas/atlasNounRegistry'
 import { buildPluginAPI, collectFrameSurfaces } from './hostApi'
-import { collectReloadCommand, loadPluginStorage, pluginLoadStates, pluginNeedsActivation, readPluginPolicy, resolveActivate } from './loader'
+import { approvalUnavailableMessage, collectReloadCommand, loadPluginStorage, pluginLoadStates, pluginNeedsActivation, readPluginPolicy, resolveActivate } from './loader'
 import { captureSameDomExports, clearExports } from './extensionExports'
 import { unregisterPluginCaptures } from './pluginCaptures'
 import { unregisterPluginCommands } from './pluginCommands'
@@ -44,6 +44,7 @@ const REFUSAL_KEY: Record<string, string> = {
 	unallowed: 'views:settings.extensions.reloadRefusal.unallowed',
 	unsigned: 'views:settings.extensions.reloadRefusal.unsigned',
 	changed: 'views:settings.extensions.reloadRefusal.changed',
+	error: 'views:settings.extensions.reloadRefusal.unavailable',
 }
 
 function unregisterContributions(pluginId: string): void {
@@ -85,12 +86,12 @@ export async function reloadPlugin(pluginId: string): Promise<void> {
 	const info = await currentInfo(pluginId)
 	const policy = await readPluginPolicy()
 	const state = pluginRunState(pluginId, !!info.Builtin, policy, {
-		contentHash: info.CodeHash ?? '',
 		signingPolicy: !!info.SigningPolicy,
 		signed: !!info.Signed,
-		widened: !!info.Widened,
+		policyBlocked: info.PolicyBlocked ?? '',
+		approvalState: info.ApprovalState,
 	})
-	if (state !== 'run') throw new Error(REFUSAL_KEY[state] ? copy(REFUSAL_KEY[state]) : state)
+	if (state !== 'run') throw new Error(state === 'error' ? approvalUnavailableMessage() : REFUSAL_KEY[state] ? copy(REFUSAL_KEY[state]) : state)
 	let millVersion = ''
 	try {
 		millVersion = await SettingsService.AppVersion()

@@ -53,6 +53,19 @@ describe('permissionLines', () => {
     expect(lines[0].key).toBe('extensions.can.reachAnyHost')
   })
 
+  it('shows the exact method authority for each host', () => {
+    const lines = permissionLines(preview({
+      AnyHost: true,
+      NetworkHosts: ['*', 'api.example.test'],
+      NetworkGrantVersion: 1,
+      NetworkMethods: { 'api.example.test': ['GET', 'POST'], '*': ['GET'] },
+    }))
+    expect(lines.slice(0, 2)).toEqual([
+      { key: 'extensions.can.reachAnyHostMethods', params: { host: '*', methods: 'GET' } },
+      { key: 'extensions.can.reachHostMethods', params: { host: 'api.example.test', methods: 'GET, POST' } },
+    ])
+  })
+
   it('names the secret door when the manifest declares a secret reference', () => {
     const lines = permissionLines(preview({ UsesSecrets: true }))
     expect(lines.map((l) => l.key)).toContain('extensions.can.useSecrets')

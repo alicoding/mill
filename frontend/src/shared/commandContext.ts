@@ -1,3 +1,5 @@
+import type { InstallCandidate } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
+
 // The target a command acts on (goal 0343). A registry command used to
 // be a closure over global store state, so anything acting on a
 // specific row -- stop THIS run, pin THIS clipboard entry, open THIS
@@ -26,6 +28,8 @@ export type CommandContext =
   | { kind: 'entry'; entryId: string; pinned?: boolean }
   | { kind: 'marketplaceSourceInput'; locator: string }
   | { kind: 'marketplaceEntry'; marketplace: string; pluginId: string }
+  | { kind: 'extensionInstallCandidate'; candidate: InstallCandidate }
+  | { kind: 'extensionInstallAttempt'; operationId: string }
   | { kind: 'card'; cardId: string }
   // The List grid's live selection (goal 0349 S4): which rows the
   // row-marker checkboxes hold, which column header is selected, and
@@ -131,6 +135,14 @@ export function marketplaceSourceInputContext(ctx: CommandContext | undefined): 
 
 export function marketplaceEntryContext(ctx: CommandContext | undefined): { marketplace: string; pluginId: string } | null {
   return ctx?.kind === 'marketplaceEntry' ? { marketplace: ctx.marketplace, pluginId: ctx.pluginId } : null
+}
+
+export function extensionInstallCandidateContext(ctx: CommandContext | undefined): { candidate: InstallCandidate } | null {
+  return ctx?.kind === 'extensionInstallCandidate' ? { candidate: ctx.candidate } : null
+}
+
+export function extensionInstallAttemptContext(ctx: CommandContext | undefined): { operationId: string } | null {
+  return ctx?.kind === 'extensionInstallAttempt' ? { operationId: ctx.operationId } : null
 }
 
 export function listGridContext(ctx: CommandContext | undefined): { listID: string; rowIDs: string[]; columnKey?: string; text?: string } | null {

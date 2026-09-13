@@ -13,7 +13,7 @@ func TestFetchForPlugin_RefusesBeforeRules(t *testing.T) {
 	root := t.TempDir()
 	writePlugin(t, root, "no-cap", `{"id":"no-cap","name":"N","version":"1","contributes":{"network":[{"host":"api.example.com"}]}}`, nil)
 	writePlugin(t, root, "getter", `{"id":"getter","name":"G","version":"1","capabilities":["fetch"],"contributes":{"network":[{"host":"api.example.com"},{"host":"hooks.example.com:8443","methods":["post"]}]}}`, nil)
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 
 	cases := []struct{ plugin, method, url, want string }{
 		{"no-cap", "GET", "https://api.example.com/x", "does not declare the \"fetch\" capability"},
@@ -42,7 +42,7 @@ func TestListPlugins_ValidatesContributedNetwork(t *testing.T) {
 	writePlugin(t, root, "net-ok", `{"id":"net-ok","name":"N","version":"1","capabilities":["fetch"],"contributes":{"network":[{"host":"api.example.com","methods":["GET","POST"]},{"host":"localhost:8080"}]}}`, nil)
 	writePlugin(t, root, "bad-host", `{"id":"bad-host","name":"N","version":"1","contributes":{"network":[{"host":"https://api.example.com"}]}}`, nil)
 	writePlugin(t, root, "bad-method", `{"id":"bad-method","name":"N","version":"1","contributes":{"network":[{"host":"api.example.com","methods":["FETCH"]}]}}`, nil)
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 	infos, err := svc.ListPlugins()
 	if err != nil {
 		t.Fatal(err)
@@ -80,7 +80,7 @@ func TestNetworkAllows(t *testing.T) {
 // maps to performed=false (the leak this pins was e2e runs opening
 // example.com on the developer's machine).
 func TestPerform_OpenURLServerModeIsNotPerformed(t *testing.T) {
-	svc := New(t.TempDir(), nil, "1.0.0")
+	svc := newTestPluginService(t, t.TempDir(), nil, "1.0.0")
 	svc.openURL = func(string) error { return osopen.ErrUnsupportedInServerMode }
 	performed, err := svc.perform("open-url", map[string]string{"url": "https://example.com"})
 	if err != nil || performed {
@@ -94,7 +94,7 @@ func TestListPlugins_ValidatesContributedViews(t *testing.T) {
 	writePlugin(t, root, "bad-id", `{"id":"bad-id","name":"V","version":"1","contributes":{"views":[{"id":"Not Slug","title":"X"}]}}`, nil)
 	writePlugin(t, root, "no-title", `{"id":"no-title","name":"V","version":"1","contributes":{"views":[{"id":"a","title":" "}]}}`, nil)
 	writePlugin(t, root, "dup", `{"id":"dup","name":"V","version":"1","contributes":{"views":[{"id":"a","title":"A"},{"id":"a","title":"B"}]}}`, nil)
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 	infos, err := svc.ListPlugins()
 	if err != nil {
 		t.Fatal(err)
@@ -119,7 +119,7 @@ func TestListPlugins_ValidatesContributedViews(t *testing.T) {
 func TestFetchForPlugin_AnyHostDeclaration(t *testing.T) {
 	root := t.TempDir()
 	writePlugin(t, root, "tester", `{"id":"tester","name":"T","version":"1","capabilities":["fetch"],"contributes":{"network":[{"host":"*","methods":["GET","POST"]},{"host":"api.example.com"}]}}`, nil)
-	svc := New(root, nil, "1.0.0")
+	svc := newTestPluginService(t, root, nil, "1.0.0")
 	if got := svc.resolvePlugin("tester"); got.Error != "" {
 		t.Fatalf("wildcard manifest should load, got %q", got.Error)
 	}

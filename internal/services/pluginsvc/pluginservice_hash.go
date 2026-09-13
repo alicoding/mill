@@ -157,7 +157,7 @@ func hashedFile(rel string, d fs.DirEntry) bool {
 // comparison input.
 func (p *PluginService) ContentHashOf(id string) string {
 	info := p.resolvePlugin(id)
-	if info.Builtin || info.Dir == "" {
+	if info.Error != "" || info.Builtin || info.Dir == "" {
 		return ""
 	}
 	h, err := ContentHash(info.Dir)
@@ -172,7 +172,7 @@ func (p *PluginService) ContentHashOf(id string) string {
 // comparison input (docs/goals/0375 S2).
 func (p *PluginService) CodeHashOf(id string) string {
 	info := p.resolvePlugin(id)
-	if info.Builtin || info.Dir == "" {
+	if info.Error != "" || info.Builtin || info.Dir == "" {
 		return ""
 	}
 	h, err := CodeHash(info.Dir)
@@ -185,5 +185,9 @@ func (p *PluginService) CodeHashOf(id string) string {
 // VersionOf answers an installed plugin's manifest version ("" when
 // unknown) -- recorded beside the hash in the lock.
 func (p *PluginService) VersionOf(id string) string {
-	return p.resolvePlugin(id).Manifest.Version
+	info := p.resolvePlugin(id)
+	if info.Error != "" {
+		return ""
+	}
+	return info.Manifest.Version
 }

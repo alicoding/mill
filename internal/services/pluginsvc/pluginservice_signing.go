@@ -71,10 +71,13 @@ func (p *PluginService) SigningPolicyActive() bool {
 // SignedOK is the run policy's question: with no policy every plugin
 // passes; with one, only a verified signature does.
 func (p *PluginService) SignedOK(id string) bool {
+	info := p.resolvePlugin(id)
+	if info.Error != "" {
+		return false
+	}
 	keys := p.signingKeySet()
 	if len(keys) == 0 {
 		return true
 	}
-	info := p.resolvePlugin(id)
 	return info.Builtin || SignatureVerified(info.Dir, info.ContentHash, keys)
 }

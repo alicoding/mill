@@ -72,7 +72,7 @@ func writeMCPPlugin(t *testing.T, dir string) {
 func TestResolveMCPServer_RendersReferencesInKeyOrder(t *testing.T) {
 	dir := t.TempDir()
 	writeMCPPlugin(t, dir)
-	svc := New(dir, nil, "")
+	svc := newTestPluginService(t, dir, nil, "")
 	svc.WireSecretRefs(nil, func(pluginID, key string) (string, bool) {
 		if pluginID == "acme-mcp" && key == "token" {
 			return `"entry-7"`, true
@@ -100,7 +100,7 @@ func TestResolveMCPServer_RendersReferencesInKeyOrder(t *testing.T) {
 func TestResolveMCPServer_RefusesWhenNoSecretIsPicked(t *testing.T) {
 	dir := t.TempDir()
 	writeMCPPlugin(t, dir)
-	svc := New(dir, nil, "")
+	svc := newTestPluginService(t, dir, nil, "")
 	svc.WireSecretRefs(nil, func(string, string) (string, bool) { return "", false })
 	if _, err := svc.ResolveMCPServer("acme-mcp", "acme"); err == nil || !strings.Contains(err.Error(), "Acme token") {
 		t.Fatalf("err = %v, want a refusal naming the setting", err)

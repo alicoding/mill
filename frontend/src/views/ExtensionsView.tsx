@@ -1,19 +1,19 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Heading, SegmentedControl, Stack, Text } from '@primer/react'
+import { Banner, Button, Heading, SegmentedControl, Stack, Text } from '@primer/react'
 import PageContainer from '../shared/PageContainer'
 import { useUISignalStore } from '../shared/uiSignalStore'
-import { notifyPluginRemoved } from '../shared/pluginRemoveSignal'
 import ExtensionsSection from './ExtensionsSection'
 import { ExtensionsBrowseTab } from './ExtensionsBrowseTab'
 import { ExtensionsUpdatesTab } from './ExtensionsUpdatesTab'
-import { ExtensionsUpdateDialogHost } from './ExtensionsUpdateDialogHost'
 import { ExtensionsPolicyBanner } from './ExtensionsPolicyBanner'
 import { refreshUpdates, useExtensionUpdatesStore } from '../shared/extensionUpdatesStore'
 import listStyles from '../shared/ListCard.module.css'
 import styles from './ExtensionsSection.module.css'
-import { runCommand } from '../shared/commands'
+import { findCommand, runCommand } from '../shared/commands'
 import { ThemeImportDialog } from './ThemeImportDialog'
+import { useExtensionRecoveryStore } from '../shared/extensionRecoveryStore'
+import { useExtensionMarketplaceInstallStore } from '../shared/extensionMarketplaceInstallStore'
 
 // Extensions (docs/goals/0349): a destination of its own, not a
 // Settings pane -- the shape every surveyed extension platform
@@ -38,6 +38,9 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
   const importRequest = useUISignalStore((s) => s.extensionThemeImportRequest)
   const consumeImportRequest = useUISignalStore((s) => s.consumeExtensionThemeImport)
   const [importOpen, setImportOpen] = useState(false)
+  const recovery = useExtensionRecoveryStore()
+  useExtensionMarketplaceInstallStore((state) => state.phase)
+  useExtensionUpdatesStore((state) => state.bulkActive)
   useEffect(() => {
     if (importRequest) {
       setImportOpen(true)
@@ -51,29 +54,27 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
   }, [sourcesRequest])
   useEffect(() => {
     if (installedRequest > 0) {
+      setImportOpen(false)
       setTab('installed')
       consumeInstalledRequest(installedRequest)
     }
   }, [consumeInstalledRequest, installedRequest])
 
-  // An install changes what the Installed tab shows; the same signal
-  // a removal raises re-reads it.
-  const onInstalled = useCallback(() => {
-    notifyPluginRemoved()
-    setTab('installed')
-  }, [])
-
   // The badge counts the LAST check's candidates; opening the page
   // reads that record and never fetches.
   const updateCount = useExtensionUpdatesStore((s) => s.candidates.length)
   useEffect(() => { void refreshUpdates() }, [])
+  const importCommand = findCommand('extensions.importTheme')
+  const canImport = importCommand !== undefined && (importCommand.enabled?.() ?? true)
+  const recoveryCommand = findCommand('extensions.retryRecovery')
+  const canRetryRecovery = recoveryCommand !== undefined && (recoveryCommand.enabled?.() ?? true)
 
   return (
     <PageContainer variant="wide" data-testid="extensions-view">
       <Stack direction="vertical" gap="none">
         <Stack direction="horizontal" justify="space-between" align="center" gap="condensed">
           <Heading as="h1" id="extensions-heading">{t('extensions.heading')}</Heading>
-          <Button onClick={() => void runCommand('extensions.importTheme')} data-testid="extensions-import-theme">
+          <Button disabled={!canImport} onClick={() => void runCommand('extensions.importTheme')} data-testid="extensions-import-theme">
             {t('extensions.themeImport.button')}
           </Button>
         </Stack>
@@ -81,6 +82,15 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
       </Stack>
 
       <ExtensionsPolicyBanner />
+      {recovery.unresolved && (
+        <Banner
+          variant="critical"
+          title={t('extensions.recovery.title')}
+          description={<Stack direction="vertical" gap="condensed"><Text>{t('extensions.recovery.message')}</Text>{recovery.detail && <Text>{recovery.detail}</Text>}</Stack>}
+          primaryAction={<Banner.PrimaryAction disabled={!canRetryRecovery} onClick={() => { void runCommand('extensions.retryRecovery') }}>{t('extensions.recovery.retry')}</Banner.PrimaryAction>}
+          data-testid="extensions-recovery-banner"
+        />
+      )}
 
       <SegmentedControl
         aria-label={t('extensions.tabsAria')}
@@ -105,8 +115,7 @@ export default function ExtensionsView({ initialTab }: { initialTab?: string } =
       {tab === 'installed' && <ExtensionsSection />}
       {tab === 'browse' && <ExtensionsBrowseTab sourcesRequest={sourcesRequest} />}
       {tab === 'updates' && <ExtensionsUpdatesTab />}
-      <ExtensionsUpdateDialogHost />
-      {importOpen && <ThemeImportDialog onClose={() => setImportOpen(false)} onImported={() => { setImportOpen(false); onInstalled() }} />}
+      {importOpen && <ThemeImportDialog onClose={() => setImportOpen(false)} />}
     </PageContainer>
   )
 }

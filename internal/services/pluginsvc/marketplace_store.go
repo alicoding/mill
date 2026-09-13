@@ -1,6 +1,7 @@
 package pluginsvc
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -346,6 +347,10 @@ type marketplaceEntryResolution struct {
 // accepted catalog read. Installation keeps this value through acquisition so
 // a later source with the same display name cannot relabel the staged bytes.
 func (p *PluginService) resolveMarketplaceEntry(marketplace, id string) (marketplaceEntryResolution, error) {
+	return p.resolveMarketplaceEntryContext(context.Background(), marketplace, id)
+}
+
+func (p *PluginService) resolveMarketplaceEntryContext(ctx context.Context, marketplace, id string) (marketplaceEntryResolution, error) {
 	if marketplace == ReservedMarketplaceName {
 		idx, err := p.exampleIndexChecked()
 		if err != nil {
@@ -362,7 +367,7 @@ func (p *PluginService) resolveMarketplaceEntry(marketplace, id string) (marketp
 		}, nil
 	}
 
-	st, err := p.readState()
+	st, err := p.readStateContext(ctx)
 	if err != nil {
 		return marketplaceEntryResolution{}, err
 	}

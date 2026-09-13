@@ -58,7 +58,7 @@ func TestArtifactPolicyChecksEveryRedirectAndRecordsTerminalURL(t *testing.T) {
 	t.Run("terminal URL", func(t *testing.T) {
 		writePolicy(t, fmt.Sprintf(`{"version":2,"managedBy":"Org","sources":[{"kind":"url","locator":%q,"artifactOrigins":[%q]}]}`, allowed.URL+"/archive.zip", allowed.URL))
 		svc, _ := newStoreService(t)
-		record, err := svc.InstallFromLink(allowed.URL + "/archive.zip")
+		record, err := installLinkForTest(t, svc, allowed.URL+"/archive.zip")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -70,7 +70,7 @@ func TestArtifactPolicyChecksEveryRedirectAndRecordsTerminalURL(t *testing.T) {
 	t.Run("refused hop", func(t *testing.T) {
 		writePolicy(t, fmt.Sprintf(`{"version":2,"managedBy":"Org","sources":[{"kind":"url","locator":%q,"artifactOrigins":[%q]}]}`, allowed.URL+"/escape.zip", allowed.URL))
 		svc, _ := newStoreService(t)
-		_, err := svc.InstallFromLink(allowed.URL + "/escape.zip")
+		_, err := installLinkForTest(t, svc, allowed.URL+"/escape.zip")
 		if err == nil || !strings.Contains(err.Error(), "download address") {
 			t.Fatalf("InstallFromLink error = %v", err)
 		}

@@ -1,7 +1,9 @@
 package settingssvc
 
 import (
+	"errors"
 	"log/slog"
+	"sync"
 	"testing"
 
 	"github.com/alicoding/mill/internal/services/compositionsvc"
@@ -15,7 +17,50 @@ func newExtensionsHarness(t *testing.T) *SettingsService {
 	store := servicetest.NewFakeStore()
 	comp := compositionsvc.NewCompositionService(store)
 	trig := triggersvc.NewTriggerService(comp, slog.Default(), store)
-	return NewSettingsService(store, trig, false)
+	service := NewSettingsService(store, trig, false)
+	wireApprovalMemory(service)
+	WirePluginRemoval(service, func(id string, action func(string, bool, bool) error) error {
+		return action("", false, true)
+	})
+	service.SetPluginHasher(func(id string) (PluginGrantSnapshot, error) {
+		return PluginGrantSnapshot{Version: "1.0.0", Hash: "sha256-" + id, NetworkGrantVersion: 1, NetworkMethods: map[string][]string{}}, nil
+	})
+	return service
+}
+
+func wireApprovalMemory(service *SettingsService) {
+	var mu sync.Mutex
+	var payload []byte
+	var revision int64
+	SetPluginApprovalStore(service,
+		func() ([]byte, int64, bool, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			return append([]byte(nil), payload...), revision, payload != nil, nil
+		},
+		func(initializer PluginApprovalInitializer, change PluginApprovalChange) ([]byte, int64, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			current := append([]byte(nil), payload...)
+			if current == nil {
+				var err error
+				current, err = initializer()
+				if err != nil {
+					return nil, 0, err
+				}
+			}
+			next, err := change(current)
+			if err != nil {
+				return nil, 0, err
+			}
+			if len(next) == 0 {
+				return nil, 0, errors.New("empty approval payload")
+			}
+			revision++
+			payload = append([]byte(nil), next...)
+			return append([]byte(nil), payload...), revision, nil
+		},
+	)
 }
 
 func TestGetDisabledExtensions_UnsetReturnsEmpty(t *testing.T) {

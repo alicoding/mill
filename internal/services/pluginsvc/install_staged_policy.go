@@ -29,15 +29,3 @@ func stagedPolicyRefusal(m Manifest, rec InstallRecord, root, hash string) error
 	}
 	return policyInstallRefusalAt(m, rec.Tier, rec.Marketplace, installSourceLocator(rec.Source), root, hash)
 }
-
-func recheckStagedPolicy(root string, rec InstallRecord) error {
-	m, err := readStagedManifest(root)
-	if err != nil {
-		return err
-	}
-	hash, err := ContentHash(root)
-	if err != nil {
-		return err
-	}
-	return stagedPolicyRefusal(m, rec, root, hash)
-}

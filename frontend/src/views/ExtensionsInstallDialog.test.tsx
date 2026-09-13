@@ -39,7 +39,8 @@ const { ExtensionsInstallDialog } = await import('./ExtensionsInstallDialog')
 
 const preview: InstallPreview = {
   ID: 'plugin', Name: 'Plugin', Version: '1.0.0', Author: '', Description: '', Marketplace: 'source',
-  Tier: 'unverified', Capabilities: [], NetworkHosts: [], AnyHost: false, Kinds: [], UsesSecrets: false,
+  Tier: 'unverified', Capabilities: [], NetworkHosts: [], AnyHost: false, NetworkGrantVersion: 1,
+  NetworkMethods: {}, Kinds: [], UsesSecrets: false,
   AlreadyInstalled: false, CanvasHost: false, PolicyRefusal: '', Warnings: [],
 }
 

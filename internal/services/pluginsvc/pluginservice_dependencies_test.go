@@ -127,12 +127,12 @@ func TestInstallFromMarketplace_RefusesADependencyOutOfRange(t *testing.T) {
 			`"dependencies":[{"id":"mill-alpha","version":">=2.0.0"}]}`)}
 	fsys[exampleMarketplaceRoot+"/mill-beta/main.js"] = &fstest.MapFile{Data: []byte("export function activate() {}")}
 	dir := t.TempDir()
-	svc := New(dir, nil, "")
+	svc := newTestPluginService(t, dir, nil, "")
 	svc.SetExampleMarketplace(fsys)
-	if _, err := svc.InstallFromMarketplace(ReservedMarketplaceName, "mill-alpha"); err != nil {
+	if _, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, "mill-alpha"); err != nil {
 		t.Fatalf("installing the dependency: %v", err)
 	}
-	_, err := svc.InstallFromMarketplace(ReservedMarketplaceName, "mill-beta")
+	_, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, "mill-beta")
 	var ue *usererror.Error
 	if !errors.As(err, &ue) || ue.Code != InstallRefusedCode {
 		t.Fatalf("err = %v, want the install refusal", err)
@@ -155,12 +155,12 @@ func TestInstallFromMarketplace_RefusesAMutualDependencyCycle(t *testing.T) {
 			`"dependencies":[{"id":"mill-alpha","version":">=1.0.0"}]}`)}
 	fsys[exampleMarketplaceRoot+"/mill-beta/main.js"] = &fstest.MapFile{Data: []byte("export function activate() {}")}
 	dir := t.TempDir()
-	svc := New(dir, nil, "")
+	svc := newTestPluginService(t, dir, nil, "")
 	svc.SetExampleMarketplace(fsys)
-	if _, err := svc.InstallFromMarketplace(ReservedMarketplaceName, "mill-alpha"); err != nil {
+	if _, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, "mill-alpha"); err != nil {
 		t.Fatalf("installing mill-alpha: %v", err)
 	}
-	if _, err := svc.InstallFromMarketplace(ReservedMarketplaceName, "mill-beta"); err != nil {
+	if _, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, "mill-beta"); err != nil {
 		t.Fatalf("installing mill-beta: %v", err)
 	}
 	// mill-alpha now declares a dependency on mill-beta, closing a
@@ -168,7 +168,7 @@ func TestInstallFromMarketplace_RefusesAMutualDependencyCycle(t *testing.T) {
 	fsys[exampleMarketplaceRoot+"/mill-alpha/manifest.json"] = &fstest.MapFile{Data: []byte(
 		`{"id":"mill-alpha","name":"Example mill-alpha","version":"1.0.0","author":"Mill","description":"An example.",` +
 			`"dependencies":[{"id":"mill-beta","version":">=1.0.0"}]}`)}
-	_, err := svc.InstallFromMarketplace(ReservedMarketplaceName, "mill-alpha")
+	_, err := installMarketplaceForTest(t, svc, ReservedMarketplaceName, "mill-alpha")
 	var ue *usererror.Error
 	if !errors.As(err, &ue) || ue.Code != InstallRefusedCode || !strings.Contains(ue.Message, "depend on each other") {
 		t.Fatalf("err = %v, want the cycle refusal", err)

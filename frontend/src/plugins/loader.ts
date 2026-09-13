@@ -1,6 +1,7 @@
 import { PluginService } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc'
 import type { PluginInfo } from '../../bindings/github.com/alicoding/mill/internal/services/pluginsvc/models'
 import { SettingsService } from '../shared/bindings'
+import { copy } from '../shared/copy'
 import { refreshExtensionSettings } from '../shared/extensionSettingsStore'
 import { refreshSecretTitles } from '../shared/secretTitleCache'
 import { buildPluginAPI, collectFrameSurfaces } from './hostApi'
@@ -92,41 +93,32 @@ export function pluginsAwaitingReviewIds(states: ReadonlyMap<string, PluginLoadS
 	return ids
 }
 
-// readLock flattens the lock to id -> hash; unreadable means an empty
-// lock (nothing revoked), the same fail-open shape as the lists.
-async function readLock(): Promise<Record<string, string>> {
-	try {
-		const raw = (await SettingsService.GetPluginLock()) ?? {}
-		const out: Record<string, string> = {}
-		for (const [id, entry] of Object.entries(raw)) if (entry?.hash) out[id] = entry.hash
-		return out
-	} catch {
-		return {}
-	}
-}
-
-// readPluginPolicy reads the four trust inputs pluginRunState judges.
-// An unreadable disabled set loads everything -- matching how built-in
-// extensions already behave when the same read fails; an unreadable
-// allowed set or allow-list fails the same open way (the row then says
-// what it could not read, never a silent block). A reload re-reads it
-// rather than trusting the boot-time answer: consent granted since
-// boot must count, and consent revoked since boot must bite.
+// readPluginPolicy reads the two settings lists the browser still owns.
+// A failed read stays undefined, distinct from a valid empty list, so
+// pluginRunState can route it to the visible error state. Package
+// consent itself is the PluginInfo verdict from the scan's one backend
+// approval revision.
 export async function readPluginPolicy(): Promise<PluginRunPolicy> {
+	const [disabled, allowlist] = await Promise.all([
+		readIDs(() => SettingsService.GetDisabledExtensions()),
+		readIDs(() => SettingsService.GetPluginAllowlist()),
+	])
 	return {
-		disabled: await readIDs(() => SettingsService.GetDisabledExtensions()),
-		allowed: await readIDs(() => SettingsService.GetAllowedPlugins()),
-		allowlist: await readIDs(() => SettingsService.GetPluginAllowlist()),
-		lock: await readLock(),
+		disabled,
+		allowlist,
 	}
 }
 
-async function readIDs(read: () => Promise<string[] | null | undefined>): Promise<string[]> {
+async function readIDs(read: () => Promise<string[] | null | undefined>): Promise<string[] | undefined> {
 	try {
 		return (await read()) ?? []
 	} catch {
-		return []
+		return undefined
 	}
+}
+
+export function approvalUnavailableMessage(): string {
+	return copy('views:settings.extensions.reloadRefusal.unavailable')
 }
 
 export function resolveActivate(mod: PluginModule): ((api: MillPluginAPI) => PluginExports | Promise<PluginExports>) | null {
@@ -269,19 +261,9 @@ async function activateIfNeeded(info: PluginInfo, millVersion: string, storage: 
 // row, never thrown upward -- and the whole pass is raced against a
 // deadline in main.tsx so a hung import can never brick the boot.
 export async function loadPlugins(): Promise<void> {
-	let millVersion = ''
-	try {
-		millVersion = await SettingsService.AppVersion()
-	} catch {
-		// Version is informational to a plugin; loading proceeds.
-	}
-	let plugins: PluginInfo[]
-	try {
-		plugins = (await PluginService.ListPlugins()) ?? []
-	} catch (err) {
-		console.error('plugin scan failed', err)
-		return
-	}
+	const millVersion = await readMillVersion()
+	const plugins = await scanPlugins()
+	if (!plugins) return
 	const policy = await readPluginPolicy()
 	// Stored setting values load BEFORE any activate() runs, so a plugin
 	// reading api.settings.get() at activation sees the user's value,
@@ -298,35 +280,52 @@ export async function loadPlugins(): Promise<void> {
 	// check) reads loadStates entries the walk already guarantees are
 	// set for everything earlier in this order.
 	for (const info of dependencyOrder(plugins)) {
-		const id = info.Manifest.id
-		if (info.Error) {
-			loadStates.set(id, { status: 'error', error: info.Error, info })
-			continue
-		}
-		// Registered for every plugin whose manifest parsed, not only the
-		// ones that run: the row's reload button is how a user acts on
-		// "Allowed. Reload to load it." A folder whose manifest is
-		// unreadable never gets here -- it has no id to name.
-		collectReloadCommand(info)
-		const state = pluginRunState(id, !!info.Builtin, policy, { contentHash: info.CodeHash ?? '', signingPolicy: !!info.SigningPolicy, signed: !!info.Signed, policyBlocked: info.PolicyBlocked ?? '', widened: !!info.Widened })
-		if (state !== 'run') {
-			loadStates.set(id, { status: state, info })
-			continue
-		}
-		const waitsFor = unmetDependency(info)
-		if (waitsFor) {
-			loadStates.set(id, { status: 'waits', info, waitsFor })
-			continue
-		}
-		// Framed views and captures are declared, not registered: they
-		// are collected before activation so a plugin whose main.js
-		// throws still opens the pages its manifest promised.
-		collectFrameSurfaces(info.Manifest)
-		try {
-			await activateIfNeeded(info, millVersion, storage[id] ?? {})
-			loadStates.set(id, { status: 'loaded', info })
-		} catch (err) {
-			loadStates.set(id, { status: 'error', error: err instanceof Error ? err.message : String(err), info })
-		}
+		await loadPlugin(info, millVersion, storage, policy)
+	}
+}
+
+async function readMillVersion(): Promise<string> {
+	try {
+		return await SettingsService.AppVersion()
+	} catch {
+		// Version is informational to a plugin; loading proceeds.
+		return ''
+	}
+}
+
+async function scanPlugins(): Promise<PluginInfo[] | null> {
+	try {
+		return (await PluginService.ListPlugins()) ?? []
+	} catch (err) {
+		console.error('plugin scan failed', err)
+		return null
+	}
+}
+
+async function loadPlugin(info: PluginInfo, millVersion: string, storage: Record<string, Record<string, string>>, policy: PluginRunPolicy): Promise<void> {
+	const id = info.Manifest.id
+	if (info.Error) {
+		loadStates.set(id, { status: 'error', error: info.Error, info })
+		return
+	}
+	// Registered for every plugin whose manifest parsed, including one
+	// waiting for approval, because its row still offers the reload command.
+	collectReloadCommand(info)
+	const state = pluginRunState(id, !!info.Builtin, policy, { signingPolicy: !!info.SigningPolicy, signed: !!info.Signed, policyBlocked: info.PolicyBlocked ?? '', approvalState: info.ApprovalState })
+	if (state !== 'run') {
+		loadStates.set(id, state === 'error' ? { status: state, error: approvalUnavailableMessage(), info } : { status: state, info })
+		return
+	}
+	const waitsFor = unmetDependency(info)
+	if (waitsFor) {
+		loadStates.set(id, { status: 'waits', info, waitsFor })
+		return
+	}
+	collectFrameSurfaces(info.Manifest)
+	try {
+		await activateIfNeeded(info, millVersion, storage[id] ?? {})
+		loadStates.set(id, { status: 'loaded', info })
+	} catch (err) {
+		loadStates.set(id, { status: 'error', error: err instanceof Error ? err.message : String(err), info })
 	}
 }

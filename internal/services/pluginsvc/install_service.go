@@ -1,6 +1,7 @@
 package pluginsvc
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -56,8 +57,10 @@ type InstallPreview struct {
 	Capabilities []string
 	// NetworkHosts are the hosts contributes.network declares; AnyHost
 	// is true when it declares "*".
-	NetworkHosts []string
-	AnyHost      bool
+	NetworkHosts        []string
+	AnyHost             bool
+	NetworkGrantVersion int
+	NetworkMethods      map[string][]string
 	// Kinds are the contribution families the manifest fills.
 	Kinds []string
 	// UsesSecrets is true when the manifest declares a setting that
@@ -168,6 +171,8 @@ func applyManifestToPreview(pv *InstallPreview, m Manifest, builtin bool) {
 		}
 		pv.NetworkHosts = append(pv.NetworkHosts, n.Host)
 	}
+	pv.NetworkGrantVersion = 1
+	pv.NetworkMethods = manifestNetworkMethods(m)
 	pv.Kinds = contributionKinds(m.Contributes)
 	for _, s := range m.Contributes.EffectiveSettings() {
 		if strings.EqualFold(s.Type, "secretRef") {
@@ -194,7 +199,7 @@ func applyManifestToPreview(pv *InstallPreview, m Manifest, builtin bool) {
 // install prompt showed.
 func (p *PluginService) PreviewInstalled(id string) (InstallPreview, error) {
 	info := p.resolvePlugin(id)
-	if info.Manifest.Name == "" && info.Error != "" {
+	if info.Error != "" {
 		return InstallPreview{}, fmt.Errorf("%s", info.Error)
 	}
 	pv := InstallPreview{
@@ -219,30 +224,11 @@ func (p *PluginService) installedFolderExists(id string) bool {
 	return err == nil && info.IsDir()
 }
 
-// InstallFromMarketplace installs one index entry.
-func (p *PluginService) InstallFromMarketplace(marketplace, id string) (InstallRecord, error) {
-	resolved, err := p.resolveMarketplaceEntry(marketplace, id)
-	if err != nil {
-		return InstallRecord{}, err
-	}
-	stage, cleanup, err := stageDir()
-	if err != nil {
-		return InstallRecord{}, err
-	}
-	defer cleanup()
-	tier, finalURL, err := p.stageEntry(stage, resolved)
-	if err != nil {
-		return InstallRecord{}, err
-	}
-	record := InstallRecord{Source: resolved.Entry.Source, Marketplace: resolved.Index.Name, Tier: tier, Origin: resolved.Source.Origin, FinalArtifactURL: finalURL}
-	return p.finishMarketplaceInstall(stage, record, resolved.Source)
-}
-
 // stageEntry puts one index entry's files in the staging folder and
 // answers the tier that earned. Mill's own bundled index is its own
 // case: those files come out of the binary, so nothing is fetched and
 // nothing needs checking.
-func (p *PluginService) stageEntry(stage string, resolved marketplaceEntryResolution) (string, string, error) {
+func (p *PluginService) stageEntryContext(ctx context.Context, stage string, resolved marketplaceEntryResolution) (string, string, error) {
 	idx, entry, source := resolved.Index, resolved.Entry, resolved.Source
 	if idx.Name == ReservedMarketplaceName {
 		if !p.hasExample(entry.ID) {
@@ -258,76 +244,49 @@ func (p *PluginService) stageEntry(stage string, resolved marketplaceEntryResolu
 		if source.Kind != "path" {
 			return "", "", fmt.Errorf("%q is only offered as a folder, and that source is not a folder", entry.ID)
 		}
-		return TierDev, "", p.copySourceFolder(source.Origin, entry.Source.Path, stage)
+		return TierDev, "", p.copySourceFolderContext(ctx, source.Origin, entry.Source.Path, stage)
 	case "archive":
-		return p.stageArchive(stage, entry.Source.URL, declaredHash(entry), source.Origin)
+		return p.stageArchiveContext(ctx, stage, entry.Source.URL, declaredHash(entry), source.Origin)
 	case "github":
-		return p.stageRepo(stage, entry.Source.Repo, firstNonEmpty(entry.Source.Ref, entry.Source.SHA), entry.ID, entry.Version, declaredHash(entry), source.Origin)
+		return p.stageRepoContext(ctx, stage, entry.Source.Repo, firstNonEmpty(entry.Source.Ref, entry.Source.SHA), entry.ID, entry.Version, declaredHash(entry), source.Origin)
 	}
 	return "", "", fmt.Errorf("unknown source kind %q", entry.Source.Kind)
 }
 
-// InstallFromLink installs from whatever the user pasted: a
-// repository, an archive address, or a folder on this Mac.
-func (p *PluginService) InstallFromLink(input string) (InstallRecord, error) {
-	raw := strings.TrimSpace(input)
-	if raw == "" {
-		return InstallRecord{}, fmt.Errorf("enter a repo, an address, or a folder")
-	}
-	classified, classifyErr := ClassifySource(raw)
-	if classifyErr != nil {
-		return InstallRecord{}, classifyErr
-	}
-	if err := policySourceRegistrationRefusal("", classified); err != nil {
-		return InstallRecord{}, err
-	}
-	stage, cleanup, err := stageDir()
-	if err != nil {
-		return InstallRecord{}, err
-	}
-	defer cleanup()
-	tier, source, finalURL, err := p.stageLink(stage, raw)
-	if err != nil {
-		return InstallRecord{}, err
-	}
-	record := InstallRecord{Source: source, Tier: tier, Origin: classified.Origin, FinalArtifactURL: finalURL}
-	return p.finishInstall(stage, record)
-}
-
 // stageLink reads what the user pasted and stages it, answering the
 // tier and the source to record.
-func (p *PluginService) stageLink(stage, raw string) (string, PluginSource, string, error) {
+func (p *PluginService) stageLinkContext(ctx context.Context, stage, raw string) (string, PluginSource, string, error) {
 	classified, classifyErr := ClassifySource(raw)
 	if classifyErr != nil {
 		return "", PluginSource{}, "", classifyErr
 	}
 	if classified.Kind == "path" {
-		return TierDev, PluginSource{Kind: "path", Path: raw}, "", p.copySourceFolder(classified.Origin, ".", stage)
+		return TierDev, PluginSource{Kind: "path", Path: raw}, "", p.copySourceFolderContext(ctx, classified.Origin, ".", stage)
 	}
 	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
 		if owner, repo, ok := gitHubRemoteRepo(raw); ok {
-			tier, finalURL, err := p.stageRepo(stage, owner+"/"+repo, "", "", "", "", classified.Origin)
+			tier, finalURL, err := p.stageRepoContext(ctx, stage, owner+"/"+repo, "", "", "", "", classified.Origin)
 			return tier, PluginSource{Kind: "github", Repo: owner + "/" + repo}, finalURL, err
 		}
-		tier, finalURL, err := p.stageArchive(stage, raw, "", classified.Origin)
+		tier, finalURL, err := p.stageArchiveContext(ctx, stage, raw, "", classified.Origin)
 		return tier, PluginSource{Kind: "archive", URL: raw}, finalURL, err
 	}
 	repoName, ref, _ := strings.Cut(raw, "@")
 	if !repoPattern.MatchString(repoName) {
 		return "", PluginSource{}, "", fmt.Errorf("that is not a repo, an address, or a folder")
 	}
-	tier, finalURL, err := p.stageRepo(stage, repoName, ref, "", "", "", classified.Origin)
+	tier, finalURL, err := p.stageRepoContext(ctx, stage, repoName, ref, "", "", "", classified.Origin)
 	return tier, PluginSource{Kind: "github", Repo: repoName, Ref: ref}, finalURL, err
 }
 
 // stageArchive downloads one zip and extracts it, refusing the whole
 // install when a declared hash does not match the bytes.
-func (p *PluginService) stageArchive(stage, url, declared string, origins ...SourceOrigin) (string, string, error) {
+func (p *PluginService) stageArchiveContext(ctx context.Context, stage, url, declared string, origins ...SourceOrigin) (string, string, error) {
 	origin := SourceOrigin{}
 	if len(origins) > 0 {
 		origin = origins[0]
 	}
-	data, finalURL, err := p.httpGetBytesForOrigin(url, maxDownloadBytes, origin, true)
+	data, finalURL, err := p.httpGetBytesForOriginContext(ctx, url, maxDownloadBytes, origin, true)
 	if err != nil {
 		return "", "", err
 	}
@@ -335,7 +294,7 @@ func (p *PluginService) stageArchive(stage, url, declared string, origins ...Sou
 	if strings.TrimSpace(declared) != "" && !strings.EqualFold(strings.TrimSpace(declared), actual) {
 		return "", "", fmt.Errorf("the download doesn't match the hash the source declared")
 	}
-	if err := ExtractZip(data, stage); err != nil {
+	if err := ExtractZipContext(ctx, data, stage); err != nil {
 		return "", "", err
 	}
 	return TierFor(TierInputs{DeclaredSHA256: declared, ActualSHA256: actual}), finalURL, nil
@@ -346,9 +305,13 @@ func (p *PluginService) stageArchive(stage, url, declared string, origins ...Sou
 // otherwise -- which nothing checks, so it is unverified by
 // construction.
 func (p *PluginService) stageRepo(stage, repo, ref, id, version, declared string, origins ...SourceOrigin) (string, string, error) {
+	return p.stageRepoContext(context.Background(), stage, repo, ref, id, version, declared, origins...)
+}
+
+func (p *PluginService) stageRepoContext(ctx context.Context, stage, repo, ref, id, version, declared string, origins ...SourceOrigin) (string, string, error) {
 	if id != "" && version != "" {
 		assetURL := releaseAssetURL(repo, version, ReleaseAssetName(id, version))
-		tier, finalURL, err := p.stageArchive(stage, assetURL, declared, origins...)
+		tier, finalURL, err := p.stageArchiveContext(ctx, stage, assetURL, declared, origins...)
 		if err == nil {
 			return tier, finalURL, nil
 		}
@@ -357,7 +320,7 @@ func (p *PluginService) stageRepo(stage, repo, ref, id, version, declared string
 			return "", "", err
 		}
 	}
-	_, finalURL, err := p.stageArchive(stage, BranchArchiveURL(repo, ref), "", origins...)
+	_, finalURL, err := p.stageArchiveContext(ctx, stage, BranchArchiveURL(repo, ref), "", origins...)
 	if err != nil {
 		return "", "", err
 	}
@@ -376,6 +339,14 @@ func releaseAssetURL(repo, version, asset string) string {
 // folder. The policy sees the tier the staging earned and, for the
 // signed tier, which policy key signed the folder.
 func (p *PluginService) stagedChecks(root string, rec InstallRecord) ([]string, error) {
+	return p.stagedChecksWithInstalled(root, rec, p.installedManifests())
+}
+
+func (p *PluginService) stagedChecksLocked(root string, rec InstallRecord) ([]string, error) {
+	return p.stagedChecksWithInstalled(root, rec, p.installedManifestsLocked())
+}
+
+func (p *PluginService) stagedChecksWithInstalled(root string, rec InstallRecord, installed map[string]Manifest) ([]string, error) {
 	m, err := readStagedManifest(root)
 	if err != nil {
 		return nil, err
@@ -397,7 +368,7 @@ func (p *PluginService) stagedChecks(root string, rec InstallRecord) ([]string, 
 		slog.Warn("install refused by the static checks", "plugin", m.ID, "problems", refusals)
 		return nil, usererror.New(InstallRefusedCode, installRefusalSentence(refusals[0]))
 	}
-	if err := p.dependencyInstallRefusal(m); err != nil {
+	if err := dependencyInstallRefusalAgainst(m, installed); err != nil {
 		return nil, err
 	}
 	return warnings, nil
@@ -408,8 +379,7 @@ func (p *PluginService) stagedChecks(root string, rec InstallRecord) ([]string, 
 // Mill (installed extensions, built-ins included), and the new
 // manifest may not close a dependency cycle. Run only at install --
 // the registry of what else is installed exists nowhere else.
-func (p *PluginService) dependencyInstallRefusal(m Manifest) error {
-	installed := p.installedManifests()
+func dependencyInstallRefusalAgainst(m Manifest, installed map[string]Manifest) error {
 	if refusals := dependencyRefusals(m.Dependencies, installed); len(refusals) > 0 {
 		return usererror.New(InstallRefusedCode, refusals[0])
 	}

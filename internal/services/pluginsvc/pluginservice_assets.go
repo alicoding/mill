@@ -35,7 +35,7 @@ func (p *PluginService) AssetMiddleware() func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			data, contentType, ok := p.readAsset(rest)
+			data, contentType, ok := p.readAsset(rest) //nolint:contextcheck // Asset resolution is a synchronous local filesystem read.
 			if !ok {
 				http.NotFound(w, r)
 				return

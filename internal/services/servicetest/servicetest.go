@@ -11,6 +11,7 @@
 package servicetest
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -50,6 +51,11 @@ func (f *FakeStore) Set(key string, value any) error {
 	}
 	f.data[key] = value
 	return nil
+}
+
+// Snapshot returns detached persisted-shape bytes for migration tests.
+func (f *FakeStore) Snapshot() ([]byte, error) {
+	return json.Marshal(f.data)
 }
 
 // FakeCredentialStore is a no-op credential.Store for tests that
