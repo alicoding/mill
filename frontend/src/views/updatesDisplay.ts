@@ -1,5 +1,12 @@
 import type { BuildInfo } from '../shared/bindings'
 
+export function installFailureKey(stage: string): string {
+  if (stage === 'backup') return 'settings.updates.installFailedBackup'
+  if (stage === 'download') return 'settings.updates.installFailedDownload'
+  if (stage === 'install') return 'settings.updates.installFailedInstall'
+  return 'settings.updates.installFailedUnknown'
+}
+
 export function buildOriginKey(buildInfo: BuildInfo | null): string | null {
   if (buildInfo === null) return null
   if (buildInfo.BuildChannel === 'beta') return 'settings.updates.originBeta'

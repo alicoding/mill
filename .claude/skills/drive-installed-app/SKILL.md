@@ -81,6 +81,48 @@ step through the final relaunch:
 scripts/with-install-lock.sh --acquire
 ```
 
+Before quitting the installed app, classify the pass as either isolated or
+owner-profile. A worktree that can change a durable schema uses an isolated
+profile unless the check specifically requires owner data. The isolated launch
+sets every mutable profile seam together, all beneath one throwaway directory:
+
+```
+MILL_VERIFY_PROFILE="$(mktemp -d /Users/ali/code/mill-scratchpad/installed-profile.XXXXXX)"
+export MILL_SETTINGS_PATH="$MILL_VERIFY_PROFILE/settings.json"
+export MILL_EXECUTION_DB_PATH="$MILL_VERIFY_PROFILE/execution.db"
+export MILL_EXECUTION_DATABASE_URL="sqlite:$MILL_VERIFY_PROFILE/execution.db"
+export MILL_SECRETS_PATH="$MILL_VERIFY_PROFILE/secrets.kdbx"
+export MILL_BACKUP_DIR="$MILL_VERIFY_PROFILE/backups"
+export MILL_PLUGINS_DIR="$MILL_VERIFY_PROFILE/plugins"
+```
+
+Do not launch the fixture until each seam is proven to reach the installed
+startup path: inspect the current `main.go` resolution plus
+`pluginsvc.ResolveDir`, then run the existing smoke self-test below.
+`internal/webviewbridgesmoke` already supplies these exact values and verifies
+the isolated-data badge; its
+`TestIsolatedAppEnvironmentReplacesEveryMutablePath` self-test guards against a
+caller-owned value leaking through. If a new or changed startup path bypasses
+one of them, stop and report the unisolated path before the fixture runs.
+
+```
+go test ./internal/webviewbridgesmoke -run TestIsolatedAppEnvironmentReplacesEveryMutablePath -count=1
+```
+
+An owner-profile pass records the retained profile's schema consequence before
+installing a different build. It finishes, while this same lock is still held,
+by installing and launching a build proven to read that retained schema. Record
+the final executable's exact git SHA and origin (`source`, `daily`, or `beta`),
+the profile schema, and the update state. Prefer a distributed daily/beta only
+after its supported schema is proven compatible. Otherwise restore the known
+compatible source build and report the distributed-release blocker. Never
+restart into a known-incompatible target to test this path.
+
+Wails v3.0.0-beta.18 exposes no public staging-discard operation. Do not call an
+unexported method, guess-delete `wails-update-*` paths, or stage a target known
+to be incompatible with the retained profile. A fixture process must quit
+without exposing an in-memory ready state for such a target.
+
 A bounded wait (default 20 min, `MILL_INSTALL_LOCK_WAIT`) exits 75 with
 a one-line message when another pass is already running -- report
 "installed pass pending", never retry in a loop. `task install:app`
@@ -182,10 +224,18 @@ itself.
    - **`screencapture -x`** for evidence, into the session scratchpad.
 6. **Relaunch** (step 2's quit door, then steps 3-5 again) to confirm a
    second pass needs no re-grant -- the Acceptance this goal is proving.
-7. Finish with `scripts/check-drive-setup.sh` again and leave Mill
-   running (a plain relaunch, real data, no throwaway env vars) --
-   verification traffic is allowed to leave the app open per project
-   convention; quitting a running Mill is not itself destructive.
+7. After the isolated fixture quits, clear its exported profile inputs before
+   any owner-profile launch:
+   ```
+   unset MILL_SETTINGS_PATH MILL_EXECUTION_DB_PATH MILL_EXECUTION_DATABASE_URL
+   unset MILL_SECRETS_PATH MILL_BACKUP_DIR MILL_PLUGINS_DIR MILL_VERIFY_PROFILE
+   ```
+   Finish with `scripts/check-drive-setup.sh` again and leave the compatible
+   build recorded above running on the owner profile (a plain relaunch, real
+   data, no throwaway env vars). Confirm no isolation variable survives in the
+   final process environment and report the exact SHA/origin, profile schema,
+   and update state. Verification traffic is allowed to leave the app open per
+   project convention; quitting a running Mill is not itself destructive.
 8. **Release the lock** acquired at the top of this procedure, now that
    the pass -- including the confirmation relaunch -- has genuinely
    finished:

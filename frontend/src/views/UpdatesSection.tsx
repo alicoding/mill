@@ -19,7 +19,7 @@ import styles from '../shared/ListCard.module.css'
 import monoStyles from '../shared/monoText.module.css'
 import { background } from '../shared/background'
 import { useBuildInfoStore } from '../shared/buildInfoStore'
-import { automaticUpdatesCaptionKey, buildOriginKey } from './updatesDisplay'
+import { automaticUpdatesCaptionKey, buildOriginKey, installFailureKey } from './updatesDisplay'
 
 // Keeps a rendered error to one humane line (goal 0127's rider: GitHub's
 // own HTML error page, base64 image included, once rendered whole here)
@@ -27,16 +27,6 @@ import { automaticUpdatesCaptionKey, buildOriginKey } from './updatesDisplay'
 // visible/copyable split LiveRunControls' finished bar already uses.
 function truncate(s: string, max: number): string {
   return s.length > max ? `${s.slice(0, max)}…` : s
-}
-
-// installFailedText names the stage that actually failed (goal: a
-// network-blocked download must never read as a corrupted install) --
-// the raw error stays out of the headline entirely and lives only in
-// CopyDiagnosisButton's copyable detail beside it.
-function installFailedText(stage: string, t: TFunc): string {
-  if (stage === 'download') return t('settings.updates.installFailedDownload')
-  if (stage === 'install') return t('settings.updates.installFailedInstall')
-  return t('settings.updates.installFailedUnknown')
 }
 
 // lastCheckText maps CheckForUpdates' persisted outcome to its display
@@ -182,7 +172,7 @@ function UpdatesSection() {
   const [state, setState] = useState<UpdateState>(UpdateState.UpdateStateIdle)
   const [stateReason, setStateReason] = useState('')
   // Classifies stateReason when it came from a DownloadAndInstallUpdate
-  // failure ('download' | 'install' | 'unknown') -- installFailedText
+  // failure stage -- installFailureKey
   // below picks the honest headline from it. '' for a check failure or
   // any non-error state.
   const [stateReasonStage, setStateReasonStage] = useState('')
@@ -461,7 +451,7 @@ function UpdatesSection() {
               <>
                 <Stack direction="horizontal" gap="condensed" align="center">
                   <Text size="small" className={styles.error}>
-                    {installFailedText(stateReasonStage, t)}
+                    {t(installFailureKey(stateReasonStage))}
                   </Text>
                   <CopyDiagnosisButton error={stateReason} testId="update-error-copy" />
                 </Stack>

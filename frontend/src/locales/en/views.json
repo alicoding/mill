@@ -331,6 +331,7 @@
       "downloading": "Downloading update…",
       "restartButton": "Restart to update",
       "installedRestart": "Update installed. Restart to finish.",
+      "installFailedBackup": "Couldn't back up your data. The update hasn't started.",
       "installFailedDownload": "Couldn't download the update. Your network may be blocking app downloads from GitHub.",
       "installFailedInstall": "Couldn't install the update.",
       "installFailedUnknown": "The update didn't finish.",

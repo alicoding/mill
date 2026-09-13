@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alicoding/mill/internal/domain/usererror"
 	"github.com/wailsapp/wails/v3/pkg/updater"
 )
 
@@ -108,8 +109,12 @@ func TestDownloadAndInstallUpdate_GenuineNotFoundSurfacesHonestError(t *testing.
 	if err == nil {
 		t.Fatal("DownloadAndInstallUpdate() = nil, want the genuine 404 to surface")
 	}
-	if !strings.Contains(err.Error(), "404") {
-		t.Errorf("error = %q, want it to still name the 404", err)
+	got, ok := usererror.Of(err)
+	if !ok || got.Code != updateDownloadFailedCode || got.Message != updateDownloadFailedMessage {
+		t.Errorf("usererror = %+v, %v, want %s / %q", got, ok, updateDownloadFailedCode, updateDownloadFailedMessage)
+	}
+	if cause := errors.Unwrap(got); cause == nil || !strings.Contains(cause.Error(), "404") {
+		t.Errorf("wrapped cause = %v, want it to retain the 404", cause)
 	}
 	if s.UpdateNoticeState().State != UpdateStateError {
 		t.Errorf("State = %q, want %q", s.UpdateNoticeState().State, UpdateStateError)
@@ -130,7 +135,7 @@ func TestDownloadAndInstallUpdate_NonStaleAssetFailureNeverRetries(t *testing.T)
 	provider := &fakeUpdaterProvider{
 		releases: []*updater.Release{rel},
 		dlErrForVersion: map[string]error{
-			"0.4.0-beta.900": errors.New("dial tcp: connection reset by peer"),
+			"0.4.0-beta.900": errors.New("github: download: dial tcp: connection reset by peer"),
 		},
 	}
 
@@ -155,8 +160,12 @@ func TestDownloadAndInstallUpdate_NonStaleAssetFailureNeverRetries(t *testing.T)
 	if err == nil {
 		t.Fatal("DownloadAndInstallUpdate() = nil, want the network error to surface")
 	}
-	if !strings.Contains(err.Error(), "connection reset") {
-		t.Errorf("error = %q, want the original network error unchanged", err)
+	got, ok := usererror.Of(err)
+	if !ok || got.Code != updateDownloadFailedCode || got.Message != updateDownloadFailedMessage {
+		t.Errorf("usererror = %+v, %v, want %s / %q", got, ok, updateDownloadFailedCode, updateDownloadFailedMessage)
+	}
+	if cause := errors.Unwrap(got); cause == nil || !strings.Contains(cause.Error(), "connection reset") {
+		t.Errorf("wrapped cause = %v, want the original network error retained", cause)
 	}
 	if provider.checkCalls != 1 {
 		t.Errorf("Check calls = %d, want exactly 1 -- a non-404 failure must never trigger a re-check", provider.checkCalls)

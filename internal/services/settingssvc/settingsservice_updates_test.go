@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/alicoding/mill/internal/domain/usererror"
 )
 
 // newTestSettingsService is defined once, in settingsservice_menu_test.go.
@@ -51,6 +53,9 @@ func TestDownloadAndInstallUpdate_RefusesOnSourceChannel(t *testing.T) {
 	if err == nil {
 		t.Fatal("DownloadAndInstallUpdate() on a source-channel build: want an error, got nil")
 	}
+	if got, ok := usererror.Of(err); !ok || got.Code != updateChannelUnavailableCode || got.Message != updateChannelUnavailableMessage {
+		t.Errorf("usererror = %+v, %v, want %s / %q", got, ok, updateChannelUnavailableCode, updateChannelUnavailableMessage)
+	}
 }
 
 // A release-channel build with no configured updater (SetUpdater never
@@ -68,8 +73,8 @@ func TestDownloadAndInstallUpdate_RefusesWithoutConfiguredUpdater(t *testing.T) 
 	if err == nil {
 		t.Fatal("DownloadAndInstallUpdate() with no updater configured: want an error, got nil")
 	}
-	if !strings.Contains(err.Error(), "updater") {
-		t.Errorf("DownloadAndInstallUpdate() error = %q, want it to name the missing updater (not an earlier backup failure)", err)
+	if got, ok := usererror.Of(err); !ok || got.Code != updaterUnavailableCode || got.Message != updaterUnavailableMessage {
+		t.Errorf("usererror = %+v, %v, want %s / %q", got, ok, updaterUnavailableCode, updaterUnavailableMessage)
 	}
 }
 
@@ -99,8 +104,8 @@ func TestDownloadAndInstallUpdate_AbortsWhenNoBackupRunnerConfigured(t *testing.
 	if err == nil {
 		t.Fatal("DownloadAndInstallUpdate() with no backup runner configured: want an error, got nil")
 	}
-	if strings.Contains(err.Error(), "updater not configured") {
-		t.Errorf("DownloadAndInstallUpdate() error = %q, want the backup-abort error, not the (later) updater-nil check", err)
+	if got, ok := usererror.Of(err); !ok || got.Code != updateBackupFailedCode || got.Message != updateBackupFailedMessage {
+		t.Errorf("usererror = %+v, %v, want %s / %q", got, ok, updateBackupFailedCode, updateBackupFailedMessage)
 	}
 }
 
@@ -115,11 +120,12 @@ func TestDownloadAndInstallUpdate_AbortsWhenBackupFails(t *testing.T) {
 	if err == nil {
 		t.Fatal("DownloadAndInstallUpdate() with a failing backup runner: want an error, got nil")
 	}
-	if !strings.Contains(err.Error(), "backup") {
-		t.Errorf("DownloadAndInstallUpdate() error = %q, want it to name the aborted backup", err)
+	got, ok := usererror.Of(err)
+	if !ok || got.Code != updateBackupFailedCode || got.Message != updateBackupFailedMessage {
+		t.Errorf("usererror = %+v, %v, want %s / %q", got, ok, updateBackupFailedCode, updateBackupFailedMessage)
 	}
-	if strings.Contains(err.Error(), "updater not configured") {
-		t.Errorf("DownloadAndInstallUpdate() error = %q, the updater must never be reached after a failed backup", err)
+	if cause := errors.Unwrap(got); cause == nil || !strings.Contains(cause.Error(), "disk full") {
+		t.Errorf("wrapped cause = %v, want the backup failure retained", cause)
 	}
 }
 
@@ -201,6 +207,9 @@ func TestDownloadAndInstallUpdate_FakeModeNeverHitsNetwork(t *testing.T) {
 	err := set.DownloadAndInstallUpdate()
 	if err == nil {
 		t.Fatal("DownloadAndInstallUpdate() in fake mode: want an error, got nil")
+	}
+	if got, ok := usererror.Of(err); !ok || got.Code != updateDownloadFailedCode {
+		t.Errorf("usererror = %+v, %v, want code %s", got, ok, updateDownloadFailedCode)
 	}
 }
 
@@ -438,7 +447,7 @@ func TestDownloadAndInstallUpdate_ConcurrentGuardIsReadable(t *testing.T) {
 		t.Fatal("notice must report the downloading phase")
 	}
 	err := s.DownloadAndInstallUpdate()
-	if err == nil || !strings.Contains(err.Error(), "already downloading") {
-		t.Fatalf("err = %v, want the readable already-downloading refusal", err)
+	if got, ok := usererror.Of(err); !ok || got.Code != updateInProgressCode || got.Message != updateInProgressMessage {
+		t.Fatalf("usererror = %+v, %v, want %s / %q", got, ok, updateInProgressCode, updateInProgressMessage)
 	}
 }

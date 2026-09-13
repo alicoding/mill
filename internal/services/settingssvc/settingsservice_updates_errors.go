@@ -8,7 +8,25 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/alicoding/mill/internal/domain/usererror"
 	"golang.org/x/net/html"
+)
+
+const (
+	updateBackupFailedCode          = "update-backup-failed"
+	updateBackupFailedMessage       = "Couldn't back up your data. The update hasn't started."
+	updateDownloadFailedCode        = "download-failed"
+	updateDownloadFailedMessage     = "The update could not be downloaded."
+	updateInstallFailedCode         = "update-install-failed"
+	updateInstallFailedMessage      = "The update could not be installed."
+	updateInProgressCode            = "update-in-progress"
+	updateInProgressMessage         = "An update is already downloading."
+	updateChannelUnavailableCode    = "update-channel-unavailable"
+	updateChannelUnavailableMessage = "Updates aren't available for the selected channel."
+	updaterUnavailableCode          = "updater-unavailable"
+	updaterUnavailableMessage       = "The updater isn't available in this build."
+	updateFailedCode                = "update-failed"
+	updateFailedMessage             = "The update could not be completed."
 )
 
 // updaterDiagnosisCap bounds how much of a sanitized provider error
@@ -139,10 +157,22 @@ func truncateDiagnosis(s string) string {
 type UpdateFailureStage string
 
 const (
+	UpdateFailureStageBackup   UpdateFailureStage = "backup"
 	UpdateFailureStageDownload UpdateFailureStage = "download"
 	UpdateFailureStageInstall  UpdateFailureStage = "install"
 	UpdateFailureStageUnknown  UpdateFailureStage = "unknown"
 )
+
+func updaterBoundaryError(stage UpdateFailureStage, cause error) error {
+	switch stage {
+	case UpdateFailureStageDownload:
+		return usererror.Wrap(updateDownloadFailedCode, updateDownloadFailedMessage, cause)
+	case UpdateFailureStageInstall:
+		return usererror.Wrap(updateInstallFailedCode, updateInstallFailedMessage, cause)
+	default:
+		return usererror.Wrap(updateFailedCode, updateFailedMessage, cause)
+	}
+}
 
 // downloadStageMarkers are the wails/v3 pkg/updater error shapes that
 // originate in its download phase: the github provider's own Download

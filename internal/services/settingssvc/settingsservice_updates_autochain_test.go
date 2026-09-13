@@ -47,8 +47,8 @@ type fakeUpdaterHost struct {
 	quits int
 }
 
-func (f *fakeUpdaterHost) Emit(string, ...any) bool             { return false }
-func (f *fakeUpdaterHost) OnEvent(string, func(any)) func()     { return func() {} }
+func (f *fakeUpdaterHost) Emit(string, ...any) bool         { return false }
+func (f *fakeUpdaterHost) OnEvent(string, func(any)) func() { return func() {} }
 func (f *fakeUpdaterHost) OpenWindow(updater.WindowOptions) updater.WindowHandle {
 	return &fakeUpdaterWindow{}
 }
@@ -265,9 +265,11 @@ func TestDownloadAndInstallUpdate_DigestMismatchFailsClosedThroughAutoPath(t *te
 	if _, err := s.CheckForUpdates(); err != nil {
 		t.Fatalf("CheckForUpdates: %v", err)
 	}
-	if err := s.DownloadAndInstallUpdate(); err == nil {
+	err := s.DownloadAndInstallUpdate()
+	if err == nil {
 		t.Fatal("DownloadAndInstallUpdate with a corrupted digest: want an error, got nil")
 	}
+	assertUpdateUserError(t, err, updateInstallFailedCode, updateInstallFailedMessage, "digest mismatch")
 	if s.UpdateNoticeState().Ready {
 		t.Error("Ready = true after a failed digest verify, want false")
 	}
