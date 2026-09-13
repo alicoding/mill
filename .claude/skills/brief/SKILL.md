@@ -44,10 +44,11 @@ brief carries more, not less, than an Opus one would need.
   status. This is the one piece of the old operational block that
   still belongs in the brief, not the agent definition — it differs
   per brief.
-- **Adoption named**: the brief quotes the goal file's chosen
-  library/framework, version, and entry-point API, or the recorded
-  search that found none. Missing → stop, run the `research` agent
-  first, do not dispatch.
+- **Adoption comparison**: quote the goal's record required by
+  `adopt-converged-patterns.md`: chosen solution/version/highest-level API,
+  full capability/upstream comparison, actual mismatch if rejected, and the
+  remaining Mill adapter/domain boundary. Unresolved fit → stop, research,
+  no dispatch.
 - **Model**: Sonnet unless the brief carries a one-sentence Opus
   justification; never Fable; at most one Opus builder live.
 - **Sized to ≤3 contract items.** A fourth item is the next slice, not

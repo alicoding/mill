@@ -15,18 +15,18 @@ brief. An agent stops and reports an unnamed adopt-or-build choice.
 
 ## The maintenance lock — adoption wins when it removes owned machinery
 
-When a maintained framework, library, protocol or generator satisfies Mill's
-contract and removes owned code or recurring migrations, **adoption is
-mandatory**. Familiarity, sunk cost and today's easy custom case do not justify
-retaining more machinery.
+Adopt the highest-level API of a maintained solution that satisfies Mill's
+actual constraints. Before Plan or builder dispatch, compare the closest
+solutions' full relevant capabilities and upstream evolution with Mill Today
+and every missing capability Mill would otherwise build. Record the chosen
+solution/version/API, Mill-specific adapter/domain remainder, and total ongoing
+ownership: compatibility, migrations, packaging, tests, releases and future
+gap-filling.
 
-Before custom platform/plugin machinery is authorized, the goal and brief name
-the closest maintained commodities, evaluate their highest-level APIs and
-lifecycle contracts, and prove the unmet requirement. Compare all long-term
-ownership: adapters, generated artifacts, compatibility, migrations, packaging,
-tests and releases. Choose the qualifying option with the least Mill machinery;
-build only the thin adapter, and replace safe custom machinery instead of adding
-a parallel path.
+Custom machinery requires a specific unmet requirement demonstrated against
+current upstream APIs. Narrow parity, sunk cost, familiarity or a smaller
+initial patch do not qualify. “Not researched” never means “none exists”;
+unresolved adoption returns to research.
 
 ## The method — a feature is a composition of two adopted contracts
 

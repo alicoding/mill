@@ -5,9 +5,11 @@ No `paths` frontmatter — every goal, every language.
 ## Definition of Ready — before a BACKLOG.md item enters a session
 - Before Plan, Goal Research has **Precedent** (best-in-class tools, real search),
   **Today** (Mill read/probed), and **Gap** (Plan's delta). No Gap ⇒ not Ready.
-- **Adoption named before dispatch.** Precedent names the solving
-  library/framework/package from real search, with linked primary source,
-  pinned version and entry-point API — or records none found. No brief without it.
+- **Adoption named before dispatch.** Before Plan, name the maintained solution,
+  pinned version and highest-level API from a linked primary source. Record its
+  full capability/upstream comparison, actual constraint mismatch if rejected,
+  and Mill-specific adapter/domain remainder. “Not researched” is not “none
+  found”; unresolved fit is not Ready.
 - A capability map for any schema/adopt-vs-build call with >1
   future use (SPEC §3.3).
 - A goal file with Goal/Plan/**checkable Acceptance**.
