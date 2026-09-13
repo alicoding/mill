@@ -15,18 +15,23 @@ brief. An agent stops and reports an unnamed adopt-or-build choice.
 
 ## The maintenance lock — adoption wins when it removes owned machinery
 
-When a maintained framework, library, protocol or generator satisfies Mill's
-contract and removes owned code or recurring migrations, **adoption is
-mandatory**. Familiarity, sunk cost and today's easy custom case do not justify
-retaining more machinery.
+Before Plan or builder dispatch, compare maintained solutions' full relevant
+capabilities and upstream evolution with Mill Today and every capability Mill
+would otherwise build. Adopt the highest applicable abstraction that owns the
+whole job and satisfies Mill's constraints; raw primitives belong only beneath
+its thin adapter. Record solution/version/API, Mill-specific adapter/domain
+remainder, and total ownership: compatibility, migrations, packaging, tests,
+releases and future gaps.
 
-Before custom platform/plugin machinery is authorized, the goal and brief name
-the closest maintained commodities, evaluate their highest-level APIs and
-lifecycle contracts, and prove the unmet requirement. Compare all long-term
-ownership: adapters, generated artifacts, compatibility, migrations, packaging,
-tests and releases. Choose the qualifying option with the least Mill machinery;
-build only the thin adapter, and replace safe custom machinery instead of adding
-a parallel path.
+This applies to product, testing and orchestration work. Configure the adopted
+framework's applicable fixtures, waits, assertions, retries and reporting before
+custom harness code; domain-specific tests and installed/OS proof remain.
+
+Custom machinery, including a parallel homemade lifecycle around a library,
+requires a specific unmet requirement demonstrated against current upstream
+APIs. Narrow parity, sunk cost, familiarity or smaller first patches do not
+qualify. “Not researched” never means “none exists”; unresolved adoption
+returns to research.
 
 ## The method — a feature is a composition of two adopted contracts
 
@@ -35,10 +40,8 @@ an adapter. Invent neither side.
 
 1. **Research, never infer.** Record CLAUDE.md's **Precedent** → **Today** →
    **Gap** before Plan.
-2. **Adopt the whole API at its HIGHEST abstraction.** Partial adoption creates
-   forced patterns; use the grid's trailing-row primitive, not a drawn button.
-3. **Build only the adapter.** Re-implementing shipped behavior is a defect;
-   enable its complete copy/paste/fill/keyboard contract.
+2. **Adopt and configure the whole API at its HIGHEST abstraction.**
+3. **Build only the adapter.** Re-implementing shipped behavior is a defect.
 4. **Adapter can't reach? Grow the SURFACE** by extending the kernel contract.
 
 ## Pre-rule code migrates, never grandfathers
@@ -59,11 +62,7 @@ programmatic edits to the same file: one artifact, two doors, one guard.
 
 ## The test
 
-- *Borrowed or invented? If invented, does the surface genuinely demand it?*
-- *Adopted the API whole, or half-invented it? A higher-level
-  primitive that already owns this job?*
-- *Which qualifying option leaves Mill owning the least code and recurring
-  migration/release work? If that is an existing commodity, adoption is
-  mandatory.*
-- *The adapter plugging it in; the surface gap it reveals?*
+- *Borrowed or invented? Does the surface demand invention?*
+- *Whole highest abstraction configured, or parallel custom lifecycle?*
+- *Which qualifying option leaves least ownership; what adapter/gap remains?*
 - *(Intake)* The commodity's job, or Mill's API's job?
